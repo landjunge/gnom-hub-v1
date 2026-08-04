@@ -1,0 +1,8 @@
+# Copy this file to Key.txt and fill in your keys.
+# On start, Gnom-Hub writes a private .env from Key.txt (if needed).
+# Never commit Key.txt or .env.
+
+DEEPSEEK_API_KEY=sk-your-deepseek-key-here
+
+# Optional aliases also work:
+# deepseek=sk-your-deepseek-key-here
