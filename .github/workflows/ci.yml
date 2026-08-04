@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main, master ]
     tags:
-      - 'v*'   # z.B. v0.1.0, v1.0.0
+      - 'v*'
   pull_request:
     branches: [ main, master ]
 
@@ -65,14 +65,18 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Create Release with automated notes
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           draft: false
           prerelease: ${{ contains(github.ref, '-') }}
           body: |
-            ## Änderungen in dieser Version
+            ### 📜 Changelog
 
-            Die Release Notes wurden automatisch aus den Commits und Pull Requests generiert.
+            Die folgenden Änderungen wurden automatisch aus Commits und Pull Requests zusammengestellt.
+
+            ---
