@@ -1,4 +1,4 @@
-# Gnom-Hub – Pre-Plan (Stand: 05.08.2026)
+# Gnom-Hub v1 – Pre-Plan (Stand: 05.08.2026)
 
 Vollständige Zusammenfassung aus dem gesamten Brainstorming.
 Nichts Wichtiges soll verloren gehen.
@@ -11,10 +11,11 @@ Ein lokales, portables Multi-Agenten-System mit klarem Ablauf:
 
 **Erst freies Brainstorming → dann automatische Ausführung**
 
-- Läuft vom USB-Stick
-- Schlank lokal + Cloud-LLMs möglich
-- **Desktop/Laptop only** (kein Mobile-Responsive nötig)
-- Prinzip: So schlank wie möglich, so viel wie nötig (YAGNI + KISS)
+Das System soll vom USB-Stick laufen können und sowohl schlank lokal als auch mit Cloud-LLMs arbeiten.
+
+Schlankheits-Prinzip: **Kein Overengineering. So schlank wie möglich, so viel wie nötig (YAGNI + KISS).**
+
+Desktop/Laptop only – keine Mobile-Responsive-Anforderungen.
 
 ---
 
@@ -22,187 +23,173 @@ Ein lokales, portables Multi-Agenten-System mit klarem Ablauf:
 
 ### Feste Agenten (4) – kurze Namen + feste Farben
 
-| Kurzer Name     | Rolle                         | Rahmenfarbe |
-|-----------------|-------------------------------|-------------|
-| **Brainstorm**  | Brainstorm-Moderator          | Rot         |
-| **Memory**      | Memory-Agent (immer aktiv)    | Blau        |
-| **Flex**        | Flexibler System-Slot         | Gelb        |
-| **Coordinator** | Coordinator                   | Grün        |
+| Kurzer Name   | Rolle                  | Rahmenfarbe | Abschaltbar |
+|---------------|------------------------|-------------|-------------|
+| **Brainstorm**| Brainstorm-Moderator   | Rot         | Ja          |
+| **Memory**    | Memory-Agent           | Blau        | **Nein**    |
+| **Flex**      | Flexibler System-Slot  | Gelb        | Ja          |
+| **Coordinator**| Coordinator           | Grün        | Ja          |
 
-**Flex-Slot:**
+**Flex** (früher Security):
 - Standard-Preset: Security
-- Weitere Presets möglich: Neutral, Researcher, Reviewer, Planner …
-- Kann bei Bedarf umfunktioniert werden (kein fester Flaschenhals)
+- Weitere Presets möglich: Researcher, Reviewer, Neutral, Planner usw.
+- Kann per Preset die Rolle wechseln
 
 ### Dynamische Worker (bis zu 4)
 
-| Name     | Rahmenfarbe |
-|----------|-------------|
-| Worker 1 | Orange      |
-| Worker 2 | Lila        |
-| Worker 3 | Türkis      |
-| Worker 4 | Grau/Rosa   |
+| Name     | Rahmenfarbe | Abschaltbar |
+|----------|-------------|-------------|
+| Worker 1 | Orange      | Ja          |
+| Worker 2 | Lila        | Ja          |
+| Worker 3 | Türkis      | Ja          |
+| Worker 4 | Grau/Rosa   | Ja          |
 
 - Werden vom Coordinator bei Bedarf erzeugt
-- Presets speicherbar und wiederverwendbar
+- Können als Presets gespeichert und wiederverwendet werden
+- Status (active/disabled) wird live über EventBus bekannt gegeben
+- Coordinator startet nie mehr Worker als aktuell aktiv sind
 
-### Agenten ein-/ausschalten (Doppelklick)
+### Doppelklick-Toggle
+- Doppelklick auf Agentenkarte → Agent ein-/ausschalten
+- Memory ist **nicht** abschaltbar
+- Ausgeschaltete Agenten: ausgegraut, keine Tokens, werden übersprungen
 
-| Agent        | Abschaltbar? | Begründung                    |
-|--------------|--------------|-------------------------------|
-| Brainstorm   | Ja           | Optional                      |
-| Memory       | **Nein**     | Wird immer gebraucht          |
-| Flex         | Ja           | Kann deaktiviert/umfunktioniert werden |
-| Coordinator  | Ja           | Optional                      |
-| Worker 1–4   | Ja           | Dynamisch                     |
-
-- Doppelklick auf Karte → an/aus
-- Aus = abgedunkelt + Status „DEAKTIVIERT“, keine Tokens, keine Events
-- Coordinator erkennt live, welche Agenten/Worker aktiv sind und startet nie mehr, als verfügbar sind
+### Besondere Modi
+- **God-Mode**: Volle Rechnerrechte (bewusst aktivierbar)
+- Normal-Modus mit sinnvollen Grenzen
 
 ---
 
 ## 3. Gedächtnis
 
-### Kurzzeitgedächtnis
-- Mermaid Canvas + Context-Offload mit `node_id`
+### Kurzzeitgedächtnis (symbolisch)
+- **Mermaid Canvas** + Context-Offload mit `node_id`
+- Schwere Inhalte werden ausgelagert
+- Agent sieht nur die kompakte Mermaid-Landkarte
 
 ### Langzeitgedächtnis (HOT / WARM / COLD)
-- HOT: aktuelle Session + Mermaid
-- WARM: Fakten, Skills, Summaries, Projekte
-- COLD: Archiv
 
-### Persistenz
-```
-memory/
-├── hot/     session.json, mermaid_canvas.mmd, working_context.md
-├── warm/    facts.jsonl, skills/, summaries/, projects/
-└── cold/    sessions/, raw_logs/, archive_index.json
-```
+| Zone   | Inhalt                              | Persistenz                     |
+|--------|-------------------------------------|--------------------------------|
+| **HOT**| Aktuelle Session, Mermaid-Canvas    | JSON + `.mmd`                  |
+| **WARM**| Fakten, Skills, Summaries, Projekte | JSONL / SQLite + Markdown      |
+| **COLD**| Alte Sessions, Roh-Logs, Archiv     | Dateien + Index                |
 
 - Atomic Writes, relative Pfade (USB-fähig)
-- Optional später: Vector-Plugin + Hybrid-Ranking (RRF)
+- Memory-Agent steuert Promotion
+
+### Optionale Vektor-Schicht (Plugin)
+- Standard: `null`
+- Später: LanceDB oder sqlite-vec + Hybrid Ranking (RRF)
 
 ---
 
 ## 4. LLM- und Key-Management
 
-- Free-Modelle nur bevorzugen, wenn User es aktiv will
-- Budget-Schutz (kein versehentliches teures Modell)
-- Lokale Modelle nicht erzwungen
+- Free-Modelle nur bevorzugt, wenn der User das aktiv will
+- Budget-Schutz gegen teure Modelle
 - Jeder Agent kann eigenes Modell + eigenen Key haben
-- Keys: `Key.txt` (Desktop) → private `.env`
-- Nur **ein globaler Speicher-Button**
-- DeepSeek als erstes Test-Modell
+- Keys aus `Key.txt` (Desktop) → private `.env`
+- Erster Test-Modell: **DeepSeek**
+- Capability-Tags pro Modell
 
 ---
 
-## 5. Benutzeroberfläche (Desktop, 13″ optimiert)
+## 5. Benutzeroberfläche (Desktop-only, 13″ optimiert)
 
-### Feste Maße
-
-| Element              | Größe        | Abstand |
-|----------------------|--------------|---------|
-| Agenten-Karten (8×)  | 140 × 100 px | 5 px    |
-| Boxen (3×)           | 380 × 380 px | 5 px    |
-| Chatfenster          | volle Breite × ca. 150 px | – |
-
-Gesamtbreite Karten/Boxen ≈ 1150–1155 px → passt auf 13″ (1280 px).
-
-### Agenten-Visitenkarten
-- Tokenverbrauch, aktuelle LLM, Online/Offline
-- TTS-Checkbox
-- 1-Pixel-Rahmen in fester Agentenfarbe (pulsiert bei Aktivität)
-- Doppelklick = ein-/ausschalten (außer Memory)
+### Agenten-Karten (oben)
+- 8 Karten horizontal
+- Größe: **140 × 100 px**
+- Abstand: **5 px**
+- Inhalt: Tokenverbrauch, aktuelle LLM, Online/Offline, TTS-Checkbox
+- 1-Pixel-Rahmen (pulsiert bei Aktivität)
+- Feste Rahmenfarbe pro Agent
+- Doppelklick = Toggle (außer Memory)
 
 ### Drei Boxen
-- 1-Pixel-Rahmen, Farbe wechselt zum aktiven Agenten
-- Pre-Rendering
+- Größe: **380 × 380 px** (fest)
+- Abstand: **5 px**
+- 1-Pixel-Rahmen (Farbe des aktiven Agenten)
 
-**Box 1 – Arounder (zentrale Hilfe)**
-- Bei Hover über alles (Agent, Button, Modul, Regler, Workflow):
-  - Titel
-  - Kurze Erklärung
-  - Wie benutzen
-  - Beispiel
-- Zeigt dynamisch das aktuelle Preset des Agenten
-- UI-Sprache bleibt **Basic English**
-- Inhalte von Box 1 sind mehrsprachig (DE/EN/…)
+**Box 1 – Arounder (zentrale Erklärungsfläche)**
+- Mouse-over auf alles (Agent, Button, Modul, Regler, Workflow) → reiche Erklärung
+- Aufbau: Titel + Kurzbeschreibung + How-to-use + Beispiel
+- Wechselt Sprache (DE/EN/…), UI selbst bleibt Basic English
+- Jedes neue Element **muss** einen Tooltip-Eintrag haben
 
-**Box 2 – Brainstorm**  
-Destillierte Gedanken + Zusammenfassung (persistent)
+**Box 2 – Brainstorm**
+- Destillierte Gedanken + Zusammenfassung (persistent)
 
-**Box 3 – Worker-Ergebnisse**  
-Live-Preview
+**Box 3 – Worker-Ergebnisse**
+- Live-Preview
 
-### Weitere UI
-- Header: System · Help · **ein globaler Save-Button**
-- Agent-Tuning-Seite (Klick auf Agent): Prompt, Modell, 5 Regler, Live-Erklärung in Box 1
+### Chatfenster
+- ca. 150 px hoch, volle Breite
+- Spracheingabe
 
----
+### Globale Buttons
+- System, Hilfe, **ein globaler Speicher-Button**
 
-## 6. Workspace
-
-- Temporärer Workspace (Sammelplatz + Preview + Übertragen)
-- Permanenter Workspace (nur bewusst übernommene Ergebnisse)
+### Layout-Prinzip
+- Feste Pixelmaße (kein Mobile-Responsive)
+- Optimiert für 13-Zoll und größer
+- Gesamtbreite Agentenkarten ≈ Gesamtbreite Boxen (≈ 1150–1155 px)
 
 ---
 
-## 7. Computer-Use (später)
+## 6. Workspace-Konzept
 
-Capture · Vision+Teaching · OCR · Action · Workflow-Recording → Skills
+Zwei Workspaces (temporär + permanent) mit Preview-Kästchen und Übertragen-Funktion.
+
+---
+
+## 7. Computer-Use / UI-Automation
+
+Modulares Paket (Capture, Vision+Teaching, OCR, Action, Workflow) – Phase 5.
 
 ---
 
 ## 8. Installation & Betrieb
 
-- Einfache Installation, USB-Erkennung
-- Key.txt → .env
-- Update + Backup (später)
+Einfache Installation, USB-Erkennung, Key.txt → .env, Update + Backup.
 
 ---
 
-## 9. Weitere Features (Zielbild)
+## 9. Weitere Features
 
-- TTS, Spracheingabe, MCP, Plugins, Skills
-- God-Mode, Sauberer Zustand, Accessibility
-- Self-Explaining Videos, Workflows im Memory
+- TTS, Spracheingabe, MCP, Plugin-System, Skills, God-Mode
+- Ein-Klick „Sauberer Zustand“
+- Mehrsprachigkeit nur für Box-1-Inhalte (UI = English)
+- Accessibility-Fokus
 
 ---
 
 ## 10. Technische Prinzipien
 
-- EventBus / Pub-Sub
-- Facade, Composition over Inheritance
-- Checkpointing, Light Tracing, Qualitätsprüfung
-- Kontext-Kompression
+- YAGNI + KISS
+- EventBus + Facade + schmale Interfaces
+- Atomic Writes
+- Checkpointing / Resume
+- Light Tracing
 
 ---
 
 ## 11. Modul-Struktur
 
-Core/EventBus · AgentManager · MemoryModule · BrainstormModule · WorkerModule · UI · TTS · TooltipService · LLM-Manager · Workspace · Plugin/MCP · Computer-Use · Install/Update/Backup
+Core/EventBus, AgentManager, MemoryModule, BrainstormModule, WorkerModule, UI Module, TTS, Reset, Plugin/MCP, Workspace, Computer-Use, Install/Update/Backup, LLM-Manager, TooltipService
 
 ---
 
-## 12. Phasen
+## 12. Umsetzungs-Reihenfolge
 
-**Phase 0** – Fundament (Struktur, EventBus, Keys, USB)  
-**Phase 1** – Kern-UI (Karten 140×100, Boxen 380×380, Chat, Doppelklick, Box-1-Tooltips)  
-**Phase 2** – Agenten-Grundgerüst (4 feste + Flex-Presets, LLM-Manager, TTS)  
-**Phase 3** – Memory HOT + einfaches Mermaid + Workspace-Basis  
-**Phase 4** – Dynamische Worker + Qualität  
-**Phase 5** – Erweiterungen (Computer-Use, Vector, Plugins, …)
-
----
-
-## 13. Offene Punkte
-
-- Konkrete lokale LLM-Empfehlungen für 4-Kern
-- Aggressivität der Qualitätsprüfung
-- Spätere Remote-Zugriff-Idee (Handy/iPad) – aktuell kein Ziel
+**Phase 0** – Fundament  
+**Phase 1** – Kern-UI (Karten 140×100, Boxen 380×380, 5 px Abstände)  
+**Phase 2** – Agenten + Toggle + Flex-Presets + LLM-Manager  
+**Phase 3** – Memory (HOT + Mermaid) + Workspace  
+**Phase 4** – Dynamik + Qualität  
+**Phase 5** – Erweiterungen (Plugins, Computer-Use, Vector …)
 
 ---
 
-**Ende Pre-Plan**  
+**Ende des Pre-Plans**  
 Stand: 05.08.2026
