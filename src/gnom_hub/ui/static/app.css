@@ -1,0 +1,319 @@
+/* Gnom-Hub v1 – desktop UI skeleton (13", fixed sizes, no responsive) */
+
+:root {
+  --bg: #1a1b1e;
+  --bg-panel: #25262b;
+  --bg-card: #2c2e33;
+  --text: #e9ecef;
+  --text-muted: #909296;
+  --border: #373a40;
+  --gap: 5px;
+  --card-w: 140px;
+  --card-h: 100px;
+  --box-size: 380px;
+  --chat-h: 150px;
+  --layout-w: 1150px;
+
+  /* Agent frame colors */
+  --c-brainstorm: #e03131;
+  --c-memory: #1c7ed6;
+  --c-flex: #f59f00;
+  --c-coordinator: #2f9e44;
+  --c-worker1: #fd7e14;
+  --c-worker2: #9c36b5;
+  --c-worker3: #0ca678;
+  --c-worker4: #868e96;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+#app {
+  width: var(--layout-w);
+  margin: 12px auto;
+  padding: 0 4px 12px;
+}
+
+/* —— Top bar —— */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: var(--layout-w);
+  margin-bottom: 8px;
+}
+
+.app-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.btn-save {
+  width: 72px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #343a40;
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.btn-save:hover {
+  background: #495057;
+}
+
+/* —— Agent cards: 140×100, gap 5 —— */
+.agent-cards {
+  display: flex;
+  flex-direction: row;
+  gap: var(--gap);
+  width: calc(8 * var(--card-w) + 7 * var(--gap)); /* 1155px */
+  margin-bottom: 10px;
+}
+
+.agent-card {
+  width: var(--card-w);
+  height: var(--card-h);
+  flex: 0 0 var(--card-w);
+  background: var(--bg-card);
+  border: 1px solid var(--card-color, var(--border));
+  border-radius: 4px;
+  padding: 6px 8px;
+  cursor: default;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: var(--text);
+}
+
+.agent-card[data-enabled="false"] {
+  opacity: 0.45;
+}
+
+.agent-card[data-parked="true"] {
+  opacity: 0.4;
+}
+
+.agent-card .card-name {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--card-color, var(--text));
+}
+
+.agent-card .card-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.agent-card .card-status {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.agent-card[data-enabled="true"] .card-status {
+  color: #69db7c;
+}
+
+.agent-card[data-enabled="false"] .card-status {
+  color: var(--text-muted);
+}
+
+.agent-card.color-brainstorm { --card-color: var(--c-brainstorm); }
+.agent-card.color-memory { --card-color: var(--c-memory); }
+.agent-card.color-flex { --card-color: var(--c-flex); }
+.agent-card.color-coordinator { --card-color: var(--c-coordinator); }
+.agent-card.color-worker1 { --card-color: var(--c-worker1); }
+.agent-card.color-worker2 { --card-color: var(--c-worker2); }
+.agent-card.color-worker3 { --card-color: var(--c-worker3); }
+.agent-card.color-worker4 { --card-color: var(--c-worker4); }
+
+/* —— Three boxes: 380×380, gap 5 —— */
+.boxes {
+  display: flex;
+  flex-direction: row;
+  gap: var(--gap);
+  width: calc(3 * var(--box-size) + 2 * var(--gap)); /* 1150px */
+  margin-bottom: 10px;
+}
+
+.box {
+  width: var(--box-size);
+  height: var(--box-size);
+  flex: 0 0 var(--box-size);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.box-header {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  font-weight: 600;
+  font-size: 12px;
+  border-bottom: 1px solid var(--border);
+  background: #2c2e33;
+}
+
+.box-arounder .box-header { color: #74c0fc; }
+.box-brainstorm .box-header { color: var(--c-brainstorm); }
+.box-worker .box-header { color: var(--c-worker1); }
+
+.box-body {
+  flex: 1 1 auto;
+  padding: 10px;
+  overflow: auto;
+  min-height: 0;
+}
+
+.muted,
+.box1-placeholder {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* Box 1 tooltip panel */
+.box1-tooltip[hidden],
+.clarify[hidden] {
+  display: none !important;
+}
+
+.tip-title {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.tip-how {
+  margin: 0 0 10px;
+  color: var(--text);
+}
+
+.tip-example {
+  margin: 0;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.tip-example::before {
+  content: "Example: ";
+  font-style: normal;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* Clarify Yes / No / Whatever / Later */
+.clarify {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.clarify-question {
+  margin: 0 0 10px;
+  font-weight: 500;
+}
+
+.clarify-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.btn-clarify {
+  min-width: 72px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #343a40;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.btn-clarify:hover {
+  background: #495057;
+}
+
+/* —— Chat ~150 px —— */
+.chat {
+  width: var(--layout-w);
+  height: var(--chat-h);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chat-log {
+  flex: 1 1 auto;
+  padding: 8px 10px;
+  overflow-y: auto;
+  min-height: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.chat-log .chat-line {
+  margin: 0 0 4px;
+  color: var(--text);
+}
+
+.chat-input-row {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 6px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--border);
+}
+
+.chat-input {
+  flex: 1 1 auto;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  padding: 0 8px;
+  font-size: 13px;
+}
+
+.chat-input:focus {
+  outline: 1px solid #4dabf7;
+  outline-offset: 0;
+}
+
+.btn-send {
+  flex: 0 0 64px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #1864ab;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.btn-send:hover {
+  background: #1c7ed6;
+}

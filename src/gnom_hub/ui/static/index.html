@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gnom-Hub</title>
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="top-bar">
+      <h1 class="app-title">Gnom-Hub</h1>
+      <button type="button" id="btn-save" class="btn-save" data-tooltip-id="save" title="Save">
+        Save
+      </button>
+    </header>
+
+    <!-- 8 agent cards: 140×100, gap 5 -->
+    <section id="agent-cards" class="agent-cards" aria-label="Agents"></section>
+
+    <!-- 3 boxes: 380×380, gap 5 -->
+    <section class="boxes" aria-label="Main panels">
+      <div id="box1" class="box box-arounder" data-tooltip-id="box1">
+        <div class="box-header">Arounder</div>
+        <div id="box1-content" class="box-body">
+          <p class="box1-placeholder">Hover a card or control for help.</p>
+          <div id="box1-tooltip" class="box1-tooltip" hidden>
+            <h2 id="tip-title" class="tip-title"></h2>
+            <p id="tip-how" class="tip-how"></p>
+            <p id="tip-example" class="tip-example"></p>
+          </div>
+          <div id="clarify" class="clarify" hidden>
+            <p id="clarify-question" class="clarify-question"></p>
+            <div class="clarify-actions">
+              <button type="button" class="btn-clarify" data-answer="yes">Yes</button>
+              <button type="button" class="btn-clarify" data-answer="no">No</button>
+              <button type="button" class="btn-clarify" data-answer="whatever">Whatever</button>
+              <button type="button" class="btn-clarify" data-answer="later">Later</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="box2" class="box box-brainstorm" data-tooltip-id="box2">
+        <div class="box-header">Brainstorm</div>
+        <div id="box2-content" class="box-body">
+          <p class="muted">Brainstorm thoughts appear here.</p>
+        </div>
+      </div>
+
+      <div id="box3" class="box box-worker" data-tooltip-id="box3">
+        <div class="box-header">Worker results</div>
+        <div id="box3-content" class="box-body">
+          <p class="muted">Worker results appear here.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Chat ~150 px -->
+    <section id="chat" class="chat" data-tooltip-id="chat" aria-label="Chat">
+      <div id="chat-log" class="chat-log"></div>
+      <div class="chat-input-row">
+        <input
+          type="text"
+          id="chat-input"
+          class="chat-input"
+          placeholder="Type a message…"
+          autocomplete="off"
+        />
+        <button type="button" id="btn-send" class="btn-send">Send</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
