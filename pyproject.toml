@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gnom-hub"
+version = "0.1.0"
+description = "Gnom-Hub v1 – Local-first multi-agent system (Brainstorm-first, dual workspace, Mermaid memory)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Private Use" }
+authors = [
+  { name = "Daniel" }
+]
+keywords = ["multi-agent", "llm", "local-ai", "fastapi", "gnom-hub"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Operating System :: OS Independent",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["ruff", "pytest", "pytest-asyncio"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
