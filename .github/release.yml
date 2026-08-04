@@ -1,0 +1,45 @@
+# Konfiguration für automatische Release Notes
+# https://docs.github.com/en/repositories/releasing-projects-on-github/automatically-generated-release-notes
+
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+      - skip-changelog
+
+  categories:
+    - title: "🆕 Neue Features"
+      labels:
+        - feature
+        - enhancement
+        - feat
+
+    - title: "🐛 Bugfixes"
+      labels:
+        - bug
+        - fix
+        - bugfix
+
+    - title: "⚡ Performance"
+      labels:
+        - performance
+        - perf
+
+    - title: "🔧 Verbesserungen & Refactoring"
+      labels:
+        - refactor
+        - improvement
+        - chore
+
+    - title: "📚 Dokumentation"
+      labels:
+        - documentation
+        - docs
+
+    - title: "🔒 Sicherheit"
+      labels:
+        - security
+
+    - title: "📦 Sonstiges"
+      labels:
+        - "*"
