@@ -1,0 +1,146 @@
+"""Tests for Pipeline (v1 step 0.4) — stub path."""
+
+from gnom_hub.agents import AgentId, AgentManager
+from gnom_hub.core.event_bus import EventBus
+from gnom_hub.pipeline import DistillQuestion, Pipeline, PipelineStage, PipelineState
+
+
+def _collect(bus: EventBus) -> list[tuple[str, object]]:
+    events: list[tuple[str, object]] = []
+
+    def make(name: str):
+        def handler(data):
+            events.append((name, data))
+
+        return handler
+
+    for name in (
+        "pipeline.stage",
+        "pipeline.brainstorm",
+        "pipeline.distill",
+        "pipeline.question",
+        "pipeline.worker",
+        "pipeline.done",
+        "pipeline.memory_hint",
+        "pipeline.error",
+    ):
+        bus.on(name, make(name))
+    return events
+
+
+def test_stub_full_run_no_llm():
+    bus = EventBus()
+    events = _collect(bus)
+    pipe = Pipeline(bus)  # no llm_manager → stubs
+
+    state = pipe.start("Build a landing page")
+
+    assert state.stage == PipelineStage.done
+    assert state.error is None
+    assert "Ideas for: Build a landing page" in state.brainstorm_notes
+    assert state.distilled_requirements
+    assert state.pending_question is None
+    assert len(state.worker_results) == 2
+    assert state.worker_results[0].startswith("Worker 1 done:")
+    assert state.worker_results[1].startswith("Worker 2 done:")
+
+    names = [n for n, _ in events]
+    assert "pipeline.brainstorm" in names
+    assert "pipeline.distill" in names
+    assert "pipeline.worker" in names
+    assert "pipeline.memory_hint" in names
+    assert "pipeline.done" in names
+    assert "pipeline.question" not in names
+    stages = [d["stage"] for n, d in events if n == "pipeline.stage"]
+    assert stages[0] == "brainstorm"
+    assert stages[-1] == "done"
+    assert pipe.state is state
+
+
+def test_clarify_path_then_continue():
+    bus = EventBus()
+    events = _collect(bus)
+    pipe = Pipeline(bus)
+
+    state = pipe.start("Should we use dark mode maybe?")
+
+    assert state.stage == PipelineStage.clarify
+    assert state.pending_question is not None
+    assert isinstance(state.pending_question, DistillQuestion)
+    assert state.pending_question.options == ["Yes", "No", "Whatever", "Later"]
+    assert any(n == "pipeline.question" for n, _ in events)
+    assert not any(n == "pipeline.done" for n, _ in events)
+
+    state2 = pipe.answer_clarify("Yes")
+    assert state2.stage == PipelineStage.done
+    assert state2.pending_question is None
+    assert any("Clarified" in r for r in state2.distilled_requirements)
+    assert state2.worker_results
+    assert any(n == "pipeline.done" for n, _ in events)
+    assert any(n == "pipeline.memory_hint" for n, _ in events)
+
+
+def test_skip_disabled_brainstorm():
+    bus = EventBus()
+    events = _collect(bus)
+    agents = AgentManager(bus)
+    agents.toggle(AgentId.BRAINSTORM)
+    assert agents.get(AgentId.BRAINSTORM).enabled is False
+
+    pipe = Pipeline(bus, agent_manager=agents)
+    state = pipe.start("Ship feature X")
+
+    assert state.stage == PipelineStage.done
+    assert state.brainstorm_notes == ""
+    assert not any(n == "pipeline.brainstorm" for n, _ in events)
+    assert any(n == "pipeline.distill" for n, _ in events)
+    assert any(n == "pipeline.done" for n, _ in events)
+
+
+def test_skip_disabled_workers():
+    bus = EventBus()
+    events = _collect(bus)
+    agents = AgentManager(bus)
+    agents.toggle(AgentId.WORKER1)
+    agents.toggle(AgentId.WORKER2)
+
+    pipe = Pipeline(bus, agent_manager=agents)
+    state = pipe.start("Do the thing")
+
+    assert state.stage == PipelineStage.done
+    assert state.worker_results == []
+    assert not any(n == "pipeline.worker" for n, _ in events)
+    assert any(n == "pipeline.done" for n, _ in events)
+    assert any(n == "pipeline.memory_hint" for n, _ in events)
+
+
+def test_one_enabled_worker():
+    bus = EventBus()
+    agents = AgentManager(bus)
+    agents.toggle(AgentId.WORKER2)  # only worker1 left
+
+    pipe = Pipeline(bus, agent_manager=agents)
+    state = pipe.start("Task A")
+
+    assert state.stage == PipelineStage.done
+    assert len(state.worker_results) == 1
+    assert state.worker_results[0].startswith("Worker 1 done:")
+
+
+def test_answer_clarify_without_pending_raises():
+    pipe = Pipeline(EventBus())
+    pipe.start("plain request")
+    try:
+        pipe.answer_clarify("Yes")
+        raise AssertionError("expected ValueError")
+    except ValueError as exc:
+        assert "pending" in str(exc).lower()
+
+
+def test_pipeline_state_defaults():
+    s = PipelineState()
+    assert s.stage == PipelineStage.idle
+    assert s.worker_results == []
+    assert s.distilled_requirements == []
+    q = DistillQuestion(id="x", text="?")
+    assert q.options == ["Yes", "No", "Whatever", "Later"]
