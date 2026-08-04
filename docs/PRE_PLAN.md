@@ -1,4 +1,4 @@
-# Gnom-Hub – Pre-Plan (Stand: 04.08.2026)
+# Gnom-Hub v1 – Pre-Plan (Stand: 05.08.2026)
 
 Vollständige Zusammenfassung aus dem gesamten Brainstorming.
 Nichts Wichtiges soll verloren gehen.
@@ -13,17 +13,30 @@ Ein lokales, portables Multi-Agenten-System mit klarem Ablauf:
 
 Das System soll vom USB-Stick laufen können und sowohl schlank lokal als auch mit Cloud-LLMs arbeiten.
 
+Schlankheits-Prinzip: **Kein Overengineering. So schlank wie möglich, so viel wie nötig (YAGNI + KISS).**
+
 ---
 
 ## 2. Architektur
 
-### Feste Agenten (4)
-- **Brainstorm-Moderator** – führt die ungestörte Ideensammlung mit dem User
-- **Memory-Agent** – verwaltet Kurz- und Langzeitgedächtnis
-- **Security-Guard** – prüft hauptsächlich eingehende Daten (Prompt-Injection etc.)
-- **Coordinator** – analysiert das Brainstorming, entscheidet wie viele Worker nötig sind und steuert sie
+### Feste Agenten (4) – kurze Namen + feste Farben
+
+| Kurzer Name   | Rolle                  | Rahmenfarbe |
+|---------------|------------------------|-------------|
+| **Brainstorm**| Brainstorm-Moderator   | Rot         |
+| **Memory**    | Memory-Agent           | Blau        |
+| **Security**  | Security-Guard         | Gelb        |
+| **Coordinator**| Coordinator           | Grün        |
 
 ### Dynamische Worker (bis zu 4)
+
+| Name     | Rahmenfarbe |
+|----------|-------------|
+| Worker 1 | Orange      |
+| Worker 2 | Lila        |
+| Worker 3 | Türkis      |
+| Worker 4 | Grau/Rosa   |
+
 - Werden vom Coordinator bei Bedarf erzeugt
 - Können als Presets gespeichert und wiederverwendet werden
 - Haben Skills und können bei Bedarf Tools/Plugins nachladen
@@ -36,71 +49,132 @@ Das System soll vom USB-Stick laufen können und sowohl schlank lokal als auch m
 
 ## 3. Gedächtnis
 
-- **Symbolisches Kurzzeitgedächtnis** (Mermaid-Canvas + Context-Offload mit node_id)
-- **Geschichtetes Langzeitgedächtnis** (HOT / WARM / COLD)
-- Permanentes Archiv
-- Wichtige Brainstorming-Ergebnisse werden persistent gespeichert
-- Kontext-Kompression bei langen Sessions
+### Kurzzeitgedächtnis (symbolisch)
+- **Mermaid Canvas** + Context-Offload mit `node_id`
+- Schwere Inhalte (Tool-Logs, Captures etc.) werden ausgelagert
+- Agent sieht nur die kompakte Mermaid-Landkarte
+- Bei Bedarf: Drill-down über `node_id`
+
+### Langzeitgedächtnis (HOT / WARM / COLD)
+
+| Zone   | Inhalt                              | Persistenz                     |
+|--------|-------------------------------------|--------------------------------|
+| **HOT**| Aktuelle Session, Mermaid-Canvas, offene Aufgaben | JSON + `.mmd` (schnell)       |
+| **WARM**| Fakten, Skills, Zusammenfassungen, Projekte | JSONL / SQLite + Markdown     |
+| **COLD**| Alte Sessions, Roh-Logs, Archiv     | Dateien + Index                |
+
+### Persistenz-Struktur
+```
+memory/
+├── hot/
+│   ├── session.json
+│   ├── mermaid_canvas.mmd
+│   └── working_context.md
+├── warm/
+│   ├── facts.jsonl
+│   ├── skills/
+│   ├── summaries/
+│   └── projects/
+└── cold/
+    ├── sessions/
+    ├── raw_logs/
+    └── archive_index.json
+```
+
+- Atomic Writes
+- Append-only wo sinnvoll
+- Alles relative Pfade (USB-fähig)
+- Memory-Agent steuert Promotion (HOT → WARM → COLD)
+
+### Optionale Vektor-Schicht (Plugin)
+- Standard: `null` (aus)
+- Später aktivierbar: LanceDB oder sqlite-vec
+- Hybrid-Ranking (Keyword + Vektor) via Reciprocal Rank Fusion (RRF)
+- Wird nur geladen, wenn konfiguriert
 
 ---
 
-## 4. Benutzeroberfläche
+## 4. LLM- und Key-Management
+
+### Prinzipien
+- Free-Modelle werden **nur bevorzugt, wenn der User das aktiv will**
+- Kein automatisches teures Modell (Budget-Schutz)
+- Lokale Modelle werden nicht erzwungen (Wartezeit)
+- Jeder Agent kann eigenes Modell + eigenen Key haben
+- Keys aus `Key.txt` (Desktop) → private `.env`
+
+### Unterstützte Free-Quellen (Beispiele)
+- OpenRouter (`:free`)
+- OpenCode Zen
+- Groq
+- Google AI Studio (Gemini)
+- NVIDIA NIM
+- Cloudflare Workers AI
+- Cerebras
+- GitHub Models
+- Lokale Modelle (Ollama)
+
+### Capability-Tags
+Jedes Modell kennt seine Fähigkeiten: `text`, `vision`, `image-generation`, `free`, `fast`, `reasoning` usw.
+
+### Agent-Tuning-Seite
+- Prompt (links, scrollbar)
+- Modell-Auswahl + Capability-Tags + Key-Status
+- 5 Schieberegler (Temperature, Top-P, Max Tokens, Frequency Penalty, Presence Penalty)
+- Live-Erklärung der Regler in Box 1
+- Schalter „Free-Modelle bevorzugen“
+- **Nur ein globaler Speicher-Button**
+
+---
+
+## 5. Benutzeroberfläche
 
 ### Oben
 - Header
 - 8 Agenten als **Visitenkarten** (horizontal, feste Breite)
-  - Zeigt: Tokenverbrauch, aktuelle LLM, Online/Offline-Status
-  - TTS-Checkbox (wenn aktiv → Gedanken des Agenten werden vorgelesen)
-  - 1-Pixel-Rahmen, der bei Aktivität in Echtzeit pulsiert
-  - Jeder Agent hat eine eigene feste Rahmenfarbe
+  - Tokenverbrauch, aktuelle LLM, Online/Offline
+  - TTS-Checkbox
+  - 1-Pixel-Rahmen (pulsiert bei Aktivität in Echtzeit)
+  - Feste Rahmenfarbe pro Agent
 
 ### Drei Boxen (ca. 300–400 × 300–400 px)
-- Alle mit 1-Pixel-Rahmen
+- 1-Pixel-Rahmen
 - Rahmenfarbe wechselt zur Farbe des Agenten, der die Box gerade benutzt
-- Pre-Rendering für Inhalte
+- Pre-Rendering
 
-**Box 1 – Arounder (interaktive Kontext-Box)**
-- Hover-Erklärungen über Buttons, Regler, Elemente
-- Agenten können hier Vorschläge machen und kommunizieren
-- Zeigt live Auswirkungen von Schiebereglern
+**Box 1 – Arounder** (interaktive Kontext-Box)
+- Hover-Erklärungen
+- Agenten-Vorschläge
+- Live-Auswirkungen von Reglern
 - Mehrsprachig (DE/EN, erweiterbar)
 
-**Box 2 – Brainstorm-Gedanken**
-- Nur die destillierten, wichtigen Gedanken und Zusammenfassungen
-- Persistent (verschwindet nicht im Chat)
+**Box 2 – Brainstorm**
+- Destillierte Gedanken + Zusammenfassung
+- Persistent
 
 **Box 3 – Worker-Ergebnisse**
-- Live-Preview der Ergebnisse der Worker
+- Live-Preview
 
 ### Darunter
-- **Chatfenster** (ca. 150 px hoch, volle Breite)
-  - Mit Spracheingabe (Speech-to-Text)
-  - Als eigenes Modul
+- **Chatfenster** (ca. 150 px hoch)
+  - Spracheingabe (API oder Mac-System-Fallback)
+  - Eigenes Modul
 
-### Weitere UI-Elemente
-- System-Button
-- Hilfe-Button
-- Globaler Speicher-Button (speichert alles – einziger zentraler Save)
-- Agent-Tuning-Seite (beim Klick auf Agent):
-  - Prompt anzeigen & bearbeiten (ca. 300×300, scrollbar)
-  - 5 Schieberegler daneben (ca. 300×300):
-    1. Temperature
-    2. Top-P
-    3. Max Tokens
-    4. Frequency Penalty
-    5. Presence/Repetition Penalty
-  - Live-Erklärung der Regler in Box 1
+### Globale Buttons
+- System
+- Hilfe
+- **Ein globaler Speicher-Button** (speichert alles)
 
 ---
 
-## 5. Workspace-Konzept
+## 6. Workspace-Konzept
 
 **Zwei Workspaces:**
 
-1. **Temporärer Workspace** (Sammelplatz)
-   - Alles, was Agenten erzeugen, landet zuerst hier
-   - Vorschau als kleine Kästchen (Seiten-Preview + Code-Preview)
-   - Checkbox + „Übertragen/Speichern“ → verschiebt ins permanente System
+1. **Temporärer Workspace**
+   - Sammelplatz für alles, was Agenten erzeugen
+   - Preview als Kästchen (Seiten + Code)
+   - Checkbox + Übertragen → permanent
    - Button „Temporären Workspace löschen“
 
 2. **Permanenter Workspace**
@@ -108,135 +182,125 @@ Das System soll vom USB-Stick laufen können und sowohl schlank lokal als auch m
 
 ---
 
-## 6. Computer-Use / UI-Automation Modul
+## 7. Computer-Use / UI-Automation (modulares Paket)
 
-Eigenständiges Fähigkeitspaket, damit Agenten Programme und Webseiten bedienen können.
+Kombinierbare Module:
+- Capture (Screen, Fenster, Element, Scrolling, Seite, Video, Audio)
+- Vision + Teaching (individuelle Konzepte lernen, nachfragen)
+- OCR
+- Action (Maus + Tastatur)
+- Workflow / Recording → speicherbare Skills
 
-Enthält:
-- Screen-, Fenster-, Element- und Scrolling-Capture
-- Seiten-Capture (Web)
-- Video- und Audio-Capture
-- OCR (Text aus Bildern erkennen)
-- UI-Element-Erkennung
-- Maus- und Tastatursteuerung
-- Aufnahme von Abläufen (Recording)
-- Speichern von Abläufen als wiederverwendbare Skills
-
-Ziel: Agenten können lernen, Programme und Formulare zu bedienen und diese Fähigkeit später wiederverwenden.
+Ziel: Agenten lernen Programme und Formulare zu bedienen und speichern die Abläufe.
 
 ---
 
-## 7. Installation & Betrieb
+## 8. Installation & Betrieb
 
 - Wirklich einfache Installation
-- Erkennt automatisch:
-  - Betriebssystem
-  - Ob auf USB-Stick installiert wird
-  - Welches lokale LLM geeignet ist
-- Vorschläge: Schlank / Etwas größer / Empfohlen
-- Update-System
-- Backup-System
-- API-Keys:
-  - User legt `Key.txt` auf dem Desktop ab
-  - System liest sie und schreibt sie in private `.env` (nicht öffentlich)
+- Erkennt OS + USB-Stick
+- Vorschläge für lokales LLM (Schlank / Größer / Empfohlen)
+- Update- + Backup-System
+- Keys: `Key.txt` auf Desktop → private `.env`
 
 ---
 
-## 8. Weitere wichtige Features
+## 9. Weitere wichtige Features
 
 - TTS von Anfang an
-- Spracheingabe (API-Key oder Mac-System-Fallback)
-- Jeder Agent kann eigenen API-Key nutzen
-- Übersichtliches LLM-Zuweisungssystem
-- MCP (Model Context Protocol) Unterstützung
-- Plugin-System
-- Skills für Agenten
-- Agenten können bei Bedarf Tools selbst nachladen
+- Spracheingabe
+- MCP-Unterstützung
+- Plugin-System (saubere Interfaces)
+- Skills + Tool-Nachladen
 - Internet-Surfen
-- Vollständige Rechner- + Maussteuerung (im God-Mode uneingeschränkt)
-- Ein-Klick „Sauberer Zustand“ (setzt temporäre Dinge zurück, ohne Langzeitgedächtnis)
-- Mehrsprachigkeit (Deutsch + Englisch, erweiterbar)
+- God-Mode (volle Kontrolle)
+- Ein-Klick „Sauberer Zustand“
+- Mehrsprachigkeit (DE/EN, erweiterbar)
+- Accessibility-Fokus (unterschiedliche menschliche Fähigkeiten)
 
 ---
 
-## 9. Technische Verbesserungen (explizit eingebaut)
+## 10. Technische Verbesserungen
 
 1. Starkes Checkpointing / Resume
-2. Leichte Nachvollziehbarkeit (Light Tracing)
+2. Light Tracing (Nachvollziehbarkeit)
 3. Automatische Qualitätsprüfung der Worker-Ergebnisse
-4. Kontext-Kompression für lange Sessions
+4. Kontext-Kompression
 5. Ein-Klick „Sauberer Zustand“
+6. Hybrid-Ranking (Keyword + optional Vektor via RRF)
+7. Design Patterns: Facade, EventBus/Pub-Sub, Composition over Inheritance
 
 ---
 
-## 10. Modul-Struktur (Vorschlag)
+## 11. Modul-Struktur
 
 - Core / EventBus
 - AgentManager
-- MemoryModule
+- MemoryModule (HOT/WARM/COLD + Mermaid + optionale Vektor-Plugins)
 - BrainstormModule
 - WorkerModule
-- UI Module (Karten + Boxen + Chat)
+- UI Module (Karten + Boxen + Chat + Tuning)
 - TTS Module
 - ResetModule
 - Plugin / MCP Module
 - Workspace Module
-- Computer-Use / UI-Automation Module
+- Computer-Use Module (Capture / Vision / OCR / Action / Workflow)
 - Install / Update / Backup Module
 
-Kommunikation über EventBus + klare, schmale Interfaces.
+Kommunikation über EventBus + schmale Interfaces.
 
 ---
 
-## 11. Vorgeschlagene Umsetzungs-Reihenfolge (Pre-Plan Phasen)
+## 12. Umsetzungs-Reihenfolge
 
 **Phase 0 – Fundament**
 - Modulare Projektstruktur
 - EventBus + Schnittstellen
 - Einfache Installation + USB-Erkennung
-- Key.txt → .env System
+- Key.txt → .env
 
 **Phase 1 – Kern-UI**
-- Header + Agenten-Visitenkarten
-- 3 Boxen inkl. Pre-Rendering und farbigem Rahmen
-- Chatfenster mit Spracheingabe
-- Globale Buttons
+- Header + Agenten-Visitenkarten (Farben + kurze Namen)
+- 3 Boxen + Pre-Rendering + farbige Rahmen
+- Chatfenster
+- Globaler Speicher-Button
 
 **Phase 2 – Agenten-Grundgerüst**
-- 4 feste Agenten (Brainstorm-Moderator zuerst)
-- Agent-Tuning-Seite + 5 Schieberegler
+- 4 feste Agenten
+- Agent-Tuning-Seite + 5 Regler + LLM-Kontrolle
 - TTS + Checkboxen
 - God-Mode
 
 **Phase 3 – Memory & Workspace**
-- Mermaid-Gedächtnis + Langzeitgedächtnis
+- Mermaid Canvas + HOT/WARM/COLD Persistenz
 - Temporärer + permanenter Workspace
 - Kontext-Kompression
-- Ein-Klick Sauberer Zustand
+- Sauberer Zustand
 
 **Phase 4 – Dynamik & Qualität**
 - Dynamische Worker + Presets
 - Checkpointing / Resume
 - Light Tracing
-- Automatische Qualitätsprüfung der Worker-Ergebnisse
+- Qualitätsprüfung
 
 **Phase 5 – Erweiterungen**
 - Plugin-System + MCP
 - Skills + Tool-Nachladen
-- Computer-Use / UI-Automation Modul
-- Update- + Backup-System
+- Computer-Use Module
+- Optionale Vektor-Schicht + Hybrid-Ranking
+- Update + Backup
 - Mehrsprachigkeit
 
 ---
 
-## 12. Offene / später zu klärende Punkte
+## 13. Offene Punkte (später)
 
-- Genaue Farbzuordnung der 8 Agenten
-- Genaues Verhalten des Arounders bei komplexen Hover-Situationen
 - Konkrete lokale LLM-Empfehlungen für 4-Kern-Systeme
-- Wie aggressiv die automatische Qualitätsprüfung sein soll
+- Genaues Hover-Verhalten des Arounders bei komplexen Situationen
+- Aggressivität der automatischen Qualitätsprüfung
+- Genaue Accessibility-Profile
 
 ---
 
-**Ende des Pre-Plans**
-Stand: 04.08.2026 – aus dem vollständigen Brainstorming extrahiert.
+**Ende des Pre-Plans**  
+Stand: 05.08.2026 – aktualisiert mit allen bisherigen Brainstorming-Entscheidungen.
