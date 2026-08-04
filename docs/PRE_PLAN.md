@@ -108,7 +108,25 @@ Das System soll vom USB-Stick laufen können und sowohl schlank lokal als auch m
 
 ---
 
-## 6. Installation & Betrieb
+## 6. Computer-Use / UI-Automation Modul
+
+Eigenständiges Fähigkeitspaket, damit Agenten Programme und Webseiten bedienen können.
+
+Enthält:
+- Screen-, Fenster-, Element- und Scrolling-Capture
+- Seiten-Capture (Web)
+- Video- und Audio-Capture
+- OCR (Text aus Bildern erkennen)
+- UI-Element-Erkennung
+- Maus- und Tastatursteuerung
+- Aufnahme von Abläufen (Recording)
+- Speichern von Abläufen als wiederverwendbare Skills
+
+Ziel: Agenten können lernen, Programme und Formulare zu bedienen und diese Fähigkeit später wiederverwenden.
+
+---
+
+## 7. Installation & Betrieb
 
 - Wirklich einfache Installation
 - Erkennt automatisch:
@@ -124,7 +142,7 @@ Das System soll vom USB-Stick laufen können und sowohl schlank lokal als auch m
 
 ---
 
-## 7. Weitere wichtige Features
+## 8. Weitere wichtige Features
 
 - TTS von Anfang an
 - Spracheingabe (API-Key oder Mac-System-Fallback)
@@ -141,7 +159,7 @@ Das System soll vom USB-Stick laufen können und sowohl schlank lokal als auch m
 
 ---
 
-## 8. Technische Verbesserungen (explizit eingebaut)
+## 9. Technische Verbesserungen (explizit eingebaut)
 
 1. Starkes Checkpointing / Resume
 2. Leichte Nachvollziehbarkeit (Light Tracing)
@@ -151,7 +169,7 @@ Das System soll vom USB-Stick laufen können und sowohl schlank lokal als auch m
 
 ---
 
-## 9. Modul-Struktur (Vorschlag)
+## 10. Modul-Struktur (Vorschlag)
 
 - Core / EventBus
 - AgentManager
@@ -163,13 +181,14 @@ Das System soll vom USB-Stick laufen können und sowohl schlank lokal als auch m
 - ResetModule
 - Plugin / MCP Module
 - Workspace Module
+- Computer-Use / UI-Automation Module
 - Install / Update / Backup Module
 
 Kommunikation über EventBus + klare, schmale Interfaces.
 
 ---
 
-## 10. Vorgeschlagene Umsetzungs-Reihenfolge (Pre-Plan Phasen)
+## 11. Vorgeschlagene Umsetzungs-Reihenfolge (Pre-Plan Phasen)
 
 **Phase 0 – Fundament**
 - Modulare Projektstruktur
@@ -204,12 +223,13 @@ Kommunikation über EventBus + klare, schmale Interfaces.
 **Phase 5 – Erweiterungen**
 - Plugin-System + MCP
 - Skills + Tool-Nachladen
+- Computer-Use / UI-Automation Modul
 - Update- + Backup-System
 - Mehrsprachigkeit
 
 ---
 
-## 11. Offene / später zu klärende Punkte
+## 12. Offene / später zu klärende Punkte
 
 - Genaue Farbzuordnung der 8 Agenten
 - Genaues Verhalten des Arounders bei komplexen Hover-Situationen
