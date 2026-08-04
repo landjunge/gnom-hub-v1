@@ -29,7 +29,7 @@ User-Chat / Auftrag
         │
         ▼
    Destillation (was wirklich gewollt ist)
-        │
+        │  ggf. Rückfragen
         ▼
    Coordinator
         │
@@ -50,12 +50,27 @@ User-Chat / Auftrag
 - Memory hält den roten Faden und speichert Wichtiges
 - Nichts Wichtiges geht verloren, kein ungefiltertes Chaos wird weitergereicht
 
+### Interactive Distillation (Rückfragen)
+
+Wenn bei der Destillation etwas unklar ist (z. B. „Dark Mode?“):
+
+| Kanal | Wie wird gefragt? |
+|-------|-------------------|
+| **Desktop-UI** | In **Box 1** mit Buttons: Ja / Nein / Egal / Später |
+| **Telegram** | Als klarer Text + erwartete Antwort (Ja / Nein / Egal) |
+
+- Box 1 nur, wenn die Desktop-UI aktiv ist
+- Über Telegram (und andere Kanäle ohne UI) immer als Text
+- Nach der Antwort wird die Anforderung ergänzt und die Pipeline läuft weiter
+- Chat bleibt frei und wird nicht mit Rückfragen zugespamt
+
 Beispiel „Bau eine Webseite“:
 1. User schreibt Auftrag im Chat
 2. Brainstorm sammelt Ideen (Stil, Abschnitte, Farben …)
 3. Destillation erzeugt klare Anforderungen
-4. Coordinator verteilt Teilaufgaben an aktive Worker
-5. Ergebnisse erscheinen in Box 3 und können weiterverfeinert werden
+4. Bei Unklarheiten → kurze Rückfrage in Box 1 (oder Telegram)
+5. Coordinator verteilt Teilaufgaben an aktive Worker
+6. Ergebnisse erscheinen in Box 3 und können weiterverfeinert werden
 
 ---
 
@@ -149,9 +164,9 @@ Beispiel „Bau eine Webseite“:
 - Abstand: **5 px**
 - 1-Pixel-Rahmen (Farbe des aktiven Agenten)
 
-**Box 1 – Arounder (zentrale Erklärungsfläche)**
-- Mouse-over auf alles → reiche Erklärung
-- Aufbau: Titel + Kurzbeschreibung + How-to-use + Beispiel
+**Box 1 – Arounder (zentrale Erklärungs- und Entscheidungsfläche)**
+- Mouse-over auf alles → reiche Erklärung (Titel + How-to + Beispiel)
+- Bei Destillations-Rückfragen: Ja / Nein / Egal / Später-Buttons
 - UI selbst bleibt Basic English
 - Box-1-Inhalte sind mehrsprachig
 - Jedes neue Element muss einen Tooltip-Eintrag haben
@@ -180,6 +195,7 @@ Beispiel „Bau eine Webseite“:
 
 ### Telegram-Bot (optionalals Modul)
 - Basis-Befehle: `/status`, `/disable`, `/do`, `/last`, `/reset temp` usw.
+- Rückfragen der Destillation als Text (Ja / Nein / Egal)
 - Bot sendet Events an den EventBus
 - Nicht Teil des Kerns – optional aktivierbar
 
@@ -232,7 +248,7 @@ Core/EventBus, AgentManager, MemoryModule, BrainstormModule, WorkerModule, UI Mo
 
 **Phase 0** – Fundament  
 **Phase 1** – Kern-UI (Karten 140×100, Boxen 380×380, 5 px Abstände)  
-**Phase 2** – Agenten + Toggle + Flex-Presets + LLM-Manager + Pipeline  
+**Phase 2** – Agenten + Toggle + Flex-Presets + LLM-Manager + Pipeline + Interactive Distillation  
 **Phase 3** – Memory (HOT + Mermaid) + Workspace  
 **Phase 4** – Dynamik + Qualität  
 **Phase 5** – Erweiterungen (Plugins, Computer-Use, Vector, Telegram …)
@@ -240,4 +256,4 @@ Core/EventBus, AgentManager, MemoryModule, BrainstormModule, WorkerModule, UI Mo
 ---
 
 **Ende des Pre-Plans**  
-Stand: 05.08.2026 – Pipeline, LAN-Zugriff und Telegram-Bot ergänzt.
+Stand: 05.08.2026 – Interactive Distillation (Box 1 Buttons / Telegram Text) ergänzt.
