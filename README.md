@@ -1,29 +1,45 @@
 # Gnom-Hub v1
 
-**Neuer sauberer Aufbau des Multi-Agenten-Systems**
+Local-first multi-agent system.
 
-> Brainstorm-first · 4 feste + dynamische Agenten · 3-Boxen-UI · dualer Workspace · Mermaid-Memory · USB-fähig
+**Pipeline:** Brainstorm → Distillation → Coordinator → Workers  
+**Control:** Toggle agents, budget protection, free models only when you want  
+**UI:** Agent cards + 3 boxes + interactive Box 1  
+**Portable:** USB-capable, desktop-only
 
 ## Status
 
-Frühes Design-Stadium. Der vollständige Pre-Plan liegt unter [`docs/PRE_PLAN.md`](docs/PRE_PLAN.md).
+**Step 0.1 done** – project structure + EventBus
 
-## Kernidee
+Full plan: [`docs/PRE_PLAN.md`](docs/PRE_PLAN.md)  
+V1 scope: [`docs/V1_SCOPE.md`](docs/V1_SCOPE.md)
 
-Erst freies Brainstorming mit dem User, danach automatische Ausführung durch dynamische Worker.
+## Quick start
 
-## Wichtige Prinzipien
+```bash
+# from repo root (with PYTHONPATH=src)
+PYTHONPATH=src python -m gnom_hub.main
+```
 
-- Lokal & portabel (auch vom USB-Stick)
-- Modular mit klaren Schnittstellen
-- Starke Memory-Architektur (Mermaid + HOT/WARM/COLD)
-- God-Mode für volle Kontrolle
-- Einfache Installation + intelligentes LLM-Setup
+Expected:
+```
+[EventBus] hello -> {'msg': 'Gnom-Hub v1 ready'}
+Gnom-Hub v1 - Step 0.1 OK
+```
 
-## Nächste Schritte
+## Structure
 
-Siehe Phasenplan in `docs/PRE_PLAN.md`.
+```
+src/gnom_hub/
+├── core/       EventBus
+├── agents/     Brainstorm, Memory, Flex, Coordinator, Workers
+├── memory/     HOT / WARM / COLD + Mermaid
+├── llm/        LLM-Manager, keys
+├── ui/         Desktop UI
+├── config/     Config + keys
+└── main.py
+```
 
----
+## Next
 
-Repository erstellt am 04.08.2026.
+Step 0.2 – Key.txt → .env + LLM-Manager (DeepSeek)
