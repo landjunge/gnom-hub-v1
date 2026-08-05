@@ -105,7 +105,7 @@ class ShellBody(BaseModel):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Gnom-Hub v1", version="1.4.0")
+    app = FastAPI(title="Gnom-Hub v1", version="1.5.0")
 
     @app.get("/api/health")
     def health() -> dict[str, Any]:
@@ -113,7 +113,7 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "service": "gnom-hub-v1",
-            "version": "1.4.0",
+            "version": "1.5.0",
             "telegram": hub.telegram.enabled,
             "telegram_running": hub.telegram.running,
             "llm": {
@@ -264,6 +264,15 @@ def create_app() -> FastAPI:
             media_type="application/zip",
             filename=path.name,
         )
+
+    @app.delete("/api/backups/{name}")
+    def backups_delete(name: str) -> dict[str, Any]:
+        try:
+            return get_hub().delete_backup(name)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
 
     @app.get("/api/worker-presets")
     def worker_presets_list() -> dict[str, Any]:

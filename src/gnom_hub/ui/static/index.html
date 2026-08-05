@@ -4,12 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=55" />
+  <link rel="stylesheet" href="/static/app.css?v=56" />
 </head>
 <body>
   <div id="app">
     <header class="top-bar">
-      <h1 class="app-title">Gnom-Hub <span id="ver-badge" class="ver-badge">v1.4</span></h1>
+      <h1 class="app-title">Gnom-Hub <span id="ver-badge" class="ver-badge">v1.5</span></h1>
       <div class="top-meta">
         <span id="llm-badge" class="llm-badge" title="LLM key status">LLM: —</span>
         <span id="mem-badge" class="mem-badge" title="HOT memory">Mem: —</span>
@@ -121,13 +121,17 @@
           autocomplete="off"
         />
         <button type="button" id="btn-send" class="btn-send">Send</button>
-        <button type="button" id="btn-execute" class="btn-execute" title="Run distill + workers from brainstorm" disabled>
+        <button type="button" id="btn-execute" class="btn-execute" title="Run distill + workers from brainstorm (Ctrl+Enter)" disabled>
           Execute
         </button>
-        <button type="button" id="btn-cancel" class="btn-cancel" title="Cancel running job" hidden>
+        <button type="button" id="btn-send-exec" class="btn-send-exec" title="Send brainstorm turn then Execute">
+          Send+Exec
+        </button>
+        <button type="button" id="btn-cancel" class="btn-cancel" title="Cancel running job (Esc)" hidden>
           Cancel
         </button>
       </div>
+      <p class="kbd-hint">Enter = Send · Ctrl/⌘+Enter = Execute · Esc = Cancel · Auto-save after Execute</p>
     </section>
   </div>
 
@@ -289,6 +293,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=55"></script>
+  <script src="/static/app.js?v=56"></script>
 </body>
 </html>

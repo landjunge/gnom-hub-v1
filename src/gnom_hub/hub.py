@@ -535,7 +535,7 @@ class Hub:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "1.4.0",
+            "version": "1.5.0",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -914,7 +914,7 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "1.4.0",
+            "version": "1.5.0",
             "providers": self.llm.providers_snapshot(),
             "backups": self.list_backups()[:8],
         }
@@ -1125,6 +1125,12 @@ class Hub:
             raise FileNotFoundError(safe)
         return path
 
+    def delete_backup(self, name: str) -> dict[str, Any]:
+        path = self.backup_path(name)
+        path.unlink()
+        self._append_trace("backup.delete", {"name": path.name})
+        return {"ok": True, "deleted": path.name, "backups": self.list_backups()}
+
     def delete_worker_preset(self, name: str) -> dict[str, Any]:
         presets = [p for p in self.list_worker_presets() if p.get("name") != name]
         self._presets_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1192,17 +1198,20 @@ class Hub:
         return {
             "title": "Gnom-Hub help",
             "how_to": (
-                "1) Send = free brainstorm dialogue. "
-                "2) Execute = distill + workers (enable Worker 3/4 cards for more slots). "
-                "3) Click card = tune; double-click = toggle. "
-                "4) Workspace holds temp outputs; promote to keep. "
-                "5) System = keys/budget/lang; Trace = pipeline log; Backup zip. "
-                "6) Checkpoint save/load resumes pipeline; Clean clears HOT+temp. "
-                "7) Save = HOT/WARM/agents; Reset = archive HOT (WARM stays)."
+                "1) Send / Enter = brainstorm turn. "
+                "2) Execute / Ctrl+Enter = distill + workers. "
+                "3) Send+Execute = one shot after typing. "
+                "4) Esc = cancel running job. "
+                "5) Click card = tune; double-click = toggle (Memory locked). "
+                "6) Workspace temp after Execute; System = backup/presets/clean. "
+                "7) Auto-save runs after successful Execute."
             ),
-            "example": "Chat ideas → Execute → Box 3 + Workspace temp → Promote.",
+            "example": "Type idea → Send+Execute → Box 3 → Export or Workspace promote.",
             "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",
-            "keys": "DEEPSEEK_API_KEY in Key.txt. Optional TELEGRAM_BOT_TOKEN. GNOM_PHASE3=0 hides chrome.",
+            "keys": (
+                "Keyboard: Enter send · Ctrl/⌘+Enter execute · Esc cancel. "
+                "DEEPSEEK_API_KEY or Ollama. TELEGRAM optional."
+            ),
         }
 
     def canvas(self) -> dict[str, Any]:

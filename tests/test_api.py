@@ -58,6 +58,11 @@ def test_cancel_backups_presets_delete(client: TestClient):
         dl = client.get(f"/api/backups/{name}/download")
         assert dl.status_code == 200
         assert dl.headers.get("content-type", "").startswith("application/")
+        # create another backup then delete one
+        client.post("/api/backup")
+        gone = client.delete(f"/api/backups/{name}")
+        assert gone.status_code == 200
+        assert gone.json().get("ok") is True
 
 
 def test_export_and_ollama_models(client: TestClient):

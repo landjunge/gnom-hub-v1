@@ -773,16 +773,28 @@
           } else {
             items.slice(0, 8).forEach(function (b) {
               const li = document.createElement("li");
-              li.textContent =
+              const nameSpan = document.createElement("span");
+              nameSpan.className = "ws-name";
+              nameSpan.textContent =
                 (b.name || "") +
                 " · " +
-                (b.bytes != null ? Math.round(b.bytes / 1024) + " KB" : "") +
-                " · click to download";
-              li.title = (b.path || "") + " — click to download";
-              li.addEventListener("click", function () {
+                (b.bytes != null ? Math.round(b.bytes / 1024) + " KB" : "");
+              nameSpan.title = "Click to download";
+              nameSpan.addEventListener("click", function () {
                 window.location.href =
                   "/api/backups/" + encodeURIComponent(b.name) + "/download";
               });
+              const del = document.createElement("button");
+              del.type = "button";
+              del.className = "ws-action";
+              del.textContent = "×";
+              del.title = "Delete backup";
+              del.addEventListener("click", function (ev) {
+                ev.stopPropagation();
+                deleteBackupByName(b.name);
+              });
+              li.appendChild(nameSpan);
+              li.appendChild(del);
               ul.appendChild(li);
             });
           }
@@ -1289,6 +1301,8 @@
       // re-evaluated in applySnapshot; only hard-disable while busy
       if (chatBusy) els.btnExecute.disabled = true;
     }
+    const btnSendExec = document.getElementById("btn-send-exec");
+    if (btnSendExec) btnSendExec.disabled = chatBusy;
     const btnCancel = document.getElementById("btn-cancel");
     if (btnCancel) {
       btnCancel.hidden = !chatBusy;
@@ -1480,6 +1494,12 @@
       if (stage === "done") {
         appendChat("system", "Execute done — see Box 3.");
         toast("Execute done", "ok");
+        try {
+          await api("POST", "/api/save");
+          appendChat("system", "Auto-saved HOT + agents.");
+        } catch (_e) {
+          /* non-fatal */
+        }
       } else if (stage === "clarify") {
         appendChat("system", "Clarify needed in Box 1 before workers finish.");
         toast("Clarify needed", "info");
@@ -1493,6 +1513,18 @@
     } finally {
       setChatBusy(false);
       currentJobId = null;
+    }
+  }
+
+  async function sendAndExecute() {
+    const text = (els.chatInput.value || "").trim();
+    if (chatBusy) return;
+    if (text) {
+      await sendChat();
+    }
+    // After brainstorm, run execute if possible
+    if (!chatBusy) {
+      await runExecute();
     }
   }
 
@@ -1525,11 +1557,31 @@
       els.tipRoot.hidden = false;
       els.tipTitle.textContent = h.title || "Help";
       els.tipHow.textContent = h.how_to || "";
+      const keys = h.keys ? "\n\n" + h.keys : "";
       els.tipExample.textContent =
-        (h.pipeline ? h.pipeline + "\n\n" : "") + (h.example || "");
+        (h.pipeline ? h.pipeline + "\n\n" : "") +
+        (h.example || "") +
+        keys;
     } catch (err) {
-      showTooltip("help");
+      if (els.placeholder) els.placeholder.hidden = true;
+      els.tipRoot.hidden = false;
+      els.tipTitle.textContent = "Help";
+      els.tipHow.textContent =
+        "Send = brainstorm. Execute = workers. Send+Exec = both. Card click = tune.";
+      els.tipExample.textContent =
+        "Keyboard: Enter send · Ctrl/⌘+Enter execute · Esc cancel";
       toast("Help offline: " + err.message, "error");
+    }
+  }
+
+  async function deleteBackupByName(name) {
+    if (!name || !confirm('Delete backup "' + name + '"?')) return;
+    try {
+      await api("DELETE", "/api/backups/" + encodeURIComponent(name));
+      toast("Backup deleted", "ok");
+      openSystemModal();
+    } catch (err) {
+      toast("Delete backup failed: " + err.message, "error");
     }
   }
 
@@ -1830,8 +1882,30 @@
       btnSrc.dataset.mode = "source";
       mode.appendChild(btnPrev);
       mode.appendChild(btnSrc);
-      head.appendChild(mode);
     }
+    const btnCopy = document.createElement("button");
+    btnCopy.type = "button";
+    btnCopy.className = "worker-mode-btn copy-btn";
+    btnCopy.textContent = "Copy";
+    btnCopy.title = "Copy result to clipboard";
+    btnCopy.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      const text = raw || "";
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(
+          function () {
+            toast("Copied " + text.length + " chars", "ok");
+          },
+          function () {
+            toast("Copy failed", "error");
+          }
+        );
+      } else {
+        toast("Clipboard not available", "error");
+      }
+    });
+    mode.appendChild(btnCopy);
+    head.appendChild(mode);
     panel.appendChild(head);
 
     if (out.task) {
@@ -1939,6 +2013,8 @@
 
     els.btnSend.addEventListener("click", sendChat);
     if (els.btnExecute) els.btnExecute.addEventListener("click", runExecute);
+    const btnSendExec = document.getElementById("btn-send-exec");
+    if (btnSendExec) btnSendExec.addEventListener("click", sendAndExecute);
     const btnCancel = document.getElementById("btn-cancel");
     if (btnCancel) btnCancel.addEventListener("click", cancelCurrentJob);
     if (els.btnMic) els.btnMic.addEventListener("click", toggleMic);

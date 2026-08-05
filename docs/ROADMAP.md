@@ -43,7 +43,17 @@
 | Clear chat button | **done** |
 | Live version badge in header | **done** |
 
-## Post-V1.4 (optional)
+## V1.5.0
+
+| Item | Status |
+|------|--------|
+| Send+Execute one-shot button | **done** |
+| Copy worker output | **done** |
+| Auto-save after Execute | **done** |
+| Delete backup (API + UI) | **done** |
+| Help shows keyboard shortcuts | **done** |
+
+## Post-V1.5 (optional)
 
 | Item | Notes |
 |------|--------|

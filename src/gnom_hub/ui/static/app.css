@@ -214,6 +214,31 @@ html, body {
   display: none !important;
 }
 
+.btn-send-exec {
+  flex: 0 0 88px;
+  height: 28px;
+  border: 1px solid #2f9e44;
+  border-radius: 4px;
+  background: #1864ab;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-send-exec:hover:not(:disabled) {
+  background: #1c7ed6;
+}
+
+.btn-send-exec:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.worker-mode-btn.copy-btn {
+  min-width: auto;
+}
+
 .system-row-actions {
   flex-direction: row !important;
   flex-wrap: wrap;

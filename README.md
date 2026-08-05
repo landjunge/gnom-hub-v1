@@ -1,8 +1,8 @@
-# Gnom-Hub v1.4.0
+# Gnom-Hub v1.5.0
 
 Local multi-agent control hub: **brainstorm first**, then **Execute** workers.
 
-Desktop-only · USB-friendly · DeepSeek / Ollama · URL fetch · Export · Cancel · chat persist · **backup download** · keyboard shortcuts.
+Desktop · USB-friendly · DeepSeek / Ollama · URL fetch · Export · Cancel · **Send+Exec** · **Copy** results · **Auto-save** after Execute.
 
 > **Convention:** every meaningful change is **pushed to `main`** and this **README is updated** in the same commit.
 
@@ -11,10 +11,13 @@ Desktop-only · USB-friendly · DeepSeek / Ollama · URL fetch · Export · Canc
 ## Flow
 
 ```
-Chat (Send / Enter)     →  Brainstorm (Box 2)
-Execute (Ctrl/⌘+Enter)  →  Distill → Flex → Workers 1–4 → Quality → Memory
-Cancel  (Esc)           →  soft-cancel running job
+Send / Enter              → Brainstorm (Box 2)
+Execute / Ctrl+Enter      → Distill → Flex → Workers → Quality → Memory
+Send+Exec                 → Brainstorm turn then Execute
+Esc                       → Cancel running job
 ```
+
+After a successful **Execute**, HOT + agents are **auto-saved**.
 
 ---
 
@@ -24,11 +27,11 @@ Cancel  (Esc)           →  soft-cancel running job
 cd gnom-hub-v1
 ./scripts/install.sh && source .venv/bin/activate
 # Key.txt: DEEPSEEK_API_KEY=sk-...
-./scripts/start.sh              # http://127.0.0.1:8080/
+./scripts/start.sh
 ./scripts/quality_check.sh
 ```
 
-UI: **http://127.0.0.1:8080/?v=55** · LAN: `GNOM_HUB_HOST=0.0.0.0`
+**http://127.0.0.1:8080/?v=56**
 
 ---
 
@@ -37,22 +40,18 @@ UI: **http://127.0.0.1:8080/?v=55** · LAN: `GNOM_HUB_HOST=0.0.0.0`
 | Control | Action |
 |---------|--------|
 | **Send** / Enter | Brainstorm turn |
-| **Execute** / Ctrl+Enter (⌘+Enter) | Distill + workers |
-| **Cancel** / Esc | Soft-cancel running job |
+| **Execute** / Ctrl+⌘+Enter | Workers pipeline |
+| **Send+Exec** | Send then Execute |
+| **Cancel** / Esc | Soft-cancel job |
+| **Copy** (Box 3) | Copy worker result to clipboard |
+| **Export** | Download last run as Markdown |
 | **Clear chat** | Wipe browser chat log |
 | **Mic** | Speech-to-text |
-| **Export** | Download last run as Markdown |
-| **Card click** | Tuning (prompt + 5 sliders) |
-| **Double-click** | Toggle agent (Memory locked) |
-| **Flex** | security / neutral / researcher |
-| **Worker 3/4** | Off by default |
-| **Workspace** | Temp → promote |
-| **Trace** | Event log |
-| **System** | Budget, lang, Ollama models, checkpoint, backups (**click zip to download**), worker presets |
-| **TTS** | Per-card read-aloud |
-| Title badge | Shows live version from API |
+| **Card click** | Tuning |
+| **Double-click** | Toggle agent |
+| **Workspace / Trace / System** | Files, log, keys/backup/presets |
 
-Chat log persists in `sessionStorage` for this browser tab/session.
+System → backups: **click name = download**, **× = delete**.
 
 ---
 
@@ -61,27 +60,22 @@ Chat log persists in `sessionStorage` for this browser tab/session.
 | Variable | Role |
 |----------|------|
 | `DEEPSEEK_API_KEY` | Cloud LLM |
-| `OLLAMA_HOST` / `OLLAMA_MODEL` | Local LLM (`ollama/…` model string) |
-| `GNOM_WEB_ALLOW_LOCAL=1` | web_fetch to private hosts |
-| `TELEGRAM_BOT_TOKEN` / `GNOM_TELEGRAM_POLL=1` | Optional bot |
-| `GNOM_FREE_ONLY` / `GNOM_MAX_BUDGET_USD` | LLM policy |
+| `OLLAMA_HOST` / `OLLAMA_MODEL` | Local (`ollama/…` model) |
+| `GNOM_WEB_ALLOW_LOCAL=1` | web_fetch private hosts |
+| `TELEGRAM_*` / `GNOM_TELEGRAM_POLL` | Optional bot |
+| `GNOM_FREE_ONLY` / `GNOM_MAX_BUDGET_USD` | Policy |
 | `GNOM_UI_LANG` | `en` \| `de` |
 | `GNOM_PHASE3=0` | Hide God/Cold/Vec |
 
 ---
 
-## API (highlights)
+## API (new in 1.5)
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| POST | `/api/chat` · `/api/execute` | Brainstorm / workers |
-| POST | `/api/jobs/{id}/cancel` | Soft-cancel |
-| GET | `/api/export/last` | Markdown export |
-| GET | `/api/ollama/models` | Local models |
-| GET | `/api/backups` | List zips |
-| GET | `/api/backups/{name}/download` | Download backup zip |
-| POST | `/api/backup` · `/api/clean` | Create backup / clean state |
-| POST | `/api/worker-presets*` | Save / apply / delete |
+| DELETE | `/api/backups/{name}` | Delete backup zip |
+
+Plus prior: chat, execute, cancel, export, ollama models, backups list/download, presets, clean, checkpoint, trace, workspace, tools (`web_fetch`).
 
 ---
 
@@ -89,21 +83,21 @@ Chat log persists in `sessionStorage` for this browser tab/session.
 
 | Tag | Highlights |
 |-----|------------|
-| 1.0.0 | Pre-plan core |
-| 1.1.0 | Ollama + web_fetch |
-| 1.2.0 | Model list, auto URL fetch, Export |
-| 1.3.0 | Cancel, chat persist, presets UI, backups list |
-| **1.4.0** | Backup download, keyboard shortcuts, clear chat, version badge |
+| 1.0 | Pre-plan core |
+| 1.1 | Ollama + web_fetch |
+| 1.2 | Model list, auto URL, Export |
+| 1.3 | Cancel, chat persist, presets UI |
+| 1.4 | Backup download, keyboard, clear chat |
+| **1.5** | Send+Exec, Copy, auto-save, delete backup, richer Help |
 
 ---
 
 ## Dev
 
 ```bash
-./scripts/quality_check.sh   # ruff==0.16.1 · pytest · smoke_e2e
+./scripts/quality_check.sh
 ```
 
-Parked: skill marketplace, auto-update, true embeddings, mobile.  
 Docs: [`docs/ROADMAP.md`](docs/ROADMAP.md) · [`docs/PLAN_VS_CODE.md`](docs/PLAN_VS_CODE.md)
 
 ## License
