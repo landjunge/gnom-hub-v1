@@ -113,8 +113,8 @@
   let recognition = null;
   let listening = false;
   let lastSpokenKey = "";
-  let pendingSpeech = ""; // Chrome often blocks speak without a recent gesture
-  let ttsVoicesReady = false;
+  let pendingSpeech = ""; // spoken on next click if browser blocked autoplay
+  let ttsUnlocked = false; // true after speak started from a real click
   let currentJobId = null;
   let lastWorkerOutputs = [];
   let jobTimerStart = null;
@@ -250,7 +250,14 @@
         });
         ttsInput.addEventListener("change", function (ev) {
           ev.stopPropagation();
-          setAgentTts(agent.id, !!ttsInput.checked);
+          const on = !!ttsInput.checked;
+          // Speak HERE (same user gesture) — not after await/API
+          if (on) {
+            speakNow("TTS on for " + (agent.label || agent.id) + ".");
+          } else {
+            stopSpeech();
+          }
+          setAgentTts(agent.id, on);
         });
       }
 
@@ -555,84 +562,99 @@
     s = s.replace(/<[^>]+>/g, " ");
     s = s.replace(/&[a-z]+;/gi, " ");
     s = s.replace(/\s+/g, " ").trim();
-    return s.slice(0, 480);
+    return s.slice(0, 400);
   }
 
-  function ensureTtsVoices() {
-    if (!window.speechSynthesis) return;
+  function stopSpeech() {
     try {
-      const v = window.speechSynthesis.getVoices();
-      if (v && v.length) ttsVoicesReady = true;
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
     } catch (_e) {
       /* ignore */
+    }
+    pendingSpeech = "";
+  }
+
+  /** Must run inside a click/change handler — not after await. */
+  function speakNow(text) {
+    if (!window.speechSynthesis) {
+      toast("TTS not available in this browser", "info");
+      return false;
+    }
+    const clean = stripForSpeech(text);
+    if (!clean) return false;
+    try {
+      // Do not cancel+speak in a broken way: cancel only if busy
+      if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+        window.speechSynthesis.cancel();
+      }
+      const u = new SpeechSynthesisUtterance(clean);
+      u.lang = /[äöüÄÖÜß]/.test(clean) ? "de-DE" : "en-US";
+      u.rate = 1.05;
+      const voices = window.speechSynthesis.getVoices() || [];
+      if (voices.length) {
+        const want = u.lang.slice(0, 2).toLowerCase();
+        const match =
+          voices.find(function (v) {
+            return (v.lang || "").toLowerCase().indexOf(want) === 0;
+          }) || voices[0];
+        if (match) u.voice = match;
+      }
+      u.onstart = function () {
+        ttsUnlocked = true;
+      };
+      u.onerror = function (ev) {
+        const err = (ev && ev.error) || "error";
+        if (err !== "interrupted" && err !== "canceled") {
+          pendingSpeech = clean;
+          toast("TTS blocked — click page once, then enable TTS again", "info");
+        }
+      };
+      window.speechSynthesis.speak(u);
+      // Some Chrome builds need resume after speak
+      try {
+        window.speechSynthesis.resume();
+      } catch (_r) {
+        /* ignore */
+      }
+      return true;
+    } catch (_e) {
+      pendingSpeech = clean;
+      toast("TTS failed — click page and try again", "info");
+      return false;
+    }
+  }
+
+  function speakOrQueue(text) {
+    const clean = stripForSpeech(text);
+    if (!clean) return;
+    if (ttsUnlocked) {
+      speakNow(clean);
+    } else {
+      pendingSpeech = clean;
+      toast("TTS: click anywhere to hear", "info");
     }
   }
 
   if (typeof window !== "undefined" && window.speechSynthesis) {
-    ensureTtsVoices();
     try {
+      window.speechSynthesis.getVoices();
       window.speechSynthesis.onvoiceschanged = function () {
-        ensureTtsVoices();
+        window.speechSynthesis.getVoices();
       };
-    } catch (_e2) {
+    } catch (_e) {
       /* ignore */
     }
-    // Flush queued speech on next user gesture (browser autoplay policy)
     document.addEventListener(
       "click",
       function () {
         if (pendingSpeech) {
           const t = pendingSpeech;
           pendingSpeech = "";
-          speakText(t, { force: true });
+          speakNow(t);
         }
       },
       true
     );
-  }
-
-  function speakText(text, opts) {
-    opts = opts || {};
-    if (!text) return false;
-    if (!window.speechSynthesis) {
-      if (opts.notify) toast("TTS not available in this browser", "info");
-      return false;
-    }
-    const clean = stripForSpeech(text);
-    if (!clean) return false;
-    try {
-      ensureTtsVoices();
-      window.speechSynthesis.cancel();
-      // Chrome: speak right after cancel often fails — defer
-      setTimeout(function () {
-        try {
-          window.speechSynthesis.resume();
-          const u = new SpeechSynthesisUtterance(clean);
-          u.lang = /[äöüÄÖÜß]/.test(clean) ? "de-DE" : "en-US";
-          u.rate = 1.0;
-          const voices = window.speechSynthesis.getVoices() || [];
-          if (voices.length) {
-            const want = u.lang.slice(0, 2).toLowerCase();
-            const match =
-              voices.find(function (v) {
-                return (v.lang || "").toLowerCase().indexOf(want) === 0;
-              }) || voices[0];
-            if (match) u.voice = match;
-          }
-          u.onerror = function () {
-            if (opts.notify) toast("TTS blocked — click the page and retry", "info");
-          };
-          window.speechSynthesis.speak(u);
-        } catch (_inner) {
-          pendingSpeech = clean;
-        }
-      }, 80);
-      return true;
-    } catch (_e) {
-      pendingSpeech = clean;
-      if (opts.notify) toast("TTS queued — click once to allow speech", "info");
-      return false;
-    }
   }
 
   function maybeSpeakPipeline(p) {
@@ -672,8 +694,7 @@
     }
     if (chunks.length) {
       lastSpokenKey = key;
-      const ok = speakText(chunks.join(" "));
-      if (!ok) pendingSpeech = chunks.join(" ");
+      speakOrQueue(chunks.join(" "));
     }
   }
 
@@ -689,20 +710,9 @@
         a.tts = !!data.tts;
         a.online = !!data.online;
       }
+      // Do NOT speak after await — gesture is gone (Chrome blocks it)
       renderCards();
-      // Checkbox click = user gesture → unlock browser TTS + short proof
-      if (on) {
-        lastSpokenKey = "";
-        speakText("TTS on for " + (a.label || id) + ".", { notify: true });
-        toast("TTS on: " + (a.label || id), "ok");
-      } else {
-        try {
-          if (window.speechSynthesis) window.speechSynthesis.cancel();
-        } catch (_c) {
-          /* ignore */
-        }
-        toast("TTS off: " + (a.label || id), "info");
-      }
+      toast(on ? "TTS on: " + (a.label || id) : "TTS off: " + (a.label || id), on ? "ok" : "info");
     } catch (err) {
       appendChat("system", "TTS save failed: " + err.message);
       toast("TTS save failed", "error");
@@ -772,6 +782,7 @@
 
   async function saveTuneModal() {
     if (!tuneAgentId) return;
+    const ttsOn = !!document.getElementById("tune-tts").checked;
     const body = {
       system_prompt: document.getElementById("tune-prompt").value,
       model: document.getElementById("tune-model").value,
@@ -780,10 +791,17 @@
       max_tokens: Number(document.getElementById("tune-maxtok").value),
       frequency_penalty: Number(document.getElementById("tune-freq").value),
       presence_penalty: Number(document.getElementById("tune-pres").value),
-      tts: !!document.getElementById("tune-tts").checked,
+      tts: ttsOn,
     };
     const key = document.getElementById("tune-key").value.trim();
     if (key) body.api_key = key;
+    // Speak in the same click as Save (before await)
+    if (ttsOn) {
+      const a = findAgent(tuneAgentId);
+      speakNow("TTS on for " + ((a && a.label) || tuneAgentId) + ".");
+    } else {
+      stopSpeech();
+    }
     try {
       const data = await api(
         "POST",
