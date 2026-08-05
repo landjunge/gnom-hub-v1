@@ -136,7 +136,7 @@ def test_garbage_fact_rejected():
     from gnom_hub.agents.roles_helpers import _is_garbage_fact
 
     assert _is_garbage_fact("<!DOCTYPE html>")
-    assert _is_garbage_fact("<html lang=\"de\">")
+    assert _is_garbage_fact('<html lang="de">')
     assert _is_garbage_fact("(no durable facts to store)")
     assert _is_garbage_fact("## Requirements")
     assert _is_garbage_fact("Worker produced a partial HTML snippet")

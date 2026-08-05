@@ -366,9 +366,7 @@ class MemoryAgent(BaseAgent):
             clean_reqs = [
                 r
                 for r in requirements
-                if not r.startswith("Flex/")
-                and 8 <= len(r) < 160
-                and not _is_garbage_fact(r)
+                if not r.startswith("Flex/") and 8 <= len(r) < 160 and not _is_garbage_fact(r)
             ][:5]
             self.bus.emit(
                 "pipeline.memory_hint",
