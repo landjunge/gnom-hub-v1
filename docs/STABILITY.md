@@ -22,7 +22,7 @@ python scripts/basic_tests.py
 ```
 
 | ID | What | Catches |
-|----|------|---------|
+|----|------|--------|
 | **B1** | API brainstorm → execute | empty pipeline, no workers |
 | **B2** | job JSON + `can_execute` | invalid JSON / sticky state |
 | **B3** | keyboard Send, UI unfreezes | frozen input, Execute stuck, badge `running…` |
@@ -75,6 +75,7 @@ Reference: [`KEYS_AND_MODELS.md`](KEYS_AND_MODELS.md)
 | Sticky pipeline.error on re-execute | clear error on execute/`_finish`; job status by stage |
 | web_fetch redirect SSRF | SafeRedirect + final host check |
 | V4 Flash empty / tiny content | `thinking: {type: disabled}` by default; fallback `reasoning_content` |
+| Brainstorm felt one-shot | Multi-turn `prior` messages + HOT persist per turn; seed from HOT |
 
 ---
 
@@ -95,7 +96,7 @@ Reference: [`KEYS_AND_MODELS.md`](KEYS_AND_MODELS.md)
 |------|---------|----------|-------|
 | 2026-08-05 | 119 pass | PASS (4 workers, quality poor) | thinking-on burned tokens |
 | 2026-08-05 | 119 pass + live pong | **PASS** 4 HTML iframes, quality 5–6/6, export ~27k | thinking default **disabled** |
-| 2026-08-05 | 119 pass + B1–B3 | **PASS** (workers max 6k) | debug race, cancel race, Key.txt wins, poll timeout recover |
+| 2026-08-05 | 119 pass + B1–B3 | **PASS** (workers max 6k) | stage race, cancel race, Key.txt wins, poll timeout recover |
 
 ### Debug-team fixes (2026-08-05)
 
