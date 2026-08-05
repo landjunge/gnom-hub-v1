@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=96" />
+  <link rel="stylesheet" href="/static/app.css?v=97" />
 </head>
 <body>
   <div id="app">
@@ -86,43 +86,29 @@
           </div>
           <div id="clarify" class="clarify" hidden>
             <p id="clarify-question" class="clarify-question"></p>
+            <div class="clarify-actions">
+              <button type="button" class="btn-clarify" data-answer="Yes">Yes</button>
+              <button type="button" class="btn-clarify" data-answer="No">No</button>
+              <button type="button" class="btn-clarify" data-answer="Whatever">Whatever</button>
+              <button type="button" class="btn-clarify" data-answer="Later">Later</button>
+            </div>
           </div>
-        </div>
-        <div class="box-action-bar" data-box="box1" aria-label="Box 1 actions">
-          <button type="button" class="box-action-btn" data-slot="0" disabled aria-label="Action 1"></button>
-          <button type="button" class="box-action-btn" data-slot="1" disabled aria-label="Action 2"></button>
-          <button type="button" class="box-action-btn" data-slot="2" disabled aria-label="Action 3"></button>
-          <button type="button" class="box-action-btn" data-slot="3" disabled aria-label="Action 4"></button>
         </div>
       </div>
 
       <div id="box2" class="box box-brainstorm" data-tooltip-id="box2">
         <div class="box-header">Brainstorm</div>
         <div id="box2-content" class="box-body">
-          <p class="muted">Brainstorm dialogue, Flex notes, and requirements appear here.</p>
-          <p class="muted empty-hint">(Empty — send a chat message to start.)</p>
-        </div>
-        <div class="box-action-bar" data-box="box2" aria-label="Box 2 actions">
-          <button type="button" class="box-action-btn" data-slot="0" disabled aria-label="Action 1"></button>
-          <button type="button" class="box-action-btn" data-slot="1" disabled aria-label="Action 2"></button>
-          <button type="button" class="box-action-btn" data-slot="2" disabled aria-label="Action 3"></button>
-          <button type="button" class="box-action-btn" data-slot="3" disabled aria-label="Action 4"></button>
+          <p class="muted">Brainstorm dialogue appears here.</p>
+          <p class="muted empty-hint">(Empty — Send a message.)</p>
         </div>
       </div>
 
       <div id="box3" class="box box-worker" data-tooltip-id="box3">
-        <div class="box-header box3-header">
-          <span class="box3-header-title">Worker results</span>
-        </div>
+        <div class="box-header">Worker results</div>
         <div id="box3-content" class="box-body box3-dynamic">
-          <p class="muted">Worker result (page or text) after Execute.</p>
+          <p class="muted">Worker result after Execute.</p>
           <p class="muted empty-hint">(Empty until Execute finishes.)</p>
-        </div>
-        <div class="box-action-bar" data-box="box3" aria-label="Box 3 actions">
-          <button type="button" class="box-action-btn" data-slot="0" disabled aria-label="Action 1"></button>
-          <button type="button" class="box-action-btn" data-slot="1" disabled aria-label="Action 2"></button>
-          <button type="button" class="box-action-btn" data-slot="2" disabled aria-label="Action 3"></button>
-          <button type="button" class="box-action-btn" data-slot="3" disabled aria-label="Action 4"></button>
         </div>
       </div>
     </section>
@@ -440,6 +426,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=96"></script>
+  <script src="/static/app.js?v=97"></script>
 </body>
 </html>

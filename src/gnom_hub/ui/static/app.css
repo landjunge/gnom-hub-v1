@@ -812,25 +812,15 @@ body.compact .kbd-hint {
   max-height: none;
 }
 
-/* —— Box 3: one worker at a time (full pane); slots switch focus —— */
+/* —— Box 3: single worker result fills the pane —— */
 .box3-dynamic {
   white-space: normal;
   padding: 4px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
   height: 100%;
   min-height: 0;
   overflow: hidden;
-}
-
-.box3-dynamic.box3-single-focus .worker-panel {
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-.box3-dynamic.box3-single-focus .worker-panel[hidden] {
-  display: none !important;
 }
 
 .worker-panel {
@@ -839,13 +829,9 @@ body.compact .kbd-hint {
   background: #1e1f23;
   display: flex;
   flex-direction: column;
-  flex: 1 1 0;
+  flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
-}
-
-.worker-panel.is-focus {
-  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .worker-panel[data-worker="worker1"] {
@@ -1064,7 +1050,7 @@ body.worker-fs-open {
   color: var(--text-muted);
 }
 
-/* Clarify prompt (buttons live in .box-action-bar) */
+/* Clarify — simple 4 buttons in Box 1 */
 .clarify {
   margin-top: 10px;
   padding-top: 8px;
@@ -1072,81 +1058,29 @@ body.worker-fs-open {
 }
 
 .clarify-question {
-  margin: 0;
+  margin: 0 0 8px;
   font-weight: 500;
 }
 
-/* —— 4 square slots: hidden when idle, clear when usable —— */
-.box-action-bar {
-  flex: 0 0 auto;
-  display: none; /* no empty strip stealing box height */
-  flex-direction: row;
-  gap: 3px;
-  padding: 0;
-  border-top: 1px solid transparent;
-  background: transparent;
-  min-height: 0;
-}
-
-/* Only reserve space when at least one action is live */
-.box-action-bar:has(.box-action-btn:not(:disabled)) {
+.clarify-actions {
   display: flex;
-  padding: 4px 6px 5px;
-  min-height: 38px;
-  border-top-color: rgba(255, 255, 255, 0.06);
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.box-action-btn {
-  flex: 1 1 0;
-  aspect-ratio: 1 / 1;
-  max-height: 34px;
-  min-width: 0;
-  padding: 0;
-  margin: 0;
-  border: 1px solid transparent;
-  border-radius: 3px;
-  background: transparent;
+.btn-clarify {
+  min-width: 72px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #343a40;
   color: var(--text);
-  font-size: 10px;
-  font-weight: 500;
-  line-height: 1.1;
-  cursor: default;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease,
-    opacity 0.12s ease;
-}
-
-/* Idle / empty: almost invisible (layout reserved, no chrome) */
-.box-action-btn:disabled {
-  color: transparent;
-  background: transparent;
-  border-color: transparent;
-  opacity: 0;
-  pointer-events: none;
-  text-indent: -9999px;
-}
-
-/* Usable: light 1px frame only — no label/icon on the tile */
-.box-action-btn:not(:disabled) {
+  font-size: 12px;
   cursor: pointer;
-  text-indent: 0;
-  opacity: 1;
-  border-color: rgba(255, 255, 255, 0.28);
-  background: transparent;
-  color: transparent;
 }
 
-.box-action-btn:not(:disabled):hover {
-  border-color: rgba(255, 255, 255, 0.45);
-  background: rgba(255, 255, 255, 0.05);
-  color: transparent;
-}
-
-.box-action-btn.is-active:not(:disabled) {
-  border-color: rgba(116, 192, 252, 0.5);
-  background: rgba(116, 192, 252, 0.1);
+.btn-clarify:hover {
+  background: #495057;
 }
 
 /* —— Chat: full width, fixed band at bottom of viewport —— */

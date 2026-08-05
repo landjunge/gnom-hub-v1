@@ -68,7 +68,7 @@ def test_ui_static_has_v16_v37_features(client: TestClient):
     assert "Worker results" in html.text
     assert "cost-badge" in html.text
     assert "btn-compact" in html.text
-    assert "box-action-bar" in html.text
+    assert "btn-clarify" in html.text
 
 
 def test_state_exposes_cost_fields(client: TestClient):

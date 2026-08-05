@@ -534,7 +534,7 @@
     }
 
     if (p.pending_question && p.pending_question.text) {
-      showClarify(p.pending_question.text, p.pending_question.options);
+      showClarify(p.pending_question.text);
     } else if (p.stage !== "clarify") {
       hideClarify();
     }
@@ -1982,140 +1982,15 @@
     });
   }
 
-  /**
-   * 4 square slots per box — frame only when usable, no button labels.
-   * actions: [{ value, title? }] length 0–4 (title = tooltip / a11y only)
-   */
-  function setBoxActions(boxId, actions, opts) {
-    const bar = document.querySelector(
-      '.box-action-bar[data-box="' + boxId + '"]'
-    );
-    if (!bar) return;
-    const list = Array.isArray(actions) ? actions.slice(0, 4) : [];
-    const mode = (opts && opts.mode) || "";
-    bar.dataset.mode = mode;
-    bar.querySelectorAll(".box-action-btn").forEach(function (btn, i) {
-      const act = list[i];
-      btn.classList.remove("is-active");
-      btn.textContent = ""; // never put labels/arrows on the tile
-      if (!act || act.value == null || act.value === "") {
-        btn.disabled = true;
-        btn.removeAttribute("data-value");
-        btn.removeAttribute("title");
-        btn.setAttribute("aria-label", "Action " + (i + 1));
-        return;
-      }
-      const value = String(act.value);
-      const title = String(act.title || value);
-      btn.disabled = false;
-      btn.dataset.value = value;
-      btn.title = title;
-      btn.setAttribute("aria-label", title);
-    });
-  }
-
-  function clearBoxActions(boxId) {
-    setBoxActions(boxId, [], { mode: "" });
-  }
-
-  function showClarify(question, options) {
+  function showClarify(question) {
     if (els.clarify) els.clarify.hidden = false;
-    if (els.clarifyQ) {
-      // Full wording lives in the question line, not on the tiles
-      const opts = options && options.length ? options : ["Yes", "No", "Whatever", "Later"];
-      const q = question || "Please choose:";
-      els.clarifyQ.textContent = q + "  ·  " + opts.slice(0, 4).join(" / ");
-    }
+    if (els.clarifyQ) els.clarifyQ.textContent = question || "Please choose:";
     if (els.clarify) els.clarify.dataset.tooltipId = "clarify";
-    const opts = options && options.length ? options : ["Yes", "No", "Whatever", "Later"];
-    setBoxActions(
-      "box1",
-      opts.slice(0, 4).map(function (o) {
-        const s = String(o);
-        return { value: s, title: s };
-      }),
-      { mode: "clarify" }
-    );
   }
 
   function hideClarify() {
     if (els.clarify) els.clarify.hidden = true;
     if (els.clarifyQ) els.clarifyQ.textContent = "";
-    clearBoxActions("box1");
-  }
-
-  function onBoxActionClick(btn) {
-    if (!btn || btn.disabled) return;
-    const bar = btn.closest(".box-action-bar");
-    if (!bar) return;
-    const value = btn.getAttribute("data-value");
-    if (!value) return;
-    const mode = bar.dataset.mode || "";
-    if (mode === "clarify") {
-      onClarify(value);
-      return;
-    }
-    if (mode === "worker_focus") {
-      const idx = parseInt(value, 10);
-      if (!isNaN(idx)) setBox3Focus(idx);
-    }
-  }
-
-  /** Box 3: only one worker panel visible at a time (slots switch focus). */
-  let box3FocusIndex = 0;
-
-  function setBox3Focus(idx) {
-    const n = lastWorkerOutputs.length;
-    if (!n) return;
-    box3FocusIndex = Math.max(0, Math.min(n - 1, idx | 0));
-    const body = document.getElementById("box3-content");
-    if (!body) return;
-    const panels = body.querySelectorAll(".worker-panel");
-    panels.forEach(function (panel, i) {
-      panel.hidden = i !== box3FocusIndex;
-      panel.classList.toggle("is-focus", i === box3FocusIndex);
-    });
-    const title = document.querySelector(".box3-header-title");
-    if (title) {
-      const out = lastWorkerOutputs[box3FocusIndex];
-      const name = (out && out.name) || "Worker " + (box3FocusIndex + 1);
-      title.textContent =
-        n > 1
-          ? "Worker results · " + name + " (" + (box3FocusIndex + 1) + "/" + n + ")"
-          : "Worker results · " + name;
-    }
-    // Mark active slot on box3 bar
-    const bar = document.querySelector('.box-action-bar[data-box="box3"]');
-    if (bar) {
-      bar.querySelectorAll(".box-action-btn").forEach(function (btn, i) {
-        btn.classList.toggle("is-active", i === box3FocusIndex && !btn.disabled);
-      });
-    }
-  }
-
-  function syncBox3WorkerSlots() {
-    const outs = lastWorkerOutputs || [];
-    if (!outs.length) {
-      clearBoxActions("box3");
-      const title = document.querySelector(".box3-header-title");
-      if (title) title.textContent = "Worker results";
-      return;
-    }
-    setBoxActions(
-      "box3",
-      outs.map(function (o, i) {
-        const html = extractHtml(o.result || "");
-        return {
-          value: String(i),
-          title:
-            (o.name || "Worker " + (i + 1)) +
-            (html ? " · page" : " · notes") +
-            " (show this result)",
-        };
-      }),
-      { mode: "worker_focus" }
-    );
-    setBox3Focus(box3FocusIndex < outs.length ? box3FocusIndex : 0);
   }
 
   let chatBusy = false;
@@ -3782,45 +3657,29 @@
   function renderBox3Workers(pipeline) {
     const body = document.getElementById("box3-content");
     if (!body) return;
-    const canvas = body.querySelector(".canvas-preview");
     body.innerHTML = "";
     body.classList.add("box3-dynamic");
-    body.classList.add("box3-single-focus");
 
     const outputs = normalizeWorkerOutputs(pipeline);
     lastWorkerOutputs = outputs;
     updateBox3Toolbar();
 
     if (!outputs.length) {
-      clearBoxActions("box3");
       const empty = document.createElement("p");
       empty.className = "muted empty-hint";
-      if (pipeline && pipeline.stage === "done") {
-        empty.textContent =
-          "(no worker output — enable Coordinator + Worker 1/2, then Send)";
-      } else if (pipeline && pipeline.stage === "work") {
+      if (pipeline && pipeline.stage === "work") {
         empty.textContent = "Workers running…";
+      } else if (pipeline && pipeline.stage === "done") {
+        empty.textContent = "(no worker output)";
       } else {
-        empty.textContent =
-          "Worker results appear here (one at a time; slots switch focus).";
+        empty.textContent = "Worker result after Execute.";
       }
       body.appendChild(empty);
-      if (canvas) body.appendChild(canvas);
-      const title = document.querySelector(".box3-header-title");
-      if (title) title.textContent = "Worker results";
       return;
     }
 
-    body.dataset.workers = String(outputs.length);
-    if (box3FocusIndex >= outputs.length) box3FocusIndex = 0;
-    outputs.forEach(function (out, idx) {
-      const panel = buildWorkerPanel(out, idx);
-      panel.hidden = idx !== box3FocusIndex;
-      if (idx === box3FocusIndex) panel.classList.add("is-focus");
-      body.appendChild(panel);
-    });
-    if (canvas) body.appendChild(canvas);
-    syncBox3WorkerSlots();
+    // One panel: first worker result (HTML landing uses only worker1)
+    body.appendChild(buildWorkerPanel(outputs[0], 0));
   }
 
   function copyAllWorkerResults() {
@@ -4690,9 +4549,9 @@
       btnColdDelete.addEventListener("click", deleteSelectedCold);
     }
 
-    document.querySelectorAll(".box-action-btn").forEach(function (btn) {
+    document.querySelectorAll(".btn-clarify").forEach(function (btn) {
       btn.addEventListener("click", function () {
-        onBoxActionClick(btn);
+        onClarify(btn.getAttribute("data-answer"));
       });
     });
 
