@@ -125,7 +125,16 @@
 | pack_max prune (env GNOM_PACK_MAX / System) | **done** |
 | Version / docs 2.2 | **done** |
 
-## Post-V2.2 (optional)
+## V2.3.0
+
+| Item | Status |
+|------|--------|
+| Rename pack label (PATCH + Ren) | **done** |
+| mtime / exported_at in pack list | **done** |
+| Optional label prompt on Pack ↓ | **done** |
+| Version / docs 2.3 | **done** |
+
+## Post-V2.3 (optional)
 
 | Item | Notes |
 |------|--------|

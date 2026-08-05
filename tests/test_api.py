@@ -562,3 +562,24 @@ def test_pack_max_prune(client: TestClient):
         assert r.status_code == 200
     packs = client.get("/api/session/packs").json()["packs"]
     assert len(packs) <= 5
+
+
+def test_pack_rename_and_list_mtime(client: TestClient):
+    client.post("/api/chat?sync=1", json={"text": "Rename me pack"})
+    exp = client.get("/api/session/pack?persist=1&label=old-label")
+    assert exp.status_code == 200
+    name = exp.json()["filename"]
+    lst = client.get("/api/session/packs").json()["packs"]
+    hit = next(p for p in lst if p["name"] == name)
+    assert hit["label"] == "old-label"
+    assert hit.get("mtime")
+    ren = client.patch(
+        f"/api/session/packs/{name}",
+        json={"label": "USB-project-alpha"},
+    )
+    assert ren.status_code == 200
+    assert ren.json()["label"] == "USB-project-alpha"
+    got = client.get(f"/api/session/packs/{name}").json()["pack"]
+    assert got["label"] == "USB-project-alpha"
+    bad = client.patch(f"/api/session/packs/{name}", json={"label": "   "})
+    assert bad.status_code == 422 or bad.status_code == 400

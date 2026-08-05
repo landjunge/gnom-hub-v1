@@ -1625,8 +1625,11 @@
       lab.style.overflow = "hidden";
       lab.style.textOverflow = "ellipsis";
       lab.style.whiteSpace = "nowrap";
-      lab.textContent = (p.label || p.name || "?") + " · " + (p.name || "");
-      lab.title = p.name || "";
+      var when = (p.mtime || p.exported_at || "").replace("T", " ").replace("+00:00", "Z");
+      if (when.length > 16) when = when.slice(0, 16);
+      lab.textContent =
+        (p.label || p.name || "?") + (when ? " · " + when : "");
+      lab.title = (p.name || "") + (p.label ? " — " + p.label : "");
       const loadBtn = document.createElement("button");
       loadBtn.type = "button";
       loadBtn.className = "btn-ws-sm";
@@ -1634,6 +1637,14 @@
       loadBtn.title = "Import this pack";
       loadBtn.addEventListener("click", function () {
         loadNamedPack(p.name);
+      });
+      const renBtn = document.createElement("button");
+      renBtn.type = "button";
+      renBtn.className = "btn-ws-sm";
+      renBtn.textContent = "Ren";
+      renBtn.title = "Rename label";
+      renBtn.addEventListener("click", function () {
+        renameNamedPack(p.name, p.label || "");
       });
       const dlBtn = document.createElement("button");
       dlBtn.type = "button";
@@ -1653,6 +1664,7 @@
       });
       li.appendChild(lab);
       li.appendChild(loadBtn);
+      li.appendChild(renBtn);
       li.appendChild(dlBtn);
       li.appendChild(delBtn);
       ul.appendChild(li);
@@ -1674,6 +1686,28 @@
       toast("Pack loaded", "ok");
     } catch (err) {
       toast("Pack load failed: " + err.message, "error");
+    }
+  }
+
+  async function renameNamedPack(name, currentLabel) {
+    if (!name) return;
+    var next = window.prompt("Pack label (max 80 chars):", currentLabel || "");
+    if (next === null) return;
+    next = String(next).trim().slice(0, 80);
+    if (!next) {
+      toast("Label required", "error");
+      return;
+    }
+    try {
+      const data = await api(
+        "PATCH",
+        "/api/session/packs/" + encodeURIComponent(name),
+        { label: next }
+      );
+      await renderPackList(data.packs);
+      toast("Pack renamed", "ok");
+    } catch (err) {
+      toast("Pack rename failed: " + err.message, "error");
     }
   }
 
@@ -1715,7 +1749,12 @@
 
   async function exportSessionPack() {
     try {
-      const data = await api("GET", "/api/session/pack?persist=1");
+      var labelHint = window.prompt("Pack label (optional, Enter to skip):", "");
+      var q = "persist=1";
+      if (labelHint !== null && String(labelHint).trim()) {
+        q += "&label=" + encodeURIComponent(String(labelHint).trim().slice(0, 80));
+      }
+      const data = await api("GET", "/api/session/pack?" + q);
       const pack = data.pack || data;
       const blob = new Blob([JSON.stringify(pack, null, 2)], {
         type: "application/json",

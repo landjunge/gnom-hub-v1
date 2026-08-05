@@ -104,6 +104,10 @@ class SessionPackBody(BaseModel):
     store: bool = False
 
 
+class PackRenameBody(BaseModel):
+    label: str = Field(min_length=1, max_length=80)
+
+
 class ReexecuteBody(BaseModel):
     user_text: str = ""
     brainstorm_notes: str = ""
@@ -120,7 +124,7 @@ class ShellBody(BaseModel):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Gnom-Hub v1", version="2.2.0")
+    app = FastAPI(title="Gnom-Hub v1", version="2.3.0")
 
     @app.get("/api/health")
     def health() -> dict[str, Any]:
@@ -128,7 +132,7 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "service": "gnom-hub-v1",
-            "version": "2.2.0",
+            "version": "2.3.0",
             "telegram": hub.telegram.enabled,
             "telegram_running": hub.telegram.running,
             "llm": {
@@ -326,6 +330,17 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=404, detail=str(e)) from e
         except TypeError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
+
+    @app.patch("/api/session/packs/{name}")
+    def session_pack_rename(name: str, body: PackRenameBody) -> dict[str, Any]:
+        try:
+            return get_hub().rename_session_pack(name, body.label)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        except TypeError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
 
     @app.delete("/api/session/packs/{name}")
     def session_pack_delete(name: str) -> dict[str, Any]:

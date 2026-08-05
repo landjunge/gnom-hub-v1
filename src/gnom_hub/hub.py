@@ -546,7 +546,7 @@ class Hub:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "2.2.0",
+            "version": "2.3.0",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -911,7 +911,7 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "2.2.0",
+            "version": "2.3.0",
             "providers": self.llm.providers_snapshot(),
             "backups": self.list_backups()[:8],
             "packs": self.list_session_packs()[:12],
@@ -1258,7 +1258,7 @@ class Hub:
         pack = {
             "format": "gnom-hub-session-pack",
             "format_version": 1,
-            "app_version": "2.2.0",
+            "app_version": "2.3.0",
             "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
             "label": pack_label,
             "hot": dict(self.hot.session),
@@ -1343,24 +1343,33 @@ class Hub:
 
     def list_session_packs(self) -> list[dict[str, Any]]:
         """List packs under data/packs/ (newest first)."""
+        from datetime import datetime, timezone
+
         if not self._packs_dir.is_dir():
             return []
         out: list[dict[str, Any]] = []
         for p in sorted(self._packs_dir.glob("gnom-hub-session-*.json"), reverse=True):
             try:
                 label = p.stem
+                exported_at = ""
                 try:
                     data = json.loads(p.read_text(encoding="utf-8"))
-                    if isinstance(data, dict) and data.get("label"):
-                        label = str(data["label"])[:80]
+                    if isinstance(data, dict):
+                        if data.get("label"):
+                            label = str(data["label"])[:80]
+                        exported_at = str(data.get("exported_at") or "")
                 except (OSError, json.JSONDecodeError):
                     pass
+                st = p.stat()
+                mtime = datetime.fromtimestamp(st.st_mtime, tz=timezone.utc)
                 out.append(
                     {
                         "name": p.name,
                         "path": str(p),
-                        "bytes": p.stat().st_size,
+                        "bytes": st.st_size,
                         "label": label,
+                        "exported_at": exported_at,
+                        "mtime": mtime.replace(microsecond=0).isoformat(),
                     }
                 )
             except OSError:
@@ -1399,6 +1408,30 @@ class Hub:
             include_warm=include_warm,
             include_agents=include_agents,
         )
+
+    def rename_session_pack(self, name: str, label: str) -> dict[str, Any]:
+        """Update the human label inside a stored pack (filename unchanged)."""
+        path = self._pack_path(name)
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise TypeError("pack file is not an object")
+        if data.get("format") != "gnom-hub-session-pack":
+            raise ValueError("not a gnom-hub-session-pack")
+        new_label = (label or "").strip()[:80]
+        if not new_label:
+            raise ValueError("label required")
+        data["label"] = new_label
+        atomic_write_text(path, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
+        self._append_trace(
+            "session.pack.rename",
+            {"name": path.name, "label": new_label},
+        )
+        return {
+            "ok": True,
+            "name": path.name,
+            "label": new_label,
+            "packs": self.list_session_packs(),
+        }
 
     def delete_session_pack(self, name: str) -> dict[str, Any]:
         path = self._pack_path(name)
@@ -1584,7 +1617,7 @@ class Hub:
                 "5) Esc = close fullscreen or cancel job. "
                 "6) Box 3: Copy/DL/Tab/WS/↑perm/fullscreen; toolbar Copy all + Diff + History. "
                 "7) Cost badge + Compact density; job timer while busy. "
-                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (Pack ↓/↑, list Load/↓/Del, auto-pack, prune max). 10) History Re-Exec. 11) Import from USB can store into data/packs/."
+                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (Pack ↓/↑, list Load/Ren/↓/Del, auto-pack, prune). 10) History Re-Exec. 11) Import from USB can store into data/packs/."
             ),
             "example": "Type idea → Execute → Pack ↓ (USB) → History Re-Exec → Diff.",
             "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",
