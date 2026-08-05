@@ -31,10 +31,13 @@ class PipelineState:
     user_text: str = ""
     memory_context: str = ""
     brainstorm_notes: str = ""
+    # Multi-turn brainstorm dialogue (user + agent)
+    brainstorm_turns: list[dict] = field(default_factory=list)
+    # True while user is collecting ideas; Execute switches to full run
+    mode: str = "brainstorm"
     distilled_requirements: list[str] = field(default_factory=list)
     flex_notes: str = ""
     pending_question: DistillQuestion | None = None
-    # Flat strings (compat) + structured slots for UI (Worker 1 / Worker 2 / …)
     worker_results: list[str] = field(default_factory=list)
     worker_outputs: list[dict] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)

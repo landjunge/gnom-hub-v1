@@ -11,39 +11,50 @@ from gnom_hub.pipeline.models import DistillQuestion
 
 
 class BrainstormAgent(BaseAgent):
-    def run(self, user_text: str, memory_ctx: str = "") -> str:
+    """Free brainstorm partner — dialogue, not a one-shot idea dump."""
+
+    def run(
+        self,
+        user_text: str,
+        memory_ctx: str = "",
+        history: list[dict] | None = None,
+    ) -> str:
         if not self.enabled:
             return ""
         self.emit_active(True)
         try:
+            hist = history or []
             if self.has_llm():
                 try:
+                    hist_block = _format_brainstorm_history(hist)
                     return self.ask(
                         system=(
-                            "You are the Brainstorm agent. "
-                            "Brainstorm about the USER TASK only. "
-                            "Language: match the user (DE/EN). "
-                            "Output 5–8 concrete, useful bullet ideas for THAT task. "
-                            "Do not describe or redesign Gnom-Hub itself. "
-                            "No preamble."
+                            "You are the Brainstorm partner in Gnom-Hub.\n"
+                            "Your job is FREE brainstorming with the user — not execution.\n"
+                            "Rules:\n"
+                            "- Match the user language (DE/EN).\n"
+                            "- React to THIS message; build on earlier ideas in the history.\n"
+                            "- Offer 3–6 concrete ideas, angles, or questions — not a finished plan.\n"
+                            "- Ask at most ONE short follow-up if something is unclear.\n"
+                            "- Do NOT start implementing, writing full code, or running the pipeline.\n"
+                            "- Do NOT describe or redesign Gnom-Hub itself.\n"
+                            "- No corporate fluff. Be direct and useful.\n"
+                            "- If the user only refines (e.g. 'more on X'), go deeper on that — "
+                            "do not restart from zero."
                         ),
-                        user=_with_memory(user_text, memory_ctx),
-                        max_tokens=550,
-                        temperature=0.85,
+                        user=_with_memory(
+                            _brainstorm_user_payload(user_text, hist_block),
+                            memory_ctx,
+                        ),
+                        max_tokens=700,
+                        temperature=0.9,
                     )
                 except Exception as exc:  # noqa: BLE001
                     self.bus.emit(
                         "pipeline.warning",
                         {"stage": "brainstorm", "error": str(exc)},
                     )
-            return (
-                f"Ideen zu: {user_text}\n"
-                "• Ziel und Nutzerwert in einem Satz\n"
-                "• 3 MVP-Funktionen priorisieren\n"
-                "• Einfache UI mit klarer Hauptaktion\n"
-                "• Lokale Daten, wenig Abhängigkeit\n"
-                "• Risiken: Scope, Leerzustände, Fehlerfälle"
-            )
+            return _stub_brainstorm(user_text, hist)
         finally:
             self.emit_active(False)
 
@@ -114,11 +125,12 @@ class CoordinatorAgent(BaseAgent):
                     raw = self.ask(
                         system=(
                             "You are the Coordinator distilling the USER TASK into requirements. "
+                            "Use the brainstorm dialogue as input. "
                             "Output ONLY 4–7 requirement lines for that task. No intro. "
                             "Do not redefine Gnom-Hub. Match user language."
                         ),
                         user=_with_memory(
-                            f"{user_text}\n\nBrainstorm:\n{brainstorm[:1500]}",
+                            f"{user_text}\n\nBrainstorm dialogue:\n{brainstorm[:2500]}",
                             memory_ctx,
                         ),
                         max_tokens=400,
@@ -190,7 +202,6 @@ class CoordinatorAgent(BaseAgent):
                         "pipeline.warning",
                         {"stage": "coordinate", "error": str(exc)},
                     )
-            # stub plan
             clean = [r for r in requirements if not r.startswith("Flex/")]
             t1 = f"Umsetzungsplan (Schritte) für: {user_text}"
             t2 = f"Konkretes Ergebnis-Artefakt für: {user_text}"
@@ -254,12 +265,7 @@ class WorkerAgent(BaseAgent):
 
 
 class MemoryAgent(BaseAgent):
-    """
-    Always-on Memory agent (plan): holds the red thread.
-
-    - recall(user_text): HOT/WARM dump → optional LLM filter (uses tokens)
-    - store(...): persist + optional LLM durable-fact extract (uses tokens)
-    """
+    """Always-on Memory agent — holds the red thread."""
 
     def __init__(
         self,
@@ -374,6 +380,50 @@ class MemoryAgent(BaseAgent):
             self.emit_active(False)
 
 
+def _format_brainstorm_history(history: list[dict]) -> str:
+    if not history:
+        return ""
+    lines: list[str] = []
+    for turn in history[-12:]:
+        role = str(turn.get("role") or "user")
+        text = str(turn.get("text") or "").strip()
+        if not text:
+            continue
+        label = "User" if role == "user" else "Brainstorm"
+        lines.append(f"{label}: {text[:800]}")
+    return "\n".join(lines)
+
+
+def _brainstorm_user_payload(user_text: str, hist_block: str) -> str:
+    if not hist_block:
+        return f"USER MESSAGE:\n{user_text}"
+    return (
+        f"Earlier brainstorm dialogue:\n{hist_block}\n\n"
+        f"Latest USER MESSAGE:\n{user_text}"
+    )
+
+
+def _stub_brainstorm(user_text: str, history: list[dict]) -> str:
+    n = len([t for t in history if t.get("role") == "user"]) + 1
+    if n <= 1:
+        return (
+            f"Ideen zu: {user_text}\n"
+            "• Ziel und Nutzerwert in einem Satz schärfen\n"
+            "• 3–5 Richtungen skizzieren (MVP vs. später)\n"
+            "• Was darf bewusst weglassen werden?\n"
+            "• Welches Ergebnis soll am Ende in Box 3 liegen?\n"
+            "→ Was soll ich als Nächstes vertiefen?"
+        )
+    return (
+        f"Weitergedacht (Runde {n}) zu: {user_text}\n"
+        "• Vorherige Ideen enger zusammenführen\n"
+        "• Eine Richtung priorisieren\n"
+        "• Offene Frage klären, bevor wir ausführen\n"
+        "→ Sag 'Execute' / klick Execute, wenn genug gesammelt ist — "
+        "oder schreib weiter zum Feinschliff."
+    )
+
+
 def _with_memory(text: str, memory_ctx: str) -> str:
     ctx = _sanitize_memory_ctx(memory_ctx)
     if not ctx:
@@ -385,7 +435,6 @@ def _with_memory(text: str, memory_ctx: str) -> str:
 
 
 def _sanitize_memory_ctx(memory_ctx: str) -> str:
-    """Drop hallucinated 'Gnom-Hub is a notes/localStorage app' facts."""
     if not memory_ctx:
         return ""
     bad = (
@@ -406,7 +455,6 @@ def _sanitize_memory_ctx(memory_ctx: str) -> str:
         low = ln.lower()
         if any(b in low for b in bad):
             continue
-        # also drop lines that claim what gnom-hub "is" as a product definition
         if "gnom-hub" in low and ("ist ein" in low or "is a" in low or "is an" in low):
             continue
         kept.append(ln)
@@ -414,7 +462,6 @@ def _sanitize_memory_ctx(memory_ctx: str) -> str:
 
 
 def _is_garbage_fact(text: str) -> bool:
-    """True for product-identity hallucinations (notes/localStorage toy, not multi-agent hub)."""
     low = text.lower()
     markers = (
         "localstorage",
