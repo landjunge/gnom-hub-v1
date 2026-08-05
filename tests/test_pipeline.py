@@ -408,9 +408,7 @@ def test_coordinator_html_plan_prefers_full_page():
     assert "hero section only" not in tasks[0][1].lower()
     assert _wants_one_html_page("landing page HTML")
     assert not _wants_one_html_page("write a business plan")
-    forced = _html_full_page_plan(
-        "Landing HTML", ["worker1", "worker2", "worker3"], ["DoD line"]
-    )
+    forced = _html_full_page_plan("Landing HTML", ["worker1", "worker2", "worker3"], ["DoD line"])
     assert len(forced) == 1
     assert forced[0][0] == "worker1"
     assert "DoD:" in forced[0][1]

@@ -113,6 +113,8 @@
   let recognition = null;
   let listening = false;
   let lastSpokenKey = "";
+  let pendingSpeech = ""; // Chrome often blocks speak without a recent gesture
+  let ttsVoicesReady = false;
   let currentJobId = null;
   let lastWorkerOutputs = [];
   let jobTimerStart = null;
@@ -567,53 +569,138 @@
       lastReportedPipelineError = null;
     }
 
-    if (p.stage === "done") {
+    // TTS after brainstorm turn and after full execute
+    if (p.stage === "done" || p.stage === "brainstorm") {
       maybeSpeakPipeline(p);
     }
   }
 
-  function speakText(text) {
-    if (!text || !window.speechSynthesis) return;
+  function stripForSpeech(text) {
+    let s = String(text || "");
+    s = s.replace(/```[\s\S]*?```/g, " ");
+    s = s.replace(/<!DOCTYPE[\s\S]*$/i, " ");
+    s = s.replace(/<[^>]+>/g, " ");
+    s = s.replace(/&[a-z]+;/gi, " ");
+    s = s.replace(/\s+/g, " ").trim();
+    return s.slice(0, 480);
+  }
+
+  function ensureTtsVoices() {
+    if (!window.speechSynthesis) return;
     try {
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(String(text).slice(0, 600));
-      u.lang = /[äöüÄÖÜß]/.test(text) ? "de-DE" : "en-US";
-      window.speechSynthesis.speak(u);
+      const v = window.speechSynthesis.getVoices();
+      if (v && v.length) ttsVoicesReady = true;
     } catch (_e) {
       /* ignore */
     }
   }
 
+  if (typeof window !== "undefined" && window.speechSynthesis) {
+    ensureTtsVoices();
+    try {
+      window.speechSynthesis.onvoiceschanged = function () {
+        ensureTtsVoices();
+      };
+    } catch (_e2) {
+      /* ignore */
+    }
+    // Flush queued speech on next user gesture (browser autoplay policy)
+    document.addEventListener(
+      "click",
+      function () {
+        if (pendingSpeech) {
+          const t = pendingSpeech;
+          pendingSpeech = "";
+          speakText(t, { force: true });
+        }
+      },
+      true
+    );
+  }
+
+  function speakText(text, opts) {
+    opts = opts || {};
+    if (!text) return false;
+    if (!window.speechSynthesis) {
+      if (opts.notify) toast("TTS not available in this browser", "info");
+      return false;
+    }
+    const clean = stripForSpeech(text);
+    if (!clean) return false;
+    try {
+      ensureTtsVoices();
+      window.speechSynthesis.cancel();
+      // Chrome: speak right after cancel often fails — defer
+      setTimeout(function () {
+        try {
+          window.speechSynthesis.resume();
+          const u = new SpeechSynthesisUtterance(clean);
+          u.lang = /[äöüÄÖÜß]/.test(clean) ? "de-DE" : "en-US";
+          u.rate = 1.0;
+          const voices = window.speechSynthesis.getVoices() || [];
+          if (voices.length) {
+            const want = u.lang.slice(0, 2).toLowerCase();
+            const match =
+              voices.find(function (v) {
+                return (v.lang || "").toLowerCase().indexOf(want) === 0;
+              }) || voices[0];
+            if (match) u.voice = match;
+          }
+          u.onerror = function () {
+            if (opts.notify) toast("TTS blocked — click the page and retry", "info");
+          };
+          window.speechSynthesis.speak(u);
+        } catch (_inner) {
+          pendingSpeech = clean;
+        }
+      }, 80);
+      return true;
+    } catch (_e) {
+      pendingSpeech = clean;
+      if (opts.notify) toast("TTS queued — click once to allow speech", "info");
+      return false;
+    }
+  }
+
   function maybeSpeakPipeline(p) {
     const key =
-      (p.brainstorm_notes || "").slice(0, 40) +
+      (p.stage || "") +
       "|" +
-      ((p.worker_results && p.worker_results[0]) || "").slice(0, 40);
+      (p.brainstorm_notes || "").slice(0, 48) +
+      "|" +
+      ((p.worker_results && p.worker_results[0]) || "").slice(0, 48) +
+      "|" +
+      ((p.worker_outputs && p.worker_outputs.length) || 0);
     if (key === lastSpokenKey) return;
     const chunks = [];
     const b = findAgent("brainstorm");
     if (b && b.tts && p.brainstorm_notes) {
-      chunks.push("Brainstorm: " + p.brainstorm_notes);
+      chunks.push("Brainstorm. " + stripForSpeech(p.brainstorm_notes));
     }
     const f = findAgent("flex");
     if (f && f.tts && p.flex_notes) {
-      chunks.push("Flex: " + p.flex_notes);
+      chunks.push("Flex. " + stripForSpeech(p.flex_notes));
     }
     (p.worker_outputs || []).forEach(function (o, i) {
       const a = findAgent(o.worker || "worker" + (i + 1));
       if (a && a.tts && o.result) {
-        chunks.push((a.label || o.worker) + ": " + o.result);
+        chunks.push(
+          (a.label || o.worker || "Worker") + ". " + stripForSpeech(o.result)
+        );
       }
     });
     if (!chunks.length && p.worker_results) {
       p.worker_results.forEach(function (r, i) {
         const a = findAgent("worker" + (i + 1));
-        if (a && a.tts && r) chunks.push(a.label + ": " + r);
+        if (a && a.tts && r) {
+          chunks.push((a.label || "Worker") + ". " + stripForSpeech(r));
+        }
       });
     }
     if (chunks.length) {
       lastSpokenKey = key;
-      speakText(chunks.join(". "));
+      const ok = speakText(chunks.join(" "));
+      if (!ok) pendingSpeech = chunks.join(" ");
     }
   }
 
@@ -630,8 +717,22 @@
         a.online = !!data.online;
       }
       renderCards();
+      // Checkbox click = user gesture → unlock browser TTS + short proof
+      if (on) {
+        lastSpokenKey = "";
+        speakText("TTS on for " + (a.label || id) + ".", { notify: true });
+        toast("TTS on: " + (a.label || id), "ok");
+      } else {
+        try {
+          if (window.speechSynthesis) window.speechSynthesis.cancel();
+        } catch (_c) {
+          /* ignore */
+        }
+        toast("TTS off: " + (a.label || id), "info");
+      }
     } catch (err) {
       appendChat("system", "TTS save failed: " + err.message);
+      toast("TTS save failed", "error");
     }
   }
 
