@@ -304,6 +304,8 @@ class Hub:
                 "/exec — Execute from brainstorm notes\n"
                 "/do <task> — full one-shot pipeline\n"
                 "/pack list | save [label] | load <n|name>\n"
+                "/warm list | add <fact> | del <n|text> | clear\n"
+                "/cancel — soft-cancel running job\n"
                 "/last — last worker results\n"
                 "/reset — clear HOT (WARM kept)\n"
                 "/yes /no /whatever /later — clarify"
@@ -355,11 +357,23 @@ class Hub:
             return f"stage={p['stage']}\n{head}\n" + "\n".join(results[:3])
         if cmd == "pack":
             return self._telegram_pack(arg.strip())
+        if cmd == "warm":
+            return self._telegram_warm(arg.strip())
+        if cmd == "cancel":
+            return self._telegram_cancel()
         if cmd == "last":
             st = self.pipeline.state
-            if not st.worker_results:
+            if not st.worker_results and not getattr(st, "quality_notes", ""):
                 return "No worker results yet."
-            return "\n".join(st.worker_results[:5])
+            lines = [f"stage={st.stage.value}"]
+            if st.user_text:
+                lines.append(f"user: {st.user_text[:120]}")
+            qn = getattr(st, "quality_notes", "") or ""
+            if qn:
+                lines.append(f"quality: {qn[:200]}")
+            for r in (st.worker_results or [])[:5]:
+                lines.append(str(r)[:500])
+            return "\n".join(lines)
         if cmd == "reset":
             self.reset_session(keep_agents=True)
             return "HOT session reset (WARM facts kept)."
@@ -444,6 +458,55 @@ class Hub:
                 f"Loaded {target}\nstage={p.get('stage')} · user={(p.get('user_text') or '')[:80]}"
             )
         return "Usage: /pack list | save [label] | load <n|name>"
+
+    def _telegram_warm(self, arg: str) -> str:
+        """Telegram: /warm list | add <fact> | del <n|text> | clear."""
+        parts = arg.split(maxsplit=1)
+        sub = (parts[0] if parts else "list").lower()
+        rest = parts[1].strip() if len(parts) > 1 else ""
+        if sub in ("", "list", "ls"):
+            facts = self.warm.all_facts()
+            if not facts:
+                return "WARM empty. /warm add <fact>"
+            lines = [f"WARM facts ({len(facts)}):"]
+            start_i = max(0, len(facts) - 12)
+            for i, f in enumerate(facts[start_i:], start=start_i + 1):
+                lines.append(f"{i}. {f[:160]}")
+            return "\n".join(lines)
+        if sub in ("add", "a", "+"):
+            if not rest:
+                return "Usage: /warm add <fact text>"
+            ok = self.warm.add_fact(rest)
+            return "WARM added." if ok else "WARM unchanged (empty or duplicate)."
+        if sub in ("del", "rm", "delete", "remove"):
+            if not rest:
+                return "Usage: /warm del <n|exact text>"
+            if rest.isdigit():
+                removed = self.warm.remove_at(int(rest))
+                if removed is None:
+                    return f"No fact at index {rest}"
+                return f"WARM removed: {removed[:120]}"
+            ok = self.warm.remove_fact(rest)
+            return "WARM removed." if ok else "Fact not found (use exact text or index)."
+        if sub == "clear":
+            n = len(self.warm.all_facts())
+            self.warm.clear()
+            return f"WARM cleared ({n} facts)."
+        return "Usage: /warm list | add <fact> | del <n|text> | clear"
+
+    def _telegram_cancel(self) -> str:
+        """Soft-cancel the newest running job, if any."""
+        jobs = getattr(self, "_jobs", {})
+        running = [j for j in jobs.values() if isinstance(j, dict) and j.get("status") == "running"]
+        if not running:
+            return "No running job to cancel."
+        running.sort(key=lambda j: str(j.get("id") or ""), reverse=True)
+        job = running[0]
+        try:
+            self.cancel_job(str(job["id"]))
+        except FileNotFoundError:
+            return "Job vanished."
+        return f"Cancel requested for job {job['id']} (soft)."
 
     # ── agent persistence ───────────────────────────────────────────
 
@@ -595,7 +658,8 @@ class Hub:
         return {
             "summary": self.hot.get_context_summary(),
             "facts": self.hot.recent_facts(12),
-            "warm_facts": self.warm.recent_facts(12),
+            "warm_facts": self.warm.all_facts()[-30:],
+            "warm_count": len(self.warm.all_facts()),
             "recent_messages": self.hot.recent_messages(6),
             "context": self.memory.pipeline_context(),
             "canvas_nodes": len(self.hot.canvas.nodes),
@@ -634,7 +698,7 @@ class Hub:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "2.7.0",
+            "version": "2.8.0",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -999,7 +1063,7 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "2.7.0",
+            "version": "2.8.0",
             "providers": self.llm.providers_snapshot(),
             "backups": self.list_backups()[:8],
             "packs": self.list_session_packs()[:12],
@@ -1495,7 +1559,7 @@ class Hub:
         pack = {
             "format": "gnom-hub-session-pack",
             "format_version": 1,
-            "app_version": "2.7.0",
+            "app_version": "2.8.0",
             "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
             "label": pack_label,
             "notes": (str(notes).strip()[:200] if notes else ""),
@@ -1903,7 +1967,7 @@ class Hub:
                 "5) Esc = close fullscreen or cancel job. "
                 "6) Box 3: Copy/DL/Tab/WS/↑perm/fullscreen; toolbar Copy all + Diff + History. "
                 "7) Cost badge + Compact density; job timer while busy. "
-                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat/history/workspace/ui_prefs/notes; list filter). 10) History Re-Exec. 11) Telegram: plain=/bs, /exec, /do, /pack list|save|load."
+                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat/history/workspace/ui_prefs/notes; list filter). 10) History Re-Exec. 11) Telegram: /bs /exec /do /pack /warm /cancel."
             ),
             "example": "Type idea → Execute → Pack ↓ (USB) → History Re-Exec → Diff.",
             "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",

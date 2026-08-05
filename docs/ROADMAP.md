@@ -171,7 +171,18 @@
 | /do remains full one-shot | **done** |
 | Version / docs 2.7 | **done** |
 
-## Post-V2.7 (optional)
+## V2.8.0
+
+| Item | Status |
+|------|--------|
+| WARM remove_fact / remove_at / API delete+clear | **done** |
+| System UI WARM list add/del/clear | **done** |
+| Telegram /warm list\|add\|del\|clear | **done** |
+| Telegram /cancel soft job cancel | **done** |
+| /last includes quality + user | **done** |
+| Version / docs 2.8 | **done** |
+
+## Post-V2.8 (optional)
 
 | Item | Notes |
 |------|--------|

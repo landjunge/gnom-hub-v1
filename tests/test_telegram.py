@@ -16,16 +16,19 @@ def test_telegram_commands_via_handler():
             return f"bs:{arg}"
         if cmd == "pack":
             return f"pack:{arg}"
+        if cmd == "warm":
+            return f"warm:{arg}"
+        if cmd == "cancel":
+            return "cancel-ok"
         return f"cmd:{cmd}"
 
     bot = TelegramBridge(bus, token="", on_command=on_cmd)
-    # empty token = disabled poll, but handle_text still works
     assert bot.handle_text("/help") == "help-ok"
     assert bot.handle_text("/do build it") == "did:build it"
     assert bot.handle_text("plain task") == "bs:plain task"
     assert bot.handle_text("/bs idea") == "bs:idea"
     assert bot.handle_text("/pack list") == "pack:list"
-    assert ("help", "") in seen
-    assert ("do", "build it") in seen
-    assert ("bs", "plain task") in seen
-    assert ("pack", "list") in seen
+    assert bot.handle_text("/warm add fact") == "warm:add fact"
+    assert bot.handle_text("/cancel") == "cancel-ok"
+    assert ("warm", "add fact") in seen
+    assert ("cancel", "") in seen

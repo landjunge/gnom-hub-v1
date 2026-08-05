@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=69" />
+  <link rel="stylesheet" href="/static/app.css?v=70" />
 </head>
 <body>
   <div id="app">
@@ -282,6 +282,15 @@
         </label>
         <p id="system-ckpt" class="system-line muted">Checkpoint: —</p>
         <div class="system-row">
+          <span>WARM facts</span>
+          <div class="system-row-actions">
+            <input id="sys-warm-input" class="tune-input" type="text" placeholder="Add durable fact…" style="max-width:220px" />
+            <button type="button" id="sys-warm-add" class="btn-ws-sm">Add</button>
+            <button type="button" id="sys-warm-clear" class="btn-ws-sm" title="Clear all WARM facts">Clear</button>
+          </div>
+          <ul id="sys-warm-list" class="ws-list" style="max-height:90px"></ul>
+        </div>
+        <div class="system-row">
           <span>Session packs</span>
           <input id="sys-pack-filter" class="tune-input" type="search" placeholder="Filter packs…" style="max-width:160px" />
           <ul id="sys-pack-list" class="ws-list" style="max-height:100px"></ul>
@@ -327,6 +336,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=69"></script>
+  <script src="/static/app.js?v=70"></script>
 </body>
 </html>

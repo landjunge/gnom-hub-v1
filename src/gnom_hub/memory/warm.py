@@ -76,6 +76,23 @@ class WarmMemory:
     def all_facts(self) -> list[str]:
         return list(self._facts)
 
+    def remove_fact(self, text: str) -> bool:
+        """Remove first exact match (case-sensitive strip)."""
+        t = " ".join(text.split()).strip()
+        if not t or t not in self._facts:
+            return False
+        self._facts = [f for f in self._facts if f != t]
+        self.save()
+        return True
+
+    def remove_at(self, index: int) -> str | None:
+        """Remove by 1-based index into all_facts order. Returns removed text."""
+        if index < 1 or index > len(self._facts):
+            return None
+        removed = self._facts.pop(index - 1)
+        self.save()
+        return removed
+
     def clear(self) -> None:
         self._facts = []
         self.save()

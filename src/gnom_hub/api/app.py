@@ -135,7 +135,7 @@ class ShellBody(BaseModel):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Gnom-Hub v1", version="2.7.0")
+    app = FastAPI(title="Gnom-Hub v1", version="2.8.0")
 
     @app.get("/api/health")
     def health() -> dict[str, Any]:
@@ -143,7 +143,7 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "service": "gnom-hub-v1",
-            "version": "2.7.0",
+            "version": "2.8.0",
             "telegram": hub.telegram.enabled,
             "telegram_running": hub.telegram.running,
             "llm": {
@@ -507,7 +507,36 @@ def create_app() -> FastAPI:
     @app.post("/api/memory/warm")
     def warm_add(body: WarmFactBody) -> dict[str, Any]:
         ok = get_hub().warm.add_fact(body.text.strip())
-        return {"ok": ok, "warm_facts": get_hub().warm.recent_facts(12)}
+        return {"ok": ok, "warm_facts": get_hub().warm.all_facts()[-12:]}
+
+    @app.delete("/api/memory/warm")
+    def warm_delete(
+        text: str | None = Query(None),
+        index: int | None = Query(None),
+    ) -> dict[str, Any]:
+        """Delete WARM fact by exact text or 1-based index."""
+        hub = get_hub()
+        if index is not None:
+            removed = hub.warm.remove_at(int(index))
+            if removed is None:
+                raise HTTPException(status_code=404, detail="index out of range")
+            return {
+                "ok": True,
+                "removed": removed,
+                "warm_facts": hub.warm.all_facts()[-12:],
+            }
+        if text and text.strip():
+            ok = hub.warm.remove_fact(text.strip())
+            if not ok:
+                raise HTTPException(status_code=404, detail="fact not found")
+            return {"ok": True, "removed": text.strip(), "warm_facts": hub.warm.all_facts()[-12:]}
+        raise HTTPException(status_code=400, detail="text or index required")
+
+    @app.post("/api/memory/warm/clear")
+    def warm_clear() -> dict[str, Any]:
+        n = len(get_hub().warm.all_facts())
+        get_hub().warm.clear()
+        return {"ok": True, "cleared": n, "warm_facts": []}
 
     @app.get("/api/workspace")
     def workspace() -> dict[str, Any]:

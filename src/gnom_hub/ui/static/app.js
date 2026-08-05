@@ -778,6 +778,11 @@
       if (ap) ap.checked = !!s.auto_pack_after_execute;
       const pm = document.getElementById("sys-pack-max");
       if (pm && s.pack_max != null) pm.value = String(s.pack_max);
+      try {
+        await renderWarmList();
+      } catch (_w) {
+        /* ignore */
+      }
       // Session packs list
       try {
         await renderPackList(s.packs);
@@ -1594,6 +1599,111 @@
       setChatBusy(false);
     }
   }
+
+
+  async function renderWarmList(facts) {
+    const ul = document.getElementById("sys-warm-list");
+    if (!ul) return;
+    let list = facts;
+    if (!list) {
+      try {
+        const data = await api("GET", "/api/memory");
+        list = data.warm_facts || (data.warm && data.warm.facts) || [];
+      } catch (_e) {
+        list = [];
+      }
+    }
+    // Prefer full list from memory endpoint
+    if (!facts) {
+      try {
+        const data = await api("GET", "/api/memory");
+        // memory_dict may nest differently — try several
+        if (Array.isArray(data.warm_facts)) list = data.warm_facts;
+        else if (data.memory && Array.isArray(data.memory.warm_facts))
+          list = data.memory.warm_facts;
+      } catch (_e2) {
+        /* keep */
+      }
+    }
+    ul.innerHTML = "";
+    if (!list || !list.length) {
+      const li = document.createElement("li");
+      li.className = "muted";
+      li.textContent = "(no WARM facts yet)";
+      ul.appendChild(li);
+      return;
+    }
+    // show last 12 with absolute index if possible
+    const all = list.slice(-12);
+    all.forEach(function (text, offset) {
+      const idx = offset + 1;
+      const li = document.createElement("li");
+      li.style.display = "flex";
+      li.style.gap = "6px";
+      li.style.alignItems = "center";
+      const lab = document.createElement("span");
+      lab.style.flex = "1";
+      lab.style.minWidth = "0";
+      lab.style.overflow = "hidden";
+      lab.style.textOverflow = "ellipsis";
+      lab.style.whiteSpace = "nowrap";
+      lab.textContent = idx + ". " + text;
+      lab.title = text;
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "btn-ws-sm";
+      del.textContent = "Del";
+      del.addEventListener("click", function () {
+        deleteWarmFact(idx, text);
+      });
+      li.appendChild(lab);
+      li.appendChild(del);
+      ul.appendChild(li);
+    });
+  }
+
+  async function addWarmFact() {
+    const input = document.getElementById("sys-warm-input");
+    const text = input ? String(input.value || "").trim() : "";
+    if (!text) {
+      toast("Enter a WARM fact", "info");
+      return;
+    }
+    try {
+      const data = await api("POST", "/api/memory/warm", { text: text });
+      if (input) input.value = "";
+      await renderWarmList(data.warm_facts);
+      toast(data.ok ? "WARM fact added" : "Already present", "ok");
+    } catch (err) {
+      toast("WARM add failed: " + err.message, "error");
+    }
+  }
+
+  async function deleteWarmFact(index, text) {
+    if (!confirm("Delete WARM fact: " + String(text || "").slice(0, 60) + "?")) return;
+    try {
+      const data = await api(
+        "DELETE",
+        "/api/memory/warm?text=" + encodeURIComponent(text || "")
+      );
+      await renderWarmList(data.warm_facts);
+      toast("WARM fact removed", "ok");
+    } catch (err) {
+      toast("WARM delete failed: " + err.message, "error");
+    }
+  }
+
+  async function clearWarmFacts() {
+    if (!confirm("Clear ALL WARM facts?")) return;
+    try {
+      await api("POST", "/api/memory/warm/clear");
+      await renderWarmList([]);
+      toast("WARM cleared", "ok");
+    } catch (err) {
+      toast("WARM clear failed: " + err.message, "error");
+    }
+  }
+
 
   let packListCache = [];
 
@@ -3176,6 +3286,19 @@
     if (packFilter) {
       packFilter.addEventListener("input", function () {
         renderPackList(packListCache);
+      });
+    }
+    const warmAdd = document.getElementById("sys-warm-add");
+    if (warmAdd) warmAdd.addEventListener("click", addWarmFact);
+    const warmClear = document.getElementById("sys-warm-clear");
+    if (warmClear) warmClear.addEventListener("click", clearWarmFacts);
+    const warmInput = document.getElementById("sys-warm-input");
+    if (warmInput) {
+      warmInput.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          addWarmFact();
+        }
       });
     }
     const packFile = document.getElementById("sys-pack-file");

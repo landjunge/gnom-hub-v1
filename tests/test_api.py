@@ -734,3 +734,35 @@ def test_telegram_brainstorm_exec_pack(client: TestClient):
     r5 = client.post("/api/telegram/inbound", json={"text": "/pack load 1"})
     assert r5.status_code == 200
     assert "load" in r5.json()["reply"].lower()
+
+
+def test_warm_delete_and_clear(client: TestClient):
+    r = client.post("/api/memory/warm", json={"text": "Prefer dark mode always"})
+    assert r.status_code == 200
+    r = client.post("/api/memory/warm", json={"text": "Ship USB portable"})
+    assert r.status_code == 200
+    mem = client.get("/api/memory").json()
+    assert any("dark mode" in f.lower() for f in mem["warm_facts"])
+    gone = client.delete("/api/memory/warm", params={"text": "Prefer dark mode always"})
+    assert gone.status_code == 200
+    mem2 = client.get("/api/memory").json()
+    assert not any("dark mode" in f.lower() for f in mem2["warm_facts"])
+    cleared = client.post("/api/memory/warm/clear")
+    assert cleared.status_code == 200
+    assert client.get("/api/memory").json()["warm_facts"] == []
+
+
+def test_telegram_warm_and_cancel(client: TestClient):
+    r = client.post(
+        "/api/telegram/inbound",
+        json={"text": "/warm add USB stick workflow"},
+    )
+    assert r.status_code == 200
+    assert "added" in r.json()["reply"].lower()
+    r2 = client.post("/api/telegram/inbound", json={"text": "/warm list"})
+    assert "USB stick" in r2.json()["reply"]
+    r3 = client.post("/api/telegram/inbound", json={"text": "/cancel"})
+    assert r3.status_code == 200
+    assert "no running" in r3.json()["reply"].lower() or "cancel" in r3.json()["reply"].lower()
+    r4 = client.post("/api/telegram/inbound", json={"text": "/warm clear"})
+    assert "cleared" in r4.json()["reply"].lower()

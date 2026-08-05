@@ -1,8 +1,8 @@
-# Gnom-Hub v2.7.0
+# Gnom-Hub v2.8.0
 
 Local multi-agent control hub: **brainstorm first**, then **Execute** workers.
 
-Desktop · USB packs · Telegram **bs/exec/pack** · DeepSeek / Ollama · History Re-Exec.
+Desktop · USB packs · Telegram **bs/exec/pack/warm/cancel** · WARM fact manager · DeepSeek / Ollama.
 
 > **Convention:** every meaningful change is **pushed to `main`** and this **README is updated** in the same commit.
 
@@ -11,9 +11,8 @@ Desktop · USB packs · Telegram **bs/exec/pack** · DeepSeek / Ollama · Histor
 ## Flow
 
 ```
-Desktop:  Send = Brainstorm · Execute = workers
-Telegram: plain or /bs = Brainstorm · /exec = Execute · /do = one-shot
-Packs:    System Pack ↓/↑  ·  Telegram /pack list|save|load
+Desktop:  Send = Brainstorm · Execute = workers · System WARM add/del
+Telegram: plain=/bs · /exec · /do · /pack · /warm · /cancel · /last
 ```
 
 ---
@@ -28,7 +27,7 @@ cd gnom-hub-v1
 ./scripts/quality_check.sh
 ```
 
-**http://127.0.0.1:8080/?v=69**
+**http://127.0.0.1:8080/?v=70**
 
 ---
 
@@ -36,14 +35,13 @@ cd gnom-hub-v1
 
 | Command | Action |
 |---------|--------|
-| plain text / `/bs` | Brainstorm turn (no auto-execute) |
-| `/exec` | Run workers from notes |
-| `/do <task>` | Full one-shot pipeline |
-| `/pack list` | List saved packs |
-| `/pack save [label]` | Persist pack on disk |
-| `/pack load <n\|name>` | Import pack by index or name |
-| `/status` `/last` `/reset` | Hub state / results / clear HOT |
-| `/yes` `/no` … | Clarify answers |
+| plain / `/bs` | Brainstorm turn |
+| `/exec` | Execute from notes |
+| `/do <task>` | Full one-shot |
+| `/pack list\|save\|load` | Session packs |
+| `/warm list\|add\|del\|clear` | Durable WARM facts |
+| `/cancel` | Soft-cancel running job |
+| `/last` `/status` `/reset` | Results / state / clear HOT |
 
 ---
 
@@ -51,8 +49,9 @@ cd gnom-hub-v1
 
 | Tag | Highlights |
 |-----|------------|
-| 2.4–2.6 | Packs: chat, history, workspace, prefs, notes |
-| **2.7** | Telegram brainstorm-first + /pack commands |
+| 2.6 | ui_prefs + pack notes |
+| 2.7 | Telegram brainstorm-first + /pack |
+| **2.8** | WARM manager (UI/API/Telegram) + /cancel |
 
 ---
 
