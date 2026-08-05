@@ -82,8 +82,11 @@ html, body {
   gap: 8px;
 }
 
-.stage-badge {
+.stage-badge,
+.llm-badge,
+.mem-badge {
   min-width: 72px;
+  max-width: 220px;
   height: 28px;
   padding: 0 10px;
   border: 1px solid var(--border);
@@ -93,7 +96,34 @@ html, body {
   font-size: 12px;
   line-height: 26px;
   text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stage-badge {
   text-transform: lowercase;
+  min-width: 88px;
+}
+
+.llm-badge.has-key {
+  color: #69db7c;
+  border-color: #2f9e44;
+}
+
+.agent-card.is-active {
+  box-shadow: 0 0 0 2px var(--card-color, #4dabf7);
+  animation: pulse-card 1s ease-in-out infinite;
+}
+
+@keyframes pulse-card {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.75; }
+}
+
+.agent-card .card-preset {
+  font-size: 10px;
+  color: var(--text-muted);
 }
 
 /* —— Agent cards: 140×100, gap 5 —— */

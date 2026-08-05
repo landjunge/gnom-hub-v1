@@ -20,6 +20,7 @@ Local-first multi-agent system.
 | 0.7–0.8 | HTTP API + wire + interactive clarify | done |
 | 0.9 | Per-agent model/key + Flex API | done |
 | 1.0 | Runbook / start script | done |
+| 1.1 | Flex in pipeline, UI status, install.sh | done |
 
 Full plan: [`docs/PRE_PLAN.md`](docs/PRE_PLAN.md) · V1 scope: [`docs/V1_SCOPE.md`](docs/V1_SCOPE.md) · Roadmap: [`docs/ROADMAP.md`](docs/ROADMAP.md)
 
@@ -27,21 +28,18 @@ Full plan: [`docs/PRE_PLAN.md`](docs/PRE_PLAN.md) · V1 scope: [`docs/V1_SCOPE.m
 
 ```bash
 cd gnom-hub-v1
-python3.11 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+./scripts/install.sh          # venv + deps + Key.txt template
+source .venv/bin/activate
+# edit Key.txt → DEEPSEEK_API_KEY=...  (optional; stubs work without)
 
-# optional keys
-cp Key.txt.example Key.txt
-# edit DEEPSEEK_API_KEY=...
-
-# UI server (default http://127.0.0.1:8080/)
-python -m gnom_hub.main
-# or:
-./scripts/start.sh
-
-# smoke only (no server)
-python -m gnom_hub.main --smoke
+./scripts/start.sh            # UI http://127.0.0.1:8080/
+# or: python -m gnom_hub.main
+# smoke: python -m gnom_hub.main --smoke
 ```
+
+**UI tips:** double-click agent card = on/off (Memory locked).  
+**Flex:** Shift+double-click cycles preset `security → neutral → researcher`.  
+**Clarify:** if the chat has `?` or `maybe`, Box 1 asks Yes/No/Whatever/Later.
 
 Open **http://127.0.0.1:8080/** — desktop layout (13″ fixed sizes).
 

@@ -1,4 +1,4 @@
-"""Chat → Brainstorm → Distill → Coordinator → Worker(s) pipeline (v1 step 0.4)."""
+"""Chat → Brainstorm → Distill → Flex → Coordinator → Worker(s) pipeline."""
 
 from __future__ import annotations
 
@@ -8,14 +8,23 @@ from typing import Any
 from gnom_hub.core.event_bus import EventBus
 from gnom_hub.pipeline.models import DistillQuestion, PipelineStage, PipelineState
 
+_FLEX_PROMPTS = {
+    "security": (
+        "You are a security reviewer. List short risks and constraints for the plan. Max 5 bullets."
+    ),
+    "researcher": (
+        "You are a researcher. List missing facts and questions to investigate. Max 5 bullets."
+    ),
+    "neutral": ("You are a neutral reviewer. List trade-offs and open decisions. Max 5 bullets."),
+}
+
 
 class Pipeline:
     """
     Synchronous pipeline driven by EventBus.
 
-    Without a live LLM key (or without llm_manager), stages use deterministic stubs.
-    agent_manager is optional; when present, disabled brainstorm/workers are skipped.
-    Memory is always conceptually on (emits pipeline.memory_hint).
+    Without a live LLM key, stages use deterministic stubs.
+    Disabled agents are skipped (Memory always on via memory_hint).
     """
 
     def __init__(
@@ -56,7 +65,7 @@ class Pipeline:
         self._clarified_once = True
 
         try:
-            self._run_coordinate_and_work()
+            self._run_flex_then_work()
         except Exception as exc:  # noqa: BLE001
             self._fail(str(exc))
         return self._state
@@ -80,10 +89,7 @@ class Pipeline:
             self._stub_distill(text) if self._use_stubs() else self._llm_distill(text)
         )
         self._state.distilled_requirements = requirements
-        self._bus.emit(
-            "pipeline.distill",
-            {"requirements": list(requirements)},
-        )
+        self._bus.emit("pipeline.distill", {"requirements": list(requirements)})
 
         if question is not None and not self._clarified_once:
             self._state.pending_question = question
@@ -98,9 +104,33 @@ class Pipeline:
             )
             return
 
+        self._run_flex_then_work()
+
+    def _run_flex_then_work(self) -> None:
+        if self._agent_enabled("flex"):
+            self._set_stage(PipelineStage.flex)
+            notes = self._stub_flex() if self._use_stubs() else self._llm_flex()
+            self._state.flex_notes = notes
+            self._bus.emit(
+                "pipeline.flex",
+                {"notes": notes, "preset": self._flex_preset()},
+            )
+            # Surface flex review as a soft requirement for workers
+            if notes:
+                self._state.distilled_requirements.append(f"Flex({self._flex_preset()}): {notes}")
+
         self._run_coordinate_and_work()
 
     def _run_coordinate_and_work(self) -> None:
+        if not self._agent_enabled("coordinator"):
+            self._bus.emit(
+                "pipeline.coordinate",
+                {"tasks": [], "skipped": True, "reason": "coordinator disabled"},
+            )
+            self._state.worker_results = []
+            self._finish_with_memory([])
+            return
+
         self._set_stage(PipelineStage.coordinate)
         tasks = self._stub_coordinate()
         self._bus.emit(
@@ -111,15 +141,19 @@ class Pipeline:
         self._set_stage(PipelineStage.work)
         results: list[str] = []
         for i, (worker_id, task) in enumerate(tasks, start=1):
-            result = self._stub_worker(i, task)
+            if self._use_stubs():
+                result = self._stub_worker(i, task)
+            else:
+                result = self._llm_worker(worker_id, task)
             results.append(result)
             self._bus.emit(
                 "pipeline.worker",
                 {"worker": worker_id, "index": i, "result": result, "task": task},
             )
         self._state.worker_results = results
+        self._finish_with_memory(results)
 
-        # Memory always conceptually on.
+    def _finish_with_memory(self, results: list[str]) -> None:
         self._bus.emit(
             "pipeline.memory_hint",
             {
@@ -127,19 +161,20 @@ class Pipeline:
                 "requirements": list(self._state.distilled_requirements),
                 "results": list(results),
                 "brainstorm_notes": self._state.brainstorm_notes,
+                "flex_notes": self._state.flex_notes,
             },
         )
-
         self._set_stage(PipelineStage.done)
         self._bus.emit(
             "pipeline.done",
             {
                 "requirements": list(self._state.distilled_requirements),
                 "results": list(results),
+                "flex_notes": self._state.flex_notes,
             },
         )
 
-    # ── stubs (deterministic, no LLM) ────────────────────────────────
+    # ── stubs ────────────────────────────────────────────────────────
 
     def _stub_brainstorm(self, text: str) -> str:
         base = f"Ideas for: {text}"
@@ -160,8 +195,16 @@ class Pipeline:
             )
         return requirements, question
 
+    def _stub_flex(self) -> str:
+        preset = self._flex_preset()
+        reqs = "; ".join(self._state.distilled_requirements[:3]) or self._state.user_text
+        if preset == "security":
+            return f"[security] Review risks for: {reqs}"
+        if preset == "researcher":
+            return f"[researcher] Gaps to check: {reqs}"
+        return f"[neutral] Trade-offs for: {reqs}"
+
     def _stub_coordinate(self) -> list[tuple[str, str]]:
-        """Assign 1–2 tasks to enabled workers."""
         workers = self._enabled_worker_ids()
         reqs = self._state.distilled_requirements
         if not workers:
@@ -179,10 +222,9 @@ class Pipeline:
     def _stub_worker(n: int, task: str) -> str:
         return f"Worker {n} done: {task}"
 
-    # ── optional live LLM hooks (minimal) ────────────────────────────
+    # ── LLM hooks ────────────────────────────────────────────────────
 
     def _agent_llm_kwargs(self, agent_id: str) -> dict[str, str]:
-        """Optional per-agent model/key from AgentManager."""
         out: dict[str, str] = {"agent": agent_id}
         if self._agents is None:
             return out
@@ -219,7 +261,6 @@ class Pipeline:
         context = text
         if self._state.brainstorm_notes:
             context = f"{text}\n\nBrainstorm notes:\n{self._state.brainstorm_notes}"
-        # Distill uses coordinator slot for optional key override (no distill agent card)
         result = self._llm.chat(
             [
                 LLMMessage(
@@ -243,7 +284,47 @@ class Pipeline:
             )
         return requirements, question
 
+    def _llm_flex(self) -> str:
+        from gnom_hub.llm.types import LLMMessage
+
+        preset = self._flex_preset()
+        system = _FLEX_PROMPTS.get(preset, _FLEX_PROMPTS["neutral"])
+        body = "\n".join(self._state.distilled_requirements) or self._state.user_text
+        result = self._llm.chat(
+            [
+                LLMMessage(role="system", content=system),
+                LLMMessage(role="user", content=body),
+            ],
+            **self._agent_llm_kwargs("flex"),
+        )
+        return result.content
+
+    def _llm_worker(self, worker_id: str, task: str) -> str:
+        from gnom_hub.llm.types import LLMMessage
+
+        result = self._llm.chat(
+            [
+                LLMMessage(
+                    role="system",
+                    content="You are a worker. Execute the task briefly. Plain text only.",
+                ),
+                LLMMessage(role="user", content=task),
+            ],
+            **self._agent_llm_kwargs(worker_id),
+        )
+        return result.content
+
     # ── helpers ──────────────────────────────────────────────────────
+
+    def _flex_preset(self) -> str:
+        if self._agents is None:
+            return "security"
+        try:
+            agent = self._agents.get("flex")
+            preset = getattr(agent, "preset", None) or "security"
+            return str(preset)
+        except (KeyError, ValueError):
+            return "security"
 
     def _use_stubs(self) -> bool:
         if self._llm is None:
@@ -275,7 +356,6 @@ class Pipeline:
                 wid = getattr(w, "id", w)
                 out.append(wid.value if hasattr(wid, "value") else str(wid))
             return out
-        # Fallback: probe worker1/worker2
         ids = ["worker1", "worker2"]
         return [i for i in ids if self._agent_enabled(i)]
 

@@ -40,6 +40,9 @@ class Hub:
             notes = str(data.get("brainstorm_notes") or "")
             if notes:
                 self.memory.add_message("brainstorm", notes)
+            flex = str(data.get("flex_notes") or "")
+            if flex:
+                self.memory.add_message("flex", flex)
             for req in data.get("requirements") or []:
                 self.memory.add_fact(str(req))
             for res in data.get("results") or []:
@@ -79,6 +82,7 @@ class Hub:
             "user_text": st.user_text,
             "brainstorm_notes": st.brainstorm_notes,
             "distilled_requirements": list(st.distilled_requirements),
+            "flex_notes": st.flex_notes,
             "pending_question": q,
             "worker_results": list(st.worker_results),
             "error": st.error,

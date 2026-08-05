@@ -1,4 +1,4 @@
-"""Pipeline stages and state models (v1 step 0.4)."""
+"""Pipeline stages and state models (v1)."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ class PipelineStage(str, Enum):
     brainstorm = "brainstorm"
     distill = "distill"
     clarify = "clarify"
+    flex = "flex"
     coordinate = "coordinate"
     work = "work"
     done = "done"
@@ -30,6 +31,7 @@ class PipelineState:
     user_text: str = ""
     brainstorm_notes: str = ""
     distilled_requirements: list[str] = field(default_factory=list)
+    flex_notes: str = ""
     pending_question: DistillQuestion | None = None
     worker_results: list[str] = field(default_factory=list)
     error: str | None = None

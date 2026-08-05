@@ -12,5 +12,6 @@
 | 0.8 | Interactive distillation (Box 1 Yes/No/…) | **done** |
 | 0.9 | Flex presets API + per-agent model/key | **done** |
 | 1.0 | Polish, start script, README runbook | **done** |
+| 1.1 | Hardening: Flex stage, coordinator skip, UI status, install | **done** |
 
 Out of scope: see V1_SCOPE.md “draußen”.

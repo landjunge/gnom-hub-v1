@@ -95,16 +95,18 @@
     },
   };
 
+  const FLEX_PRESETS = ["security", "neutral", "researcher"];
+
   /** 8 slots – Worker3/4 parked for v1 (local only until API has them) */
   const AGENTS = [
-    { id: "brainstorm", label: "Brainstorm", color: "brainstorm", enabled: true, toggleable: true, parked: false, model: "—" },
-    { id: "memory", label: "Memory", color: "memory", enabled: true, toggleable: false, parked: false, model: "—" },
-    { id: "flex", label: "Flex", color: "flex", enabled: true, toggleable: true, parked: false, model: "—" },
-    { id: "coordinator", label: "Coordinator", color: "coordinator", enabled: true, toggleable: true, parked: false, model: "—" },
-    { id: "worker1", label: "Worker 1", color: "worker1", enabled: true, toggleable: true, parked: false, model: "—" },
-    { id: "worker2", label: "Worker 2", color: "worker2", enabled: true, toggleable: true, parked: false, model: "—" },
-    { id: "worker3", label: "Worker 3", color: "worker3", enabled: false, toggleable: true, parked: true, model: "—" },
-    { id: "worker4", label: "Worker 4", color: "worker4", enabled: false, toggleable: true, parked: true, model: "—" },
+    { id: "brainstorm", label: "Brainstorm", color: "brainstorm", enabled: true, toggleable: true, parked: false, model: "—", preset: null },
+    { id: "memory", label: "Memory", color: "memory", enabled: true, toggleable: false, parked: false, model: "—", preset: null },
+    { id: "flex", label: "Flex", color: "flex", enabled: true, toggleable: true, parked: false, model: "—", preset: "security" },
+    { id: "coordinator", label: "Coordinator", color: "coordinator", enabled: true, toggleable: true, parked: false, model: "—", preset: null },
+    { id: "worker1", label: "Worker 1", color: "worker1", enabled: true, toggleable: true, parked: false, model: "—", preset: null },
+    { id: "worker2", label: "Worker 2", color: "worker2", enabled: true, toggleable: true, parked: false, model: "—", preset: null },
+    { id: "worker3", label: "Worker 3", color: "worker3", enabled: false, toggleable: true, parked: true, model: "—", preset: null },
+    { id: "worker4", label: "Worker 4", color: "worker4", enabled: false, toggleable: true, parked: true, model: "—", preset: null },
   ];
 
   const els = {
@@ -121,7 +123,11 @@
     btnSend: document.getElementById("btn-send"),
     btnSave: document.getElementById("btn-save"),
     stageBadge: document.getElementById("stage-badge"),
+    llmBadge: document.getElementById("llm-badge"),
+    memBadge: document.getElementById("mem-badge"),
   };
+
+  let activeStage = "idle";
 
   function statusLabel(agent) {
     if (agent.parked && !agent.enabled) return "off / parked";
@@ -132,17 +138,30 @@
     els.cards.innerHTML = "";
     AGENTS.forEach(function (agent) {
       const card = document.createElement("div");
-      card.className = "agent-card color-" + agent.color;
+      const isActive =
+        activeStage === agent.id ||
+        (activeStage === "work" && (agent.id === "worker1" || agent.id === "worker2")) ||
+        (activeStage === "coordinate" && agent.id === "coordinator") ||
+        (activeStage === "distill" && agent.id === "coordinator");
+      card.className =
+        "agent-card color-" + agent.color + (isActive ? " is-active" : "");
       card.dataset.agentId = agent.id;
       card.dataset.enabled = agent.enabled ? "true" : "false";
       card.dataset.toggleable = agent.toggleable ? "true" : "false";
       card.dataset.parked = agent.parked ? "true" : "false";
       card.dataset.tooltipId = agent.id;
       card.setAttribute("role", "button");
-      card.setAttribute(
-        "aria-label",
-        agent.label + (agent.toggleable ? " (double-click to toggle)" : " (always on)")
-      );
+      const tipExtra =
+        agent.id === "flex"
+          ? " Double-click toggle. Shift+double-click cycles preset."
+          : agent.toggleable
+            ? " (double-click to toggle)"
+            : " (always on)";
+      card.setAttribute("aria-label", agent.label + tipExtra);
+      const presetLine =
+        agent.id === "flex" && agent.preset
+          ? '<div class="card-preset">preset: ' + agent.preset + "</div>"
+          : "";
       card.innerHTML =
         '<div class="card-name">' +
         agent.label +
@@ -150,12 +169,17 @@
         '<div class="card-meta">LLM: ' +
         (agent.model || "—") +
         "</div>" +
+        presetLine +
         '<div class="card-status">' +
         statusLabel(agent) +
         "</div>";
 
       card.addEventListener("dblclick", function (ev) {
         ev.preventDefault();
+        if (agent.id === "flex" && ev.shiftKey) {
+          cycleFlexPreset();
+          return;
+        }
         toggleAgent(agent.id);
       });
       card.addEventListener("mouseenter", function () {
@@ -197,6 +221,7 @@
       a.toggleable = s.toggleable !== false;
       if (s.model) a.model = s.model;
       else if (s.role) a.model = "default";
+      if (s.preset) a.preset = s.preset;
       a.parked = false;
     });
     renderCards();
@@ -206,11 +231,32 @@
     if (!snap) return;
     if (snap.agents) applyAgentsFromServer(snap.agents);
     const p = snap.pipeline || {};
-    if (els.stageBadge) els.stageBadge.textContent = p.stage || "idle";
+    activeStage = p.stage || "idle";
+    if (els.stageBadge) els.stageBadge.textContent = activeStage;
+    renderCards();
+
+    if (els.llmBadge && snap.llm) {
+      const ok = !!snap.llm.deepseek;
+      els.llmBadge.textContent = ok
+        ? "LLM: DeepSeek"
+        : "LLM: stub (no key)";
+      els.llmBadge.classList.toggle("has-key", ok);
+    }
+    if (els.memBadge && snap.memory_summary) {
+      const short = String(snap.memory_summary).replace(/^HOT:\s*/i, "");
+      els.memBadge.textContent = "Mem: " + short;
+      els.memBadge.title = snap.memory_summary;
+    }
 
     const box2 = [];
     if (p.brainstorm_notes) box2.push(p.brainstorm_notes);
+    if (p.flex_notes) {
+      box2.push("");
+      box2.push("Flex review:");
+      box2.push(p.flex_notes);
+    }
     if (p.distilled_requirements && p.distilled_requirements.length) {
+      box2.push("");
       box2.push("Requirements:");
       p.distilled_requirements.forEach(function (r) {
         box2.push("• " + r);
@@ -220,6 +266,8 @@
 
     if (p.worker_results && p.worker_results.length) {
       setBox3(p.worker_results.join("\n"));
+    } else if (p.stage === "done") {
+      setBox3("(no worker output — coordinator or workers off)");
     }
 
     if (p.pending_question && p.pending_question.text) {
@@ -229,6 +277,22 @@
     }
 
     if (p.error) appendChat("system", "Error: " + p.error);
+  }
+
+  async function cycleFlexPreset() {
+    const flex = findAgent("flex");
+    if (!flex) return;
+    const cur = flex.preset || "security";
+    const idx = FLEX_PRESETS.indexOf(cur);
+    const next = FLEX_PRESETS[(idx + 1) % FLEX_PRESETS.length];
+    try {
+      const data = await api("POST", "/api/agents/flex/preset", { preset: next });
+      flex.preset = data.preset || next;
+      renderCards();
+      appendChat("system", "Flex preset → " + flex.preset);
+    } catch (err) {
+      appendChat("system", "Flex preset failed: " + err.message);
+    }
   }
 
   async function toggleAgent(id) {

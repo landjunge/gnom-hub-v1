@@ -1,4 +1,4 @@
-"""Tests for Pipeline (v1 step 0.4) — stub path."""
+"""Tests for Pipeline — stub path."""
 
 from gnom_hub.agents import AgentId, AgentManager
 from gnom_hub.core.event_bus import EventBus
@@ -19,6 +19,8 @@ def _collect(bus: EventBus) -> list[tuple[str, object]]:
         "pipeline.brainstorm",
         "pipeline.distill",
         "pipeline.question",
+        "pipeline.flex",
+        "pipeline.coordinate",
         "pipeline.worker",
         "pipeline.done",
         "pipeline.memory_hint",
@@ -39,6 +41,7 @@ def test_stub_full_run_no_llm():
     assert state.error is None
     assert "Ideas for: Build a landing page" in state.brainstorm_notes
     assert state.distilled_requirements
+    assert state.flex_notes
     assert state.pending_question is None
     assert len(state.worker_results) == 2
     assert state.worker_results[0].startswith("Worker 1 done:")
@@ -47,12 +50,14 @@ def test_stub_full_run_no_llm():
     names = [n for n, _ in events]
     assert "pipeline.brainstorm" in names
     assert "pipeline.distill" in names
+    assert "pipeline.flex" in names
     assert "pipeline.worker" in names
     assert "pipeline.memory_hint" in names
     assert "pipeline.done" in names
     assert "pipeline.question" not in names
     stages = [d["stage"] for n, d in events if n == "pipeline.stage"]
     assert stages[0] == "brainstorm"
+    assert "flex" in stages
     assert stages[-1] == "done"
     assert pipe.state is state
 
@@ -76,8 +81,10 @@ def test_clarify_path_then_continue():
     assert state2.pending_question is None
     assert any("Clarified" in r for r in state2.distilled_requirements)
     assert state2.worker_results
+    assert state2.flex_notes
     assert any(n == "pipeline.done" for n, _ in events)
     assert any(n == "pipeline.memory_hint" for n, _ in events)
+    assert any(n == "pipeline.flex" for n, _ in events)
 
 
 def test_skip_disabled_brainstorm():
@@ -95,6 +102,39 @@ def test_skip_disabled_brainstorm():
     assert not any(n == "pipeline.brainstorm" for n, _ in events)
     assert any(n == "pipeline.distill" for n, _ in events)
     assert any(n == "pipeline.done" for n, _ in events)
+
+
+def test_skip_disabled_flex():
+    bus = EventBus()
+    events = _collect(bus)
+    agents = AgentManager(bus)
+    agents.toggle(AgentId.FLEX)
+
+    pipe = Pipeline(bus, agent_manager=agents)
+    state = pipe.start("Ship feature Y")
+
+    assert state.stage == PipelineStage.done
+    assert state.flex_notes == ""
+    assert not any(n == "pipeline.flex" for n, _ in events)
+    assert any(n == "pipeline.done" for n, _ in events)
+
+
+def test_skip_disabled_coordinator():
+    bus = EventBus()
+    events = _collect(bus)
+    agents = AgentManager(bus)
+    agents.toggle(AgentId.COORDINATOR)
+
+    pipe = Pipeline(bus, agent_manager=agents)
+    state = pipe.start("Do work")
+
+    assert state.stage == PipelineStage.done
+    assert state.worker_results == []
+    assert not any(n == "pipeline.worker" for n, _ in events)
+    # coordinate event with skipped flag
+    coord = [d for n, d in events if n == "pipeline.coordinate"]
+    assert coord and coord[0].get("skipped") is True
+    assert any(n == "pipeline.memory_hint" for n, _ in events)
 
 
 def test_skip_disabled_workers():
@@ -127,6 +167,16 @@ def test_one_enabled_worker():
     assert state.worker_results[0].startswith("Worker 1 done:")
 
 
+def test_flex_preset_security_in_notes():
+    bus = EventBus()
+    agents = AgentManager(bus)
+    agents.set_flex_preset("researcher")
+    pipe = Pipeline(bus, agent_manager=agents)
+    state = pipe.start("Research topic Z")
+    assert state.stage == PipelineStage.done
+    assert "[researcher]" in state.flex_notes
+
+
 def test_answer_clarify_without_pending_raises():
     pipe = Pipeline(EventBus())
     pipe.start("plain request")
@@ -142,5 +192,6 @@ def test_pipeline_state_defaults():
     assert s.stage == PipelineStage.idle
     assert s.worker_results == []
     assert s.distilled_requirements == []
+    assert s.flex_notes == ""
     q = DistillQuestion(id="x", text="?")
     assert q.options == ["Yes", "No", "Whatever", "Later"]
