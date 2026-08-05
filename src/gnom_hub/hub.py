@@ -349,7 +349,7 @@ class Hub:
             {
                 "format": "gnom-hub-trace",
                 "format_version": 1,
-                "app_version": "3.4.0",
+                "app_version": "3.5.0",
                 "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
                 "count": len(events),
                 "trace": events,
@@ -449,6 +449,10 @@ class Hub:
             return self._telegram_usage(arg.strip())
         if cmd in ("ws", "workspace", "files"):
             return self._telegram_workspace(arg.strip())
+        if cmd in ("tools", "tool"):
+            return self._telegram_tools(arg.strip(), cmd=cmd)
+        if cmd in ("fetch", "web"):
+            return self._telegram_fetch(arg.strip())
         if cmd == "cancel":
             return self._telegram_cancel()
         if cmd == "last":
@@ -935,6 +939,79 @@ class Hub:
             "del <zone> <name> | clear | write <zone> <name> <text>"
         )
 
+    def _telegram_tools(self, arg: str, *, cmd: str = "tools") -> str:
+        """Telegram: /tools | /tool <name> [json-args]."""
+        # /tools alone → list; /tool name … → call
+        if cmd == "tools" and not arg.strip():
+            tools = self.tools.list_tools()
+            if not tools:
+                return "No tools registered."
+            lines = [f"Tools ({len(tools)}):"]
+            for tspec in tools[:20]:
+                lines.append(
+                    f"- {tspec.get('name')} [{tspec.get('plugin')}] "
+                    f"— {str(tspec.get('description') or '')[:80]}"
+                )
+            lines.append('Call: /tool <name> {"key":"val"}')
+            lines.append("Fetch: /fetch https://example.com")
+            return chr(10).join(lines)
+        # treat remaining as call
+        parts = arg.split(maxsplit=1)
+        if not parts or not parts[0]:
+            return "Usage: /tool <name> [json-args]  or  /tools"
+        name = parts[0].strip()
+        raw_args = parts[1].strip() if len(parts) > 1 else ""
+        arguments: dict = {}
+        if raw_args:
+            if raw_args.startswith("{"):
+                try:
+                    parsed = json.loads(raw_args)
+                except json.JSONDecodeError as exc:
+                    return f"Invalid JSON args: {exc}"
+                if not isinstance(parsed, dict):
+                    return "Args must be a JSON object"
+                arguments = parsed
+            else:
+                # convenience: single string arg → text/url/query
+                if name == "web_fetch":
+                    arguments = {"url": raw_args}
+                elif name == "memory_search":
+                    arguments = {"query": raw_args}
+                elif name == "pipeline_do":
+                    arguments = {"text": raw_args}
+                else:
+                    arguments = {"text": raw_args}
+        try:
+            result = self.tools.call(name, arguments)
+        except KeyError:
+            return f"Unknown tool: {name}. Try /tools"
+        except Exception as exc:  # noqa: BLE001
+            return f"Tool error: {exc}"
+        text = (
+            result
+            if isinstance(result, str)
+            else json.dumps(result, ensure_ascii=False, default=str)
+        )
+        if len(text) > 2800:
+            text = text[:2799] + "…"
+        return f"{name} →" + chr(10) + text
+
+    def _telegram_fetch(self, arg: str) -> str:
+        """Telegram: /fetch <url>."""
+        url = (arg or "").strip()
+        if not url:
+            return "Usage: /fetch https://example.com"
+        if not url.startswith(("http://", "https://")):
+            url = "https://" + url
+        try:
+            result = self.tools.call("web_fetch", {"url": url, "max_chars": 2000})
+        except Exception as exc:  # noqa: BLE001
+            return f"Fetch failed: {exc}"
+        text = result if isinstance(result, str) else str(result)
+        if len(text) > 2800:
+            text = text[:2799] + "…"
+        return f"fetch {url}" + chr(10) + text
+
     # ── agent persistence ───────────────────────────────────────────
 
     def _load_agent_state(self) -> None:
@@ -1125,7 +1202,7 @@ class Hub:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "3.4.0",
+            "version": "3.5.0",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -1593,7 +1670,7 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "3.4.0",
+            "version": "3.5.0",
             "providers": self.llm.providers_snapshot(),
             "backups": self.list_backups()[:8],
             "packs": self.list_session_packs()[:12],
@@ -2173,7 +2250,7 @@ class Hub:
         pack = {
             "format": "gnom-hub-session-pack",
             "format_version": 1,
-            "app_version": "3.4.0",
+            "app_version": "3.5.0",
             "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
             "label": pack_label,
             "notes": (str(notes).strip()[:200] if notes else ""),
@@ -2581,7 +2658,7 @@ class Hub:
                 "5) Esc = close fullscreen or cancel job. "
                 "6) Box 3: Copy/DL/Tab/WS/↑perm/fullscreen; toolbar Copy all + Diff + History. "
                 "7) Cost badge + Compact density; job timer while busy. "
-                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat/history/workspace/ui_prefs/notes; list filter). 10) History Re-Exec. 11) Telegram: /ws /jobs /usage /backup /pack /warm /cold /vec /trace."
+                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat/history/workspace/ui_prefs/notes; list filter). 10) History Re-Exec. 11) Telegram: /tools /fetch /ws /jobs /usage /backup /pack …"
             ),
             "example": "Type idea → Execute → Pack ↓ (USB) → History Re-Exec → Diff.",
             "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",

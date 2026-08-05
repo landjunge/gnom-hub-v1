@@ -99,6 +99,8 @@
     systemModal: document.getElementById("system-modal"),
     workspaceModal: document.getElementById("workspace-modal"),
     btnWorkspace: document.getElementById("btn-workspace"),
+    btnTools: document.getElementById("btn-tools"),
+    toolsModal: document.getElementById("tools-modal"),
     btnTrace: document.getElementById("btn-trace"),
     flexSelect: document.getElementById("flex-preset-select"),
     traceModal: document.getElementById("trace-modal"),
@@ -971,6 +973,148 @@
   function closeUsageModal() {
     if (els.usageModal) els.usageModal.hidden = true;
   }
+
+  function closeToolsModal() {
+    if (els.toolsModal) els.toolsModal.hidden = true;
+  }
+
+  async function openToolsModal() {
+    if (!els.toolsModal) return;
+    els.toolsModal.hidden = false;
+    await refreshToolsModal();
+  }
+
+  async function refreshToolsModal() {
+    const ul = document.getElementById("tools-list");
+    const sel = document.getElementById("tools-select");
+    const countEl = document.getElementById("tools-count");
+    try {
+      const data = await api("GET", "/api/plugins");
+      const tools = data.tools || [];
+      if (countEl) {
+        countEl.textContent =
+          "Tools: " +
+          tools.length +
+          " · plugins: " +
+          (data.plugins ? data.plugins.length : 0);
+      }
+      if (ul) {
+        ul.innerHTML = "";
+        if (!tools.length) {
+          const li = document.createElement("li");
+          li.className = "muted";
+          li.textContent = "(no tools)";
+          ul.appendChild(li);
+        } else {
+          tools.forEach(function (t) {
+            const li = document.createElement("li");
+            li.textContent =
+              (t.name || "?") +
+              " [" +
+              (t.plugin || "core") +
+              "] — " +
+              String(t.description || "").slice(0, 100);
+            li.title = JSON.stringify(t.input_schema || {}, null, 0);
+            li.style.cursor = "pointer";
+            li.addEventListener("click", function () {
+              if (sel) sel.value = t.name;
+            });
+            ul.appendChild(li);
+          });
+        }
+      }
+      if (sel) {
+        const prev = sel.value;
+        sel.innerHTML = "";
+        tools.forEach(function (t) {
+          const opt = document.createElement("option");
+          opt.value = t.name;
+          opt.textContent = t.name;
+          sel.appendChild(opt);
+        });
+        if (prev) sel.value = prev;
+      }
+    } catch (err) {
+      toast("Tools load failed: " + err.message, "error");
+    }
+  }
+
+  function parseToolArgs(name, raw) {
+    const text = String(raw || "").trim();
+    if (!text) return {};
+    if (text.charAt(0) === "{") {
+      return JSON.parse(text);
+    }
+    if (name === "web_fetch") return { url: text };
+    if (name === "memory_search") return { query: text };
+    if (name === "pipeline_do") return { text: text };
+    if (name === "hub_status") return {};
+    return { text: text };
+  }
+
+  async function runSelectedTool() {
+    const sel = document.getElementById("tools-select");
+    const argsEl = document.getElementById("tools-args");
+    const out = document.getElementById("tools-result");
+    const name = sel ? sel.value : "";
+    if (!name) {
+      toast("Select a tool", "info");
+      return;
+    }
+    let argumentsObj = {};
+    try {
+      argumentsObj = parseToolArgs(name, argsEl ? argsEl.value : "");
+    } catch (err) {
+      toast("Invalid args JSON: " + err.message, "error");
+      return;
+    }
+    try {
+      const data = await api("POST", "/api/tools/call", {
+        name: name,
+        arguments: argumentsObj,
+      });
+      const result = data.result;
+      const text =
+        typeof result === "string"
+          ? result
+          : JSON.stringify(result, null, 2);
+      if (out) out.textContent = text;
+      toast("Tool " + name + " ok", "ok");
+    } catch (err) {
+      if (out) out.textContent = "Error: " + err.message;
+      toast("Tool failed: " + err.message, "error");
+    }
+  }
+
+  async function runQuickFetch() {
+    const urlEl = document.getElementById("tools-fetch-url");
+    const out = document.getElementById("tools-result");
+    let url = urlEl ? String(urlEl.value || "").trim() : "";
+    if (!url) {
+      toast("Enter a URL", "info");
+      return;
+    }
+    if (url.indexOf("http://") !== 0 && url.indexOf("https://") !== 0) {
+      url = "https://" + url;
+    }
+    try {
+      const data = await api("POST", "/api/tools/call", {
+        name: "web_fetch",
+        arguments: { url: url, max_chars: 6000 },
+      });
+      if (out) {
+        out.textContent =
+          typeof data.result === "string"
+            ? data.result
+            : JSON.stringify(data.result, null, 2);
+      }
+      toast("Fetch ok", "ok");
+    } catch (err) {
+      if (out) out.textContent = "Fetch error: " + err.message;
+      toast("Fetch failed: " + err.message, "error");
+    }
+  }
+
 
   async function openUsageModal() {
     if (!els.usageModal) return;
@@ -3628,6 +3772,11 @@
     document.addEventListener("keydown", function (ev) {
       // Esc: close overlays first, else cancel running job
       if (ev.key === "Escape") {
+        if (els.toolsModal && !els.toolsModal.hidden) {
+          ev.preventDefault();
+          closeToolsModal();
+          return;
+        }
         if (els.usageModal && !els.usageModal.hidden) {
           ev.preventDefault();
           closeUsageModal();
@@ -3723,6 +3872,38 @@
     if (els.btnHelp) els.btnHelp.addEventListener("click", onHelp);
     if (els.btnSystem) els.btnSystem.addEventListener("click", openSystemModal);
     if (els.btnWorkspace) els.btnWorkspace.addEventListener("click", openWorkspaceModal);
+    if (els.btnTools) els.btnTools.addEventListener("click", openToolsModal);
+    const toolsClose = document.getElementById("tools-close");
+    if (toolsClose) toolsClose.addEventListener("click", closeToolsModal);
+    if (els.toolsModal) {
+      els.toolsModal.addEventListener("click", function (ev) {
+        if (ev.target === els.toolsModal) closeToolsModal();
+      });
+    }
+    const toolsRun = document.getElementById("tools-run");
+    if (toolsRun) toolsRun.addEventListener("click", runSelectedTool);
+    const toolsRefresh = document.getElementById("tools-refresh");
+    if (toolsRefresh) toolsRefresh.addEventListener("click", refreshToolsModal);
+    const toolsFetchBtn = document.getElementById("tools-fetch-btn");
+    if (toolsFetchBtn) toolsFetchBtn.addEventListener("click", runQuickFetch);
+    const toolsArgs = document.getElementById("tools-args");
+    if (toolsArgs) {
+      toolsArgs.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          runSelectedTool();
+        }
+      });
+    }
+    const toolsFetchUrl = document.getElementById("tools-fetch-url");
+    if (toolsFetchUrl) {
+      toolsFetchUrl.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          runQuickFetch();
+        }
+      });
+    }
     if (els.btnTrace) els.btnTrace.addEventListener("click", openTraceModal);
     const btnExport = document.getElementById("btn-export");
     if (btnExport) btnExport.addEventListener("click", exportLast);

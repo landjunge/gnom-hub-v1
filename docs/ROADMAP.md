@@ -241,7 +241,16 @@
 | Telegram /ws list\|cat\|promote\|del\|clear\|write | **done** |
 | Version / docs 3.4 | **done** |
 
-## Post-V3.4 (optional)
+## V3.5.0
+
+| Item | Status |
+|------|--------|
+| Tools modal (list/run/fetch) | **done** |
+| Telegram /tools /tool /fetch | **done** |
+| Plain-text arg convenience | **done** |
+| Version / docs 3.5 | **done** |
+
+## Post-V3.5 (optional)
 
 | Item | Notes |
 |------|--------|

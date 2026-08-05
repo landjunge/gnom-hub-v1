@@ -934,3 +934,34 @@ def test_workspace_export_and_telegram(client: TestClient):
         json={"text": "/ws cat temp note.txt"},
     )
     assert "hello workspace" in tg2.json()["reply"]
+
+
+def test_tools_call_and_telegram(client: TestClient):
+    pl = client.get("/api/plugins")
+    assert pl.status_code == 200
+    names = [t["name"] for t in pl.json().get("tools") or []]
+    assert "hub_status" in names
+    assert "web_fetch" in names
+    st = client.post("/api/tools/call", json={"name": "hub_status", "arguments": {}})
+    assert st.status_code == 200
+    assert st.json().get("ok") is True
+    assert st.json().get("result")
+    # memory_search empty store ok
+    ms = client.post(
+        "/api/tools/call",
+        json={"name": "memory_search", "arguments": {"query": "nothing", "limit": 3}},
+    )
+    assert ms.status_code == 200
+    tg = client.post("/api/telegram/inbound", json={"text": "/tools"})
+    assert tg.status_code == 200
+    assert "hub_status" in tg.json()["reply"] or "Tools" in tg.json()["reply"]
+    tg2 = client.post(
+        "/api/telegram/inbound",
+        json={"text": "/tool hub_status"},
+    )
+    assert tg2.status_code == 200
+    assert (
+        "hub_status" in tg2.json()["reply"].lower()
+        or "stage" in tg2.json()["reply"].lower()
+        or "agents" in tg2.json()["reply"].lower()
+    )

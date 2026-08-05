@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=76" />
+  <link rel="stylesheet" href="/static/app.css?v=77" />
 </head>
 <body>
   <div id="app">
@@ -29,6 +29,9 @@
         </label>
         <button type="button" id="btn-workspace" class="btn-workspace" data-tooltip-id="workspace" title="Temp / permanent workspace">
           Workspace
+        </button>
+        <button type="button" id="btn-tools" class="btn-workspace" title="List and call registered tools">
+          Tools
         </button>
         <button type="button" id="btn-trace" class="btn-trace" data-tooltip-id="trace" title="Light pipeline trace">
           Trace
@@ -353,6 +356,30 @@
     </div>
   </div>
 
+  <!-- Tools browser -->
+  <div id="tools-modal" class="modal" hidden>
+    <div class="modal-panel trace-panel">
+      <div class="modal-head">
+        <h2 class="modal-title">Tools</h2>
+        <button type="button" id="tools-close" class="modal-close" title="Close">×</button>
+      </div>
+      <p id="tools-count" class="system-line muted">Tools: 0</p>
+      <ul id="tools-list" class="ws-list" style="max-height:140px"></ul>
+      <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">
+        <select id="tools-select" class="tune-input" style="min-width:140px"></select>
+        <input id="tools-args" class="tune-input" type="text" placeholder='Args JSON or plain text' style="flex:1;min-width:160px" />
+        <button type="button" id="tools-run" class="btn-ws-sm">Run</button>
+        <button type="button" id="tools-refresh" class="btn-ws-sm">Refresh</button>
+      </div>
+      <p class="system-line muted">Quick fetch</p>
+      <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <input id="tools-fetch-url" class="tune-input" type="url" placeholder="https://…" style="flex:1;min-width:160px" />
+        <button type="button" id="tools-fetch-btn" class="btn-ws-sm">Fetch</button>
+      </div>
+      <pre id="tools-result" class="trace-body muted" style="max-height:200px">Select a tool and Run. web_fetch accepts a URL as plain text.</pre>
+    </div>
+  </div>
+
   <!-- Usage + jobs -->
   <div id="usage-modal" class="modal" hidden>
     <div class="modal-panel trace-panel">
@@ -390,6 +417,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=76"></script>
+  <script src="/static/app.js?v=77"></script>
 </body>
 </html>
