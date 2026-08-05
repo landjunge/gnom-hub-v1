@@ -460,7 +460,10 @@ def test_session_pack_roundtrip(client: TestClient):
     )
     assert imp.status_code == 200
     snap = imp.json()
-    assert "landing page" in (snap["pipeline"]["user_text"] or "").lower() or snap["pipeline"]["brainstorm_notes"]
+    assert (
+        "landing page" in (snap["pipeline"]["user_text"] or "").lower()
+        or snap["pipeline"]["brainstorm_notes"]
+    )
     warm = client.get("/api/memory").json()["warm_facts"]
     assert any("dark mode" in f.lower() for f in warm)
 
