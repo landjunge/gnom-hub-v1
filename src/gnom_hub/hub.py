@@ -233,7 +233,7 @@ class Hub:
             for req in data.get("requirements") or []:
                 text = str(req).strip()
                 low = text.lower()
-                if low.startswith("ziel:") or low.startswith("goal:"):
+                if low.startswith(("ziel:", "goal:")):
                     if 8 <= len(text) <= 160 and not _is_garbage_fact(text):
                         self.warm.add_fact(text)
                     break

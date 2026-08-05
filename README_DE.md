@@ -1,59 +1,63 @@
 # Gnom-Hub
 
-**Lokaler Multi-Agenten-Steuerungs-Hub** — erst denken, dann handeln.
+**Lokaler Multi-Agenten-Steuerungs-Hub** — erst brainstormen, ausführen nur wenn du es sagst.
 
 | | |
 |--|--|
 | **Version** | 3.7.1 |
-| **Stack** | Python ≥3.10 · FastAPI · Desktop-UI |
-| **Standard** | `http://127.0.0.1:8080/` |
-| **LLM** | DeepSeek (`deepseek-v4-flash`) · optional Ollama |
+| **Stack** | Python ≥3.10 · FastAPI · Desktop-SPA |
+| **UI** | `http://127.0.0.1:8080/` |
+| **LLM** | DeepSeek (`deepseek-v4-flash`, Thinking aus) · optional Ollama |
 | **Lizenz** | Private Nutzung |
 
-**English:** [README.md](README.md)
+**English:** [README.md](README.md)  
+**Tiefe Code-Analyse (für andere KIs):** [docs/CODE_ANALYSIS_FOR_AI.md](docs/CODE_ANALYSIS_FOR_AI.md)
 
-### Screenshot
+---
+
+### Screenshots
 
 ![Gnom-Hub Desktop-UI](docs/assets/gnom-hub-ui.png)
 
-*Agenten-Karten, drei Arbeitsboxen, Chat — lokal unter `http://127.0.0.1:8080/`*
+*Acht Agenten-Karten · drei Arbeitsboxen · Chat — lokal am Desktop*
 
 ![Tools · Computer use](docs/assets/gnom-hub-tools.png)
 
-*Tools-Modal mit Computer-Use (Inspect / Click / Type / Shell)*
+*Tools-Modal: Core-Tools + Computer-Use (Inspect / Click / Type / Shell)*
 
 ---
 
 ## Warum Gnom?
 
-Viele Agenten-Tools **starten sofort** (Chat → Tools → Chaos) oder stecken in schweren Frameworks. Gnom folgt einer klaren Produktregel:
+Viele Agenten-Produkte **starten Tools bei jeder Nachricht** oder verstecken Steuerung in schweren Frameworks. Gnom folgt einer klaren Produktregel:
 
 > **Frei brainstormen. Ausführen nur, wenn du Execute drückst.**
 
-Diese Trennung ist das Kernprodukt.
+Diese Trennung ist das Kernprodukt: Exploration bleibt günstig und umkehrbar; Worker (Kosten, Dateien, Nebenwirkungen) starten nur bewusst.
 
 ### Was besonders gut ist
 
 | Stärke | In der Praxis |
 |--------|----------------|
-| **Brainstorm → Execute** | Chat bleibt explorativ. Worker (Kosten, Dateien, Nebenwirkungen) starten erst mit **Execute**. |
-| **Sichtbarer Multi-Agenten-Tisch** | Acht feste Rollen als Karten + drei Arbeitsboxen — du siehst immer *wer* arbeitet und *wo* das Ergebnis landet. |
-| **Eine Seite, nicht vier** | Bei Landing/HTML: **ein** Worker, **eine** komplette HTML-Datei — kein Fragment-Salat. |
-| **Lokal & portabel** | Läuft auf deinem Rechner; Keys in `Key.txt`; USB-tauglich; kein Cloud-Zwang. |
-| **Sicherheit by default** | Maus/Tastatur/Shell nur **dry-run**, bis **God-Mode** bewusst an ist. |
-| **Operator-tauglich** | HOT/WARM/COLD-Memory, Workspace, Backups, Packs, Jobs, Light-Trace, Budget-Schutz — für echte Sessions. |
-| **Schlanke Architektur** | Ein fester Orchestrator. Presets konfigurieren das Team — sie erfinden **keine** zweite Agenten-Runtime. |
+| **Brainstorm → Execute** | Send ist nur Dialog. Worker laufen erst nach **Execute** (oder Send+Exec). |
+| **Sichtbarer Multi-Agenten-Tisch** | Acht feste Rollen als Karten + drei Boxen — du siehst wer arbeitet und wo das Ergebnis landet. |
+| **Eine HTML-Seite, nicht vier** | Bei Landing/Page: **ein** Worker, **eine** komplette Single-File-HTML. |
+| **Lokal & portabel** | Läuft auf deinem Rechner; Keys in `Key.txt`; USB-taugliches `data/`; kein Cloud-Zwang. |
+| **Sicherheit by default** | Maus / Tastatur / Shell nur **Dry-Run**, bis **God-Mode** bewusst an ist. |
+| **Operator-Ops** | HOT / WARM / COLD-Memory, Workspace, Backups, Session-Packs, Jobs, Soft-Cancel, Light-Trace, Budget-Schutz. |
+| **Schlanke Orchestrierung** | Eine feste Pipeline. Team-/Worker-**Presets** + `plan_mode` — keine zweite Workflow-Engine. |
+| **Sauberes Memory** | Dauerhafte Fakten nach WARM; HTML, Meta und Pipeline-Müll werden herausgefiltert. |
 
 ### Für wen
 
 - Builder mit **Desktop-Steuerfläche** für Multi-Agenten-Arbeit  
-- Leute, die **HTML/Seiten-Ergebnisse** direkt in der Box previewen wollen  
-- Operatoren, die **Kosten, Keys, Cancel und Überblick** brauchen — nicht nur „Vibe-Chat“  
+- Leute, die **HTML-Ergebnisse** direkt in der Box previewen wollen  
+- Operatoren, die **Kosten, Keys, Cancel und Überblick** brauchen — nicht nur Vibe-Chat  
 
 ### Nicht für
 
 - Vollautonome Agenten ohne menschliche Freigabe  
-- Drop-in-Ersatz für LangGraph/CrewAI-Research-Stacks  
+- Drop-in-Ersatz für LangGraph / CrewAI-Research-Stacks  
 - Stille PC-Steuerung bei jeder Chat-Nachricht  
 
 ---
@@ -63,69 +67,139 @@ Diese Trennung ist das Kernprodukt.
 ```bash
 cd gnom-hub-v1
 ./scripts/install.sh && source .venv/bin/activate
-# Keys in Key.txt  →  docs/KEYS_AND_MODELS.md
+# Keys → Key.txt  (siehe docs/KEYS_AND_MODELS.md)
 ./scripts/start.sh
 # öffnen: http://127.0.0.1:8080/
 ```
 
-### Chat
+`Key.txt.example` → `Key.txt` und mindestens setzen:
+
+- `DEEPSEEK_API_KEY` — System-Agenten (Brainstorm, Memory, Flex, Coordinator)  
+- `WORKER_API_KEY` — Worker (kann derselbe Key sein)  
+- `DEEPSEEK_MODEL=deepseek-v4-flash`  
+
+Nie `Key.txt` oder `.env` committen.
+
+Ohne API-Keys läuft die Pipeline mit **Stubs** (Tests / Smoke).
+
+---
+
+## Desk bedienen
+
+### Chat-Steuerung
 
 | Steuerung | Aktion |
 |-----------|--------|
-| **Send** | Brainstorm-Turn → Box 2 |
-| **Execute** | Distill → Flex → Coordinator → Worker → Box 3 |
-| **Send+Exec** | beides nacheinander |
-| **Mic** | Sprache → Text |
-| **Cancel** | laufenden Job abbrechen |
+| **Send** | Ein Brainstorm-Turn → Box 2 |
+| **Execute** | Distill → Flex → Coordinator-Plan → Worker → Box 3 + Memory |
+| **Send+Exec** | Beides nacheinander |
+| **Mic** | Browser Speech-to-Text |
+| **Cancel** | Laufenden Job soft abbrechen |
 
 ### Boxen
 
 | Box | Rolle |
 |-----|--------|
-| **1 · Arounder** | Hilfe + Clarify (Yes / No / Whatever / Later) |
+| **1 · Arounder** | Hilfe / Tooltips · Clarify (Yes / No / Whatever / Later) |
 | **2 · Brainstorm** | Mehrturn-Dialog |
-| **3 · Workers** | Ergebnis (HTML-Preview oder Text) |
+| **3 · Workers** | Ergebnis — HTML-**Preview** / Source / Copy |
+
+### Agenten (festes Roster)
+
+| Agent | Rolle | Default |
+|-------|------|---------|
+| Brainstorm | Freier Mehrturn-Partner | an |
+| Memory | Recall + dauerhafte Fakten | an (gesperrt) |
+| Flex | Security / neutral / researcher | an |
+| Coordinator | Requirements destillieren · Worker planen | an |
+| Worker 1–2 | Lieferobjekte erzeugen | an |
+| Worker 3–4 | Extra-Kapazität | **aus** |
 
 ### Computer-Use
 
-Desktop-Steuerung unter **Tools → Computer use** (Inspect · Click · Type · Shell).
+**Tools → Computer use** — Inspect · Click · Type · Shell.
 
 | Modus | Verhalten |
 |-------|-----------|
-| God **aus** | nur Dry-Run (sicher) |
+| God **aus** | nur Dry-Run (sicherer Default) |
 | God **an** | echte Maus / Tastatur / Allowlist-Shell |
 
-Optional: `pip install -e ".[computer]"` — siehe [`docs/TOOLS_PORTFOLIO.md`](docs/TOOLS_PORTFOLIO.md).
+```bash
+pip install -e ".[computer]"   # optionale Extras
+```
+
+Details: [docs/TOOLS_PORTFOLIO.md](docs/TOOLS_PORTFOLIO.md).
 
 ---
 
-## Architektur (kurz)
+## Architektur
 
 ```
-UI  ──►  Hub (FastAPI)  ──►  Orchestrator
-                │                 │
-                ├─ Agenten (8)    ├─ Brainstorm
-                ├─ LLM-Manager    ├─ Distill / Flex
-                ├─ Memory HOT/WARM/COLD
-                ├─ Workspace
-                └─ Computer-Use (+ God-Mode)
+Browser-SPA (app.js)
+       │  REST + Job-Polling
+       ▼
+FastAPI  ──►  Hub (Composition Root)
+                 ├── EventBus (sync)
+                 ├── Orchestrator (Stages)
+                 ├── 8 Rollen-Agenten
+                 ├── LLM-Manager (DeepSeek / Ollama)
+                 ├── Memory (HOT / WARM / COLD / Vector)
+                 ├── Workspace
+                 └── Computer-Use-Kit (+ God-Mode)
 ```
 
-**Agenten:** brainstorm · memory · flex · coordinator · worker1–4  
+### Pipeline-Stages
 
-**Stages:** memory → brainstorm → distill → [clarify] → flex → coordinate → work → done  
+```
+memory → brainstorm → distill → [clarify] → flex → coordinate → work → done
+```
+
+- **Brainstorm** (Send): nur Dialog; keine Worker.  
+- **Execute**: echte Pipeline; optional Clarify in Box 1.  
+- One-Shot-Pfad für Tests / Telegram (`/do`).  
+
+### Memory-Schichten
+
+| Schicht | Lebensdauer | Zweck |
+|---------|-------------|--------|
+| **HOT** | Session | Messages, Session-Fakten, Mermaid-Canvas |
+| **WARM** | Dauerhaft | Langzeit-Fakten (überleben HOT-Clear / Clean) |
+| **COLD** | Archiv | Gespeicherte Sessions |
+| **Vector** | Dauerhaft | Leichter lexical Recall (Bag-of-Words-Cosine) |
+| **Workspace** | Artefakte | Temp / permanent nach Execute |
+
+Clean / Reset leert HOT + Temp-Workspace + Pipeline; **WARM bleibt**, außer explizit geleert.
+
+### Plan-Modi (Presets)
+
+Über Team-Presets — keine zweite Orchestrierungs-Runtime:
+
+| Modus | Verhalten |
+|-------|-----------|
+| `default` | Coordinator plant Tasks für aktivierte Worker |
+| `full_page_html` | Genau **ein** Worker baut eine komplette HTML-Seite |
+| `plan_qa` | Deterministische QA-Task-Templates |
+| `diagnosis` | Deterministische Diagnose-Templates |
+
+Siehe [docs/WORKFLOWS_AND_PRESETS.md](docs/WORKFLOWS_AND_PRESETS.md).
 
 ---
 
 ## Qualität & Mitarbeit
 
 ```bash
+ruff check .
+ruff format .
+ruff format --check .
+pytest tests/ -q --tb=short
+
 ./scripts/quality_check.sh
-python scripts/basic_tests.py
-python scripts/user_landing_e2e.py
+python scripts/basic_tests.py          # braucht Server :8080
+python scripts/user_landing_e2e.py     # Playwright + Live-Key
+python -m gnom_hub.main --smoke        # Brainstorm → Execute ohne UI
 ```
 
-Coding-Agenten: [`AGENTS.md`](AGENTS.md) — ruff + pytest grün vor jedem Push; keine Secrets committen.
+Coding-Agenten: [AGENTS.md](AGENTS.md) — ruff + pytest grün vor jedem Push; nach jedem fertigen Schritt committen und pushen; keine Secrets committen.
 
 ---
 
@@ -135,11 +209,12 @@ Coding-Agenten: [`AGENTS.md`](AGENTS.md) — ruff + pytest grün vor jedem Push;
 |----------|--------|
 | [README.md](README.md) | English README |
 | [AGENTS.md](AGENTS.md) | Coding-Regeln / Push-Gate |
+| [docs/CODE_ANALYSIS_FOR_AI.md](docs/CODE_ANALYSIS_FOR_AI.md) | Volle Architektur für externe KIs |
 | [docs/KEYS_AND_MODELS.md](docs/KEYS_AND_MODELS.md) | Keys & Modell-IDs |
 | [docs/BASIC_USER_TEST.md](docs/BASIC_USER_TEST.md) | Canonical User-E2E |
 | [docs/STABILITY.md](docs/STABILITY.md) | Stabilitäts-Checkliste |
 | [docs/TOOLS_PORTFOLIO.md](docs/TOOLS_PORTFOLIO.md) | Computer-Use-Bibliotheken |
-| [docs/WORKFLOWS_AND_PRESETS.md](docs/WORKFLOWS_AND_PRESETS.md) | Team-Presets & plan_mode |
+| [docs/WORKFLOWS_AND_PRESETS.md](docs/WORKFLOWS_AND_PRESETS.md) | Presets & plan_mode |
 | [docs/V1_SCOPE.md](docs/V1_SCOPE.md) | Produkt-Scope |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Release-Historie |
 

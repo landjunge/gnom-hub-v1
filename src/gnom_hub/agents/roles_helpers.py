@@ -106,7 +106,7 @@ def _is_garbage_fact(text: str) -> bool:
         "no personal preferences or long-term commitments stated yet.",
         "no personal preferences or long-term commitments stated yet",
     )
-    if low in meta_exact or low.startswith("(no ") or low.startswith("no durable"):
+    if low in meta_exact or low.startswith(("(no ", "no durable")):
         return True
     if "nothing to store" in low or "no relevant memory" in low:
         return True
@@ -176,10 +176,7 @@ def _is_garbage_fact(text: str) -> bool:
         return True
 
     # broken markdown fragments like "Today** – …"
-    if re.search(r"\w\*\*\s*[–—-]", t):
-        return True
-
-    return False
+    return bool(re.search(r"\w\*\*\s*[–—-]", t))
 
 
 def _lines(raw: str) -> list[str]:
