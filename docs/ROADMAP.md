@@ -211,7 +211,17 @@
 | Telegram /trace [n] \| clear | **done** |
 | Version / docs 3.1 | **done** |
 
-## Post-V3.1 (optional)
+## V3.2.0
+
+| Item | Status |
+|------|--------|
+| restore_backup (HOT/WARM/agents + optional checkpoint) | **done** |
+| POST /api/backups/{name}/restore | **done** |
+| System list Rest button | **done** |
+| Telegram /backup list\|save\|load\|del | **done** |
+| Version / docs 3.2 | **done** |
+
+## Post-V3.2 (optional)
 
 | Item | Notes |
 |------|--------|

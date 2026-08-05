@@ -806,8 +806,16 @@
           } else {
             items.slice(0, 8).forEach(function (b) {
               const li = document.createElement("li");
+              li.style.display = "flex";
+              li.style.gap = "6px";
+              li.style.alignItems = "center";
               const nameSpan = document.createElement("span");
               nameSpan.className = "ws-name";
+              nameSpan.style.flex = "1";
+              nameSpan.style.minWidth = "0";
+              nameSpan.style.overflow = "hidden";
+              nameSpan.style.textOverflow = "ellipsis";
+              nameSpan.style.whiteSpace = "nowrap";
               nameSpan.textContent =
                 (b.name || "") +
                 " · " +
@@ -816,6 +824,15 @@
               nameSpan.addEventListener("click", function () {
                 window.location.href =
                   "/api/backups/" + encodeURIComponent(b.name) + "/download";
+              });
+              const rst = document.createElement("button");
+              rst.type = "button";
+              rst.className = "btn-ws-sm";
+              rst.textContent = "Rest";
+              rst.title = "Restore HOT/WARM/agents from this backup";
+              rst.addEventListener("click", function (ev) {
+                ev.stopPropagation();
+                restoreBackupByName(b.name);
               });
               const del = document.createElement("button");
               del.type = "button";
@@ -827,6 +844,7 @@
                 deleteBackupByName(b.name);
               });
               li.appendChild(nameSpan);
+              li.appendChild(rst);
               li.appendChild(del);
               ul.appendChild(li);
             });
@@ -2503,6 +2521,38 @@
       els.tipExample.textContent =
         "Keyboard: Enter send · Ctrl/⌘+Enter execute · Ctrl/⌘+S save · Esc cancel/close FS";
       toast("Help offline: " + err.message, "error");
+    }
+  }
+
+  async function restoreBackupByName(name) {
+    if (!name) return;
+    if (
+      !confirm(
+        'Restore backup "' +
+          name +
+          '"? Current HOT is archived to COLD if non-empty. HOT/WARM/agents will be replaced.'
+      )
+    ) {
+      return;
+    }
+    try {
+      const snap = await api(
+        "POST",
+        "/api/backups/" + encodeURIComponent(name) + "/restore"
+      );
+      applySnapshot(snap);
+      appendChat(
+        "system",
+        "Restored backup: " + (snap.restored_backup || name)
+      );
+      toast(
+        "Backup restored" +
+          (snap.checkpoint_loaded ? " (+ checkpoint)" : ""),
+        "ok"
+      );
+      openSystemModal();
+    } catch (err) {
+      toast("Restore backup failed: " + err.message, "error");
     }
   }
 

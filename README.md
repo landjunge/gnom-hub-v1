@@ -1,22 +1,23 @@
-# Gnom-Hub v3.1.0
+# Gnom-Hub v3.2.0
 
 Local multi-agent control hub: **brainstorm first**, then **Execute** workers.
 
-Desktop · USB packs · COLD · Vector · **Trace export** · Telegram bs/exec/pack/warm/cold/vec/**trace**/cancel.
+Desktop · USB packs · COLD · Vector · Trace · **Backup restore** · Telegram full remote control.
 
 > **Convention:** every meaningful change is **pushed to `main`** and this **README is updated** in the same commit.
 
 ---
 
-## Trace
+## Backup restore
 
 ```
-Header Trace button  → Refresh · ↓ JSON · ↓ MD · Clear
-Telegram /trace [n]  → last n events
-Telegram /trace clear
-API GET /api/trace/export?fmt=json|md
-API POST /api/trace/clear
+System → Backup zip     → creates data/backups/gnom-hub-backup-*.zip
+List item → Rest        → restore HOT + WARM + agents (+ checkpoint if present)
+Telegram /backup save | list | load <n|name> | del <n|name>
+API POST /api/backups/{name}/restore
 ```
+
+Current non-empty HOT is archived to COLD before restore (safety).
 
 ---
 
@@ -29,7 +30,7 @@ cd gnom-hub-v1
 ./scripts/quality_check.sh
 ```
 
-**http://127.0.0.1:8080/?v=73**
+**http://127.0.0.1:8080/?v=74**
 
 ---
 
@@ -37,9 +38,9 @@ cd gnom-hub-v1
 
 | Tag | Highlights |
 |-----|------------|
-| 2.9 | COLD restore/delete |
 | 3.0 | Vector browser + /vec |
-| **3.1** | Trace download (JSON/MD), clear, /trace |
+| 3.1 | Trace export + /trace |
+| **3.2** | Backup restore (UI/API/Telegram) |
 
 ---
 

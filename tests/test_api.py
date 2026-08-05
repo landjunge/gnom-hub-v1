@@ -852,3 +852,27 @@ def test_trace_export_and_clear(client: TestClient):
     assert tg.status_code == 200
     # empty or message
     assert "trace" in tg.json()["reply"].lower() or "empty" in tg.json()["reply"].lower()
+
+
+def test_backup_restore(client: TestClient):
+    client.post("/api/chat?sync=1", json={"text": "backup seed fact"})
+    client.post("/api/memory/warm", json={"text": "durable backup warm"})
+    b = client.post("/api/backup")
+    assert b.status_code == 200
+    path = b.json()["path"]
+    assert path.endswith(".zip")
+    name = path.rsplit("/", 1)[-1]
+    # mutate state
+    client.post("/api/clean")
+    # restore
+    rst = client.post(f"/api/backups/{name}/restore")
+    assert rst.status_code == 200
+    assert rst.json().get("ok") is True
+    assert rst.json().get("restored_backup") == name
+    mem = client.get("/api/memory").json()
+    # warm should be back
+    assert any("durable backup" in f for f in (mem.get("warm_facts") or []))
+    # telegram list
+    tg = client.post("/api/telegram/inbound", json={"text": "/backup list"})
+    assert tg.status_code == 200
+    assert "1." in tg.json()["reply"] or "backup" in tg.json()["reply"].lower()

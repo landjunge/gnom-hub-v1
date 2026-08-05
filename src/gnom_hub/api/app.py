@@ -135,7 +135,7 @@ class ShellBody(BaseModel):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Gnom-Hub v1", version="3.1.0")
+    app = FastAPI(title="Gnom-Hub v1", version="3.2.0")
 
     @app.get("/api/health")
     def health() -> dict[str, Any]:
@@ -143,7 +143,7 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "service": "gnom-hub-v1",
-            "version": "3.1.0",
+            "version": "3.2.0",
             "telegram": hub.telegram.enabled,
             "telegram_running": hub.telegram.running,
             "llm": {
@@ -424,6 +424,24 @@ def create_app() -> FastAPI:
     def backups_delete(name: str) -> dict[str, Any]:
         try:
             return get_hub().delete_backup(name)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+
+    @app.post("/api/backups/{name}/restore")
+    def backups_restore(
+        name: str,
+        archive_current: bool = Query(True),
+        load_checkpoint: bool = Query(True),
+    ) -> dict[str, Any]:
+        """Restore HOT/WARM/agents from a backup zip."""
+        try:
+            return get_hub().restore_backup(
+                name,
+                archive_current=archive_current,
+                load_checkpoint=load_checkpoint,
+            )
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
         except FileNotFoundError as e:

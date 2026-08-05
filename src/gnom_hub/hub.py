@@ -349,7 +349,7 @@ class Hub:
             {
                 "format": "gnom-hub-trace",
                 "format_version": 1,
-                "app_version": "3.1.0",
+                "app_version": "3.2.0",
                 "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
                 "count": len(events),
                 "trace": events,
@@ -441,6 +441,8 @@ class Hub:
             return self._telegram_vec(arg.strip())
         if cmd == "trace":
             return self._telegram_trace(arg.strip())
+        if cmd == "backup":
+            return self._telegram_backup(arg.strip())
         if cmd == "cancel":
             return self._telegram_cancel()
         if cmd == "last":
@@ -726,6 +728,70 @@ class Hub:
             lines.append(f"{e.get('ts') or ''} {e.get('event') or ''}{extra}")
         return chr(10).join(lines)
 
+    def _telegram_backup(self, arg: str) -> str:
+        """Telegram: /backup list | save | load <n|name> | del <n|name>."""
+        parts = arg.split(maxsplit=1)
+        sub = (parts[0] if parts else "list").lower()
+        rest = parts[1].strip() if len(parts) > 1 else ""
+        if sub in ("", "list", "ls"):
+            rows = self.list_backups()[:10]
+            if not rows:
+                return "No backups. /backup save"
+            lines = ["Backups:"]
+            for i, b in enumerate(rows, start=1):
+                kb = (b.get("bytes") or 0) // 1024
+                lines.append(f"{i}. {b.get('name')} · {kb} KB")
+            lines.append("Load: /backup load <n|name>")
+            return chr(10).join(lines)
+        if sub in ("save", "create", "new"):
+            try:
+                data = self.create_backup()
+            except Exception as exc:  # noqa: BLE001
+                return f"Backup failed: {exc}"
+            return f"Backup saved: {Path(data.get('path') or '').name} ({data.get('bytes')} B)"
+        if sub in ("load", "restore", "open"):
+            if not rest:
+                return "Usage: /backup load <n|name>"
+            target = self._resolve_backup_name(rest)
+            if not target:
+                return f"Backup not found: {rest}"
+            try:
+                snap = self.restore_backup(target, archive_current=True)
+            except (FileNotFoundError, ValueError) as exc:
+                return f"Restore failed: {exc}"
+            return (
+                f"Restored {snap.get('restored_backup')}"
+                + chr(10)
+                + f"checkpoint={snap.get('checkpoint_loaded')}"
+            )
+        if sub in ("del", "rm", "delete"):
+            if not rest:
+                return "Usage: /backup del <n|name>"
+            target = self._resolve_backup_name(rest)
+            if not target:
+                return f"Backup not found: {rest}"
+            try:
+                self.delete_backup(target)
+            except (FileNotFoundError, ValueError) as exc:
+                return f"Delete failed: {exc}"
+            return f"Deleted backup {target}"
+        return "Usage: /backup list | save | load <n|name> | del <n|name>"
+
+    def _resolve_backup_name(self, token: str) -> str | None:
+        rows = self.list_backups()
+        if not rows:
+            return None
+        if token.isdigit():
+            idx = int(token)
+            if 1 <= idx <= len(rows):
+                return str(rows[idx - 1].get("name") or "") or None
+        low = token.lower()
+        for b in rows:
+            name = str(b.get("name") or "")
+            if name.lower() == low or low in name.lower():
+                return name
+        return None
+
     # ── agent persistence ───────────────────────────────────────────
 
     def _load_agent_state(self) -> None:
@@ -916,7 +982,7 @@ class Hub:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "3.1.0",
+            "version": "3.2.0",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -1336,7 +1402,7 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "3.1.0",
+            "version": "3.2.0",
             "providers": self.llm.providers_snapshot(),
             "backups": self.list_backups()[:8],
             "packs": self.list_session_packs()[:12],
@@ -1555,6 +1621,90 @@ class Hub:
         path.unlink()
         self._append_trace("backup.delete", {"name": path.name})
         return {"ok": True, "deleted": path.name, "backups": self.list_backups()}
+
+    def restore_backup(
+        self,
+        name: str,
+        *,
+        archive_current: bool = True,
+        load_checkpoint: bool = True,
+    ) -> dict[str, Any]:
+        """Extract backup zip into data/hot + data/warm and reload memory/agents."""
+        import shutil
+        import tempfile
+        import zipfile
+
+        path = self.backup_path(name)
+        archived = None
+        if archive_current:
+            sess = self.hot.session or {}
+            if sess.get("messages") or sess.get("facts"):
+                archived = self.archive_cold(label="pre-backup-restore").get("archive")
+
+        data_root = (self.root / "data").resolve()
+        with tempfile.TemporaryDirectory(prefix="gnom-backup-") as td:
+            tdp = Path(td)
+            with zipfile.ZipFile(path, "r") as zf:
+                # zip-slip safe extract
+                for info in zf.infolist():
+                    if info.is_dir():
+                        continue
+                    # only hot/ and warm/ members
+                    name_in = info.filename.replace(chr(92), "/").lstrip("/")
+                    if ".." in name_in.split("/"):
+                        continue
+                    top = name_in.split("/", 1)[0]
+                    if top not in ("hot", "warm"):
+                        continue
+                    dest = (tdp / name_in).resolve()
+                    if not str(dest).startswith(str(tdp.resolve())):
+                        continue
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    with zf.open(info) as src, dest.open("wb") as out:
+                        shutil.copyfileobj(src, out)
+
+            for folder in ("hot", "warm"):
+                src_dir = tdp / folder
+                if not src_dir.is_dir():
+                    continue
+                dest_dir = data_root / folder
+                dest_dir.mkdir(parents=True, exist_ok=True)
+                for f in src_dir.rglob("*"):
+                    if not f.is_file():
+                        continue
+                    rel = f.relative_to(src_dir)
+                    target = (dest_dir / rel).resolve()
+                    if not str(target).startswith(str(dest_dir.resolve())):
+                        continue
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(f, target)
+
+        self.hot.load()
+        self.warm.load()
+        self._load_agent_state()
+        ckpt_loaded = False
+        if load_checkpoint and self._checkpoint_path.is_file():
+            try:
+                self.load_checkpoint()
+                ckpt_loaded = True
+            except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
+                ckpt_loaded = False
+
+        self._append_trace(
+            "backup.restore",
+            {
+                "name": path.name,
+                "checkpoint": ckpt_loaded,
+                "archived_previous": bool(archived),
+            },
+        )
+        snap = self.snapshot()
+        snap["ok"] = True
+        snap["restored_backup"] = path.name
+        snap["checkpoint_loaded"] = ckpt_loaded
+        if archived:
+            snap["archived_previous"] = archived
+        return snap
 
     def delete_worker_preset(self, name: str) -> dict[str, Any]:
         presets = [p for p in self.list_worker_presets() if p.get("name") != name]
@@ -1832,7 +1982,7 @@ class Hub:
         pack = {
             "format": "gnom-hub-session-pack",
             "format_version": 1,
-            "app_version": "3.1.0",
+            "app_version": "3.2.0",
             "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
             "label": pack_label,
             "notes": (str(notes).strip()[:200] if notes else ""),
@@ -2240,7 +2390,7 @@ class Hub:
                 "5) Esc = close fullscreen or cancel job. "
                 "6) Box 3: Copy/DL/Tab/WS/↑perm/fullscreen; toolbar Copy all + Diff + History. "
                 "7) Cost badge + Compact density; job timer while busy. "
-                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat/history/workspace/ui_prefs/notes; list filter). 10) History Re-Exec. 11) Telegram: /bs /exec /pack /warm /cold /vec /trace /cancel."
+                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat/history/workspace/ui_prefs/notes; list filter). 10) History Re-Exec. 11) Telegram: /bs /exec /pack /warm /cold /vec /trace /backup /cancel."
             ),
             "example": "Type idea → Execute → Pack ↓ (USB) → History Re-Exec → Diff.",
             "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",
