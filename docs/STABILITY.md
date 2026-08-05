@@ -67,6 +67,11 @@ Reference: [`KEYS_AND_MODELS.md`](KEYS_AND_MODELS.md)
 
 ---
 
+## Presets (frozen)
+
+Team + Worker presets and `plan_mode` are enough. Do **not** add a workflow subsystem without a proven live pain.
+Doc: [`WORKFLOWS_AND_PRESETS.md`](WORKFLOWS_AND_PRESETS.md).
+
 ## Known stability fixes (do not regress)
 
 | Issue | Fix |

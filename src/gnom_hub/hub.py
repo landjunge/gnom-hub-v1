@@ -1436,6 +1436,7 @@ class Hub:
         self.memory.set_query_hint(text)
         with self._pipeline_lock_obj():
             if full:
+                self.pipeline.plan_mode = getattr(self, "plan_mode", "default") or "default"
                 self.pipeline.start(text)
             else:
                 self.pipeline.brainstorm_turn(text)
@@ -1450,6 +1451,8 @@ class Hub:
         """Run distill → flex → workers from accumulated brainstorm."""
         self.last_error = None
         with self._pipeline_lock_obj():
+            # Single source: hub.plan_mode → pipeline before coordinate
+            self.pipeline.plan_mode = getattr(self, "plan_mode", "default") or "default"
             self.pipeline.execute()
             if self.pipeline.state.error:
                 self.last_error = self.pipeline.state.error
@@ -1732,6 +1735,7 @@ class Hub:
 
         def _runner() -> None:
             if full:
+                self.pipeline.plan_mode = getattr(self, "plan_mode", "default") or "default"
                 self.pipeline.start(text)
             else:
                 self.pipeline.brainstorm_turn(text)
@@ -1740,7 +1744,12 @@ class Hub:
 
     def execute_async(self) -> dict[str, Any]:
         """Async execute after brainstorm."""
-        return self._start_job("execute", self.pipeline.execute)
+
+        def _runner() -> None:
+            self.pipeline.plan_mode = getattr(self, "plan_mode", "default") or "default"
+            self.pipeline.execute()
+
+        return self._start_job("execute", _runner)
 
     def rerun_worker_sync(self, worker_id: str) -> dict[str, Any]:
         """Re-run one worker from last task."""

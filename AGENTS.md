@@ -31,6 +31,8 @@
 Chat → Brainstorm → Distillation → [Execute] → Coordinator → Worker(s) → Box 3 + Memory
 ```
 
+- **Presets freeze:** Team/Worker presets + `plan_mode` only. No workflow engine, skill files, or second orchestrator. See [`docs/WORKFLOWS_AND_PRESETS.md`](docs/WORKFLOWS_AND_PRESETS.md).
+
 ## Basic user test (remember)
 
 Canonical real-user regression (keyboard chat → landing page):

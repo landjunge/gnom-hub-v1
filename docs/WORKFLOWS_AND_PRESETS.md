@@ -1,116 +1,59 @@
-# Workflows & Presets (Gnom-Hub)
+# Presets & plan_mode (frozen design)
 
-Stand: 2026-08-05 · Design from multi-agent research + current codebase.
+**Decision (2026-08-05):** No workflow engine. No skill files. No graph.
+Config snapshots + one plan strategy flag. Pipeline stays fixed.
 
-## Layers (do not merge)
+## Mental model (3 things only)
 
-| Layer | Question | Storage | Status |
-|-------|----------|---------|--------|
-| **Agent preset** | How does one agent think? | Flex enum; `worker_presets.json` | **done** |
-| **Team preset** | Who is on + which agent presets? | `team_presets.json` | **P0** |
-| **Workflow** | What recipe (plan_mode, seed, team)? | `config/workflows/` or hot JSON | **P1** |
-| **Session pack** | Snapshot of one run | packs/ | **done** (not a recipe) |
-| **Pipeline** | Fixed stages BS→…→Workers | code | **done** — never replace with a second engine |
+| # | Name | Question | Where |
+|---|------|----------|--------|
+| 1 | **Agent setup** | Who is on? How does each think? | Toggles, Flex preset, Worker presets, Team snapshot |
+| 2 | **plan_mode** | How does Coordinator assign work? | `hub.plan_mode` → Coordinator.plan |
+| 3 | **Pipeline** | What stages run? | Orchestrator (code) — **not configurable** |
 
-**Rule:** Workflow *parameterizes* the existing Orchestrator; it does not become LangGraph/CrewAI.
+**Session pack** = save/load a run. Not a recipe. Do not mix with presets.
 
-## Plan modes (whitelist)
+## What we ship
 
-| `plan_mode` | Coordinator behavior |
-|-------------|----------------------|
-| `default` | Normal assign / HTML auto if user text asks for a page |
-| `full_page_html` | Deterministic full single-file page plan (no section split) |
-| `plan_qa` | Checklist / review tasks, not HTML fragments |
-| `diagnosis` | Prefer diagnosis-style distill (existing brainstorm modes stay separate) |
+### Worker preset
+One worker’s tuning (prompt, temp, max_tokens, model).  
+API: `/api/worker-presets*` · System UI.
 
-No free-form graphs. Extend only via new enum values + code paths.
+### Team preset
+Named snapshot: `enabled` + `flex` + `plan_mode` + optional worker `tunes`.  
+API: `/api/team-presets*` · System UI Save / Apply / Delete.  
+File: `data/hot/team_presets.json`.
 
-## Team preset schema
+### plan_mode (whitelist)
 
-```json
-{
-  "name": "landing-team",
-  "flex": "security",
-  "plan_mode": "full_page_html",
-  "enabled": {
-    "brainstorm": true,
-    "memory": true,
-    "flex": true,
-    "coordinator": true,
-    "worker1": true,
-    "worker2": true,
-    "worker3": false,
-    "worker4": false
-  },
-  "tunes": {
-    "worker1": {
-      "system_prompt": "",
-      "model": null,
-      "temperature": 0.45,
-      "max_tokens": 3200
-    }
-  }
-}
-```
+| Value | Effect |
+|-------|--------|
+| `default` | Normal assign; auto full-page HTML if user text looks like a page |
+| `full_page_html` | Always full single-file page plan (no section split) |
+| `plan_qa` | Checklist / QA-style tasks |
+| `diagnosis` | Root-cause / evidence-style tasks (Coordinator only; not Brainstorm) |
 
-- Memory stays enabled even if listed false (locked agent).
-- `tunes` optional; missing slots leave current tuning.
-- Keys/model system defaults from Key.txt are not wiped by empty tune fields.
+API: `POST /api/plan-mode` · System dropdown. Also stored inside team presets.
 
-## Workflow schema (P1, not required for Team)
+## Explicitly out of scope (do not build)
 
-```yaml
----
-name: landing-page
-description: Single-file HTML landing with previews
-team: landing-team
-plan_mode: full_page_html
-seed: "Build a modern landing page … full HTML with inline CSS."
----
-1. Brainstorm
-2. Execute
-3. Check Box 3 + export
-```
-
-Aligned with Agent Skills progressive disclosure: short description in UI; body optional.
-
-## API
-
-| Method | Path | Notes |
-|--------|------|-------|
-| GET | `/api/team-presets` | list |
-| POST | `/api/team-presets` | save current team as name |
-| POST | `/api/team-presets/apply` | apply by name |
-| POST | `/api/team-presets/delete` | delete by name |
-
-Worker presets stay at `/api/worker-presets*`.
-
-## UI
-
-- System panel: Team presets (select / Apply / Save current / Delete)
-- After apply: refresh agent cards + toast; chat system line with name + plan_mode
-
-## Status
-
-| Item | Status |
-|------|--------|
-| Team preset CRUD + apply | **done** (`/api/team-presets*`, System UI) |
-| `plan_mode` on hub + coordinator | **done** |
-| Workflow files + seed prompt | later (P1) — only if needed |
-| SKILL.md export | later — not required |
-
-Keep it thin: no second orchestrator, no graph engine.
-
-## What we refuse
-
-- Second orchestration runtime  
-- Visual n8n-style editor in v1.x  
+- Workflow JSON/YAML recipes with seed prompts  
+- SKILL.md / Agent Skills marketplace  
+- Second orchestrator (LangGraph, CrewAI Flows, …)  
+- Visual workflow editor  
 - Peer handoffs between workers  
-- Unlimited dynamic agent spawn  
+- Dynamic agent spawn beyond the fixed 8  
 
-## Research anchors (why)
+If a future need appears: extend **plan_mode** enum + one code branch, or a thicker Team snapshot — not a new subsystem.
 
-- Supervisor/orchestrator-worker fits fixed 8 agents; P2P/swarm do not.  
-- Multi-agent hurts sequential reasoning when tasks are over-split → full_page_html.  
-- CrewAI: team + YAML config.  
-- Agent Skills / Cursor: recipe ≠ always-on rules; load procedure on demand.
+## Why this freeze
+
+- Anthropic / production practice: simplest path first; fixed workflows beat free multi-agent graphs when the path is known.  
+- Gnom-Hub’s pipeline **is** the workflow. Extra “workflow” layers only rename config.  
+- Multi-agent over-split hurts quality (`full_page_html` already fixes the real bug).  
+- YAGNI: Team + plan_mode cover Save/Apply and plan discipline.
+
+## Maintainer rule
+
+Before adding preset/workflow features: does it fix a real user pain after live E2E?  
+If not → leave frozen.
