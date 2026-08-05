@@ -66,3 +66,57 @@ class BrainstormAgent(BaseAgent):
             return _stub_brainstorm(user_text, hist)
         finally:
             self.emit_active(False)
+
+
+class FlexAgent(BaseAgent):
+    def run(self, user_text: str, requirements: list[str], memory_ctx: str = "") -> str:
+        if not self.enabled:
+            return ""
+        preset = (self.state.preset or "security").lower()
+        self.emit_active(True)
+        try:
+            prompts = {
+                "security": (
+                    "You are Flex/Security. List 3–5 concrete security risks "
+                    "(auth, secrets, paths, abuse). One line each. Match user language."
+                ),
+                "researcher": (
+                    "You are Flex/Researcher. List 3–5 open questions or missing facts. "
+                    "One line each. Match user language."
+                ),
+                "neutral": (
+                    "You are Flex/Neutral. List 3–5 trade-offs. One line each. Match user language."
+                ),
+            }
+            system = prompts.get(preset, prompts["security"])
+            body = f"Auftrag: {user_text}\nAnforderungen:\n" + "\n".join(
+                f"- {r}" for r in requirements[:6]
+            )
+            if self.has_llm():
+                try:
+                    return self.ask(
+                        system=system,
+                        user=_with_memory(body, memory_ctx),
+                        max_tokens=350,
+                        temperature=0.4,
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    self.bus.emit(
+                        "pipeline.warning",
+                        {"stage": "flex", "error": str(exc)},
+                    )
+            if preset == "researcher":
+                return "• Welche Zielgruppe?\n• Welche Datenquellen?\n• Erfolgsmetrik in 1 Satz?"
+            if preset == "neutral":
+                return (
+                    "• Geschwindigkeit vs. Qualität\n"
+                    "• Manuell vs. Automatisierung\n"
+                    "• Lokal vs. Cloud"
+                )
+            return (
+                "• Keine Secrets im Frontend\n"
+                "• Eingaben validieren\n"
+                "• Schreibzugriffe auf data/ begrenzen"
+            )
+        finally:
+            self.emit_active(False)
