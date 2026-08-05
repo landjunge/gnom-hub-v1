@@ -1,94 +1,140 @@
 # Gnom-Hub
 
-**Version:** 3.7.1 · **Python:** ≥3.10 · **UI:** `http://127.0.0.1:8080/`  
-**License:** private use  
+**Local multi-agent control hub** — think first, then act.
+
+| | |
+|--|--|
+| **Version** | 3.7.1 |
+| **Stack** | Python ≥3.10 · FastAPI · desktop UI |
+| **Default** | `http://127.0.0.1:8080/` |
+| **LLM** | DeepSeek (`deepseek-v4-flash`) · optional Ollama |
+| **License** | Private use |
 
 **Deutsch:** [README_DE.md](README_DE.md)
 
-Local multi-agent hub: **brainstorm first**, then **Execute** workers.
+---
 
-**Not:** a second LangGraph/CrewAI stack · not automatic full PC control from chat alone.
+## Why Gnom?
+
+Most agent tools either **run away immediately** (chat → tools → chaos) or hide behind heavy frameworks. Gnom is built around a deliberate product rule:
+
+> **Brainstorm freely. Execute only when you say so.**
+
+That single split is the product.
+
+### What stands out
+
+| Strength | What it means in practice |
+|----------|---------------------------|
+| **Brainstorm → Execute** | Chat can stay exploratory. Workers (cost, files, side effects) start only on **Execute**. |
+| **Visible multi-agent desk** | Eight fixed roles as cards + three work boxes — you always see *who* is active and *where* output lands. |
+| **One page, not four** | For landing/HTML work, Gnom assigns **one worker** and **one complete HTML file** — no fragment soup. |
+| **Local & portable** | Runs on your machine; keys in `Key.txt`; USB-friendly layout; no cloud lock-in required. |
+| **Safety by default** | Computer control (mouse/keyboard/shell) is **dry-run** until **God-Mode** is explicitly on. |
+| **Operator-grade ops** | HOT/WARM/COLD memory, workspace, backups, packs, jobs, light trace, budget guard — for real sessions, not demos only. |
+| **Lean architecture** | One fixed orchestrator. Presets configure the team; they do **not** invent a second agent runtime. |
+
+### Who it’s for
+
+- Builders who want a **desktop control surface** for multi-agent work  
+- People who need **HTML/page deliverables** they can preview in-box  
+- Operators who care about **cost, keys, cancel, and audit** — not only “vibe chat”
+
+### Who it’s not for
+
+- Fully autonomous unattended agents with no human gate  
+- Drop-in replacement for LangGraph/CrewAI research stacks  
+- Silent background control of your PC from every chat message  
 
 ---
 
-## Pipeline
-
-```
-Send → Brainstorm (Box 2)
-Execute → Distill → Flex → Coordinator → Worker(s) → Box 3
-```
-
-HTML/landing tasks: **one worker**, **one** HTML page.
-
-## Agents (8 fixed)
-
-| id | role | default |
-|----|------|---------|
-| brainstorm | ideas | on |
-| memory | session memory | on (locked) |
-| flex | security / neutral / researcher | on |
-| coordinator | distill + plan | on |
-| worker1…worker4 | deliverables | 1–2 on; 3–4 off |
-
-## UI
-
-| Area | Content |
-|------|---------|
-| Box 1 | help + Clarify (Yes / No / Whatever / Later) |
-| Box 2 | brainstorm dialogue only |
-| Box 3 | one worker result (Preview / Source / Copy for HTML) |
-| Chat | Send · Execute · Send+Exec · Mic · Cancel |
-| Tools | tool registry + **Computer use** (inspect / click / type / shell) |
-| God badge | real mouse/keyboard/shell when **on** (else dry-run) |
-
-## Install
+## Quick start
 
 ```bash
 cd gnom-hub-v1
 ./scripts/install.sh && source .venv/bin/activate
-# keys → Key.txt  (see Key.txt.example)
+# Configure Key.txt  →  docs/KEYS_AND_MODELS.md
 ./scripts/start.sh
+# open http://127.0.0.1:8080/
 ```
 
-Keys & model: [`docs/KEYS_AND_MODELS.md`](docs/KEYS_AND_MODELS.md) · default model **`deepseek-v4-flash`**.
+### Chat
 
-Computer-use packages (optional):
+| Control | Action |
+|---------|--------|
+| **Send** | Brainstorm turn → Box 2 |
+| **Execute** | Distill → Flex → Coordinator → Worker(s) → Box 3 |
+| **Send+Exec** | Both in sequence |
+| **Mic** | Speech-to-text |
+| **Cancel** | Abort running job |
 
-```bash
-pip install -e ".[computer]"
-# macOS OCR: brew install tesseract
-python -m playwright install chromium   # for E2E scripts
+### Boxes
+
+| Box | Role |
+|-----|------|
+| **1 · Arounder** | Help + Clarify (Yes / No / Whatever / Later) |
+| **2 · Brainstorm** | Multi-turn dialogue |
+| **3 · Workers** | Deliverable (HTML preview or text) |
+
+### Computer use
+
+Desktop control lives under **Tools → Computer use** (Inspect · Click · Type · Shell).
+
+| Mode | Behavior |
+|------|----------|
+| God **off** | Dry-run only (safe) |
+| God **on** | Real mouse / keyboard / allowlisted shell |
+
+Optional packages: `pip install -e ".[computer]"` — see [`docs/TOOLS_PORTFOLIO.md`](docs/TOOLS_PORTFOLIO.md).
+
+---
+
+## Architecture (short)
+
+```
+UI  ──►  Hub (FastAPI)  ──►  Orchestrator
+                │                 │
+                ├─ Agents (8)     ├─ Brainstorm
+                ├─ LLM manager    ├─ Distill / Flex
+                ├─ Memory HOT/WARM/COLD
+                ├─ Workspace
+                └─ Computer-use kit (+ God-Mode)
 ```
 
-Details: [`docs/TOOLS_PORTFOLIO.md`](docs/TOOLS_PORTFOLIO.md)
+**Agents:** brainstorm · memory · flex · coordinator · worker1–4  
 
-## Tests / quality gate
+**Pipeline stages:** memory → brainstorm → distill → [clarify] → flex → coordinate → work → done  
+
+---
+
+## Quality & contribution
 
 ```bash
 ./scripts/quality_check.sh
-# server on :8080:
-python scripts/basic_tests.py
-python scripts/user_landing_e2e.py
+python scripts/basic_tests.py          # needs server :8080
+python scripts/user_landing_e2e.py     # Playwright + live key
 ```
 
-Agent rules (ruff + pytest before every push): [`AGENTS.md`](AGENTS.md)
+Coding agents must follow [`AGENTS.md`](AGENTS.md): ruff + pytest green before every push; never commit secrets.
 
-## Docs index
+---
 
-| File | Topic |
-|------|--------|
+## Documentation
+
+| Document | Purpose |
+|----------|---------|
 | [README_DE.md](README_DE.md) | German README |
-| [AGENTS.md](AGENTS.md) | coding / push gate |
-| [docs/KEYS_AND_MODELS.md](docs/KEYS_AND_MODELS.md) | API keys, models |
-| [docs/BASIC_USER_TEST.md](docs/BASIC_USER_TEST.md) | keyboard landing E2E |
-| [docs/STABILITY.md](docs/STABILITY.md) | stability checklist |
-| [docs/TOOLS_PORTFOLIO.md](docs/TOOLS_PORTFOLIO.md) | computer-use libs |
-| [docs/WORKFLOWS_AND_PRESETS.md](docs/WORKFLOWS_AND_PRESETS.md) | presets / plan_mode |
-| [docs/V1_SCOPE.md](docs/V1_SCOPE.md) | v1 scope |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | history / status |
+| [AGENTS.md](AGENTS.md) | Agent coding rules / push gate |
+| [docs/KEYS_AND_MODELS.md](docs/KEYS_AND_MODELS.md) | Keys & model IDs |
+| [docs/BASIC_USER_TEST.md](docs/BASIC_USER_TEST.md) | Canonical user E2E |
+| [docs/STABILITY.md](docs/STABILITY.md) | Stability checklist |
+| [docs/TOOLS_PORTFOLIO.md](docs/TOOLS_PORTFOLIO.md) | Computer-use libraries |
+| [docs/WORKFLOWS_AND_PRESETS.md](docs/WORKFLOWS_AND_PRESETS.md) | Team presets & plan_mode |
+| [docs/V1_SCOPE.md](docs/V1_SCOPE.md) | Product scope |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Release history |
 
-## Conventions
+---
 
-- Push completed work to **`main`**
-- Never commit `Key.txt`, `.env`, or real secrets
-- Static UI cache: `?v=` on `app.css` / `app.js` in `index.html`
+## License
+
+Private use.
