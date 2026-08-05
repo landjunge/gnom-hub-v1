@@ -880,6 +880,18 @@ body.worker-fs-open {
   color: var(--text-muted);
 }
 
+.chat-log .chat-ts {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  margin-right: 4px;
+  opacity: 0.75;
+}
+
+.chat-log .chat-body {
+  /* keep default line color */
+}
+
 .chat-log .chat-line {
   margin: 0 0 4px;
   color: var(--text);

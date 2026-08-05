@@ -1313,12 +1313,35 @@
     if (els.stageBadge && chatBusy) els.stageBadge.textContent = "running…";
   }
 
+  function formatChatTime(d) {
+    const dt = d || new Date();
+    try {
+      return dt.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+    } catch (_e) {
+      return (
+        String(dt.getHours()).padStart(2, "0") +
+        ":" +
+        String(dt.getMinutes()).padStart(2, "0") +
+        ":" +
+        String(dt.getSeconds()).padStart(2, "0")
+      );
+    }
+  }
+
   function persistChatLog() {
     if (!els.chatLog) return;
     try {
       const lines = [];
       els.chatLog.querySelectorAll(".chat-line").forEach(function (el) {
-        lines.push(el.textContent || "");
+        lines.push({
+          who: el.dataset.who || "system",
+          text: el.dataset.text || el.textContent || "",
+          ts: el.dataset.ts || "",
+        });
       });
       sessionStorage.setItem(
         CHAT_STORAGE_KEY,
@@ -1337,16 +1360,42 @@
       const lines = JSON.parse(raw);
       if (!Array.isArray(lines) || !lines.length) return;
       els.chatLog.innerHTML = "";
-      lines.forEach(function (t) {
-        const line = document.createElement("p");
-        line.className = "chat-line";
-        line.textContent = t;
-        els.chatLog.appendChild(line);
+      lines.forEach(function (entry) {
+        if (typeof entry === "string") {
+          // legacy plain lines
+          const line = document.createElement("p");
+          line.className = "chat-line";
+          line.textContent = entry;
+          els.chatLog.appendChild(line);
+          return;
+        }
+        renderChatLine(entry.who || "system", entry.text || "", entry.ts || "");
       });
       els.chatLog.scrollTop = els.chatLog.scrollHeight;
     } catch (_e) {
       /* ignore */
     }
+  }
+
+  function renderChatLine(who, text, ts) {
+    const line = document.createElement("p");
+    line.className = "chat-line chat-who-" + String(who).replace(/\W+/g, "");
+    line.dataset.who = who;
+    line.dataset.text = text;
+    line.dataset.ts = ts || "";
+    if (ts) {
+      const tsel = document.createElement("span");
+      tsel.className = "chat-ts";
+      tsel.textContent = ts;
+      line.appendChild(tsel);
+      line.appendChild(document.createTextNode(" "));
+    }
+    const body = document.createElement("span");
+    body.className = "chat-body";
+    body.textContent = who + ": " + text;
+    line.appendChild(body);
+    els.chatLog.appendChild(line);
+    return line;
   }
 
   function clearChatLog() {
@@ -1530,10 +1579,8 @@
   }
 
   function appendChat(who, text) {
-    const line = document.createElement("p");
-    line.className = "chat-line";
-    line.textContent = who + ": " + text;
-    els.chatLog.appendChild(line);
+    if (!els.chatLog) return;
+    renderChatLine(who, text, formatChatTime());
     els.chatLog.scrollTop = els.chatLog.scrollHeight;
     persistChatLog();
   }
@@ -1919,6 +1966,32 @@
     });
     mode.appendChild(btnDl);
 
+    // Open HTML in new browser tab
+    if (isHtml) {
+      const btnTab = document.createElement("button");
+      btnTab.type = "button";
+      btnTab.className = "worker-mode-btn tab-btn";
+      btnTab.textContent = "Tab";
+      btnTab.title = "Open HTML in new tab";
+      btnTab.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        openWorkerInTab(html);
+      });
+      mode.appendChild(btnTab);
+    }
+
+    // Save to temp workspace
+    const btnWs = document.createElement("button");
+    btnWs.type = "button";
+    btnWs.className = "worker-mode-btn ws-btn";
+    btnWs.textContent = "WS";
+    btnWs.title = "Save to temp workspace";
+    btnWs.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      saveWorkerToWorkspace(out, raw, html);
+    });
+    mode.appendChild(btnWs);
+
     // Fullscreen preview (HTML) or source text
     const btnFs = document.createElement("button");
     btnFs.type = "button";
@@ -2002,18 +2075,21 @@
     return doc;
   }
 
-  function downloadWorkerResult(out, raw, html) {
-    const name = (out.name || out.worker || "worker")
+  function workerFileBase(out) {
+    return (out.name || out.worker || "worker")
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
+      .replace(/^-|-$/g, "") || "worker";
+  }
+
+  function downloadWorkerResult(out, raw, html) {
     const isHtml = !!html;
     const blob = new Blob([isHtml ? wrapHtmlDocument(html) : raw || ""], {
       type: isHtml ? "text/html;charset=utf-8" : "text/plain;charset=utf-8",
     });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = (name || "worker") + (isHtml ? ".html" : ".txt");
+    a.download = workerFileBase(out) + (isHtml ? ".html" : ".txt");
     document.body.appendChild(a);
     a.click();
     setTimeout(function () {
@@ -2021,6 +2097,43 @@
       a.remove();
     }, 500);
     toast("Downloaded " + a.download, "ok");
+  }
+
+  function openWorkerInTab(html) {
+    const doc = wrapHtmlDocument(html);
+    const blob = new Blob([doc], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const win = window.open(url, "_blank");
+    if (!win) {
+      toast("Popup blocked — allow popups for new tab", "error");
+      URL.revokeObjectURL(url);
+      return;
+    }
+    setTimeout(function () {
+      URL.revokeObjectURL(url);
+    }, 60000);
+    toast("Opened in new tab", "ok");
+  }
+
+  async function saveWorkerToWorkspace(out, raw, html) {
+    const isHtml = !!html;
+    const name =
+      workerFileBase(out) +
+      "_" +
+      Date.now().toString(36) +
+      (isHtml ? ".html" : ".txt");
+    const content = isHtml ? wrapHtmlDocument(html) : raw || "";
+    try {
+      const data = await api("POST", "/api/workspace/write", {
+        zone: "temp",
+        name: name,
+        content: content,
+      });
+      toast("Saved to workspace: " + name, "ok");
+      appendChat("system", "Workspace ← " + name + (data.path ? " (" + data.path + ")" : ""));
+    } catch (err) {
+      toast("Workspace save failed: " + err.message, "error");
+    }
   }
 
   function closeWorkerFullscreen() {

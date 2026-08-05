@@ -26,23 +26,42 @@ def test_health(client: TestClient):
     assert r.status_code == 200
     assert r.json()["status"] == "ok"
     assert "version" in r.json()
-    assert r.json()["version"].startswith("1.6")
+    assert r.json()["version"].startswith("1.7")
 
 
-def test_ui_static_has_v16_features(client: TestClient):
-    """Smoke: app.js ships download / fullscreen / Ctrl+S / focusBox3."""
+def test_ui_static_has_v16_v17_features(client: TestClient):
+    """Smoke: app.js ships 1.6 + 1.7 UI helpers."""
     js = client.get("/static/app.js")
     assert js.status_code == 200
     body = js.text
     assert "downloadWorkerResult" in body
     assert "openWorkerFullscreen" in body
     assert "focusBox3" in body
+    assert "openWorkerInTab" in body
+    assert "saveWorkerToWorkspace" in body
+    assert "formatChatTime" in body
     assert 'ev.key === "s"' in body or "ev.key === 's'" in body
 
     css = client.get("/static/app.css")
     assert css.status_code == 200
     assert "worker-fs-overlay" in css.text
     assert "box3-flash" in css.text
+    assert "chat-ts" in css.text
+
+
+def test_workspace_write_from_ui_contract(client: TestClient):
+    r = client.post(
+        "/api/workspace/write",
+        json={
+            "zone": "temp",
+            "name": "worker1_ui.html",
+            "content": "<html><body>ok</body></html>",
+        },
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body.get("ok") is True
+    assert "worker1_ui.html" in (body.get("path") or "")
 
 
 def test_cancel_backups_presets_delete(client: TestClient):

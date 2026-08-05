@@ -62,7 +62,15 @@
 | Ctrl/⌘+S save shortcut | **done** |
 | Focus + flash Box 3 after Execute | **done** |
 
-## Post-V1.6 (optional)
+## V1.7.0
+
+| Item | Status |
+|------|--------|
+| Open HTML result in new browser tab | **done** |
+| Save worker result to temp workspace (WS) | **done** |
+| Chat log timestamps + structured persist | **done** |
+
+## Post-V1.7 (optional)
 
 | Item | Notes |
 |------|--------|
