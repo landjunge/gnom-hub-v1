@@ -331,6 +331,31 @@
       }
     }
 
+    const strip = document.getElementById("memory-strip");
+    const stripBody = document.getElementById("memory-strip-body");
+    if (strip && stripBody) {
+      const mem = snap.memory || {};
+      const facts = mem.facts || [];
+      const ctx = mem.context || p.memory_context || "";
+      if (facts.length || ctx) {
+        strip.hidden = false;
+        const lines = [];
+        if (facts.length) {
+          lines.push("Facts:");
+          facts.slice(-6).forEach(function (f) {
+            lines.push("• " + f);
+          });
+        }
+        if (ctx && !facts.length) {
+          lines.push(ctx);
+        }
+        stripBody.textContent = lines.join("\n");
+      } else {
+        strip.hidden = true;
+        stripBody.textContent = "";
+      }
+    }
+
     const box2 = [];
     if (p.brainstorm_notes) box2.push(p.brainstorm_notes);
     if (p.flex_notes) {

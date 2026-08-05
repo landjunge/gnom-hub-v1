@@ -29,7 +29,12 @@ class Hub:
         self.agents = AgentManager(self.bus)
         self.llm = LLMManager(keys=self.keys)
         self.memory = HotMemory(self.root)
-        self.pipeline = Pipeline(self.bus, llm_manager=self.llm, agent_manager=self.agents)
+        self.pipeline = Pipeline(
+            self.bus,
+            llm_manager=self.llm,
+            agent_manager=self.agents,
+            memory=self.memory,
+        )
         self.last_error: str | None = None
         self._agent_state_path = self.root / "data" / "hot" / "agents.json"
         self._load_agent_state()
@@ -150,6 +155,7 @@ class Hub:
         return {
             "stage": st.stage.value,
             "user_text": st.user_text,
+            "memory_context": st.memory_context,
             "brainstorm_notes": st.brainstorm_notes,
             "distilled_requirements": list(st.distilled_requirements),
             "flex_notes": st.flex_notes,
@@ -159,12 +165,22 @@ class Hub:
             "error": st.error,
         }
 
+    def memory_dict(self) -> dict[str, Any]:
+        return {
+            "summary": self.memory.get_context_summary(),
+            "facts": self.memory.recent_facts(12),
+            "recent_messages": self.memory.recent_messages(6),
+            "context": self.memory.pipeline_context(),
+            "canvas_nodes": len(self.memory.canvas.nodes),
+        }
+
     def snapshot(self) -> dict[str, Any]:
         usage = self.llm.usage_snapshot()
         return {
             "agents": [self._agent_dict(a) for a in self.agents.list_agents()],
             "pipeline": self.pipeline_dict(),
             "memory_summary": self.memory.get_context_summary(),
+            "memory": self.memory_dict(),
             "canvas": {
                 "mermaid": self.memory.canvas.to_mermaid(),
                 "nodes": len(self.memory.canvas.nodes),
@@ -239,13 +255,16 @@ class Hub:
     def reset_session(self, *, keep_agents: bool = True) -> dict[str, Any]:
         """Clear HOT memory/canvas and pipeline state. Agent toggles kept by default."""
         self.memory.clear(save=True)
-        self.pipeline = Pipeline(self.bus, llm_manager=self.llm, agent_manager=self.agents)
-        self.last_error = None
         if not keep_agents:
-            # rebuild defaults
             self.agents = AgentManager(self.bus)
-            self.pipeline = Pipeline(self.bus, llm_manager=self.llm, agent_manager=self.agents)
             self.agents.on_start()
+        self.pipeline = Pipeline(
+            self.bus,
+            llm_manager=self.llm,
+            agent_manager=self.agents,
+            memory=self.memory,
+        )
+        self.last_error = None
         return self.snapshot()
 
     def help_text(self) -> dict[str, Any]:

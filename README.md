@@ -24,6 +24,7 @@ Local-first multi-agent system.
 | 1.2 | Tokens on cards + error/ok toasts | done |
 | 1.3 | Agent state save, canvas API, live DeepSeek | done |
 | 1.4 | LLM fallback, Help/Reset, faster live caps | done |
+| 1.5 | Memory HOT context into pipeline + UI strip | done |
 
 Full plan: [`docs/PRE_PLAN.md`](docs/PRE_PLAN.md) · V1 scope: [`docs/V1_SCOPE.md`](docs/V1_SCOPE.md) · Roadmap: [`docs/ROADMAP.md`](docs/ROADMAP.md)
 
@@ -69,6 +70,10 @@ Without a DeepSeek key the pipeline still runs on **deterministic stubs** (great
 | POST | `/api/agents/flex/preset` | `{ "preset": "security" }` |
 | POST | `/api/agents/{id}/llm` | `{ "model", "api_key" }` optional |
 | POST | `/api/save` | Persist HOT memory |
+| POST | `/api/reset` | Clear HOT session |
+| GET | `/api/memory` | Facts + pipeline context |
+| GET | `/api/canvas` | Mermaid canvas |
+| GET | `/api/help` | Short help text |
 | GET | `/api/tooltips` | Box-1 registry |
 
 ## Structure

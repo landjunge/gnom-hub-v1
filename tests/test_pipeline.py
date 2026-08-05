@@ -217,3 +217,18 @@ def test_llm_failure_falls_back_to_stub():
     assert any("stub" in w.lower() or "failed" in w.lower() for w in state.warnings)
     assert "Ideas for:" in state.brainstorm_notes
     assert any(n == "pipeline.warning" for n, _ in events)
+
+
+class _FakeMemory:
+    def pipeline_context(self) -> str:
+        return "Known facts:\n- Prefer dark theme"
+
+
+def test_memory_context_injected_into_stub_brainstorm():
+    bus = EventBus()
+    pipe = Pipeline(bus, memory=_FakeMemory())
+    state = pipe.start("Build a landing page")
+    assert state.stage == PipelineStage.done
+    assert "Prefer dark theme" in state.memory_context
+    assert "Using memory" in state.brainstorm_notes
+    assert any("HOT facts" in r or "memory" in r.lower() for r in state.distilled_requirements)

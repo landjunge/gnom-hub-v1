@@ -29,6 +29,7 @@ class DistillQuestion:
 class PipelineState:
     stage: PipelineStage = PipelineStage.idle
     user_text: str = ""
+    memory_context: str = ""
     brainstorm_notes: str = ""
     distilled_requirements: list[str] = field(default_factory=list)
     flex_notes: str = ""

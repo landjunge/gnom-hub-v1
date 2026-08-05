@@ -122,3 +122,13 @@ def test_reset_clears_pipeline(client: TestClient):
     data = r.json()
     assert data["pipeline"]["stage"] == "idle"
     assert data["pipeline"]["user_text"] == ""
+
+
+def test_memory_endpoint_after_chat(client: TestClient):
+    client.post("/api/chat", json={"text": "Ship feature memory wire"})
+    r = client.get("/api/memory")
+    assert r.status_code == 200
+    data = r.json()
+    assert "facts" in data
+    assert "context" in data
+    assert data["summary"].startswith("HOT:")

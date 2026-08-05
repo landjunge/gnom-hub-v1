@@ -32,10 +32,12 @@ class Pipeline:
         bus: EventBus,
         llm_manager: Any | None = None,
         agent_manager: Any | None = None,
+        memory: Any | None = None,
     ) -> None:
         self._bus = bus
         self._llm = llm_manager
         self._agents = agent_manager
+        self._memory = memory
         self._state = PipelineState()
         self._clarified_once = False
 
@@ -45,13 +47,27 @@ class Pipeline:
 
     def start(self, user_text: str) -> PipelineState:
         """Begin a new run from chat text. Resets prior state."""
-        self._state = PipelineState(user_text=user_text.strip())
+        mem_ctx = self._load_memory_context()
+        self._state = PipelineState(user_text=user_text.strip(), memory_context=mem_ctx)
         self._clarified_once = False
+        if mem_ctx:
+            self._bus.emit("pipeline.memory_context", {"context": mem_ctx})
         try:
             self._run_from_brainstorm()
         except Exception as exc:  # noqa: BLE001 — surface as pipeline.error
             self._fail(str(exc))
         return self._state
+
+    def _load_memory_context(self) -> str:
+        if self._memory is None:
+            return ""
+        fn = getattr(self._memory, "pipeline_context", None)
+        if callable(fn):
+            try:
+                return str(fn() or "").strip()
+            except Exception:  # noqa: BLE001
+                return ""
+        return ""
 
     def answer_clarify(self, option: str) -> PipelineState:
         """Continue after Box-1 style clarify answer."""
@@ -190,6 +206,8 @@ class Pipeline:
 
     def _stub_brainstorm(self, text: str) -> str:
         base = f"Ideas for: {text}"
+        if self._state.memory_context:
+            base = f"{base}\n(Using memory: {_short(self._state.memory_context, 80)})"
         if self._state.brainstorm_notes:
             return self._state.brainstorm_notes + "\n" + base
         return base
@@ -199,6 +217,8 @@ class Pipeline:
         requirements = [f"Fulfill: {text}"]
         if notes:
             requirements.append("Consider brainstorm notes")
+        if self._state.memory_context:
+            requirements.append("Respect known HOT facts from memory")
         question: DistillQuestion | None = None
         if self._needs_clarify(text) and not self._clarified_once:
             question = DistillQuestion(
@@ -252,16 +272,26 @@ class Pipeline:
             out["api_key"] = str(key)
         return out
 
+    def _memory_block(self) -> str:
+        ctx = self._state.memory_context.strip()
+        if not ctx:
+            return ""
+        return f"\n\nMemory (HOT — respect these facts):\n{ctx}"
+
     def _llm_brainstorm(self, text: str) -> str:
         from gnom_hub.llm.types import LLMMessage
 
+        user = text + self._memory_block()
         result = self._llm.chat(
             [
                 LLMMessage(
                     role="system",
-                    content="Brainstorm freely. Max 6 short bullet ideas only.",
+                    content=(
+                        "Brainstorm freely. Max 6 short bullet ideas only. "
+                        "Use memory facts when relevant; do not contradict them."
+                    ),
                 ),
-                LLMMessage(role="user", content=text),
+                LLMMessage(role="user", content=user),
             ],
             max_tokens=400,
             **self._agent_llm_kwargs("brainstorm"),
@@ -274,13 +304,15 @@ class Pipeline:
         context = text
         if self._state.brainstorm_notes:
             context = f"{text}\n\nBrainstorm notes:\n{self._state.brainstorm_notes}"
+        context += self._memory_block()
         result = self._llm.chat(
             [
                 LLMMessage(
                     role="system",
                     content=(
                         "Distill the user request into clear requirements. "
-                        "Reply with one requirement per line, plain text. Max 8 lines."
+                        "Reply with one requirement per line, plain text. Max 8 lines. "
+                        "Keep known memory facts unless the user overrides them."
                     ),
                 ),
                 LLMMessage(role="user", content=context),
@@ -304,6 +336,7 @@ class Pipeline:
         preset = self._flex_preset()
         system = _FLEX_PROMPTS.get(preset, _FLEX_PROMPTS["neutral"])
         body = "\n".join(self._state.distilled_requirements) or self._state.user_text
+        body += self._memory_block()
         result = self._llm.chat(
             [
                 LLMMessage(role="system", content=system),
@@ -317,13 +350,17 @@ class Pipeline:
     def _llm_worker(self, worker_id: str, task: str) -> str:
         from gnom_hub.llm.types import LLMMessage
 
+        user = task + self._memory_block()
         result = self._llm.chat(
             [
                 LLMMessage(
                     role="system",
-                    content="You are a worker. Execute the task briefly. Plain text only.",
+                    content=(
+                        "You are a worker. Execute the task briefly. Plain text only. "
+                        "Honor memory facts."
+                    ),
                 ),
-                LLMMessage(role="user", content=task),
+                LLMMessage(role="user", content=user),
             ],
             max_tokens=500,
             **self._agent_llm_kwargs(worker_id),
@@ -402,3 +439,10 @@ class Pipeline:
         self._state.error = message
         self._bus.emit("pipeline.stage", {"stage": PipelineStage.error.value})
         self._bus.emit("pipeline.error", {"error": message})
+
+
+def _short(text: str, n: int = 80) -> str:
+    one = " ".join(text.split())
+    if len(one) <= n:
+        return one
+    return one[: n - 1] + "…"

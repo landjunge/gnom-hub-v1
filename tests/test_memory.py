@@ -106,3 +106,12 @@ def test_get_context_summary(tmp_path: Path):
     assert "messages=2" in s
     assert "facts=1" in s
     assert "canvas_nodes=0" in s
+
+
+def test_pipeline_context_includes_facts(tmp_path: Path):
+    mem = HotMemory(tmp_path, auto_load=False)
+    mem.add_fact("Prefer dark theme")
+    mem.add_message("user", "build a site")
+    ctx = mem.pipeline_context()
+    assert "Prefer dark theme" in ctx
+    assert "Known facts:" in ctx

@@ -121,3 +121,49 @@ class HotMemory:
             if isinstance(preview, str):
                 parts.append("fact=" + _short_label(preview, 40))
         return "HOT: " + " | ".join(parts)
+
+    def recent_facts(self, limit: int = 8) -> list[str]:
+        facts = self.session.get("facts") or []
+        out: list[str] = []
+        for f in facts[-limit:]:
+            if isinstance(f, str) and f.strip():
+                out.append(f.strip())
+        return out
+
+    def recent_messages(self, limit: int = 4) -> list[dict[str, str]]:
+        msgs = self.session.get("messages") or []
+        out: list[dict[str, str]] = []
+        for m in msgs[-limit:]:
+            if not isinstance(m, dict):
+                continue
+            role = str(m.get("role") or "?")
+            content = str(m.get("content") or "")
+            if content:
+                out.append({"role": role, "content": _short_label(content, 120)})
+        return out
+
+    def pipeline_context(self, *, max_chars: int = 900) -> str:
+        """
+        Compact HOT context for LLM/stub stages (Memory always on).
+        Facts first, then last messages, then canvas labels.
+        """
+        chunks: list[str] = []
+        facts = self.recent_facts(6)
+        if facts:
+            chunks.append("Known facts:")
+            for f in facts:
+                chunks.append(f"- {_short_label(f, 100)}")
+        msgs = self.recent_messages(3)
+        if msgs:
+            chunks.append("Recent:")
+            for m in msgs:
+                chunks.append(f"- {m['role']}: {m['content']}")
+        if self.canvas.nodes:
+            labels = [str(n.get("label") or n.get("id") or "") for n in self.canvas.nodes[-5:]]
+            labels = [x for x in labels if x]
+            if labels:
+                chunks.append("Canvas: " + " → ".join(_short_label(x, 40) for x in labels))
+        text = "\n".join(chunks).strip()
+        if len(text) > max_chars:
+            return text[: max_chars - 1] + "…"
+        return text
