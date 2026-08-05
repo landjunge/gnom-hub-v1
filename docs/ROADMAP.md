@@ -182,7 +182,17 @@
 | /last includes quality + user | **done** |
 | Version / docs 2.8 | **done** |
 
-## Post-V2.8 (optional)
+## V2.9.0
+
+| Item | Status |
+|------|--------|
+| restore_cold / delete_cold | **done** |
+| API POST …/restore + DELETE /api/cold/{id} | **done** |
+| COLD browser Restore / Delete buttons | **done** |
+| Telegram /cold list\|load\|del | **done** |
+| Version / docs 2.9 | **done** |
+
+## Post-V2.9 (optional)
 
 | Item | Notes |
 |------|--------|

@@ -1,8 +1,8 @@
-# Gnom-Hub v2.8.0
+# Gnom-Hub v2.9.0
 
 Local multi-agent control hub: **brainstorm first**, then **Execute** workers.
 
-Desktop · USB packs · Telegram **bs/exec/pack/warm/cancel** · WARM fact manager · DeepSeek / Ollama.
+Desktop · USB packs · COLD **restore** · Telegram bs/exec/pack/warm/**cold**/cancel · WARM · DeepSeek/Ollama.
 
 > **Convention:** every meaningful change is **pushed to `main`** and this **README is updated** in the same commit.
 
@@ -11,8 +11,8 @@ Desktop · USB packs · Telegram **bs/exec/pack/warm/cancel** · WARM fact manag
 ## Flow
 
 ```
-Desktop:  Send = Brainstorm · Execute = workers · System WARM add/del
-Telegram: plain=/bs · /exec · /do · /pack · /warm · /cancel · /last
+Desktop:  Archive HOT → COLD browser → Restore to HOT / Delete
+Telegram: /cold list | load <n|id> | del <n|id>
 ```
 
 ---
@@ -22,26 +22,23 @@ Telegram: plain=/bs · /exec · /do · /pack · /warm · /cancel · /last
 ```bash
 cd gnom-hub-v1
 ./scripts/install.sh && source .venv/bin/activate
-# Key.txt: DEEPSEEK_API_KEY=sk-...  (optional TELEGRAM_BOT_TOKEN=...)
 ./scripts/start.sh
 ./scripts/quality_check.sh
 ```
 
-**http://127.0.0.1:8080/?v=70**
+**http://127.0.0.1:8080/?v=71**
 
 ---
 
-## Telegram
+## COLD
 
-| Command | Action |
-|---------|--------|
-| plain / `/bs` | Brainstorm turn |
-| `/exec` | Execute from notes |
-| `/do <task>` | Full one-shot |
-| `/pack list\|save\|load` | Session packs |
-| `/warm list\|add\|del\|clear` | Durable WARM facts |
-| `/cancel` | Soft-cancel running job |
-| `/last` `/status` `/reset` | Results / state / clear HOT |
+| Action | How |
+|--------|-----|
+| Archive | Header **Archive** or Reset (auto) |
+| Browse | Click **Cold** badge |
+| Restore | Select archive → **Restore to HOT** (current HOT archived first if non-empty) |
+| Delete | Select → **Delete** |
+| Telegram | `/cold list` · `/cold load 1` · `/cold del <id>` |
 
 ---
 
@@ -49,9 +46,9 @@ cd gnom-hub-v1
 
 | Tag | Highlights |
 |-----|------------|
-| 2.6 | ui_prefs + pack notes |
 | 2.7 | Telegram brainstorm-first + /pack |
-| **2.8** | WARM manager (UI/API/Telegram) + /cancel |
+| 2.8 | WARM manager + /cancel |
+| **2.9** | COLD restore/delete (UI + API + Telegram) |
 
 ---
 

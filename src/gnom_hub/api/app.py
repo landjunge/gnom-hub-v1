@@ -135,7 +135,7 @@ class ShellBody(BaseModel):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Gnom-Hub v1", version="2.8.0")
+    app = FastAPI(title="Gnom-Hub v1", version="2.9.0")
 
     @app.get("/api/health")
     def health() -> dict[str, Any]:
@@ -143,7 +143,7 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "service": "gnom-hub-v1",
-            "version": "2.8.0",
+            "version": "2.9.0",
             "telegram": hub.telegram.enabled,
             "telegram_running": hub.telegram.running,
             "llm": {
@@ -619,6 +619,24 @@ def create_app() -> FastAPI:
         if not data:
             raise HTTPException(status_code=404, detail="archive not found")
         return data
+
+    @app.post("/api/cold/{archive_id}/restore")
+    def cold_restore(
+        archive_id: str,
+        archive_current: bool = Query(True),
+    ) -> dict[str, Any]:
+        """Restore COLD archive into HOT session."""
+        try:
+            return get_hub().restore_cold(archive_id, archive_current=archive_current)
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+
+    @app.delete("/api/cold/{archive_id}")
+    def cold_delete(archive_id: str) -> dict[str, Any]:
+        try:
+            return get_hub().delete_cold(archive_id)
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
 
     @app.post("/api/vector/add")
     def vector_add(body: VectorAddBody) -> dict[str, Any]:

@@ -305,6 +305,7 @@ class Hub:
                 "/do <task> — full one-shot pipeline\n"
                 "/pack list | save [label] | load <n|name>\n"
                 "/warm list | add <fact> | del <n|text> | clear\n"
+                "/cold list | load <n|id> | del <n|id>\n"
                 "/cancel — soft-cancel running job\n"
                 "/last — last worker results\n"
                 "/reset — clear HOT (WARM kept)\n"
@@ -320,7 +321,7 @@ class Hub:
                 f"deepseek={'yes' if self.llm.has_provider('deepseek') else 'no'}\n"
                 f"hot={self.hot.get_context_summary()}\n"
                 f"warm_facts={len(self.warm.all_facts())}\n"
-                f"packs={packs_n}"
+                f"packs={packs_n}" + chr(10) + f"cold={len(self.cold.list_archives(200))}"
             )
         if cmd in ("bs", "brainstorm", "idea"):
             if not arg.strip():
@@ -359,6 +360,8 @@ class Hub:
             return self._telegram_pack(arg.strip())
         if cmd == "warm":
             return self._telegram_warm(arg.strip())
+        if cmd == "cold":
+            return self._telegram_cold(arg.strip())
         if cmd == "cancel":
             return self._telegram_cancel()
         if cmd == "last":
@@ -507,6 +510,66 @@ class Hub:
         except FileNotFoundError:
             return "Job vanished."
         return f"Cancel requested for job {job['id']} (soft)."
+
+    def _telegram_cold(self, arg: str) -> str:
+        """Telegram: /cold list | load <n|id> | del <n|id>."""
+        parts = arg.split(maxsplit=1)
+        sub = (parts[0] if parts else "list").lower()
+        rest = parts[1].strip() if len(parts) > 1 else ""
+        archives = self.cold.list_archives(30)
+        if sub in ("", "list", "ls"):
+            if not archives:
+                return "COLD empty. Archive from UI or /reset."
+            lines = ["COLD archives:"]
+            for i, a in enumerate(archives[:12], start=1):
+                lines.append(
+                    f"{i}. {a.get('id')} · {a.get('label') or ''} · msg={a.get('messages')}"
+                )
+            lines.append("Load: /cold load <n|id>")
+            return chr(10).join(lines)
+        if sub in ("load", "restore", "open"):
+            if not rest:
+                return "Usage: /cold load <n|id>"
+            target = self._resolve_cold_id(rest, archives)
+            if not target:
+                return f"COLD not found: {rest}"
+            try:
+                snap = self.restore_cold(target, archive_current=True)
+            except FileNotFoundError:
+                return f"COLD not found: {rest}"
+            meta = snap.get("restored") or {}
+            rid = meta.get("id") or target
+            lab = meta.get("label") or ""
+            return f"Restored COLD {rid}" + chr(10) + f"label={lab}"
+        if sub in ("del", "rm", "delete"):
+            if not rest:
+                return "Usage: /cold del <n|id>"
+            target = self._resolve_cold_id(rest, archives)
+            if not target:
+                return f"COLD not found: {rest}"
+            try:
+                self.delete_cold(target)
+            except FileNotFoundError:
+                return f"COLD not found: {rest}"
+            return f"Deleted COLD {target}"
+        return "Usage: /cold list | load <n|id> | del <n|id>"
+
+    def _resolve_cold_id(self, token: str, archives: list[dict] | None = None) -> str | None:
+        rows = archives if archives is not None else self.cold.list_archives(50)
+        if not rows:
+            return None
+        if token.isdigit():
+            idx = int(token)
+            if 1 <= idx <= len(rows):
+                return str(rows[idx - 1].get("id") or "") or None
+        low = token.lower()
+        for a in rows:
+            aid = str(a.get("id") or "")
+            if aid.lower() == low or low in aid.lower():
+                return aid
+            if low in str(a.get("label") or "").lower():
+                return aid
+        return None
 
     # ── agent persistence ───────────────────────────────────────────
 
@@ -698,7 +761,7 @@ class Hub:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "2.8.0",
+            "version": "2.9.0",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -721,6 +784,61 @@ class Hub:
             label=label,
         )
         return {"ok": True, "archive": meta}
+
+    def restore_cold(
+        self,
+        archive_id: str,
+        *,
+        archive_current: bool = True,
+    ) -> dict[str, Any]:
+        """Restore a COLD archive into HOT (optionally archive current HOT first)."""
+        data = self.cold.get(archive_id)
+        if not data:
+            raise FileNotFoundError(archive_id)
+        archived = None
+        if archive_current:
+            sess = self.hot.session or {}
+            if sess.get("messages") or sess.get("facts"):
+                archived = self.archive_cold(label="pre-restore").get("archive")
+        session = data.get("session") if isinstance(data.get("session"), dict) else {}
+        self.hot.session = {
+            "messages": list(session.get("messages") or []),
+            "facts": list(session.get("facts") or []),
+            "updated_at": session.get("updated_at") or "",
+        }
+        canvas = str(data.get("canvas") or "")
+        if canvas.strip():
+            self.hot.canvas_path.parent.mkdir(parents=True, exist_ok=True)
+            nl = chr(10)
+            if not canvas.endswith(nl):
+                canvas = canvas + nl
+            atomic_write_text(self.hot.canvas_path, canvas)
+            self.hot.canvas.load(self.hot.canvas_path)
+        else:
+            self.hot.canvas.clear()
+        self.hot.save()
+        meta = data.get("meta") or {"id": archive_id}
+        self._append_trace(
+            "cold.restore",
+            {"id": meta.get("id") or archive_id, "label": meta.get("label")},
+        )
+        snap = self.snapshot()
+        snap["ok"] = True
+        snap["restored"] = meta
+        if archived:
+            snap["archived_previous"] = archived
+        return snap
+
+    def delete_cold(self, archive_id: str) -> dict[str, Any]:
+        ok = self.cold.delete(archive_id)
+        if not ok:
+            raise FileNotFoundError(archive_id)
+        self._append_trace("cold.delete", {"id": archive_id})
+        return {
+            "ok": True,
+            "deleted": archive_id,
+            "archives": self.cold.list_archives()[:30],
+        }
 
     def set_god_mode(self, enabled: bool, reason: str = "api") -> dict[str, Any]:
         if enabled:
@@ -1063,7 +1181,7 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "2.8.0",
+            "version": "2.9.0",
             "providers": self.llm.providers_snapshot(),
             "backups": self.list_backups()[:8],
             "packs": self.list_session_packs()[:12],
@@ -1559,7 +1677,7 @@ class Hub:
         pack = {
             "format": "gnom-hub-session-pack",
             "format_version": 1,
-            "app_version": "2.8.0",
+            "app_version": "2.9.0",
             "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
             "label": pack_label,
             "notes": (str(notes).strip()[:200] if notes else ""),
@@ -1967,7 +2085,7 @@ class Hub:
                 "5) Esc = close fullscreen or cancel job. "
                 "6) Box 3: Copy/DL/Tab/WS/↑perm/fullscreen; toolbar Copy all + Diff + History. "
                 "7) Cost badge + Compact density; job timer while busy. "
-                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat/history/workspace/ui_prefs/notes; list filter). 10) History Re-Exec. 11) Telegram: /bs /exec /do /pack /warm /cancel."
+                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat/history/workspace/ui_prefs/notes; list filter). 10) History Re-Exec. 11) Telegram: /bs /exec /do /pack /warm /cold /cancel."
             ),
             "example": "Type idea → Execute → Pack ↓ (USB) → History Re-Exec → Diff.",
             "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",

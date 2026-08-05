@@ -766,3 +766,32 @@ def test_telegram_warm_and_cancel(client: TestClient):
     assert "no running" in r3.json()["reply"].lower() or "cancel" in r3.json()["reply"].lower()
     r4 = client.post("/api/telegram/inbound", json={"text": "/warm clear"})
     assert "cleared" in r4.json()["reply"].lower()
+
+
+def test_cold_restore_and_delete(client: TestClient):
+    # seed HOT then archive
+    client.post("/api/chat?sync=1", json={"text": "Cold restore seed"})
+    client.post("/api/memory/warm", json={"text": "warm stays"})
+    arch = client.post("/api/cold/archive", json={"label": "seed-archive"})
+    assert arch.status_code == 200
+    aid = arch.json()["archive"]["id"]
+    # wipe HOT via clean
+    client.post("/api/clean")
+    # restore
+    rst = client.post(f"/api/cold/{aid}/restore")
+    assert rst.status_code == 200
+    assert rst.json().get("ok") is True
+    assert rst.json()["restored"]["id"] == aid
+    # HOT should have messages again
+    mem2 = client.get("/api/memory").json()
+    assert mem2.get("recent_messages") or mem2.get("facts") is not None
+    # telegram cold list/load
+    tg = client.post("/api/telegram/inbound", json={"text": "/cold list"})
+    assert tg.status_code == 200
+    assert "1." in tg.json()["reply"] or "COLD" in tg.json()["reply"]
+    # delete
+    gone = client.delete(f"/api/cold/{aid}")
+    assert gone.status_code == 200
+    assert gone.json()["deleted"] == aid
+    missing = client.get(f"/api/cold/{aid}")
+    assert missing.status_code == 404

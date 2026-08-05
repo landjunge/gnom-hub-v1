@@ -14,7 +14,7 @@ from typing import Any
 from gnom_hub.core.event_bus import EventBus
 
 # Commands from PRE_PLAN (subset, KISS)
-# /status /bs /exec /do /pack /warm /cancel /last /reset /help /yes…
+# /status /bs /exec /do /pack /warm /cold /cancel /last /reset /help /yes…
 
 
 class TelegramBridge:

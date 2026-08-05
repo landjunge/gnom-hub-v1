@@ -20,6 +20,8 @@ def test_telegram_commands_via_handler():
             return f"warm:{arg}"
         if cmd == "cancel":
             return "cancel-ok"
+        if cmd == "cold":
+            return f"cold:{arg}"
         return f"cmd:{cmd}"
 
     bot = TelegramBridge(bus, token="", on_command=on_cmd)
@@ -30,5 +32,7 @@ def test_telegram_commands_via_handler():
     assert bot.handle_text("/pack list") == "pack:list"
     assert bot.handle_text("/warm add fact") == "warm:add fact"
     assert bot.handle_text("/cancel") == "cancel-ok"
+    assert bot.handle_text("/cold list") == "cold:list"
     assert ("warm", "add fact") in seen
     assert ("cancel", "") in seen
+    assert ("cold", "list") in seen

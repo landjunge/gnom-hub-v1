@@ -120,6 +120,7 @@
   const COMPACT_KEY = "gnom-hub-compact-v1";
   const HISTORY_MAX = 12;
   let resultHistory = [];
+  let selectedColdId = null;
 
   function statusLabel(agent) {
     if (agent.parked) return agent.enabled ? "on · later" : "off / parked";
@@ -2483,6 +2484,7 @@
   }
 
   async function loadColdDetail(id) {
+    selectedColdId = id || null;
     try {
       const data = await api("GET", "/api/cold/" + encodeURIComponent(id));
       const meta = data.meta || {};
@@ -2506,6 +2508,58 @@
       if (els.coldDetail) els.coldDetail.textContent = lines.join("\n");
     } catch (err) {
       toast("COLD load failed: " + err.message, "error");
+    }
+  }
+
+  async function restoreSelectedCold() {
+    if (!selectedColdId) {
+      toast("Select a COLD archive first", "info");
+      return;
+    }
+    if (
+      !confirm(
+        'Restore COLD "' +
+          selectedColdId +
+          '" into HOT? Current HOT is archived first if non-empty.'
+      )
+    ) {
+      return;
+    }
+    try {
+      const snap = await api(
+        "POST",
+        "/api/cold/" + encodeURIComponent(selectedColdId) + "/restore"
+      );
+      applySnapshot(snap);
+      appendChat(
+        "system",
+        "Restored COLD: " +
+          ((snap.restored && snap.restored.id) || selectedColdId)
+      );
+      toast("COLD restored to HOT", "ok");
+      await openColdBrowser();
+    } catch (err) {
+      toast("COLD restore failed: " + err.message, "error");
+    }
+  }
+
+  async function deleteSelectedCold() {
+    if (!selectedColdId) {
+      toast("Select a COLD archive first", "info");
+      return;
+    }
+    if (!confirm('Delete COLD archive "' + selectedColdId + '"?')) return;
+    try {
+      await api(
+        "DELETE",
+        "/api/cold/" + encodeURIComponent(selectedColdId)
+      );
+      selectedColdId = null;
+      if (els.coldDetail) els.coldDetail.textContent = "";
+      toast("COLD deleted", "ok");
+      await openColdBrowser();
+    } catch (err) {
+      toast("COLD delete failed: " + err.message, "error");
     }
   }
 
@@ -3385,6 +3439,14 @@
         hideColdBrowser();
         showTooltip("box1");
       });
+    }
+    const btnColdRestore = document.getElementById("btn-cold-restore");
+    if (btnColdRestore) {
+      btnColdRestore.addEventListener("click", restoreSelectedCold);
+    }
+    const btnColdDelete = document.getElementById("btn-cold-delete");
+    if (btnColdDelete) {
+      btnColdDelete.addEventListener("click", deleteSelectedCold);
     }
 
     document.querySelectorAll(".btn-clarify").forEach(function (btn) {

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=70" />
+  <link rel="stylesheet" href="/static/app.css?v=71" />
 </head>
 <body>
   <div id="app">
@@ -75,7 +75,11 @@
             <h2 class="tip-title">COLD archives</h2>
             <ul id="cold-list" class="cold-list"></ul>
             <pre id="cold-detail" class="cold-detail"></pre>
-            <button type="button" id="btn-cold-close" class="btn-cold-close">Close</button>
+            <div class="cold-actions" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+              <button type="button" id="btn-cold-restore" class="btn-ws-sm" title="Restore selected into HOT">Restore to HOT</button>
+              <button type="button" id="btn-cold-delete" class="btn-ws-sm" title="Delete selected archive">Delete</button>
+              <button type="button" id="btn-cold-close" class="btn-cold-close">Close</button>
+            </div>
           </div>
           <div id="clarify" class="clarify" hidden>
             <p id="clarify-question" class="clarify-question"></p>
@@ -336,6 +340,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=70"></script>
+  <script src="/static/app.js?v=71"></script>
 </body>
 </html>
