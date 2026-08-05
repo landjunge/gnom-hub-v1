@@ -458,38 +458,6 @@
       }
     }
 
-    const strip = document.getElementById("memory-strip");
-    const stripBody = document.getElementById("memory-strip-body");
-    if (strip && stripBody) {
-      const mem = snap.memory || {};
-      const facts = mem.facts || [];
-      const warm = mem.warm_facts || [];
-      const ctx = mem.context || p.memory_context || "";
-      if (facts.length || warm.length || ctx) {
-        strip.hidden = false;
-        const lines = [];
-        if (warm.length) {
-          lines.push("WARM (durable):");
-          warm.slice(-4).forEach(function (f) {
-            lines.push("• " + f);
-          });
-        }
-        if (facts.length) {
-          lines.push("HOT (session):");
-          facts.slice(-4).forEach(function (f) {
-            lines.push("• " + f);
-          });
-        }
-        if (!facts.length && !warm.length && ctx) {
-          lines.push(ctx);
-        }
-        stripBody.textContent = lines.join("\n");
-      } else {
-        strip.hidden = true;
-        stripBody.textContent = "";
-      }
-    }
-
     if (snap.telegram && els.llmBadge) {
       // append telegram hint into mem badge title
       if (els.memBadge && snap.telegram.configured) {
@@ -3507,8 +3475,6 @@
       applySnapshot(snap);
       setBox2("Brainstorm thoughts appear here.\n\n(Empty — send a chat message to start.)");
       setBox3("Worker results appear here.\n\n(Empty — workers fill this after the pipeline.)");
-      const strip = document.getElementById("memory-strip");
-      if (strip) strip.hidden = true;
       hideClarify();
       appendChat("system", "Session reset (HOT archived to COLD if non-empty).");
       toast("Session reset", "ok");
