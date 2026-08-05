@@ -697,6 +697,27 @@
       document.getElementById("sys-budget").value =
         s.max_budget_usd != null ? s.max_budget_usd : "";
       document.getElementById("sys-model").value = s.default_model || "deepseek-chat";
+      // Ollama model datalist
+      try {
+        const om = await api("GET", "/api/ollama/models");
+        const dl = document.getElementById("ollama-models-list");
+        const line = document.getElementById("sys-ollama-models");
+        if (dl) {
+          dl.innerHTML = "";
+          (om.models || []).forEach(function (name) {
+            const opt = document.createElement("option");
+            opt.value = "ollama/" + name;
+            dl.appendChild(opt);
+          });
+        }
+        if (line) {
+          line.textContent = om.ok
+            ? "Ollama models: " + ((om.models || []).join(", ") || "(none pulled)")
+            : "Ollama models: offline";
+        }
+      } catch (_e) {
+        /* ignore */
+      }
       document.getElementById("system-spend").textContent =
         "Spent: $" +
         (Number(s.spent_usd) || 0).toFixed(4) +
@@ -813,6 +834,27 @@
       );
     } catch (err) {
       toast("Clean failed: " + err.message, "error");
+    }
+  }
+
+  async function exportLast() {
+    try {
+      const data = await api("GET", "/api/export/last");
+      const blob = new Blob([data.content || ""], {
+        type: "text/markdown;charset=utf-8",
+      });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = data.filename || "gnom-hub-export.md";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () {
+        URL.revokeObjectURL(a.href);
+        a.remove();
+      }, 500);
+      toast("Exported " + (data.chars || 0) + " chars", "ok");
+    } catch (err) {
+      toast("Export failed: " + err.message, "error");
     }
   }
 
@@ -1729,6 +1771,8 @@
     if (els.btnSystem) els.btnSystem.addEventListener("click", openSystemModal);
     if (els.btnWorkspace) els.btnWorkspace.addEventListener("click", openWorkspaceModal);
     if (els.btnTrace) els.btnTrace.addEventListener("click", openTraceModal);
+    const btnExport = document.getElementById("btn-export");
+    if (btnExport) btnExport.addEventListener("click", exportLast);
     if (els.flexSelect) els.flexSelect.addEventListener("change", onFlexSelectChange);
     const trClose = document.getElementById("trace-close");
     if (trClose) trClose.addEventListener("click", closeTraceModal);

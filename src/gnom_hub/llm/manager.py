@@ -113,12 +113,27 @@ class LLMManager:
         return False
 
     def providers_snapshot(self) -> dict:
+        models: list[str] = []
+        if self.ollama_available():
+            try:
+                models = self._ollama.list_models()
+            except Exception:  # noqa: BLE001
+                models = []
         return {
             "deepseek": self.has_provider("deepseek"),
             "ollama": self.ollama_available(),
             "ollama_host": self._ollama.base_url,
+            "ollama_models": models,
             "default_model": self.default_model,
         }
+
+    def list_ollama_models(self) -> list[str]:
+        if not self.ollama_available(force=True):
+            return []
+        try:
+            return self._ollama.list_models()
+        except Exception:  # noqa: BLE001
+            return []
 
     def chat(
         self,

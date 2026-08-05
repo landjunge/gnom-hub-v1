@@ -25,6 +25,22 @@ def test_health(client: TestClient):
     r = client.get("/api/health")
     assert r.status_code == 200
     assert r.json()["status"] == "ok"
+    assert "version" in r.json()
+
+
+def test_export_and_ollama_models(client: TestClient):
+    client.post("/api/chat?sync=1", json={"text": "Export me a plan"})
+    client.post("/api/execute?sync=1")
+    r = client.get("/api/export/last")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is True
+    assert "Brainstorm" in body["content"]
+    assert body["chars"] > 10
+
+    om = client.get("/api/ollama/models")
+    assert om.status_code == 200
+    assert "models" in om.json()
 
 
 def test_state_and_agents(client: TestClient):

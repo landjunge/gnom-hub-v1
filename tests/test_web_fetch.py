@@ -17,3 +17,9 @@ def test_web_fetch_blocks_localhost():
     r = web_fetch("http://127.0.0.1/")
     assert r["ok"] is False
     assert "private" in r.get("error", "").lower() or "local" in r.get("error", "").lower()
+
+
+def test_prefetch_urls_empty():
+    from gnom_hub.pipeline.orchestrator import _prefetch_urls
+
+    assert _prefetch_urls("no links here") == ""

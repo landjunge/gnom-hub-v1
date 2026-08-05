@@ -136,6 +136,21 @@ html, body {
   background: #495057;
 }
 
+.btn-export {
+  width: 72px;
+  height: 28px;
+  border: 1px solid #748ffc;
+  border-radius: 4px;
+  background: #343a40;
+  color: #bac8ff;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.btn-export:hover {
+  background: #495057;
+}
+
 .system-row-actions {
   flex-direction: row !important;
   flex-wrap: wrap;

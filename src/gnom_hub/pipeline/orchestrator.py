@@ -274,6 +274,11 @@ class Orchestrator:
         self._set_stage(PipelineStage.work)
         results: list[str] = []
         outputs: list[dict] = []
+        # Pre-fetch public URLs from user task + assignments (plan: internet lite)
+        web_ctx = _prefetch_urls(f"{text}\n" + "\n".join(t for _, t in tasks))
+        if web_ctx:
+            mem = (mem or "").rstrip() + "\n\nWeb fetch (auto):\n" + web_ctx
+            self.bus.emit("pipeline.web_fetch", {"chars": len(web_ctx)})
         for i, (wid, task) in enumerate(tasks, start=1):
             worker = self._workers.get(wid)
             if worker is None or not worker.enabled:
@@ -354,6 +359,30 @@ def _format_turns(turns: list[dict]) -> str:
             lines.append(f"Brainstorm:\n{text}")
         lines.append("")
     return "\n".join(lines).strip()
+
+
+def _prefetch_urls(blob: str, *, limit: int = 3) -> str:
+    """Fetch up to N public URLs found in text; empty string if none/fail."""
+    import re
+
+    from gnom_hub.tools.web_fetch import web_fetch
+
+    urls = re.findall(r"https?://[^\s\]\)\"'<>]+", blob or "")
+    seen: set[str] = set()
+    chunks: list[str] = []
+    for u in urls:
+        u = u.rstrip(".,;:)")
+        if u in seen:
+            continue
+        seen.add(u)
+        if len(seen) > limit:
+            break
+        res = web_fetch(u, max_chars=2500)
+        if res.get("ok"):
+            chunks.append(f"URL: {res.get('url')}\n{res.get('text', '')[:2500]}")
+        else:
+            chunks.append(f"URL: {u}\n(fetch failed: {res.get('error')})")
+    return "\n---\n".join(chunks)
 
 
 def _quality_check(

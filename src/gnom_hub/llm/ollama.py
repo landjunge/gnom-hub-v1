@@ -26,12 +26,26 @@ class OllamaClient:
 
     def available(self) -> bool:
         try:
-            url = f"{self.base_url}/api/tags"
-            req = urllib.request.Request(url, method="GET")
-            with urllib.request.urlopen(req, timeout=2.0) as resp:
-                return 200 <= resp.getcode() < 300
+            self.list_models()
+            return True
         except Exception:  # noqa: BLE001
             return False
+
+    def list_models(self) -> list[str]:
+        """Return installed model names from /api/tags."""
+        url = f"{self.base_url}/api/tags"
+        req = urllib.request.Request(url, method="GET")
+        with urllib.request.urlopen(req, timeout=2.0) as resp:
+            raw = resp.read()
+        data = json.loads(raw.decode("utf-8") if raw else "{}")
+        models = data.get("models") or []
+        names: list[str] = []
+        for m in models:
+            if isinstance(m, dict) and m.get("name"):
+                names.append(str(m["name"]))
+            elif isinstance(m, str):
+                names.append(m)
+        return names
 
     def chat(
         self,

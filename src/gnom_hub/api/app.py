@@ -105,7 +105,7 @@ class ShellBody(BaseModel):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Gnom-Hub v1", version="1.1.0")
+    app = FastAPI(title="Gnom-Hub v1", version="1.2.0")
 
     @app.get("/api/health")
     def health() -> dict[str, Any]:
@@ -113,13 +113,59 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "service": "gnom-hub-v1",
-            "version": "1.1.0",
+            "version": "1.2.0",
             "telegram": hub.telegram.enabled,
             "telegram_running": hub.telegram.running,
             "llm": {
                 "deepseek": hub.llm.has_provider("deepseek"),
                 "ollama": hub.llm.has_provider("ollama"),
             },
+        }
+
+    @app.get("/api/ollama/models")
+    def ollama_models() -> dict[str, Any]:
+        hub = get_hub()
+        models = hub.llm.list_ollama_models()
+        return {
+            "ok": hub.llm.has_provider("ollama"),
+            "host": hub.llm.providers_snapshot().get("ollama_host"),
+            "models": models,
+        }
+
+    @app.get("/api/export/last")
+    def export_last() -> dict[str, Any]:
+        """Export last brainstorm + worker outputs for download."""
+        hub = get_hub()
+        st = hub.pipeline.state
+        parts = [
+            "# Gnom-Hub export",
+            f"stage={st.stage.value}",
+            f"user={st.user_text}",
+            "",
+            "## Brainstorm",
+            st.brainstorm_notes or "(none)",
+            "",
+            "## Requirements",
+            "\n".join(f"- {r}" for r in st.distilled_requirements) or "(none)",
+            "",
+            "## Flex",
+            st.flex_notes or "(none)",
+            "",
+            "## Quality",
+            st.quality_notes or "(none)",
+            "",
+        ]
+        for out in st.worker_outputs or []:
+            parts.append(f"## {out.get('name') or out.get('worker')}")
+            parts.append(f"Task: {out.get('task') or ''}")
+            parts.append(str(out.get("result") or ""))
+            parts.append("")
+        text = "\n".join(parts)
+        return {
+            "ok": True,
+            "filename": "gnom-hub-export.md",
+            "content": text,
+            "chars": len(text),
         }
 
     @app.get("/api/state")

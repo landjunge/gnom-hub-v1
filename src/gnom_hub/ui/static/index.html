@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=52" />
+  <link rel="stylesheet" href="/static/app.css?v=53" />
 </head>
 <body>
   <div id="app">
@@ -30,6 +30,9 @@
         </button>
         <button type="button" id="btn-trace" class="btn-trace" data-tooltip-id="trace" title="Light pipeline trace">
           Trace
+        </button>
+        <button type="button" id="btn-export" class="btn-export" title="Export last results as Markdown">
+          Export
         </button>
         <button type="button" id="btn-system" class="btn-system" data-tooltip-id="system" title="System settings">
           System
@@ -220,8 +223,10 @@
         </label>
         <label class="system-row">
           Default model
-          <input id="sys-model" class="tune-input" type="text" placeholder="deepseek-chat" />
+          <input id="sys-model" class="tune-input" type="text" list="ollama-models-list" placeholder="deepseek-chat or ollama/llama3.2" />
+          <datalist id="ollama-models-list"></datalist>
         </label>
+        <p id="sys-ollama-models" class="system-line muted">Ollama models: —</p>
         <p id="system-spend" class="system-line muted">Spent: —</p>
         <label class="system-row">
           UI language
@@ -258,6 +263,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=52"></script>
+  <script src="/static/app.js?v=53"></script>
 </body>
 </html>

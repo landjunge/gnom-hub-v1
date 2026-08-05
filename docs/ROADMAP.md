@@ -17,7 +17,15 @@
 | Ollama local provider | **done** |
 | web_fetch tool (SSRF-safe) | **done** |
 
-## Post-V1.1 (optional)
+## V1.2.0
+
+| Item | Status |
+|------|--------|
+| Ollama model list in System UI | **done** |
+| Auto web_fetch when tasks contain URLs | **done** |
+| Export last results (Markdown download) | **done** |
+
+## Post-V1.2 (optional)
 
 | Item | Notes |
 |------|--------|

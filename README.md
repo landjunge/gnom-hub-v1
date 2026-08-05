@@ -1,8 +1,8 @@
-# Gnom-Hub v1.1.0
+# Gnom-Hub v1.2.0
 
 Local multi-agent control hub: **free brainstorm first**, then **Execute** workers.
 
-Desktop-only · USB-friendly · **DeepSeek** and/or **Ollama** · optional safe **web_fetch** tool.
+Desktop-only · USB-friendly · **DeepSeek** and/or **Ollama** · auto **URL fetch** on execute · **Export** Markdown.
 
 ## Flow
 
