@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=45" />
+  <link rel="stylesheet" href="/static/app.css?v=46" />
 </head>
 <body>
   <div id="app">
@@ -32,10 +32,10 @@
       </div>
     </header>
 
-    <!-- 8 agent cards: 140×100, gap 5 -->
+    <!-- 8 agent cards: equal width, full row = boxes -->
     <section id="agent-cards" class="agent-cards" aria-label="Agents"></section>
 
-    <!-- 3 boxes: 380×380, gap 5 -->
+    <!-- 3 boxes: equal thirds, fill remaining height -->
     <section class="boxes" aria-label="Main panels">
       <div id="box1" class="box box-arounder" data-tooltip-id="box1">
         <div class="box-header">Arounder</div>
@@ -103,6 +103,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=45"></script>
+  <script src="/static/app.js?v=46"></script>
 </body>
 </html>
