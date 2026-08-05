@@ -135,7 +135,7 @@ class ShellBody(BaseModel):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Gnom-Hub v1", version="2.6.0")
+    app = FastAPI(title="Gnom-Hub v1", version="2.7.0")
 
     @app.get("/api/health")
     def health() -> dict[str, Any]:
@@ -143,7 +143,7 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "service": "gnom-hub-v1",
-            "version": "2.6.0",
+            "version": "2.7.0",
             "telegram": hub.telegram.enabled,
             "telegram_running": hub.telegram.running,
             "llm": {

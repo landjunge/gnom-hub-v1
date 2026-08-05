@@ -300,25 +300,51 @@ class Hub:
             return (
                 "Gnom-Hub Telegram\n"
                 "/status — hub state\n"
-                "/do <task> — run pipeline\n"
+                "plain text or /bs <idea> — brainstorm turn\n"
+                "/exec — Execute from brainstorm notes\n"
+                "/do <task> — full one-shot pipeline\n"
+                "/pack list | save [label] | load <n|name>\n"
                 "/last — last worker results\n"
-                "/reset — clear HOT session (WARM kept)\n"
-                "/yes /no /whatever /later — clarify\n"
-                "Or send plain text as a task."
+                "/reset — clear HOT (WARM kept)\n"
+                "/yes /no /whatever /later — clarify"
             )
         if cmd == "status":
             st = self.pipeline.state
+            packs_n = len(self.list_session_packs())
             return (
-                f"stage={st.stage.value}\n"
+                f"stage={st.stage.value} mode={getattr(st, 'mode', '')}\n"
+                f"can_execute={bool((st.brainstorm_notes or '').strip())}\n"
                 f"agents={sum(1 for a in self.agents.list_agents() if a.enabled)}/6\n"
                 f"deepseek={'yes' if self.llm.has_provider('deepseek') else 'no'}\n"
                 f"hot={self.hot.get_context_summary()}\n"
-                f"warm_facts={len(self.warm.all_facts())}"
+                f"warm_facts={len(self.warm.all_facts())}\n"
+                f"packs={packs_n}"
             )
+        if cmd in ("bs", "brainstorm", "idea"):
+            if not arg.strip():
+                return "Usage: /bs <idea text> (or send plain text)"
+            snap = self.chat(arg.strip(), full=False)
+            p = snap["pipeline"]
+            notes = (p.get("brainstorm_notes") or "")[-500:]
+            return (
+                f"brainstorm ok · stage={p.get('stage')}\nSend more ideas, then /exec\n---\n{notes}"
+            )
+        if cmd in ("exec", "execute", "go"):
+            try:
+                snap = self.execute_sync()
+            except Exception as exc:  # noqa: BLE001
+                return f"Execute failed: {exc}"
+            p = snap["pipeline"]
+            if p.get("stage") == "clarify" and p.get("pending_question"):
+                q = p["pending_question"]["text"]
+                return f"Clarify needed: {q}\nReply /yes /no /whatever /later"
+            results = p.get("worker_results") or []
+            head = (p.get("brainstorm_notes") or "")[:160]
+            body = "\n".join(str(r)[:400] for r in results[:3])
+            return f"stage={p.get('stage')}\n{head}\n{body}".strip()
         if cmd == "do":
             if not arg.strip():
-                return "Usage: /do <task text>"
-            # Full pipeline for Telegram one-shot tasks
+                return "Usage: /do <task text> (one-shot full pipeline)"
             snap = self.chat(arg.strip(), full=True)
             p = snap["pipeline"]
             if p["stage"] == "clarify" and p.get("pending_question"):
@@ -327,6 +353,8 @@ class Hub:
             results = p.get("worker_results") or []
             head = (p.get("brainstorm_notes") or "")[:200]
             return f"stage={p['stage']}\n{head}\n" + "\n".join(results[:3])
+        if cmd == "pack":
+            return self._telegram_pack(arg.strip())
         if cmd == "last":
             st = self.pipeline.state
             if not st.worker_results:
@@ -356,6 +384,66 @@ class Hub:
             except ValueError as e:
                 return str(e)
         return f"Unknown /{cmd}. Try /help"
+
+    def _telegram_pack(self, arg: str) -> str:
+        """Telegram: /pack list | save [label] | load <n|name>."""
+        parts = arg.split(maxsplit=1)
+        sub = (parts[0] if parts else "list").lower()
+        rest = parts[1].strip() if len(parts) > 1 else ""
+        if sub in ("", "list", "ls"):
+            packs = self.list_session_packs()[:10]
+            if not packs:
+                return "No packs yet. /pack save [label]"
+            lines = ["Session packs:"]
+            for i, p in enumerate(packs, start=1):
+                note = f" — {p['notes'][:40]}" if p.get("notes") else ""
+                lines.append(f"{i}. {p.get('label') or p['name']}{note}")
+            lines.append("Load: /pack load <n|name>")
+            return "\n".join(lines)
+        if sub in ("save", "export", "store"):
+            try:
+                data = self.export_session_pack(
+                    label=rest or None,
+                    persist=True,
+                )
+            except Exception as exc:  # noqa: BLE001
+                return f"Pack save failed: {exc}"
+            return (
+                f"Pack saved: {data.get('filename')}\n"
+                f"label={data.get('pack', {}).get('label')}\n"
+                f"chars={data.get('chars')}"
+            )
+        if sub in ("load", "import", "open"):
+            if not rest:
+                return "Usage: /pack load <number|filename|label>"
+            packs = self.list_session_packs()
+            if not packs:
+                return "No packs on disk."
+            target = None
+            if rest.isdigit():
+                idx = int(rest)
+                if 1 <= idx <= len(packs):
+                    target = packs[idx - 1]["name"]
+            if target is None:
+                low = rest.lower()
+                for p in packs:
+                    if p["name"].lower() == low or low in p["name"].lower():
+                        target = p["name"]
+                        break
+                    if low in str(p.get("label") or "").lower():
+                        target = p["name"]
+                        break
+            if not target:
+                return f"Pack not found: {rest}"
+            try:
+                snap = self.import_session_pack_file(target)
+            except Exception as exc:  # noqa: BLE001
+                return f"Pack load failed: {exc}"
+            p = snap.get("pipeline") or {}
+            return (
+                f"Loaded {target}\nstage={p.get('stage')} · user={(p.get('user_text') or '')[:80]}"
+            )
+        return "Usage: /pack list | save [label] | load <n|name>"
 
     # ── agent persistence ───────────────────────────────────────────
 
@@ -546,7 +634,7 @@ class Hub:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "2.6.0",
+            "version": "2.7.0",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -911,7 +999,7 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "2.6.0",
+            "version": "2.7.0",
             "providers": self.llm.providers_snapshot(),
             "backups": self.list_backups()[:8],
             "packs": self.list_session_packs()[:12],
@@ -1407,7 +1495,7 @@ class Hub:
         pack = {
             "format": "gnom-hub-session-pack",
             "format_version": 1,
-            "app_version": "2.6.0",
+            "app_version": "2.7.0",
             "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
             "label": pack_label,
             "notes": (str(notes).strip()[:200] if notes else ""),
@@ -1815,7 +1903,7 @@ class Hub:
                 "5) Esc = close fullscreen or cancel job. "
                 "6) Box 3: Copy/DL/Tab/WS/↑perm/fullscreen; toolbar Copy all + Diff + History. "
                 "7) Cost badge + Compact density; job timer while busy. "
-                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat/history/workspace/ui_prefs/notes; list filter). 10) History Re-Exec. 11) Import from USB can store into data/packs/."
+                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat/history/workspace/ui_prefs/notes; list filter). 10) History Re-Exec. 11) Telegram: plain=/bs, /exec, /do, /pack list|save|load."
             ),
             "example": "Type idea → Execute → Pack ↓ (USB) → History Re-Exec → Diff.",
             "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",

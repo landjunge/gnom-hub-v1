@@ -1,8 +1,8 @@
-# Gnom-Hub v2.6.0
+# Gnom-Hub v2.7.0
 
 Local multi-agent control hub: **brainstorm first**, then **Execute** workers.
 
-Desktop · USB · Session packs (chat · history · workspace · **ui prefs · notes**) · filter · Re-Exec.
+Desktop · USB packs · Telegram **bs/exec/pack** · DeepSeek / Ollama · History Re-Exec.
 
 > **Convention:** every meaningful change is **pushed to `main`** and this **README is updated** in the same commit.
 
@@ -11,13 +11,9 @@ Desktop · USB · Session packs (chat · history · workspace · **ui prefs · n
 ## Flow
 
 ```
-Send / Enter              → Brainstorm (Box 2)
-Execute / Ctrl+Enter      → Distill → Flex → Workers → Quality → Memory
-Pack ↓                    → Full hop + compact/lang prefs + optional notes
-Pack list filter/Load…    → Filter (label/notes) · Load · Ren · ↓ · Del
-Pack ↑                    → Import JSON + store under data/packs/
-Auto-pack / Max packs     → Server auto-save + prune
-History → Re-Exec         → Re-run workers from a prior brainstorm
+Desktop:  Send = Brainstorm · Execute = workers
+Telegram: plain or /bs = Brainstorm · /exec = Execute · /do = one-shot
+Packs:    System Pack ↓/↑  ·  Telegram /pack list|save|load
 ```
 
 ---
@@ -27,23 +23,27 @@ History → Re-Exec         → Re-run workers from a prior brainstorm
 ```bash
 cd gnom-hub-v1
 ./scripts/install.sh && source .venv/bin/activate
-# Key.txt: DEEPSEEK_API_KEY=sk-...
+# Key.txt: DEEPSEEK_API_KEY=sk-...  (optional TELEGRAM_BOT_TOKEN=...)
 ./scripts/start.sh
 ./scripts/quality_check.sh
 ```
 
-**http://127.0.0.1:8080/?v=68**
+**http://127.0.0.1:8080/?v=69**
 
 ---
 
-## UI
+## Telegram
 
-| Control | Action |
+| Command | Action |
 |---------|--------|
-| **Pack ↓ / Pack ↑** | USB hop: chat, history, workspace, compact, lang, notes |
-| **Filter packs…** | Label / notes / name / date |
-| **Ren** | Edit label + notes |
-| **Auto-pack / Max packs** | After Execute; prune oldest |
+| plain text / `/bs` | Brainstorm turn (no auto-execute) |
+| `/exec` | Run workers from notes |
+| `/do <task>` | Full one-shot pipeline |
+| `/pack list` | List saved packs |
+| `/pack save [label]` | Persist pack on disk |
+| `/pack load <n\|name>` | Import pack by index or name |
+| `/status` `/last` `/reset` | Hub state / results / clear HOT |
+| `/yes` `/no` … | Clarify answers |
 
 ---
 
@@ -51,10 +51,8 @@ cd gnom-hub-v1
 
 | Tag | Highlights |
 |-----|------------|
-| 2.3 | Rename label, mtime, label on export |
-| 2.4 | Chat log + result history in pack |
-| 2.5 | Workspace temp/perm + pack filter |
-| **2.6** | ui_prefs (compact/lang) + pack notes |
+| 2.4–2.6 | Packs: chat, history, workspace, prefs, notes |
+| **2.7** | Telegram brainstorm-first + /pack commands |
 
 ---
 

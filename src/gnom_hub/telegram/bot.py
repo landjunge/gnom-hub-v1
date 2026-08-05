@@ -14,7 +14,7 @@ from typing import Any
 from gnom_hub.core.event_bus import EventBus
 
 # Commands from PRE_PLAN (subset, KISS)
-# /status /do /last /reset /help /yes /no /whatever /later
+# /status /bs /exec /do /pack /last /reset /help /yes /no /whatever /later
 
 
 class TelegramBridge:
@@ -71,8 +71,8 @@ class TelegramBridge:
         self.bus.emit("telegram.message", {"text": raw, "chat_id": chat_id})
 
         if not raw.startswith("/"):
-            # free text = /do
-            return self._dispatch("do", raw, {"chat_id": chat_id})
+            # free text = brainstorm turn (desktop-aligned); use /do for one-shot
+            return self._dispatch("bs", raw, {"chat_id": chat_id})
 
         parts = raw.split(maxsplit=1)
         cmd = parts[0][1:].lower()

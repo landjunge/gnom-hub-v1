@@ -705,3 +705,32 @@ def test_pack_ui_prefs_and_notes(client: TestClient):
     assert snap["ui_prefs"]["compact"] is True
     assert snap["ui_lang"] == "de"
     assert snap.get("pack_notes") == "USB laptop B"
+
+
+def test_telegram_brainstorm_exec_pack(client: TestClient):
+    # plain text = brainstorm only
+    r = client.post("/api/telegram/inbound", json={"text": "TG landing page"})
+    assert r.status_code == 200
+    reply = r.json()["reply"].lower()
+    assert "brainstorm" in reply or "exec" in reply
+    st = client.get("/api/state").json()["pipeline"]
+    assert st.get("brainstorm_notes")
+    assert st.get("stage") in ("brainstorm", "done", "idle")
+    # execute
+    r2 = client.post("/api/telegram/inbound", json={"text": "/exec"})
+    assert r2.status_code == 200
+    st2 = client.get("/api/state").json()["pipeline"]
+    assert st2.get("stage") in ("done", "clarify", "error")
+    # pack save + list + load
+    r3 = client.post(
+        "/api/telegram/inbound",
+        json={"text": "/pack save tg-usb"},
+    )
+    assert r3.status_code == 200
+    assert "saved" in r3.json()["reply"].lower() or "pack" in r3.json()["reply"].lower()
+    r4 = client.post("/api/telegram/inbound", json={"text": "/pack list"})
+    assert r4.status_code == 200
+    assert "1." in r4.json()["reply"] or "pack" in r4.json()["reply"].lower()
+    r5 = client.post("/api/telegram/inbound", json={"text": "/pack load 1"})
+    assert r5.status_code == 200
+    assert "load" in r5.json()["reply"].lower()

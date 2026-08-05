@@ -161,7 +161,17 @@
 | Import restores compact + lang | **done** |
 | Version / docs 2.6 | **done** |
 
-## Post-V2.6 (optional)
+## V2.7.0
+
+| Item | Status |
+|------|--------|
+| Telegram plain text → brainstorm turn | **done** |
+| /bs + /exec (+ aliases) | **done** |
+| /pack list \| save \| load | **done** |
+| /do remains full one-shot | **done** |
+| Version / docs 2.7 | **done** |
+
+## Post-V2.7 (optional)
 
 | Item | Notes |
 |------|--------|
