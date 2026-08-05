@@ -316,8 +316,8 @@ def test_html_gates_and_dod():
     from gnom_hub.pipeline.orchestrator import (
         _definition_of_done,
         _html_complete,
-        _validate_worker_draft,
         _quality_check,
+        _validate_worker_draft,
     )
 
     assert "DEFINITION OF DONE" in _definition_of_done("landing", ["complete HTML"])
