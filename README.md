@@ -1,8 +1,8 @@
-# Gnom-Hub v2.9.0
+# Gnom-Hub v3.0.0
 
 Local multi-agent control hub: **brainstorm first**, then **Execute** workers.
 
-Desktop · USB packs · COLD **restore** · Telegram bs/exec/pack/warm/**cold**/cancel · WARM · DeepSeek/Ollama.
+Desktop · USB packs · COLD restore · **Vector browser** · Telegram bs/exec/pack/warm/cold/**vec**/cancel.
 
 > **Convention:** every meaningful change is **pushed to `main`** and this **README is updated** in the same commit.
 
@@ -11,8 +11,9 @@ Desktop · USB packs · COLD **restore** · Telegram bs/exec/pack/warm/**cold**/
 ## Flow
 
 ```
-Desktop:  Archive HOT → COLD browser → Restore to HOT / Delete
-Telegram: /cold list | load <n|id> | del <n|id>
+Click Vec badge     → list / search / add / delete vector docs
+Telegram /vec       → search | add | list | del | clear
+Execute pipeline    → requirements + memory facts indexed (lexical)
 ```
 
 ---
@@ -26,19 +27,21 @@ cd gnom-hub-v1
 ./scripts/quality_check.sh
 ```
 
-**http://127.0.0.1:8080/?v=71**
+**http://127.0.0.1:8080/?v=72**
 
 ---
 
-## COLD
+## Vector lite
 
-| Action | How |
-|--------|-----|
-| Archive | Header **Archive** or Reset (auto) |
-| Browse | Click **Cold** badge |
-| Restore | Select archive → **Restore to HOT** (current HOT archived first if non-empty) |
-| Delete | Select → **Delete** |
-| Telegram | `/cold list` · `/cold load 1` · `/cold del <id>` |
+| Action | Desktop | Telegram |
+|--------|---------|----------|
+| Open | Click **Vec** badge | `/vec list` |
+| Search | Query + Search | `/vec search <q>` |
+| Add | Add field | `/vec add <text>` |
+| Delete | Del on row | `/vec del <id>` |
+| Clear | Clear | `/vec clear` |
+
+Lexical bag-of-words cosine (no heavy deps) — not true embeddings.
 
 ---
 
@@ -46,9 +49,9 @@ cd gnom-hub-v1
 
 | Tag | Highlights |
 |-----|------------|
-| 2.7 | Telegram brainstorm-first + /pack |
 | 2.8 | WARM manager + /cancel |
-| **2.9** | COLD restore/delete (UI + API + Telegram) |
+| 2.9 | COLD restore/delete |
+| **3.0** | Vector browser UI + API list/del + /vec |
 
 ---
 

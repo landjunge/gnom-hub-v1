@@ -192,7 +192,17 @@
 | Telegram /cold list\|load\|del | **done** |
 | Version / docs 2.9 | **done** |
 
-## Post-V2.9 (optional)
+## V3.0.0
+
+| Item | Status |
+|------|--------|
+| Vector list/get/delete in store | **done** |
+| GET /api/vector · DELETE · clear | **done** |
+| Vec badge modal (search/add/list/del) | **done** |
+| Telegram /vec search\|add\|list\|del\|clear | **done** |
+| Version / docs 3.0 | **done** |
+
+## Post-V3.0 (optional)
 
 | Item | Notes |
 |------|--------|

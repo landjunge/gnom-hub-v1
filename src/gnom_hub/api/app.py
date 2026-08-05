@@ -135,7 +135,7 @@ class ShellBody(BaseModel):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Gnom-Hub v1", version="2.9.0")
+    app = FastAPI(title="Gnom-Hub v1", version="3.0.0")
 
     @app.get("/api/health")
     def health() -> dict[str, Any]:
@@ -143,7 +143,7 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "service": "gnom-hub-v1",
-            "version": "2.9.0",
+            "version": "3.0.0",
             "telegram": hub.telegram.enabled,
             "telegram_running": hub.telegram.running,
             "llm": {
@@ -638,15 +638,46 @@ def create_app() -> FastAPI:
         except FileNotFoundError as e:
             raise HTTPException(status_code=404, detail=str(e)) from e
 
+    @app.get("/api/vector")
+    def vector_list(limit: int = Query(40, ge=1, le=200)) -> dict[str, Any]:
+        hub = get_hub()
+        return {
+            "count": hub.vectors.count(),
+            "docs": hub.vectors.list_docs(limit),
+        }
+
     @app.post("/api/vector/add")
     def vector_add(body: VectorAddBody) -> dict[str, Any]:
         doc_id = get_hub().vectors.add(body.text, meta=body.meta)
-        return {"ok": True, "id": doc_id, "count": get_hub().vectors.count()}
+        return {
+            "ok": True,
+            "id": doc_id,
+            "count": get_hub().vectors.count(),
+            "docs": get_hub().vectors.list_docs(20),
+        }
 
     @app.post("/api/vector/search")
     def vector_search(body: VectorSearchBody) -> dict[str, Any]:
         hits = get_hub().vectors.search(body.query, limit=body.limit)
-        return {"hits": hits}
+        return {"hits": hits, "count": get_hub().vectors.count()}
+
+    @app.delete("/api/vector/{doc_id}")
+    def vector_delete(doc_id: str) -> dict[str, Any]:
+        ok = get_hub().vectors.delete(doc_id)
+        if not ok:
+            raise HTTPException(status_code=404, detail="doc not found")
+        return {
+            "ok": True,
+            "deleted": doc_id,
+            "count": get_hub().vectors.count(),
+            "docs": get_hub().vectors.list_docs(20),
+        }
+
+    @app.post("/api/vector/clear")
+    def vector_clear() -> dict[str, Any]:
+        n = get_hub().vectors.count()
+        get_hub().vectors.clear()
+        return {"ok": True, "cleared": n, "count": 0, "docs": []}
 
     @app.post("/api/god-mode")
     def god_mode(body: GodModeBody) -> dict[str, Any]:

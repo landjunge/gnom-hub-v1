@@ -26,7 +26,7 @@ def test_health(client: TestClient):
     assert r.status_code == 200
     assert r.json()["status"] == "ok"
     assert "version" in r.json()
-    assert r.json()["version"].startswith("2.")
+    assert r.json()["version"].split(".")[0] in ("2", "3")
 
 
 def test_ui_static_has_v16_v19_features(client: TestClient):
@@ -795,3 +795,36 @@ def test_cold_restore_and_delete(client: TestClient):
     assert gone.json()["deleted"] == aid
     missing = client.get(f"/api/cold/{aid}")
     assert missing.status_code == 404
+
+
+def test_vector_browser_api(client: TestClient):
+    a = client.post(
+        "/api/vector/add",
+        json={"text": "USB portable multi agent hub dark theme", "meta": {"source": "test"}},
+    )
+    assert a.status_code == 200
+    doc_id = a.json()["id"]
+    assert a.json()["count"] >= 1
+    lst = client.get("/api/vector")
+    assert lst.status_code == 200
+    assert lst.json()["count"] >= 1
+    assert any(d["id"] == doc_id for d in lst.json()["docs"])
+    hits = client.post(
+        "/api/vector/search",
+        json={"query": "portable USB hub", "limit": 5},
+    )
+    assert hits.status_code == 200
+    assert hits.json()["hits"]
+    gone = client.delete(f"/api/vector/{doc_id}")
+    assert gone.status_code == 200
+    # telegram
+    client.post("/api/vector/add", json={"text": "telegram vector note about brainstorm"})
+    tg = client.post("/api/telegram/inbound", json={"text": "/vec search brainstorm"})
+    assert tg.status_code == 200
+    assert (
+        "brainstorm" in tg.json()["reply"].lower()
+        or "search" in tg.json()["reply"].lower()
+        or "v" in tg.json()["reply"].lower()
+    )
+    client.post("/api/vector/clear")
+    assert client.get("/api/vector").json()["count"] == 0

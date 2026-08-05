@@ -101,6 +101,7 @@
     btnTrace: document.getElementById("btn-trace"),
     flexSelect: document.getElementById("flex-preset-select"),
     traceModal: document.getElementById("trace-modal"),
+    vectorModal: document.getElementById("vector-modal"),
   };
 
   let activeStage = "idle";
@@ -396,7 +397,7 @@
     if (els.vecBadge && snap.vectors) {
       els.vecBadge.textContent = "Vec: " + (snap.vectors.count || 0);
       const coldN = snap.cold && snap.cold.count != null ? snap.cold.count : "—";
-      els.vecBadge.title = "Vector docs + COLD archives=" + coldN;
+      els.vecBadge.title = "Click: vector store · docs=" + (snap.vectors.count || 0) + " · cold=" + coldN;
     }
     if (els.godBadge) {
       const on = !!(snap.god_mode && snap.god_mode.enabled);
@@ -942,6 +943,145 @@
 
   function closeTraceModal() {
     if (els.traceModal) els.traceModal.hidden = true;
+  }
+
+  function closeVectorModal() {
+    if (els.vectorModal) els.vectorModal.hidden = true;
+  }
+
+  async function openVectorModal() {
+    if (!els.vectorModal) return;
+    els.vectorModal.hidden = false;
+    await refreshVectorList();
+  }
+
+  async function refreshVectorList() {
+    const ul = document.getElementById("vector-list");
+    const countEl = document.getElementById("vector-count");
+    try {
+      const data = await api("GET", "/api/vector?limit=40");
+      if (countEl) countEl.textContent = "Docs: " + (data.count || 0);
+      if (!ul) return;
+      ul.innerHTML = "";
+      const docs = data.docs || [];
+      if (!docs.length) {
+        const li = document.createElement("li");
+        li.className = "muted";
+        li.textContent = "(empty — add text or run Execute to index requirements)";
+        ul.appendChild(li);
+        return;
+      }
+      docs.forEach(function (d) {
+        const li = document.createElement("li");
+        li.style.display = "flex";
+        li.style.gap = "6px";
+        li.style.alignItems = "center";
+        const lab = document.createElement("span");
+        lab.style.flex = "1";
+        lab.style.minWidth = "0";
+        lab.style.overflow = "hidden";
+        lab.style.textOverflow = "ellipsis";
+        lab.style.whiteSpace = "nowrap";
+        lab.textContent = (d.id || "?") + ": " + (d.text || "");
+        lab.title = d.text || "";
+        const del = document.createElement("button");
+        del.type = "button";
+        del.className = "btn-ws-sm";
+        del.textContent = "Del";
+        del.addEventListener("click", function () {
+          deleteVectorDoc(d.id);
+        });
+        li.appendChild(lab);
+        li.appendChild(del);
+        ul.appendChild(li);
+      });
+    } catch (err) {
+      toast("Vector list failed: " + err.message, "error");
+    }
+  }
+
+  async function searchVectors() {
+    const qEl = document.getElementById("vector-query");
+    const hitsEl = document.getElementById("vector-hits");
+    const q = qEl ? String(qEl.value || "").trim() : "";
+    if (!q) {
+      toast("Enter a search query", "info");
+      return;
+    }
+    try {
+      const data = await api("POST", "/api/vector/search", {
+        query: q,
+        limit: 8,
+      });
+      const hits = data.hits || [];
+      if (!hitsEl) return;
+      if (!hits.length) {
+        hitsEl.textContent = "No hits for: " + q;
+        return;
+      }
+      hitsEl.textContent = hits
+        .map(function (h) {
+          return (
+            (h.score != null ? h.score : "?") +
+            " · " +
+            (h.id || "") +
+            " — " +
+            String(h.text || "").slice(0, 160)
+          );
+        })
+        .join("\n");
+    } catch (err) {
+      toast("Vector search failed: " + err.message, "error");
+    }
+  }
+
+  async function addVectorDoc() {
+    const input = document.getElementById("vector-add-input");
+    const text = input ? String(input.value || "").trim() : "";
+    if (!text) {
+      toast("Enter text to add", "info");
+      return;
+    }
+    try {
+      const data = await api("POST", "/api/vector/add", {
+        text: text,
+        meta: { source: "ui" },
+      });
+      if (input) input.value = "";
+      if (data.docs) {
+        // re-render from response
+        const countEl = document.getElementById("vector-count");
+        if (countEl) countEl.textContent = "Docs: " + (data.count || 0);
+      }
+      await refreshVectorList();
+      toast("Vector doc " + (data.id || "added"), "ok");
+    } catch (err) {
+      toast("Vector add failed: " + err.message, "error");
+    }
+  }
+
+  async function deleteVectorDoc(id) {
+    if (!id || !confirm('Delete vector doc "' + id + '"?')) return;
+    try {
+      await api("DELETE", "/api/vector/" + encodeURIComponent(id));
+      await refreshVectorList();
+      toast("Deleted " + id, "ok");
+    } catch (err) {
+      toast("Vector delete failed: " + err.message, "error");
+    }
+  }
+
+  async function clearVectorStore() {
+    if (!confirm("Clear ALL vector docs?")) return;
+    try {
+      await api("POST", "/api/vector/clear");
+      await refreshVectorList();
+      const hitsEl = document.getElementById("vector-hits");
+      if (hitsEl) hitsEl.textContent = "Search hits appear here.";
+      toast("Vector store cleared", "ok");
+    } catch (err) {
+      toast("Vector clear failed: " + err.message, "error");
+    }
   }
 
   async function saveCheckpoint() {
@@ -3281,6 +3421,11 @@
     document.addEventListener("keydown", function (ev) {
       // Esc: close overlays first, else cancel running job
       if (ev.key === "Escape") {
+        if (els.vectorModal && !els.vectorModal.hidden) {
+          ev.preventDefault();
+          closeVectorModal();
+          return;
+        }
         if (document.getElementById("diff-overlay")) {
           ev.preventDefault();
           closeDiffOverlay();
@@ -3431,6 +3576,48 @@
         if (ev.key === "Enter" || ev.key === " ") {
           ev.preventDefault();
           openColdBrowser();
+        }
+      });
+    }
+    if (els.vecBadge) {
+      els.vecBadge.addEventListener("click", openVectorModal);
+      els.vecBadge.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          openVectorModal();
+        }
+      });
+    }
+    const vectorClose = document.getElementById("vector-close");
+    if (vectorClose) vectorClose.addEventListener("click", closeVectorModal);
+    if (els.vectorModal) {
+      els.vectorModal.addEventListener("click", function (ev) {
+        if (ev.target === els.vectorModal) closeVectorModal();
+      });
+    }
+    const vectorSearchBtn = document.getElementById("vector-search-btn");
+    if (vectorSearchBtn) vectorSearchBtn.addEventListener("click", searchVectors);
+    const vectorRefresh = document.getElementById("vector-refresh");
+    if (vectorRefresh) vectorRefresh.addEventListener("click", refreshVectorList);
+    const vectorClear = document.getElementById("vector-clear");
+    if (vectorClear) vectorClear.addEventListener("click", clearVectorStore);
+    const vectorAddBtn = document.getElementById("vector-add-btn");
+    if (vectorAddBtn) vectorAddBtn.addEventListener("click", addVectorDoc);
+    const vectorQuery = document.getElementById("vector-query");
+    if (vectorQuery) {
+      vectorQuery.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          searchVectors();
+        }
+      });
+    }
+    const vectorAddInput = document.getElementById("vector-add-input");
+    if (vectorAddInput) {
+      vectorAddInput.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          addVectorDoc();
         }
       });
     }

@@ -114,6 +114,37 @@ class VectorStore:
     def count(self) -> int:
         return len(self._docs)
 
+    def list_docs(self, limit: int = 40) -> list[dict[str, Any]]:
+        """Newest-last slice without embedding vectors (for UI)."""
+        out: list[dict[str, Any]] = []
+        for d in self._docs[-max(1, limit) :]:
+            out.append(
+                {
+                    "id": d.get("id"),
+                    "text": str(d.get("text") or "")[:500],
+                    "meta": d.get("meta") or {},
+                }
+            )
+        return list(reversed(out))
+
+    def get(self, doc_id: str) -> dict[str, Any] | None:
+        for d in self._docs:
+            if d.get("id") == doc_id:
+                return {
+                    "id": d.get("id"),
+                    "text": d.get("text"),
+                    "meta": d.get("meta") or {},
+                }
+        return None
+
+    def delete(self, doc_id: str) -> bool:
+        before = len(self._docs)
+        self._docs = [d for d in self._docs if d.get("id") != doc_id]
+        if len(self._docs) == before:
+            return False
+        self.save()
+        return True
+
     def clear(self) -> None:
         self._docs = []
         self.save()

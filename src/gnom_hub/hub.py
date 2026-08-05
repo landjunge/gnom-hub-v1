@@ -321,7 +321,11 @@ class Hub:
                 f"deepseek={'yes' if self.llm.has_provider('deepseek') else 'no'}\n"
                 f"hot={self.hot.get_context_summary()}\n"
                 f"warm_facts={len(self.warm.all_facts())}\n"
-                f"packs={packs_n}" + chr(10) + f"cold={len(self.cold.list_archives(200))}"
+                f"packs={packs_n}"
+                + chr(10)
+                + f"cold={len(self.cold.list_archives(200))}"
+                + chr(10)
+                + f"vectors={self.vectors.count()}"
             )
         if cmd in ("bs", "brainstorm", "idea"):
             if not arg.strip():
@@ -362,6 +366,8 @@ class Hub:
             return self._telegram_warm(arg.strip())
         if cmd == "cold":
             return self._telegram_cold(arg.strip())
+        if cmd in ("vec", "vector", "search"):
+            return self._telegram_vec(arg.strip())
         if cmd == "cancel":
             return self._telegram_cancel()
         if cmd == "last":
@@ -571,6 +577,55 @@ class Hub:
                 return aid
         return None
 
+    def _telegram_vec(self, arg: str) -> str:
+        """Telegram: /vec search|add|list|del|clear."""
+        parts = arg.split(maxsplit=1)
+        sub = (parts[0] if parts else "list").lower()
+        rest = parts[1].strip() if len(parts) > 1 else ""
+        if sub in ("", "list", "ls"):
+            docs = self.vectors.list_docs(12)
+            if not docs:
+                return "Vector store empty. /vec add <text>"
+            lines = [f"Vectors ({self.vectors.count()}):"]
+            for d in docs:
+                lines.append(f"- {d.get('id')}: {str(d.get('text') or '')[:100]}")
+            return chr(10).join(lines)
+        if sub in ("search", "find", "q"):
+            if not rest:
+                return "Usage: /vec search <query>"
+            hits = self.vectors.search(rest, limit=5)
+            if not hits:
+                return "No hits."
+            lines = [f"Search: {rest[:60]}"]
+            for h in hits:
+                lines.append(f"{h.get('score')}: {h.get('id')} — {str(h.get('text') or '')[:120]}")
+            return chr(10).join(lines)
+        if sub in ("add", "a", "+"):
+            if not rest:
+                return "Usage: /vec add <text>"
+            doc_id = self.vectors.add(rest, meta={"source": "telegram"})
+            return f"Added {doc_id} (n={self.vectors.count()})"
+        if sub in ("del", "rm", "delete"):
+            if not rest:
+                return "Usage: /vec del <id>"
+            ok = self.vectors.delete(rest.strip())
+            return f"Deleted {rest}." if ok else f"Not found: {rest}"
+        if sub == "clear":
+            n = self.vectors.count()
+            self.vectors.clear()
+            return f"Vector store cleared ({n} docs)."
+        # bare query convenience: /vec something without subcommand word
+        if arg.strip() and sub not in ("list", "ls"):
+            # if first token isn't a known sub, treat full arg as search
+            hits = self.vectors.search(arg.strip(), limit=5)
+            if not hits:
+                return "No hits. Try /vec add <text> first."
+            lines = [f"Search: {arg.strip()[:60]}"]
+            for h in hits:
+                lines.append(f"{h.get('score')}: {h.get('id')} — {str(h.get('text') or '')[:120]}")
+            return chr(10).join(lines)
+        return "Usage: /vec search <q> | add <text> | list | del <id> | clear"
+
     # ── agent persistence ───────────────────────────────────────────
 
     def _load_agent_state(self) -> None:
@@ -761,7 +816,7 @@ class Hub:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "2.9.0",
+            "version": "3.0.0",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -1181,7 +1236,7 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "2.9.0",
+            "version": "3.0.0",
             "providers": self.llm.providers_snapshot(),
             "backups": self.list_backups()[:8],
             "packs": self.list_session_packs()[:12],
@@ -1677,7 +1732,7 @@ class Hub:
         pack = {
             "format": "gnom-hub-session-pack",
             "format_version": 1,
-            "app_version": "2.9.0",
+            "app_version": "3.0.0",
             "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
             "label": pack_label,
             "notes": (str(notes).strip()[:200] if notes else ""),
@@ -2085,7 +2140,7 @@ class Hub:
                 "5) Esc = close fullscreen or cancel job. "
                 "6) Box 3: Copy/DL/Tab/WS/↑perm/fullscreen; toolbar Copy all + Diff + History. "
                 "7) Cost badge + Compact density; job timer while busy. "
-                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat/history/workspace/ui_prefs/notes; list filter). 10) History Re-Exec. 11) Telegram: /bs /exec /do /pack /warm /cold /cancel."
+                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat/history/workspace/ui_prefs/notes; list filter). 10) History Re-Exec. 11) Telegram: /bs /exec /pack /warm /cold /vec /cancel."
             ),
             "example": "Type idea → Execute → Pack ↓ (USB) → History Re-Exec → Diff.",
             "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",

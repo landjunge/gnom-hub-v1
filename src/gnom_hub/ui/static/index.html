@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=71" />
+  <link rel="stylesheet" href="/static/app.css?v=72" />
 </head>
 <body>
   <div id="app">
@@ -14,7 +14,7 @@
         <span id="llm-badge" class="llm-badge" title="LLM key status">LLM: —</span>
         <span id="cost-badge" class="cost-badge" title="Session spend / budget">$0.00</span>
         <span id="mem-badge" class="mem-badge" title="HOT memory">Mem: —</span>
-        <span id="vec-badge" class="vec-badge" title="Vector store">Vec: —</span>
+        <span id="vec-badge" class="vec-badge" title="Open vector store (click)" role="button" tabindex="0">Vec: —</span>
         <span id="god-badge" class="god-badge" title="God-Mode — click to toggle" role="button" tabindex="0">God: off</span>
         <span id="cold-badge" class="cold-badge" title="COLD archives — click to browse" role="button" tabindex="0">Cold: —</span>
         <span id="stage-badge" class="stage-badge" title="Pipeline stage">idle</span>
@@ -327,6 +327,29 @@
     </div>
   </div>
 
+  <!-- Vector lite browser -->
+  <div id="vector-modal" class="modal" hidden>
+    <div class="modal-panel trace-panel">
+      <div class="modal-head">
+        <h2 class="modal-title">Vector store (lite)</h2>
+        <button type="button" id="vector-close" class="modal-close" title="Close">×</button>
+      </div>
+      <p id="vector-count" class="system-line muted">Docs: 0</p>
+      <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <input id="vector-query" class="tune-input" type="search" placeholder="Search…" style="flex:1;min-width:140px" />
+        <button type="button" id="vector-search-btn" class="btn-ws-sm">Search</button>
+        <button type="button" id="vector-refresh" class="btn-ws-sm">List</button>
+        <button type="button" id="vector-clear" class="btn-ws-sm">Clear</button>
+      </div>
+      <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <input id="vector-add-input" class="tune-input" type="text" placeholder="Add doc text…" style="flex:1;min-width:140px" />
+        <button type="button" id="vector-add-btn" class="btn-ws-sm">Add</button>
+      </div>
+      <ul id="vector-list" class="ws-list" style="max-height:220px"></ul>
+      <pre id="vector-hits" class="trace-body muted" style="max-height:140px;margin-top:8px">Search hits appear here.</pre>
+    </div>
+  </div>
+
   <!-- Light trace -->
   <div id="trace-modal" class="modal" hidden>
     <div class="modal-panel trace-panel">
@@ -340,6 +363,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=71"></script>
+  <script src="/static/app.js?v=72"></script>
 </body>
 </html>
