@@ -50,6 +50,8 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
   width: var(--layout-w);
   margin-bottom: 8px;
 }
@@ -95,7 +97,10 @@ html, body {
 .top-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: 900px;
 }
 
 .stage-badge,
@@ -326,6 +331,15 @@ html, body {
   padding: 10px;
   overflow: auto;
   min-height: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.box-body .result-block {
+  white-space: pre-wrap;
+  margin: 0;
 }
 
 .muted,
@@ -397,10 +411,11 @@ html, body {
   background: #495057;
 }
 
-/* —— Chat ~150 px —— */
+/* —— Chat (taller for usability) —— */
 .chat {
   width: var(--layout-w);
-  height: var(--chat-h);
+  height: 200px;
+  min-height: 180px;
   background: var(--bg-panel);
   border: 1px solid var(--border);
   border-radius: 4px;

@@ -396,25 +396,40 @@
     }
 
     const box2 = [];
-    if (p.brainstorm_notes) box2.push(p.brainstorm_notes);
+    if (p.brainstorm_notes) {
+      box2.push("=== Brainstorm ===");
+      box2.push(p.brainstorm_notes);
+    }
     if (p.flex_notes) {
       box2.push("");
-      box2.push("Flex review:");
+      box2.push("=== Flex review ===");
       box2.push(p.flex_notes);
     }
     if (p.distilled_requirements && p.distilled_requirements.length) {
       box2.push("");
-      box2.push("Requirements:");
+      box2.push("=== Requirements ===");
       p.distilled_requirements.forEach(function (r) {
         box2.push("• " + r);
       });
     }
-    if (box2.length) setBox2(box2.join("\n"));
+    if (box2.length) {
+      setBox2(box2.join("\n"));
+    } else if (p.stage === "idle") {
+      setBox2("Brainstorm thoughts appear here.\n\n(Type a message below and press Send.)");
+    }
 
     if (p.worker_results && p.worker_results.length) {
-      setBox3(p.worker_results.join("\n"));
+      const lines = ["=== Worker results ==="];
+      p.worker_results.forEach(function (r, i) {
+        lines.push("");
+        lines.push("--- Worker " + (i + 1) + " ---");
+        lines.push(r);
+      });
+      setBox3(lines.join("\n"));
     } else if (p.stage === "done") {
       setBox3("(no worker output — coordinator or workers off)");
+    } else if (p.stage === "idle") {
+      setBox3("Worker results appear here after Send.");
     }
 
     if (p.pending_question && p.pending_question.text) {
@@ -513,8 +528,15 @@
     if (typeof cb === "function") cb(text);
 
     setChatBusy(true);
-    appendChat("system", "Pipeline running (Live LLM can take 10–40s)…");
-    toast("Pipeline running…", "info");
+    const live =
+      els.llmBadge && els.llmBadge.classList.contains("has-key");
+    appendChat(
+      "system",
+      live
+        ? "Pipeline running (Live LLM, 10–40s)…"
+        : "Pipeline running (stub mode, fast)…"
+    );
+    toast(live ? "Pipeline running (live)…" : "Pipeline running…", "info");
 
     try {
       const snap = await api("POST", "/api/chat", { text: text });
@@ -740,11 +762,24 @@
 
   function setBox2(htmlOrText) {
     const body = document.getElementById("box2-content");
-    if (body) body.textContent = htmlOrText;
+    if (!body) return;
+    body.innerHTML = "";
+    const pre = document.createElement("pre");
+    pre.className = "result-block";
+    pre.textContent = htmlOrText || "";
+    body.appendChild(pre);
   }
   function setBox3(htmlOrText) {
     const body = document.getElementById("box3-content");
-    if (body) body.textContent = htmlOrText;
+    if (!body) return;
+    // keep optional canvas-preview if present
+    const canvas = body.querySelector(".canvas-preview");
+    body.innerHTML = "";
+    const pre = document.createElement("pre");
+    pre.className = "result-block";
+    pre.textContent = htmlOrText || "";
+    body.appendChild(pre);
+    if (canvas) body.appendChild(canvas);
   }
 
   async function bootstrap() {
