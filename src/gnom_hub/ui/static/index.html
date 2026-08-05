@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=83" />
+  <link rel="stylesheet" href="/static/app.css?v=84" />
 </head>
 <body>
   <div id="app">
@@ -99,8 +99,8 @@
       <div id="box2" class="box box-brainstorm" data-tooltip-id="box2">
         <div class="box-header">Brainstorm</div>
         <div id="box2-content" class="box-body">
-          <p class="muted">Brainstorm thoughts appear here.</p>
-          <p class="muted empty-hint">(Empty — send a chat message to start.)</p>
+          <p class="muted">Brainstorm dialogue, Flex notes, and requirements appear here.</p>
+          <p class="muted empty-hint">(Empty — send a chat message to start. Scroll for full text.)</p>
         </div>
         <div id="memory-strip" class="memory-strip" data-tooltip-id="memory" hidden>
           <div class="memory-strip-title">Memory (HOT)</div>
@@ -110,7 +110,7 @@
 
       <div id="box3" class="box box-worker" data-tooltip-id="box3">
         <div class="box-header box3-header">
-          <span class="box3-header-title">Worker results · W1 / W2</span>
+          <span class="box3-header-title">Worker results</span>
           <span class="box3-toolbar">
             <span id="job-timer" class="job-timer" hidden title="Job duration">0.0s</span>
             <select id="result-history" class="result-history" title="Previous execute results" aria-label="Result history">
@@ -131,8 +131,8 @@
           </span>
         </div>
         <div id="box3-content" class="box-body box3-dynamic">
-          <p class="muted">Worker 1 &amp; 2 results appear here (text + HTML preview).</p>
-          <p class="muted empty-hint">(Empty — send a chat to fill both worker panels.)</p>
+          <p class="muted">Worker results appear here (text + HTML preview). Scroll if needed.</p>
+          <p class="muted empty-hint">(Empty — Execute after brainstorm to fill worker panels.)</p>
         </div>
       </div>
     </section>
@@ -450,6 +450,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=83"></script>
+  <script src="/static/app.js?v=84"></script>
 </body>
 </html>

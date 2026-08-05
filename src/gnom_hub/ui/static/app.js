@@ -3518,8 +3518,8 @@
   }
 
   /**
-   * Box 3: dynamic Worker 1 / Worker 2 panels.
-   * HTML → sandboxed Preview + Source; plain text → readable pre.
+   * Box 3: dynamic worker panels (all enabled workers).
+   * HTML → sandboxed Preview + Source; plain text → scrollable pre.
    */
   function updateBox3Toolbar() {
     const btnDiff = document.getElementById("btn-diff");
@@ -3549,7 +3549,7 @@
         empty.textContent = "Workers running…";
       } else {
         empty.textContent =
-          "Worker 1 & 2 results appear here (text, plans, full HTML preview).";
+          "Worker results appear here (text, plans, full HTML preview). Scroll for more.";
       }
       body.appendChild(empty);
       if (canvas) body.appendChild(canvas);
@@ -3893,7 +3893,9 @@
     if (out.task) {
       const taskEl = document.createElement("div");
       taskEl.className = "worker-panel-task";
-      taskEl.textContent = "Task: " + String(out.task).split("\n")[0].slice(0, 160);
+      const taskFull = String(out.task);
+      taskEl.textContent = "Task: " + taskFull;
+      taskEl.title = taskFull;
       panel.appendChild(taskEl);
     }
 
