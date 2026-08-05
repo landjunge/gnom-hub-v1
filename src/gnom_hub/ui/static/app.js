@@ -1960,10 +1960,8 @@
     const mode = bar.dataset.mode || "";
     if (mode === "clarify") {
       onClarify(value);
-      return;
     }
-    // Reserved for future box2/box3 actions
-    toast(value, "info");
+    // No default icons/arrows — other modes only when pipeline fills labels
   }
 
   let chatBusy = false;
