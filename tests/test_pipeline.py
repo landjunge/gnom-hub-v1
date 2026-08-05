@@ -340,6 +340,44 @@ def test_html_gates_and_dod():
     assert "Gates:" in notes
 
 
+def test_brainstorm_topic_switch_resets_dialogue():
+    """Unrelated long new task must not keep prior turns (e.g. TTS → landing page)."""
+    from gnom_hub.pipeline.orchestrator import _is_topic_switch
+
+    turns = [{"role": "user", "text": "was ist mit tts"}, {"role": "brainstorm", "text": "…"}]
+    landing = (
+        "Build a modern landing page for a coffee shop called Bean & Bloom. "
+        "Include hero with headline and CTA, three feature cards, and a simple footer. "
+        "Output full HTML with inline CSS."
+    )
+    assert _is_topic_switch(turns, landing) is True
+    assert _is_topic_switch(turns, "ok more detail please") is False
+
+    bus = EventBus()
+    pipe = Pipeline(bus)
+    pipe.brainstorm_turn("was ist mit tts")
+    assert "tts" in (pipe.state.user_text or "").lower()
+    pipe.brainstorm_turn(landing)
+    assert "landing" in (pipe.state.user_text or "").lower()
+    assert "tts" not in (pipe.state.user_text or "").lower()
+    # Fresh dialogue — first user turn is the landing task
+    user_turns = [t for t in pipe.state.brainstorm_turns if t.get("role") == "user"]
+    assert len(user_turns) == 1
+    assert "Bean" in user_turns[0]["text"]
+
+
+def test_execute_uses_latest_user_turn():
+    bus = EventBus()
+    pipe = Pipeline(bus)
+    pipe.brainstorm_turn("First idea about a todo list MVP")
+    pipe.brainstorm_turn("Also consider dark mode for the same todo list")
+    # Same topic → multi-turn; user_text is latest
+    assert "dark mode" in (pipe.state.user_text or "").lower()
+    st = pipe.execute()
+    assert st.stage == PipelineStage.done
+    assert "dark mode" in (st.user_text or "").lower()
+
+
 def test_coordinator_html_plan_prefers_full_page():
     """HTML/landing tasks always get deterministic full-page plan (no section splits)."""
     from gnom_hub.agents.models import COLORS, AgentId, AgentState

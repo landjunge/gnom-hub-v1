@@ -135,6 +135,7 @@ class Orchestrator:
                 self._state.mode == "brainstorm"
                 and self._state.stage == PipelineStage.brainstorm
                 and bool(self._state.brainstorm_turns)
+                and not _is_topic_switch(self._state.brainstorm_turns, text)
             )
             if not continuing:
                 self._state = PipelineState(user_text=text, mode="brainstorm")
@@ -146,6 +147,8 @@ class Orchestrator:
                 self._state.distilled_requirements = []
                 self._state.flex_notes = ""
                 self._state.pending_question = None
+                # Latest user message is the task of record (not the first turn)
+                self._state.user_text = text
 
             self._clarified_once = False
 
@@ -167,8 +170,8 @@ class Orchestrator:
 
             self._state.brainstorm_turns.append({"role": "brainstorm", "text": notes})
             self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
-            if not history:
-                self._state.user_text = text
+            # Always pin task to the message that just arrived
+            self._state.user_text = text
 
             self._set_stage(PipelineStage.brainstorm)
             self.bus.emit(
@@ -194,8 +197,9 @@ class Orchestrator:
         """Distill + run workers from accumulated brainstorm."""
         try:
             text = (self._state.user_text or "").strip()
-            if not text and self._state.brainstorm_turns:
-                for t in self._state.brainstorm_turns:
+            if self._state.brainstorm_turns:
+                # Prefer the most recent user turn (current intent)
+                for t in reversed(self._state.brainstorm_turns):
                     if t.get("role") == "user" and str(t.get("text") or "").strip():
                         text = str(t["text"]).strip()
                         self._state.user_text = text
@@ -541,6 +545,53 @@ def _format_turns(turns: list[dict]) -> str:
             lines.append(f"Brainstorm:\n{text}")
         lines.append("")
     return "\n".join(lines).strip()
+
+
+def _is_topic_switch(turns: list[dict], new_text: str) -> bool:
+    """
+    True when the new message looks like a different task than prior user turns.
+    Avoids carrying 'was ist mit tts' into a full landing-page execute.
+    Short follow-ups (clarifications) keep the dialogue open.
+    """
+    new = (new_text or "").strip()
+    if len(new) < 48:
+        return False
+    prior_users = [
+        str(t.get("text") or "").strip()
+        for t in turns
+        if t.get("role") == "user" and str(t.get("text") or "").strip()
+    ]
+    if not prior_users:
+        return False
+    # Compare against the first task in the dialogue
+    first = prior_users[0].lower()
+    new_l = new.lower()
+    a = {w for w in first.split() if len(w) > 2}
+    b = {w for w in new_l.split() if len(w) > 2}
+    if not a:
+        return True
+    overlap = len(a & b) / max(len(a), 1)
+    # Long new instruction with little lexical overlap → new task
+    if len(new) >= 80 and overlap < 0.28:
+        return True
+    # Explicit deliverable keywords only in the new message
+    deliverable = (
+        "html",
+        "landing",
+        "website",
+        "webpage",
+        "web page",
+        "build ",
+        "create ",
+        "make ",
+        "implement ",
+        "seite",
+    )
+    return (
+        any(k in new_l for k in deliverable)
+        and not any(k in first for k in deliverable)
+        and overlap < 0.4
+    )
 
 
 def _prefetch_urls(blob: str, *, limit: int = 3) -> str:

@@ -113,3 +113,5 @@ Reference: [`KEYS_AND_MODELS.md`](KEYS_AND_MODELS.md)
 | Empty DeepSeek content treated as success | Raise `LLMError` if still empty |
 | UI timeout leaves mid-stage + orphan job | Cancel + `/api/state` resync; longer poll |
 | Re-Exec while busy | Guard `chatBusy` |
+| Brainstorm topic switch (TTS → landing) keeps old `user_text` | Latest user turn wins; topic-switch restarts dialogue |
+| Reset leaves checkpoint / running jobs | Reset/clean cancel jobs, drop checkpoint, lock pipeline |

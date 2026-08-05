@@ -421,11 +421,18 @@ def test_help(client: TestClient):
 
 def test_reset_clears_pipeline(client: TestClient):
     client.post("/api/chat?sync=1", json={"text": "remember this"})
+    # Seed a checkpoint that must not survive reset
+    client.post("/api/checkpoint/save")
     r = client.post("/api/reset")
     assert r.status_code == 200
     data = r.json()
     assert data["pipeline"]["stage"] == "idle"
     assert data["pipeline"]["user_text"] == ""
+    assert not (data["pipeline"].get("brainstorm_notes") or "").strip()
+    assert not (data["pipeline"].get("brainstorm_turns") or [])
+    # Checkpoint file removed so restore cannot re-inject dialogue
+    ck = data.get("checkpoint") or {}
+    assert ck.get("exists") is False
 
 
 def test_memory_endpoint_after_chat(client: TestClient):

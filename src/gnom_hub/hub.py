@@ -2019,21 +2019,46 @@ class Hub:
         clear_warm: bool = False,
         archive: bool = True,
     ) -> dict[str, Any]:
-        """Clear HOT session. Optionally archive to COLD first. WARM kept unless clear_warm."""
+        """Clear HOT session + pipeline. Optionally archive to COLD first. WARM kept unless clear_warm."""
+        # Soft-cancel any in-flight jobs so they cannot overwrite a fresh pipeline
+        cancelled_jobs = 0
+        jobs = getattr(self, "_jobs", None)
+        if not isinstance(jobs, dict):
+            jobs = {}
+            self._jobs = jobs
+        for jid, job in list(jobs.items()):
+            if isinstance(job, dict) and job.get("status") in ("running", "queued"):
+                job["cancel"] = True
+                job["status"] = "cancelled"
+                job["error"] = job.get("error") or "cancelled by reset"
+                job["stage"] = "cancelled"
+                cancelled_jobs += 1
+                _ = jid
+        self._active_job_id = None
+
         archived = None
-        if archive and (self.hot.session.get("messages") or self.hot.session.get("facts")):
-            archived = self.archive_cold(label="auto-reset")
-        self.hot.clear(save=True)
-        if clear_warm:
-            self.warm.clear()
-        if not keep_agents:
-            self.agents = AgentManager(self.bus)
-            self.agents.on_start()
-        self.pipeline = self._new_pipeline()
-        self.last_error = None
-        snap = self.snapshot()
+        with self._pipeline_lock_obj():
+            if archive and (self.hot.session.get("messages") or self.hot.session.get("facts")):
+                archived = self.archive_cold(label="auto-reset")
+            self.hot.clear(save=True)
+            if clear_warm:
+                self.warm.clear()
+            if not keep_agents:
+                self.agents = AgentManager(self.bus)
+                self.agents.on_start()
+            self.pipeline = self._new_pipeline()
+            self.last_error = None
+            # Drop light checkpoint so restore cannot re-inject old brainstorm
+            if self._checkpoint_path.is_file():
+                try:
+                    self._checkpoint_path.unlink()
+                except OSError:
+                    pass
+            snap = self.snapshot()
         if archived:
             snap["archived"] = archived
+        if cancelled_jobs:
+            snap["cancelled_jobs"] = cancelled_jobs
         return snap
 
     def telegram_start(self) -> dict[str, Any]:
@@ -2053,20 +2078,32 @@ class Hub:
         One-click clean state (plan §7): clear HOT + temp workspace + pipeline,
         keep WARM long-term memory and agent toggles.
         """
+        jobs = getattr(self, "_jobs", None)
+        if not isinstance(jobs, dict):
+            jobs = {}
+            self._jobs = jobs
+        for job in list(jobs.values()):
+            if isinstance(job, dict) and job.get("status") in ("running", "queued"):
+                job["cancel"] = True
+                job["status"] = "cancelled"
+                job["error"] = job.get("error") or "cancelled by clean"
+                job["stage"] = "cancelled"
+        self._active_job_id = None
         archived = None
-        if self.hot.session.get("messages") or self.hot.session.get("facts"):
-            archived = self.archive_cold(label="clean-state")
-        self.hot.clear(save=True)
-        removed = self.workspace.clear_temp()
-        self.pipeline = self._new_pipeline()
-        self.last_error = None
-        self.trace = []
-        if self._checkpoint_path.is_file():
-            try:
-                self._checkpoint_path.unlink()
-            except OSError:
-                pass
-        snap = self.snapshot()
+        with self._pipeline_lock_obj():
+            if self.hot.session.get("messages") or self.hot.session.get("facts"):
+                archived = self.archive_cold(label="clean-state")
+            self.hot.clear(save=True)
+            removed = self.workspace.clear_temp()
+            self.pipeline = self._new_pipeline()
+            self.last_error = None
+            self.trace = []
+            if self._checkpoint_path.is_file():
+                try:
+                    self._checkpoint_path.unlink()
+                except OSError:
+                    pass
+            snap = self.snapshot()
         snap["clean"] = {
             "ok": True,
             "temp_removed": removed,
