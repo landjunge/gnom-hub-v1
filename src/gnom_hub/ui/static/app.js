@@ -326,7 +326,12 @@
       toast(String(detail), "error");
       throw new Error(detail);
     }
-    return res.json();
+    try {
+      return await res.json();
+    } catch (parseErr) {
+      toast("Bad JSON from server (job/state) — " + (parseErr.message || parseErr), "error");
+      throw parseErr;
+    }
   }
 
   function applyAgentsFromServer(list) {
@@ -1875,7 +1880,14 @@
     }
     if (els.btnMic) els.btnMic.disabled = chatBusy;
     if (els.chatInput) els.chatInput.disabled = chatBusy;
-    if (els.stageBadge && chatBusy) els.stageBadge.textContent = "running…";
+    if (els.stageBadge) {
+      if (chatBusy) {
+        els.stageBadge.textContent = "running…";
+      } else if (activeStage) {
+        // Restore real stage — otherwise badge stays on "running…" and UI feels frozen
+        els.stageBadge.textContent = activeStage;
+      }
+    }
   }
 
   function updateCostBadge(llm) {

@@ -14,6 +14,21 @@ source .venv/bin/activate
 
 Expect: ruff OK · pytest green · smoke e2e OK · live smoke **non-empty** content when key present.
 
+### Three basic tests (B1–B3)
+
+```bash
+# server on :8080 recommended
+python scripts/basic_tests.py
+```
+
+| ID | What | Catches |
+|----|------|---------|
+| **B1** | API brainstorm → execute | empty pipeline, no workers |
+| **B2** | job JSON + `can_execute` | invalid JSON / sticky state |
+| **B3** | keyboard Send, UI unfreezes | frozen input, Execute stuck, badge `running…` |
+
+Report: `data/basic-tests/latest_report.json`
+
 ---
 
 ## Basic user gate (real keyboard path)
