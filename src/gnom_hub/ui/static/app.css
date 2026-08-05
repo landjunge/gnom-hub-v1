@@ -462,3 +462,9 @@ html, body {
   white-space: pre-wrap;
   color: var(--text-muted);
 }
+
+.empty-hint {
+  margin-top: 8px;
+  font-size: 11px;
+  opacity: 0.75;
+}

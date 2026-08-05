@@ -26,6 +26,7 @@ Local-first multi-agent system.
 | 1.4 | LLM fallback, Help/Reset, faster live caps | done |
 | 1.5 | Memory HOT context into pipeline + UI strip | done |
 | CI | `pip install -e ".[dev]"` (httpx for TestClient) | done |
+| 1.6 | quality_check + smoke_e2e + empty UI hints | done |
 
 Full plan: [`docs/PRE_PLAN.md`](docs/PRE_PLAN.md) · V1 scope: [`docs/V1_SCOPE.md`](docs/V1_SCOPE.md) · Roadmap: [`docs/ROADMAP.md`](docs/ROADMAP.md)
 
@@ -100,9 +101,15 @@ Always install **dev extras** (includes **httpx**, required by FastAPI/Starlette
 python3.11 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 
+# one command: lint + pytest + in-process E2E smoke
+./scripts/quality_check.sh
+
+# or stepwise:
 ruff check .
 ruff format --check .
 pytest tests/ -v
+python scripts/smoke_e2e.py
+python -m gnom_hub.main --smoke
 ```
 
 | Extra | Why |
@@ -111,8 +118,10 @@ pytest tests/ -v
 | `ruff` | lint + format |
 | `pytest` / `pytest-asyncio` | unit + API tests |
 
-**CI** (`.github/workflows/ci.yml`) runs `pip install -e ".[dev]"` then ruff + pytest.  
+**CI** (`.github/workflows/ci.yml`) runs `pip install -e ".[dev]"`, ruff, pytest, then `scripts/smoke_e2e.py`.  
 Do **not** use bare `pip install -e .` if you need to run `tests/test_api.py`.
+
+Smoke data is written under `data/smoke-run/` (safe to delete).
 
 ## Agent notes
 

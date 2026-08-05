@@ -24,7 +24,18 @@ def run_smoke() -> None:
     print(f"[LLM] DeepSeek key={'yes' if snap['llm']['deepseek'] else 'no'}")
     print(f"[Agents] {len(snap['agents'])} active roster")
     print(f"[Memory] {snap['memory_summary']}")
-    print("Gnom-Hub v1 - Step 1.0 OK (smoke)")
+
+    # Stub pipeline path (works without API key)
+    out = hub.chat("Smoke: one-line plan for a notes app")
+    stage = out["pipeline"]["stage"]
+    print(f"[Pipeline] stage={stage}")
+    if stage == "clarify":
+        out = hub.clarify("Yes")
+        stage = out["pipeline"]["stage"]
+        print(f"[Pipeline] after clarify stage={stage}")
+    assert stage == "done", f"expected done, got {stage}"
+    print(f"[Pipeline] workers={len(out['pipeline']['worker_results'])}")
+    print("Gnom-Hub v1 - Step 1.6 OK (smoke)")
 
 
 def run_server(host: str, port: int) -> None:

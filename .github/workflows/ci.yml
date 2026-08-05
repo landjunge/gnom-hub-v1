@@ -53,6 +53,11 @@ jobs:
             echo "No tests directory found – skipping tests"
           fi
 
+      - name: Smoke E2E (in-process)
+        run: |
+          export PYTHONPATH=src
+          python scripts/smoke_e2e.py
+
   release:
     name: Create GitHub Release & Publish Package
     needs: lint-and-test

@@ -18,5 +18,6 @@
 | 1.4 | LLM soft-fallback, max_tokens, Help/Reset, session clear | **done** |
 | 1.5 | Memory → pipeline context (HOT facts feed all stages) | **done** |
 | CI | Install `.[dev]` so httpx is present for TestClient | **done** |
+| 1.6 | Quality: smoke_e2e, quality_check.sh, empty hints, CI smoke | **done** |
 
 Out of scope: see V1_SCOPE.md “draußen”.

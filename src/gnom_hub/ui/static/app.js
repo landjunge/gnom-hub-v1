@@ -519,8 +519,10 @@
     try {
       const snap = await api("POST", "/api/reset");
       applySnapshot(snap);
-      setBox2("Brainstorm thoughts appear here.");
-      setBox3("Worker results appear here.");
+      setBox2("Brainstorm thoughts appear here.\n\n(Empty — send a chat message to start.)");
+      setBox3("Worker results appear here.\n\n(Empty — workers fill this after the pipeline.)");
+      const strip = document.getElementById("memory-strip");
+      if (strip) strip.hidden = true;
       hideClarify();
       appendChat("system", "Session reset.");
       toast("Session reset", "ok");
