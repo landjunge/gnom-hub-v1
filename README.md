@@ -1,171 +1,94 @@
 # Gnom-Hub
 
-**Version:** 3.7.1 (see `/api/health` → `version`)  
-**Stack:** Python ≥3.10 · FastAPI · static desktop UI · DeepSeek (default) / Ollama  
-**Default URL:** `http://127.0.0.1:8080/`  
+**Version:** 3.7.1 · **Python:** ≥3.10 · **UI:** `http://127.0.0.1:8080/`  
 **License:** private use  
 
-**What it is:** Local multi-agent hub. User brainstorms in chat first; workers run only after explicit **Execute**.
+**Deutsch:** [README_DE.md](README_DE.md)
 
-**What it is not:** Not a second LangGraph/CrewAI runtime. Not automatic full desktop takeover from chat alone. Computer-use is manual via **Tools** + God-Mode.
+Local multi-agent hub: **brainstorm first**, then **Execute** workers.
 
----
-
-## English (facts)
-
-### Pipeline
-
-```
-Chat Send → Brainstorm (Box 2)
-         → [optional more Send turns]
-Execute  → Distill → Flex → Coordinator → Worker(s) → Box 3
-```
-
-- HTML/landing-style tasks: **one worker** builds **one** full HTML page (not four pages).
-- `plan_mode` + team/worker presets: config only; fixed orchestrator. See `docs/WORKFLOWS_AND_PRESETS.md`.
-
-### Agents (8 fixed)
-
-| id | Role | Default |
-|----|------|---------|
-| brainstorm | ideas | on |
-| memory | HOT/WARM/context | on, not toggleable |
-| flex | security / neutral / researcher | on |
-| coordinator | distill + assign | on |
-| worker1…worker4 | deliverables | 1–2 on, 3–4 off by default |
-
-### UI layout
-
-| Area | Fact |
-|------|------|
-| Agent cards | toggle, TTS checkbox, tune modal (click) |
-| Box 1 | tooltips + Clarify Yes/No/Whatever/Later |
-| Box 2 | brainstorm dialogue only (no HOT strip) |
-| Box 3 | single worker result; HTML: Preview/Source/Copy |
-| Chat | Send, Execute, Send+Exec, Mic, Cancel (when job runs) |
-| Header | LLM / Mem / God / Cold / stage badges; Tools / Workspace / System |
-
-### Keys & models
-
-- File: project-root `Key.txt` (see `Key.txt.example`). Prefer over stale `.env` for hub keys.
-- Default model id: **`deepseek-v4-flash`**
-- Thinking: **off** by default (`DEEPSEEK_THINKING=0`) to avoid empty content
-- Doc: `docs/KEYS_AND_MODELS.md`
-
-### Computer-use
-
-| Item | Fact |
-|------|------|
-| Location | Backend `src/gnom_hub/computer_use/`; UI under **Tools → Computer use** |
-| API | `POST /api/computer-use/inspect`, `…/click`, `…/type`, `…/shell`; `GET /api/computer-use` |
-| God-Mode | Header **God** badge or `POST /api/god-mode`. **Off = dry-run only.** |
-| Actions | screenshot (mss/Pillow), click, type (pyautogui), allowlisted shell |
-| Optional install | `pip install -e ".[computer]"` · OCR needs OS `tesseract` · Playwright Chromium for browser E2E |
-| Doc | `docs/TOOLS_PORTFOLIO.md` |
-
-### Core tools (registry)
-
-`hub_status`, `memory_search`, `pipeline_do`, `web_fetch`, plus plugins (e.g. `echo`).
-
-### Install & run
-
-```bash
-cd gnom-hub-v1
-./scripts/install.sh
-source .venv/bin/activate
-# put keys in Key.txt
-./scripts/start.sh
-# open http://127.0.0.1:8080/
-```
-
-### Quality gate (before commit/push)
-
-```bash
-ruff check .
-ruff format .
-ruff format --check .
-pytest tests/ -q --tb=short
-# if server up: python scripts/basic_tests.py
-```
-
-Also: `./scripts/quality_check.sh` · live: `python scripts/user_landing_e2e.py` (server + key + Playwright).
-
-Rules for coding agents: `AGENTS.md`.
-
-### Important docs
-
-| Path | Content |
-|------|---------|
-| `AGENTS.md` | mandatory pre-push gate |
-| `docs/KEYS_AND_MODELS.md` | API keys, model ids |
-| `docs/BASIC_USER_TEST.md` | keyboard landing E2E |
-| `docs/STABILITY.md` | stability checklist |
-| `docs/TOOLS_PORTFOLIO.md` | computer-use libraries |
-| `docs/WORKFLOWS_AND_PRESETS.md` | presets / plan_mode freeze |
-| `docs/V1_SCOPE.md` | v1 product scope |
-| `docs/ROADMAP.md` | release history / status |
-
-### Repo conventions
-
-- Branch: **`main`**, push after completed steps  
-- Do not commit `Key.txt`, `.env`, real secrets  
-- UI static cache-bust: `app.css` / `app.js` `?v=` query in `index.html`
+**Not:** a second LangGraph/CrewAI stack · not automatic full PC control from chat alone.
 
 ---
 
-## Deutsch (Fakten)
-
-### Was es ist
-
-Lokaler Multi-Agenten-Hub. Zuerst **Brainstorm** im Chat, Worker erst nach **Execute**.
-
-### Was es nicht ist
-
-Keine zweite Orchestrator-Engine. Keine automatische PC-Übernahme nur durch Chat. Computer-Use läuft über **Tools** + **God-Mode**.
-
-### Pipeline
+## Pipeline
 
 ```
 Send → Brainstorm (Box 2)
-Execute → Distill → Flex → Coordinator → Worker → Box 3
+Execute → Distill → Flex → Coordinator → Worker(s) → Box 3
 ```
 
-Landing/HTML: **ein** Worker, **eine** HTML-Seite.
+HTML/landing tasks: **one worker**, **one** HTML page.
 
-### Boxen
+## Agents (8 fixed)
 
-1. Arounder: Hilfe + Clarify  
-2. Brainstorm: nur Dialog  
-3. Workers: ein Ergebnis (Preview/Source/Copy bei HTML)
+| id | role | default |
+|----|------|---------|
+| brainstorm | ideas | on |
+| memory | session memory | on (locked) |
+| flex | security / neutral / researcher | on |
+| coordinator | distill + plan | on |
+| worker1…worker4 | deliverables | 1–2 on; 3–4 off |
 
-### Chat
+## UI
 
-Send = nur Brainstorm · Execute = Worker-Pipeline · Send+Exec = beides · Mic · Cancel  
+| Area | Content |
+|------|---------|
+| Box 1 | help + Clarify (Yes / No / Whatever / Later) |
+| Box 2 | brainstorm dialogue only |
+| Box 3 | one worker result (Preview / Source / Copy for HTML) |
+| Chat | Send · Execute · Send+Exec · Mic · Cancel |
+| Tools | tool registry + **Computer use** (inspect / click / type / shell) |
+| God badge | real mouse/keyboard/shell when **on** (else dry-run) |
 
-### Computer-Use
-
-- **Tools**-Modal: Inspect, Click, Type, Shell  
-- **God** an = echte Maus/Tastatur (sonst dry-run)  
-- Optional: `pip install -e ".[computer]"` · siehe `docs/TOOLS_PORTFOLIO.md`
-
-### Start
+## Install
 
 ```bash
+cd gnom-hub-v1
 ./scripts/install.sh && source .venv/bin/activate
-./scripts/start.sh   # http://127.0.0.1:8080/
+# keys → Key.txt  (see Key.txt.example)
+./scripts/start.sh
 ```
 
-Keys: `Key.txt`, Modell `deepseek-v4-flash` → `docs/KEYS_AND_MODELS.md`.
+Keys & model: [`docs/KEYS_AND_MODELS.md`](docs/KEYS_AND_MODELS.md) · default model **`deepseek-v4-flash`**.
 
-### Tests / Agenten-Regeln
+Computer-use packages (optional):
+
+```bash
+pip install -e ".[computer]"
+# macOS OCR: brew install tesseract
+python -m playwright install chromium   # for E2E scripts
+```
+
+Details: [`docs/TOOLS_PORTFOLIO.md`](docs/TOOLS_PORTFOLIO.md)
+
+## Tests / quality gate
 
 ```bash
 ./scripts/quality_check.sh
-pytest tests/ -q
+# server on :8080:
+python scripts/basic_tests.py
+python scripts/user_landing_e2e.py
 ```
 
-Vor Push: `AGENTS.md` (ruff + pytest grün, keine Secrets).
+Agent rules (ruff + pytest before every push): [`AGENTS.md`](AGENTS.md)
 
-### Lizenz
+## Docs index
 
-Private Nutzung.
+| File | Topic |
+|------|--------|
+| [README_DE.md](README_DE.md) | German README |
+| [AGENTS.md](AGENTS.md) | coding / push gate |
+| [docs/KEYS_AND_MODELS.md](docs/KEYS_AND_MODELS.md) | API keys, models |
+| [docs/BASIC_USER_TEST.md](docs/BASIC_USER_TEST.md) | keyboard landing E2E |
+| [docs/STABILITY.md](docs/STABILITY.md) | stability checklist |
+| [docs/TOOLS_PORTFOLIO.md](docs/TOOLS_PORTFOLIO.md) | computer-use libs |
+| [docs/WORKFLOWS_AND_PRESETS.md](docs/WORKFLOWS_AND_PRESETS.md) | presets / plan_mode |
+| [docs/V1_SCOPE.md](docs/V1_SCOPE.md) | v1 scope |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | history / status |
+
+## Conventions
+
+- Push completed work to **`main`**
+- Never commit `Key.txt`, `.env`, or real secrets
+- Static UI cache: `?v=` on `app.css` / `app.js` in `index.html`
