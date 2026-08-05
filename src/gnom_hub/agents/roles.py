@@ -1,13 +1,23 @@
-"""V1 role agents — one class per plan role."""
+"""V1 role agents — Brainstorm & Flex; others in roles_ext."""
 
 from __future__ import annotations
 
-import re
-from typing import Any
-
 from gnom_hub.agents.base import BaseAgent
-from gnom_hub.core.event_bus import EventBus
-from gnom_hub.pipeline.models import DistillQuestion
+from gnom_hub.agents.roles_ext import (  # noqa: F401
+    CoordinatorAgent,
+    MemoryAgent,
+    WorkerAgent,
+)
+from gnom_hub.agents.roles_helpers import (  # noqa: F401
+    _brainstorm_user_payload,
+    _format_brainstorm_history,
+    _is_garbage_fact,
+    _lines,
+    _needs_clarify,
+    _sanitize_memory_ctx,
+    _stub_brainstorm,
+    _with_memory,
+)
 
 
 class BrainstormAgent(BaseAgent):
