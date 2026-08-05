@@ -65,6 +65,18 @@ class Hub:
             "yes",
         )
         self._packs_dir = self.root / "data" / "packs"
+        # Ensure runtime dirs exist (USB / fresh clone)
+        for _d in (
+            self.root / "data" / "hot",
+            self.root / "data" / "warm",
+            self.root / "data" / "cold",
+            self.root / "data" / "backups",
+            self.root / "data" / "packs",
+            self.root / "data" / "workspace" / "temp",
+            self.root / "data" / "workspace" / "perm",
+            self.root / "data" / "workspace" / "exports",
+        ):
+            _d.mkdir(parents=True, exist_ok=True)
         try:
             _pm = int(os.getenv("GNOM_PACK_MAX", "30").strip() or "30")
         except ValueError:

@@ -168,7 +168,35 @@ Expected: `default_model == deepseek-v4-flash` and all agents same model.
 
 ---
 
-## 8. Related docs
+## 8. Paths, permissions, tools (agent capabilities)
+
+| Path | Purpose | Write (local check) |
+|------|---------|---------------------|
+| `data/hot/` | session, agents.json | yes (user-owned) |
+| `data/warm/` | durable facts | yes |
+| `data/cold/` | archives | yes |
+| `data/workspace/temp` | worker outputs after Execute | yes |
+| `data/workspace/perm` | promoted files | yes |
+| `data/packs/` | session packs | created on hub start |
+| `Key.txt` / `.env` | secrets | yes |
+
+**Important architecture fact:** pipeline agents (Brainstorm/Workers) do **not** call tools or write files themselves. They only return LLM text. After Execute, **hub** writes results via `_capture_workspace_outputs()` into `data/workspace/temp`.
+
+Registered tools (API / Telegram / Tools UI — not agent-loop function calling):
+
+| Tool | Access |
+|------|--------|
+| `hub_status` | core |
+| `memory_search` | core |
+| `pipeline_do` | core |
+| `web_fetch` | core (SSRF-safe) |
+| plugin `echo` | plugins/ |
+
+Endpoints: `GET /api/plugins`, `POST /api/tools/call`, `GET /api/mcp/tools`.
+
+If “agents can’t write”: check OS permissions on `data/**` first; then confirm Execute finished (writes happen post-execute, not during brainstorm).
+
+## 9. Related docs
 
 - [`Key.txt.example`](../Key.txt.example) — template  
 - [`BASIC_USER_TEST.md`](BASIC_USER_TEST.md) — keyboard E2E  
