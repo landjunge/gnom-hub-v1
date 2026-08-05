@@ -207,8 +207,8 @@ class Hub:
             # Long-session compression after each successful pipeline finish
             try:
                 self.hot.compress_if_needed()
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as exc:  # noqa: BLE001
+                self._append_trace("compress.error", {"error": str(exc)})
 
         self.bus.on("pipeline.memory_hint", on_memory_hint)
         self.bus.on("pipeline.memory_curated", on_memory_curated)
@@ -673,8 +673,8 @@ class Hub:
             name = f"{wid}_{st.stage.value}{ext}"
             try:
                 self.workspace.write_text("temp", name, body)
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as exc:  # noqa: BLE001
+                self._append_trace("workspace.write_error", {"name": name, "error": str(exc)})
         if st.brainstorm_notes:
             try:
                 self.workspace.write_text(
@@ -682,8 +682,11 @@ class Hub:
                     "brainstorm_latest.txt",
                     st.brainstorm_notes[:8000],
                 )
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as exc:  # noqa: BLE001
+                self._append_trace(
+                    "workspace.write_error",
+                    {"name": "brainstorm_latest.txt", "error": str(exc)},
+                )
 
     def chat_async(self, text: str, *, full: bool = False) -> dict[str, Any]:
         """Async: brainstorm turn by default; full=True runs entire pipeline."""
@@ -830,9 +833,9 @@ class Hub:
                 self.llm.max_budget_usd = None
             else:
                 self.llm.max_budget_usd = float(raw)
-        if "default_model" in fields and fields["default_model"]:
+        if fields.get("default_model"):
             self.llm.default_model = str(fields["default_model"]).strip()
-        if "ui_lang" in fields and fields["ui_lang"]:
+        if fields.get("ui_lang"):
             lang = str(fields["ui_lang"]).strip().lower()
             if lang in ("en", "de"):
                 self.ui_lang = lang

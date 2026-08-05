@@ -35,18 +35,27 @@ def main() -> int:
         assert r.status_code == 200
         assert "Gnom-Hub" in r.text
 
+        # Chat = brainstorm turn only; Execute runs workers
         r = client.post("/api/chat?sync=1", json={"text": "Smoke plan a tiny checklist app"})
         assert r.status_code == 200, r.text
         snap = r.json()
         stage = snap["pipeline"]["stage"]
-        assert stage in ("done", "clarify"), stage
+        assert stage == "brainstorm", stage
+        assert snap["pipeline"].get("brainstorm_notes")
         assert snap["agents"], "agents missing"
         assert "memory" in snap
 
+        r = client.post("/api/execute?sync=1")
+        assert r.status_code == 200, r.text
+        snap = r.json()
+        stage = snap["pipeline"]["stage"]
+        assert stage in ("done", "clarify"), stage
         if stage == "clarify":
             r = client.post("/api/clarify?sync=1", json={"option": "Yes"})
             assert r.status_code == 200, r.text
             assert r.json()["pipeline"]["stage"] == "done"
+        else:
+            assert snap["pipeline"].get("worker_results") is not None
 
         r = client.post("/api/save")
         assert r.status_code == 200
