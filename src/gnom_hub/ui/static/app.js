@@ -329,11 +329,13 @@
       els.coldBadge.textContent = "Cold: " + (snap.cold.count || 0);
     }
 
-    if (snap.last_error) {
+    // Only toast fresh pipeline warnings/errors (avoid re-firing on every poll/bootstrap)
+    if (snap.last_error && p.stage === "error") {
       toast(snap.last_error, "error");
     }
-    if (p.warnings && p.warnings.length) {
-      p.warnings.forEach(function (w) {
+    if (p.warnings && p.warnings.length && (p.stage === "done" || p.stage === "error")) {
+      // show at most 2 so UI is not flooded
+      p.warnings.slice(0, 2).forEach(function (w) {
         toast(String(w), "info");
       });
     }
@@ -490,13 +492,29 @@
     els.clarifyQ.textContent = "";
   }
 
+  let chatBusy = false;
+
+  function setChatBusy(busy) {
+    chatBusy = !!busy;
+    if (els.btnSend) {
+      els.btnSend.disabled = chatBusy;
+      els.btnSend.textContent = chatBusy ? "…" : "Send";
+    }
+    if (els.chatInput) els.chatInput.disabled = chatBusy;
+    if (els.stageBadge && chatBusy) els.stageBadge.textContent = "running…";
+  }
+
   async function sendChat() {
     const text = (els.chatInput.value || "").trim();
-    if (!text) return;
+    if (!text || chatBusy) return;
     appendChat("you", text);
     els.chatInput.value = "";
     const cb = w.GnomHub.onSend;
     if (typeof cb === "function") cb(text);
+
+    setChatBusy(true);
+    appendChat("system", "Pipeline running (Live LLM can take 10–40s)…");
+    toast("Pipeline running…", "info");
 
     try {
       const snap = await api("POST", "/api/chat", { text: text });
@@ -507,9 +525,15 @@
       } else if (snap.pipeline && snap.pipeline.stage === "clarify") {
         appendChat("system", "Need a clarify answer in Box 1.");
         toast("Clarify needed in Box 1", "info");
+      } else if (snap.pipeline && snap.pipeline.stage === "error") {
+        appendChat("system", "Pipeline error: " + (snap.pipeline.error || "?"));
+        toast(snap.pipeline.error || "Pipeline error", "error");
       }
     } catch (err) {
       appendChat("system", "Chat failed: " + err.message);
+      toast("Chat failed: " + err.message, "error");
+    } finally {
+      setChatBusy(false);
     }
   }
 
