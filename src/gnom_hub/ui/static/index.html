@@ -4,12 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=61" />
+  <link rel="stylesheet" href="/static/app.css?v=62" />
 </head>
 <body>
   <div id="app">
     <header class="top-bar">
-      <h1 class="app-title">Gnom-Hub <span id="ver-badge" class="ver-badge">v1.9</span></h1>
+      <h1 class="app-title">Gnom-Hub <span id="ver-badge" class="ver-badge">v2.0</span></h1>
       <div class="top-meta">
         <span id="llm-badge" class="llm-badge" title="LLM key status">LLM: —</span>
         <span id="cost-badge" class="cost-badge" title="Session spend / budget">$0.00</span>
@@ -109,6 +109,9 @@
             <select id="result-history" class="result-history" title="Previous execute results" aria-label="Result history">
               <option value="">History…</option>
             </select>
+            <button type="button" id="btn-reexec" class="box3-tool-btn" title="Re-run workers from selected history brainstorm" disabled>
+              Re-Exec
+            </button>
             <button type="button" id="btn-copy-all" class="box3-tool-btn" title="Copy all worker results">
               Copy all
             </button>
@@ -147,7 +150,7 @@
           Cancel
         </button>
       </div>
-      <p class="kbd-hint">Enter = Send · Ctrl/⌘+Enter = Execute · Ctrl/⌘+S = Save · Esc = Cancel/close · Compact · History · Auto-save</p>
+      <p class="kbd-hint">Enter = Send · Ctrl/⌘+Enter = Execute · Ctrl/⌘+S = Save · Esc = Cancel/close · Compact · History/Re-Exec · Pack · Auto-save</p>
     </section>
   </div>
 
@@ -265,6 +268,9 @@
           <button type="button" id="sys-ckpt-save" class="btn-ws-sm">Save checkpoint</button>
           <button type="button" id="sys-ckpt-load" class="btn-ws-sm">Load checkpoint</button>
           <button type="button" id="sys-backup" class="btn-ws-sm">Backup zip</button>
+          <button type="button" id="sys-pack-export" class="btn-ws-sm" title="Portable session JSON">Pack ↓</button>
+          <button type="button" id="sys-pack-import" class="btn-ws-sm" title="Import session JSON">Pack ↑</button>
+          <input type="file" id="sys-pack-file" accept="application/json,.json" hidden />
           <button type="button" id="sys-clean" class="btn-ws-sm">Clean state</button>
         </div>
         <p id="system-ckpt" class="system-line muted">Checkpoint: —</p>
@@ -309,6 +315,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=61"></script>
+  <script src="/static/app.js?v=62"></script>
 </body>
 </html>

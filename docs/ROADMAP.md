@@ -99,7 +99,15 @@
 | clarify_async under pipeline lock | **done** |
 | install.sh shows real version | **done** |
 
-## Post-V1.9 (optional)
+## V2.0.0
+
+| Item | Status |
+|------|--------|
+| Portable session pack (JSON export/import) | **done** |
+| History Re-Exec (re-run workers from prior brainstorm) | **done** |
+| Version badge / docs 2.0 | **done** |
+
+## Post-V2.0 (optional)
 
 | Item | Notes |
 |------|--------|

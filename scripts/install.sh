@@ -75,7 +75,7 @@ mkdir -p data/hot data/warm data/cold data/workspace/temp data/workspace/perm da
 
 echo ""
 # Version from pyproject if present
-GNOM_VER="1.9.0"
+GNOM_VER="2.0.0"
 if [ -f pyproject.toml ]; then
   GNOM_VER="$(grep -E '^version\s*=' pyproject.toml | head -1 | sed -E 's/.*"([^"]+)".*/\1/' || echo "$GNOM_VER")"
 fi

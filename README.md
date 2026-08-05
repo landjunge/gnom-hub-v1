@@ -1,8 +1,8 @@
-# Gnom-Hub v1.9.0
+# Gnom-Hub v2.0.0
 
 Local multi-agent control hub: **brainstorm first**, then **Execute** workers.
 
-Desktop · USB-friendly · DeepSeek / Ollama · **Cost badge** · **Result history** · **Compact mode** · Copy all / Diff · Job timer · Workspace · auto-save.
+Desktop · USB-friendly · DeepSeek / Ollama · **Session pack** · **History Re-Exec** · Cost badge · Compact · Diff · Workspace.
 
 > **Convention:** every meaningful change is **pushed to `main`** and this **README is updated** in the same commit.
 
@@ -14,10 +14,10 @@ Desktop · USB-friendly · DeepSeek / Ollama · **Cost badge** · **Result histo
 Send / Enter              → Brainstorm (Box 2)
 Execute / Ctrl+Enter      → Distill → Flex → Workers → Quality → Memory
 Send+Exec                 → Brainstorm turn then Execute
+History → Re-Exec         → Re-run workers from a prior brainstorm
+System → Pack ↓ / Pack ↑  → Portable session JSON (USB hop)
 Ctrl/⌘+S                  → Save HOT + agents
 Esc                       → Close Diff/FS overlay, or cancel job
-Compact                   → Denser UI (persisted)
-History…                  → Restore previous Execute results (session)
 ```
 
 ---
@@ -32,7 +32,7 @@ cd gnom-hub-v1
 ./scripts/quality_check.sh
 ```
 
-**http://127.0.0.1:8080/?v=61**
+**http://127.0.0.1:8080/?v=62**
 
 ---
 
@@ -40,13 +40,12 @@ cd gnom-hub-v1
 
 | Control | Action |
 |---------|--------|
+| **Pack ↓ / Pack ↑** (System) | Export / import portable session JSON |
+| **History… + Re-Exec** (Box 3) | Restore outputs or re-run workers |
 | **Cost badge** | Session spend (warn near budget) |
 | **Compact** | Toggle denser layout |
-| **History…** (Box 3) | Restore last N execute result sets |
 | **Copy all / Diff** | All workers / line-diff W1–W2 |
-| **Copy / DL / Tab / WS / ↑ / ⛶** | Per-panel tools |
 | **Send / Execute / Send+Exec / Cancel** | Pipeline control |
-| **Ctrl/⌘+S** | Save |
 
 ---
 
@@ -54,10 +53,9 @@ cd gnom-hub-v1
 
 | Tag | Highlights |
 |-----|------------|
-| 1.5–1.7 | Send+Exec, Copy, DL, Tab, WS, timestamps |
-| 1.8 | Copy all, Diff, timer, ↑ perm |
-| 1.8.1 | Sticky-error + redirect SSRF fixes |
-| **1.9** | Cost badge, result history, compact mode, clarify lock |
+| 1.5–1.8 | Send+Exec, Copy, Diff, timer, workspace |
+| 1.9 | Cost badge, result history, compact mode |
+| **2.0** | Session pack (USB), History Re-Exec |
 
 ---
 

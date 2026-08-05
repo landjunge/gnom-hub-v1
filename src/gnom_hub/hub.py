@@ -535,7 +535,7 @@ class Hub:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "1.9.0",
+            "version": "2.0.0",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -890,7 +890,7 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "1.9.0",
+            "version": "2.0.0",
             "providers": self.llm.providers_snapshot(),
             "backups": self.list_backups()[:8],
         }
@@ -1170,7 +1170,236 @@ class Hub:
             },
         )
 
+
+    def export_session_pack(self) -> dict[str, Any]:
+        """Portable JSON pack: HOT + WARM + agents + pipeline (USB / machine hop)."""
+        from datetime import datetime, timezone
+
+        self.hot.save()
+        self.warm.save()
+        agents_path = self._save_agent_state()
+        agents_payload: dict[str, Any] = {"agents": []}
+        try:
+            agents_payload = json.loads(agents_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            agents_payload = {
+                "agents": [
+                    {
+                        "id": a.id.value,
+                        "enabled": a.enabled,
+                        "preset": a.preset,
+                        "model": a.model,
+                        "tts": a.tts,
+                        "system_prompt": a.system_prompt,
+                        "temperature": a.temperature,
+                        "top_p": a.top_p,
+                        "max_tokens": a.max_tokens,
+                        "frequency_penalty": a.frequency_penalty,
+                        "presence_penalty": a.presence_penalty,
+                    }
+                    for a in self.agents.list_agents()
+                ]
+            }
+        st = self.pipeline.state
+        pipeline = {
+            "stage": st.stage.value,
+            "mode": st.mode,
+            "user_text": st.user_text,
+            "memory_context": st.memory_context,
+            "brainstorm_notes": st.brainstorm_notes,
+            "brainstorm_turns": list(st.brainstorm_turns or []),
+            "distilled_requirements": list(st.distilled_requirements),
+            "flex_notes": st.flex_notes,
+            "worker_results": list(st.worker_results),
+            "worker_outputs": list(st.worker_outputs or []),
+            "quality_notes": getattr(st, "quality_notes", "") or "",
+            "warnings": list(st.warnings),
+            "error": st.error,
+            "pending_question": (
+                {
+                    "id": st.pending_question.id,
+                    "text": st.pending_question.text,
+                    "options": list(st.pending_question.options),
+                }
+                if st.pending_question
+                else None
+            ),
+        }
+        pack = {
+            "format": "gnom-hub-session-pack",
+            "format_version": 1,
+            "app_version": "2.0.0",
+            "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+            "label": (st.user_text or "session")[:80],
+            "hot": dict(self.hot.session),
+            "canvas_mmd": self.hot.canvas.to_mermaid(),
+            "warm_facts": self.warm.all_facts(),
+            "agents": agents_payload.get("agents") or [],
+            "pipeline": pipeline,
+        }
+        self._append_trace("session.pack.export", {"label": pack["label"]})
+        return {
+            "ok": True,
+            "filename": "gnom-hub-session.json",
+            "pack": pack,
+            "chars": len(json.dumps(pack, ensure_ascii=False)),
+        }
+
+    def import_session_pack(
+        self,
+        pack: dict[str, Any],
+        *,
+        include_warm: bool = True,
+        include_agents: bool = True,
+    ) -> dict[str, Any]:
+        """Restore a portable session pack into this hub."""
+        from gnom_hub.pipeline.models import DistillQuestion, PipelineStage, PipelineState
+
+        if not isinstance(pack, dict):
+            raise ValueError("pack must be an object")
+        if pack.get("format") != "gnom-hub-session-pack":
+            raise ValueError("not a gnom-hub-session-pack")
+        hot = pack.get("hot") if isinstance(pack.get("hot"), dict) else {}
+        self.hot.session = {
+            "messages": list(hot.get("messages") or []),
+            "facts": list(hot.get("facts") or []),
+            "updated_at": hot.get("updated_at") or "",
+        }
+        canvas_mmd = str(pack.get("canvas_mmd") or "")
+        if canvas_mmd.strip():
+            self.hot.canvas_path.parent.mkdir(parents=True, exist_ok=True)
+            if not canvas_mmd.endswith("\n"):
+                canvas_mmd = canvas_mmd + "\n"
+            atomic_write_text(self.hot.canvas_path, canvas_mmd)
+            self.hot.canvas.load(self.hot.canvas_path)
+        else:
+            self.hot.canvas.clear()
+        self.hot.save()
+
+        if include_warm:
+            for fact in pack.get("warm_facts") or []:
+                text = str(fact).strip()
+                if text:
+                    self.warm.add_fact(text)
+
+        if include_agents and isinstance(pack.get("agents"), list):
+            for item in pack["agents"]:
+                if not isinstance(item, dict) or not item.get("id"):
+                    continue
+                try:
+                    agent = self.agents.get(str(item["id"]))
+                except ValueError:
+                    continue
+                if agent.toggleable and "enabled" in item:
+                    agent.enabled = bool(item["enabled"])
+                if str(getattr(agent.id, "value", agent.id)) == "flex" and item.get("preset"):
+                    try:
+                        self.agents.set_flex_preset(str(item["preset"]))
+                    except ValueError:
+                        pass
+                if item.get("model"):
+                    agent.model = str(item["model"])
+                if "tts" in item:
+                    agent.tts = bool(item["tts"])
+                if item.get("system_prompt") is not None:
+                    agent.system_prompt = str(item["system_prompt"]) or None
+                for key in ("temperature", "top_p", "frequency_penalty", "presence_penalty"):
+                    if item.get(key) is not None:
+                        try:
+                            setattr(agent, key, float(item[key]))
+                        except (TypeError, ValueError):
+                            pass
+                if item.get("max_tokens") is not None:
+                    try:
+                        agent.max_tokens = int(item["max_tokens"])
+                    except (TypeError, ValueError):
+                        pass
+            self._save_agent_state()
+
+        data = pack.get("pipeline") if isinstance(pack.get("pipeline"), dict) else {}
+        q = None
+        pq = data.get("pending_question")
+        if isinstance(pq, dict) and pq.get("text"):
+            q = DistillQuestion(
+                id=str(pq.get("id") or "q1"),
+                text=str(pq["text"]),
+                options=list(pq.get("options") or ["Yes", "No", "Whatever", "Later"]),
+            )
+        stage_raw = str(data.get("stage") or "brainstorm")
+        try:
+            stage = PipelineStage(stage_raw)
+        except ValueError:
+            stage = PipelineStage.brainstorm
+        self.pipeline._state = PipelineState(
+            stage=stage,
+            user_text=str(data.get("user_text") or ""),
+            memory_context=str(data.get("memory_context") or ""),
+            brainstorm_notes=str(data.get("brainstorm_notes") or ""),
+            brainstorm_turns=list(data.get("brainstorm_turns") or []),
+            mode=str(data.get("mode") or "brainstorm"),
+            distilled_requirements=list(data.get("distilled_requirements") or []),
+            flex_notes=str(data.get("flex_notes") or ""),
+            pending_question=q,
+            worker_results=list(data.get("worker_results") or []),
+            worker_outputs=list(data.get("worker_outputs") or []),
+            quality_notes=str(data.get("quality_notes") or ""),
+            warnings=list(data.get("warnings") or []),
+            error=data.get("error"),
+        )
+        self.last_error = None
+        self._append_trace(
+            "session.pack.import",
+            {"label": pack.get("label"), "stage": stage.value},
+        )
+        return self.snapshot()
+
+    def restore_for_reexecute(
+        self,
+        *,
+        user_text: str,
+        brainstorm_notes: str,
+        brainstorm_turns: list[dict] | None = None,
+    ) -> dict[str, Any]:
+        """Restore brainstorm context so a subsequent Execute re-runs workers."""
+        from gnom_hub.pipeline.models import PipelineStage, PipelineState
+
+        text = (user_text or "").strip()
+        notes = (brainstorm_notes or "").strip()
+        if not text and not notes:
+            raise ValueError("nothing to re-execute")
+        turns = list(brainstorm_turns or [])
+        if not notes and turns:
+            # format like orchestrator
+            lines: list[str] = []
+            for t in turns:
+                role = str(t.get("role") or "")
+                ttxt = str(t.get("text") or "").strip()
+                if not ttxt:
+                    continue
+                if role == "user":
+                    lines.append(f"You: {ttxt}")
+                else:
+                    lines.append(f"Brainstorm:\n{ttxt}")
+                lines.append("")
+            notes = "\n".join(lines).strip()
+        if not text and turns:
+            for t in turns:
+                if t.get("role") == "user" and str(t.get("text") or "").strip():
+                    text = str(t["text"]).strip()
+                    break
+        self.pipeline._state = PipelineState(
+            stage=PipelineStage.brainstorm,
+            mode="brainstorm",
+            user_text=text,
+            brainstorm_notes=notes,
+            brainstorm_turns=turns,
+        )
+        self.last_error = None
+        self._append_trace("session.reexecute.restore", {"user": text[:80]})
+        return self.snapshot()
+
     def help_text(self) -> dict[str, Any]:
+
         return {
             "title": "Gnom-Hub help",
             "how_to": (
@@ -1181,9 +1410,9 @@ class Hub:
                 "5) Esc = close fullscreen or cancel job. "
                 "6) Box 3: Copy/DL/Tab/WS/↑perm/fullscreen; toolbar Copy all + Diff + History. "
                 "7) Cost badge + Compact density; job timer while busy. "
-                "8) Auto-save + Box 3 focus after successful Execute."
+                "8) Auto-save + Box 3 focus after successful Execute. 9) Session pack export/import (USB). 10) History Re-Exec re-runs workers."
             ),
-            "example": "Type idea → Send+Execute → History/Diff → ↑ perm → Export.",
+            "example": "Type idea → Execute → Pack ↓ (USB) → History Re-Exec → Diff.",
             "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",
             "keys": (
                 "Keyboard: Enter send · Ctrl/⌘+Enter execute · Ctrl/⌘+S save · Esc cancel/close overlay. "

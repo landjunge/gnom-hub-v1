@@ -1449,6 +1449,13 @@
           " · " +
           outputs.length +
           "w",
+      user_text: (pipeline && pipeline.user_text) || "",
+      brainstorm_notes: (pipeline && pipeline.brainstorm_notes) || "",
+      brainstorm_turns: (pipeline && pipeline.brainstorm_turns) || [],
+      can_reexec: !!(
+        (pipeline && pipeline.brainstorm_notes) ||
+        (pipeline && pipeline.user_text)
+      ),
       outputs: outputs.map(function (o) {
         return {
           worker: o.worker,
@@ -1504,8 +1511,113 @@
       stage: "done",
       worker_outputs: lastWorkerOutputs,
     });
+    const re = document.getElementById("btn-reexec");
+    if (re) {
+      re.disabled = !entry.can_reexec && !(entry.user_text || entry.brainstorm_notes);
+      re.dataset.historyId = entry.id;
+    }
     focusBox3();
     toast("Restored: " + (entry.label || id), "ok");
+  }
+
+  async function reexecFromHistory() {
+    const re = document.getElementById("btn-reexec");
+    const id = re && re.dataset.historyId;
+    const sel = document.getElementById("result-history");
+    const pick = id || (sel && sel.value);
+    const entry = resultHistory.find(function (e) {
+      return e.id === pick;
+    });
+    if (!entry) {
+      toast("Pick a History entry first", "info");
+      return;
+    }
+    if (!(entry.user_text || entry.brainstorm_notes)) {
+      toast("This history entry has no brainstorm to re-run (pre-2.0 entry)", "info");
+      return;
+    }
+    appendChat("system", "Re-Exec from history: " + (entry.label || entry.id));
+    setChatBusy(true);
+    try {
+      const start = await api("POST", "/api/reexecute", {
+        user_text: entry.user_text || "",
+        brainstorm_notes: entry.brainstorm_notes || "",
+        brainstorm_turns: entry.brainstorm_turns || [],
+      });
+      let snap = start;
+      if (start.job_id) {
+        const job = await pollJob(start.job_id, 180000);
+        snap = job.snapshot || (await api("GET", "/api/state"));
+        if (job.status === "error") {
+          appendChat("system", "Re-Exec error: " + (job.error || "?"));
+          toast(job.error || "Re-Exec error", "error");
+          return;
+        }
+      }
+      applySnapshot(snap);
+      if (snap.pipeline && snap.pipeline.stage === "done") {
+        appendChat("system", "Re-Exec done — see Box 3.");
+        toast("Re-Exec done", "ok");
+        focusBox3();
+        try {
+          pushResultHistory(snap.pipeline || {}, {
+            label: "Re-Exec · " + String(entry.label || "").slice(0, 30),
+          });
+        } catch (_h) {}
+      } else if (snap.pipeline && snap.pipeline.stage === "clarify") {
+        appendChat("system", "Clarify needed in Box 1.");
+        toast("Clarify needed", "info");
+      }
+    } catch (err) {
+      appendChat("system", "Re-Exec failed: " + err.message);
+      toast("Re-Exec failed: " + err.message, "error");
+    } finally {
+      setChatBusy(false);
+    }
+  }
+
+  async function exportSessionPack() {
+    try {
+      const data = await api("GET", "/api/session/pack");
+      const pack = data.pack || data;
+      const blob = new Blob([JSON.stringify(pack, null, 2)], {
+        type: "application/json",
+      });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = data.filename || "gnom-hub-session.json";
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast("Session pack downloaded", "ok");
+    } catch (err) {
+      toast("Pack export failed: " + err.message, "error");
+    }
+  }
+
+  function importSessionPack() {
+    const input = document.getElementById("sys-pack-file");
+    if (input) input.click();
+  }
+
+  async function onSessionPackFile(ev) {
+    const file = ev.target && ev.target.files && ev.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const pack = JSON.parse(text);
+      const snap = await api("POST", "/api/session/pack", {
+        pack: pack.pack || pack,
+        include_warm: true,
+        include_agents: true,
+      });
+      applySnapshot(snap);
+      appendChat("system", "Session pack imported: " + (pack.label || file.name));
+      toast("Session pack imported", "ok");
+    } catch (err) {
+      toast("Pack import failed: " + err.message, "error");
+    } finally {
+      if (ev.target) ev.target.value = "";
+    }
   }
 
   function applyCompactMode(on) {
@@ -2768,6 +2880,28 @@
     if (btnCompact) btnCompact.addEventListener("click", toggleCompactMode);
     loadResultHistory();
     renderHistorySelect();
+
+    const btnReexec = document.getElementById("btn-reexec");
+    if (btnReexec) btnReexec.addEventListener("click", reexecFromHistory);
+    const histSel = document.getElementById("result-history");
+    if (histSel) {
+      histSel.addEventListener("change", function () {
+        const re = document.getElementById("btn-reexec");
+        if (!re) return;
+        const entry = resultHistory.find(function (e) {
+          return e.id === histSel.value;
+        });
+        re.disabled = !(entry && (entry.can_reexec || entry.user_text || entry.brainstorm_notes));
+        re.dataset.historyId = entry ? entry.id : "";
+      });
+    }
+    const packExp = document.getElementById("sys-pack-export");
+    if (packExp) packExp.addEventListener("click", exportSessionPack);
+    const packImp = document.getElementById("sys-pack-import");
+    if (packImp) packImp.addEventListener("click", importSessionPack);
+    const packFile = document.getElementById("sys-pack-file");
+    if (packFile) packFile.addEventListener("change", onSessionPackFile);
+
     loadCompactMode();
     updateBox3Toolbar();
     const btnClearChat = document.getElementById("btn-clear-chat");

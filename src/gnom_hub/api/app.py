@@ -95,6 +95,18 @@ class ColdLabelBody(BaseModel):
     label: str = ""
 
 
+class SessionPackBody(BaseModel):
+    pack: dict[str, Any]
+    include_warm: bool = True
+    include_agents: bool = True
+
+
+class ReexecuteBody(BaseModel):
+    user_text: str = ""
+    brainstorm_notes: str = ""
+    brainstorm_turns: list[dict[str, Any]] | None = None
+
+
 class ActionClickBody(BaseModel):
     x: int
     y: int
@@ -105,7 +117,7 @@ class ShellBody(BaseModel):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Gnom-Hub v1", version="1.9.0")
+    app = FastAPI(title="Gnom-Hub v1", version="2.0.0")
 
     @app.get("/api/health")
     def health() -> dict[str, Any]:
@@ -113,7 +125,7 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "service": "gnom-hub-v1",
-            "version": "1.9.0",
+            "version": "2.0.0",
             "telegram": hub.telegram.enabled,
             "telegram_running": hub.telegram.running,
             "llm": {
@@ -246,6 +258,38 @@ def create_app() -> FastAPI:
     @app.post("/api/backup")
     def backup() -> dict[str, Any]:
         return get_hub().create_backup()
+
+    @app.get("/api/session/pack")
+    def session_pack_export() -> dict[str, Any]:
+        """Downloadable portable session pack (HOT + WARM + agents + pipeline)."""
+        return get_hub().export_session_pack()
+
+    @app.post("/api/session/pack")
+    def session_pack_import(body: SessionPackBody) -> dict[str, Any]:
+        try:
+            return get_hub().import_session_pack(
+                body.pack,
+                include_warm=body.include_warm,
+                include_agents=body.include_agents,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
+    @app.post("/api/reexecute")
+    def reexecute(body: ReexecuteBody, sync: bool = Query(False)) -> dict[str, Any]:
+        """Restore brainstorm context from history, then run Execute."""
+        try:
+            get_hub().restore_for_reexecute(
+                user_text=body.user_text,
+                brainstorm_notes=body.brainstorm_notes,
+                brainstorm_turns=body.brainstorm_turns,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        if sync:
+            return get_hub().execute_sync()
+        return get_hub().execute_async()
+
 
     @app.get("/api/backups")
     def backups_list() -> dict[str, Any]:
