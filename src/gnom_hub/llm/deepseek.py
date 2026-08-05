@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import urllib.error
 import urllib.request
 from collections.abc import Callable
@@ -89,6 +90,19 @@ class DeepSeekClient:
         if presence_penalty is not None:
             payload["presence_penalty"] = presence_penalty
 
+        # V4 Flash/Pro default to thinking=on; that burns max_tokens and often
+        # leaves message.content empty. Hub UX needs stable non-thinking output.
+        # Docs: {"thinking": {"type": "enabled"|"disabled"}}
+        # Override: DEEPSEEK_THINKING=1 to enable.
+        thinking_on = os.getenv("DEEPSEEK_THINKING", "0").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        )
+        if model.startswith("deepseek-v4"):
+            payload["thinking"] = {"type": "enabled" if thinking_on else "disabled"}
+
         body = json.dumps(payload).encode("utf-8")
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -106,7 +120,17 @@ class DeepSeekClient:
             raise LLMError(f"DeepSeek HTTP {status}: {msg}")
 
         try:
-            content = data["choices"][0]["message"]["content"]
+            msg = data["choices"][0]["message"]
+            content = msg.get("content")
+            # Thinking mode may put text only in reasoning_content
+            if content is None or (isinstance(content, str) and not content.strip()):
+                reasoning = msg.get("reasoning_content") or msg.get("reasoning")
+                if isinstance(reasoning, str) and reasoning.strip():
+                    content = reasoning
+            if content is None:
+                content = ""
+            elif not isinstance(content, str):
+                content = str(content)
         except (KeyError, IndexError, TypeError) as e:
             raise LLMError(f"DeepSeek unexpected response shape: {data!r}") from e
 

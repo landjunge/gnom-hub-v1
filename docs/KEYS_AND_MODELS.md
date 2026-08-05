@@ -38,7 +38,19 @@ Gnom-Hub cost estimate uses cache-miss rates in `_PRICE_PER_M` (`deepseek.py`).
 
 ### Thinking mode
 
-V4 Flash/Pro support thinking / non-thinking modes via API extras (see DeepSeek “Thinking Mode” guide). Default product path uses standard chat completions unless extended later.
+V4 Flash/Pro default to **thinking on** in the API, which can:
+
+- spend `max_tokens` on reasoning and leave `message.content` empty/short
+- make hub worker HTML outputs look “poor” or blank
+
+**Gnom-Hub default:** send `"thinking": {"type": "disabled"}` for `deepseek-v4*` models.
+
+| Env | Effect |
+|-----|--------|
+| `DEEPSEEK_THINKING=0` (default) | non-thinking, stable content |
+| `DEEPSEEK_THINKING=1` | thinking enabled (slower, may need higher max_tokens) |
+
+If content is still empty, client falls back to `reasoning_content` when present.
 
 ---
 

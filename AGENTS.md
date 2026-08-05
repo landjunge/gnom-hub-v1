@@ -44,4 +44,11 @@ Canonical real-user regression (keyboard chat → landing page):
 
 - Default model: **`deepseek-v4-flash`** (official DeepSeek API id)
 - `Key.txt`: `DEEPSEEK_API_KEY` (system) + `WORKER_API_KEY` (workers) + `DEEPSEEK_MODEL`
+- Thinking **off** by default (`DEEPSEEK_THINKING=0`) — empty content with v4-flash was a real issue
 - Never commit real keys; never invent model ids — update that doc when DeepSeek changes IDs
+
+## Stability (track A)
+
+**Checklist:** [`docs/STABILITY.md`](docs/STABILITY.md)
+
+Before calling work “done” on chat/LLM/pipeline: `quality_check.sh` + when relevant `user_landing_e2e.py`.

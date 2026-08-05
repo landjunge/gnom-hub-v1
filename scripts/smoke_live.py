@@ -31,17 +31,18 @@ def main() -> int:
         print(msg)
         return 1 if require else 0
 
+    # Ensure thinking-off path is used (empty content was a v4-flash default issue)
+    os.environ.setdefault("DEEPSEEK_THINKING", "0")
     llm = LLMManager(keys=keys)
     result = llm.chat(
         [
             LLMMessage(role="system", content="Reply with exactly one word: pong"),
             LLMMessage(role="user", content="ping"),
         ],
-        max_tokens=8,
+        max_tokens=32,
         agent="smoke_live",
     )
     content = (result.content or "").strip()
-    print("LIVE_SMOKE OK")
     print(f"  model={result.model}")
     print(f"  content={content[:80]!r}")
     print(f"  tokens={result.prompt_tokens}+{result.completion_tokens}")
@@ -49,6 +50,7 @@ def main() -> int:
     if not content:
         print("LIVE_SMOKE FAIL: empty content", file=sys.stderr)
         return 2
+    print("LIVE_SMOKE OK")
     return 0
 
 
