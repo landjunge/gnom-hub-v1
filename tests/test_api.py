@@ -487,3 +487,40 @@ def test_reexecute_from_brainstorm(client: TestClient):
     assert p["stage"] in ("done", "clarify")
     if p["stage"] == "done":
         assert p["worker_results"]
+
+
+def test_session_pack_persist_list_delete(client: TestClient):
+    client.post("/api/chat?sync=1", json={"text": "Persist pack idea"})
+    client.post("/api/execute?sync=1")
+    exp = client.get("/api/session/pack?persist=1")
+    assert exp.status_code == 200
+    data = exp.json()
+    assert data["ok"] is True
+    assert data.get("path")
+    name = data["filename"]
+    lst = client.get("/api/session/packs")
+    assert lst.status_code == 200
+    names = [p["name"] for p in lst.json()["packs"]]
+    assert name in names
+    got = client.get(f"/api/session/packs/{name}")
+    assert got.status_code == 200
+    assert got.json()["pack"]["format"] == "gnom-hub-session-pack"
+    # wipe and import by name
+    client.post("/api/reset")
+    imp = client.post(f"/api/session/packs/{name}/import")
+    assert imp.status_code == 200
+    assert imp.json()["pipeline"]["brainstorm_notes"]
+    gone = client.delete(f"/api/session/packs/{name}")
+    assert gone.status_code == 200
+    names2 = [p["name"] for p in client.get("/api/session/packs").json()["packs"]]
+    assert name not in names2
+
+
+def test_auto_pack_after_execute(client: TestClient):
+    client.post("/api/system", json={"auto_pack_after_execute": True})
+    sys_ = client.get("/api/system").json()
+    assert sys_["auto_pack_after_execute"] is True
+    client.post("/api/chat?sync=1", json={"text": "Auto pack me"})
+    client.post("/api/execute?sync=1")
+    packs = client.get("/api/session/packs").json()["packs"]
+    assert len(packs) >= 1

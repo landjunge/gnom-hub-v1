@@ -107,7 +107,16 @@
 | History Re-Exec (re-run workers from prior brainstorm) | **done** |
 | Version badge / docs 2.0 | **done** |
 
-## Post-V2.0 (optional)
+## V2.1.0
+
+| Item | Status |
+|------|--------|
+| Persist packs under data/packs/ | **done** |
+| List / Load / Delete packs in System | **done** |
+| Auto-pack after Execute (toggle + env) | **done** |
+| Version / docs 2.1 | **done** |
+
+## Post-V2.1 (optional)
 
 | Item | Notes |
 |------|--------|

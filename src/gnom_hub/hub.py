@@ -59,6 +59,12 @@ class Hub:
         # Light tracing (plan §8.2) — ring buffer of pipeline events
         self.trace: list[dict[str, Any]] = []
         self.ui_lang: str = os.getenv("GNOM_UI_LANG", "en").strip().lower() or "en"
+        self.auto_pack_after_execute: bool = os.getenv("GNOM_AUTO_PACK", "").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+        self._packs_dir = self.root / "data" / "packs"
         # Feature flags (plan phase 3+ chrome can be dimmed)
         self.feature_phase3: bool = os.getenv("GNOM_PHASE3", "1").strip() not in (
             "0",
@@ -535,7 +541,7 @@ class Hub:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "2.0.0",
+            "version": "2.1.0",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -594,6 +600,7 @@ class Hub:
             self.last_error = self.pipeline.state.error
         elif self.pipeline.state.stage.value == "done":
             self._capture_workspace_outputs()
+            self.maybe_auto_pack()
         return self.snapshot()
 
     def _start_job(self, name: str, runner: Any) -> dict[str, Any]:
@@ -680,6 +687,8 @@ class Hub:
                         # Plan: agent outputs land in temp workspace first
                         if name in ("execute", "pipeline"):
                             self._capture_workspace_outputs()
+                            if name == "execute":
+                                self.maybe_auto_pack()
                     if not job.get("stage"):
                         job["stage"] = self.pipeline.state.stage.value
                     job["snapshot"] = self.snapshot()
@@ -874,6 +883,8 @@ class Hub:
             lang = str(fields["ui_lang"]).strip().lower()
             if lang in ("en", "de"):
                 self.ui_lang = lang
+        if "auto_pack_after_execute" in fields and fields["auto_pack_after_execute"] is not None:
+            self.auto_pack_after_execute = bool(fields["auto_pack_after_execute"])
         return self.system_dict()
 
     def system_dict(self) -> dict[str, Any]:
@@ -890,9 +901,11 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "2.0.0",
+            "version": "2.1.0",
             "providers": self.llm.providers_snapshot(),
             "backups": self.list_backups()[:8],
+            "packs": self.list_session_packs()[:12],
+            "auto_pack_after_execute": self.auto_pack_after_execute,
         }
 
     def save_checkpoint(self) -> dict[str, Any]:
@@ -1170,7 +1183,12 @@ class Hub:
             },
         )
 
-    def export_session_pack(self) -> dict[str, Any]:
+    def export_session_pack(
+        self,
+        label: str | None = None,
+        *,
+        persist: bool = True,
+    ) -> dict[str, Any]:
         """Portable JSON pack: HOT + WARM + agents + pipeline (USB / machine hop)."""
         from datetime import datetime, timezone
 
@@ -1224,25 +1242,114 @@ class Hub:
                 else None
             ),
         }
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        pack_label = (label or st.user_text or "session").strip()[:80] or "session"
         pack = {
             "format": "gnom-hub-session-pack",
             "format_version": 1,
-            "app_version": "2.0.0",
+            "app_version": "2.1.0",
             "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
-            "label": (st.user_text or "session")[:80],
+            "label": pack_label,
             "hot": dict(self.hot.session),
             "canvas_mmd": self.hot.canvas.to_mermaid(),
             "warm_facts": self.warm.all_facts(),
             "agents": agents_payload.get("agents") or [],
             "pipeline": pipeline,
         }
-        self._append_trace("session.pack.export", {"label": pack["label"]})
+        filename = f"gnom-hub-session-{stamp}.json"
+        saved_path: str | None = None
+        if persist:
+            self._packs_dir.mkdir(parents=True, exist_ok=True)
+            path = self._packs_dir / filename
+            atomic_write_text(path, json.dumps(pack, ensure_ascii=False, indent=2) + "\n")
+            saved_path = str(path)
+        self._append_trace(
+            "session.pack.export",
+            {"label": pack["label"], "path": saved_path or ""},
+        )
         return {
             "ok": True,
-            "filename": "gnom-hub-session.json",
+            "filename": filename,
+            "path": saved_path,
             "pack": pack,
             "chars": len(json.dumps(pack, ensure_ascii=False)),
+            "packs": self.list_session_packs()[:12],
         }
+
+    def list_session_packs(self) -> list[dict[str, Any]]:
+        """List packs under data/packs/ (newest first)."""
+        if not self._packs_dir.is_dir():
+            return []
+        out: list[dict[str, Any]] = []
+        for p in sorted(self._packs_dir.glob("gnom-hub-session-*.json"), reverse=True):
+            try:
+                label = p.stem
+                try:
+                    data = json.loads(p.read_text(encoding="utf-8"))
+                    if isinstance(data, dict) and data.get("label"):
+                        label = str(data["label"])[:80]
+                except (OSError, json.JSONDecodeError):
+                    pass
+                out.append(
+                    {
+                        "name": p.name,
+                        "path": str(p),
+                        "bytes": p.stat().st_size,
+                        "label": label,
+                    }
+                )
+            except OSError:
+                continue
+        return out[:30]
+
+    def _pack_path(self, name: str) -> Path:
+        safe = Path(name).name
+        if not safe.startswith("gnom-hub-session-") or not safe.endswith(".json"):
+            raise ValueError("invalid pack name")
+        path = (self._packs_dir / safe).resolve()
+        base = self._packs_dir.resolve()
+        if not str(path).startswith(str(base)) or not path.is_file():
+            raise FileNotFoundError(safe)
+        return path
+
+    def load_session_pack_file(self, name: str) -> dict[str, Any]:
+        """Load pack JSON from data/packs/{name} (does not import)."""
+        path = self._pack_path(name)
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise TypeError("pack file is not an object")
+        return {"ok": True, "name": path.name, "pack": data}
+
+    def import_session_pack_file(
+        self,
+        name: str,
+        *,
+        include_warm: bool = True,
+        include_agents: bool = True,
+    ) -> dict[str, Any]:
+        """Import a pack stored under data/packs/."""
+        data = self.load_session_pack_file(name)
+        return self.import_session_pack(
+            data["pack"],
+            include_warm=include_warm,
+            include_agents=include_agents,
+        )
+
+    def delete_session_pack(self, name: str) -> dict[str, Any]:
+        path = self._pack_path(name)
+        path.unlink()
+        self._append_trace("session.pack.delete", {"name": path.name})
+        return {"ok": True, "deleted": path.name, "packs": self.list_session_packs()}
+
+    def maybe_auto_pack(self) -> dict[str, Any] | None:
+        """If auto_pack is on, persist a pack after successful Execute."""
+        if not self.auto_pack_after_execute:
+            return None
+        try:
+            return self.export_session_pack(persist=True)
+        except Exception as exc:  # noqa: BLE001
+            self._append_trace("session.pack.auto_fail", {"error": str(exc)})
+            return None
 
     def import_session_pack(
         self,
@@ -1409,7 +1516,7 @@ class Hub:
                 "5) Esc = close fullscreen or cancel job. "
                 "6) Box 3: Copy/DL/Tab/WS/↑perm/fullscreen; toolbar Copy all + Diff + History. "
                 "7) Cost badge + Compact density; job timer while busy. "
-                "8) Auto-save + Box 3 focus after successful Execute. 9) Session pack export/import (USB). 10) History Re-Exec re-runs workers."
+                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (System Pack ↓/↑ + list). 10) History Re-Exec. 11) Optional auto-pack after Execute."
             ),
             "example": "Type idea → Execute → Pack ↓ (USB) → History Re-Exec → Diff.",
             "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",

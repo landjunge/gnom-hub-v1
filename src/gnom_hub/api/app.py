@@ -49,6 +49,7 @@ class SystemBody(BaseModel):
     max_budget_usd: float | None = None
     default_model: str | None = None
     ui_lang: str | None = None
+    auto_pack_after_execute: bool | None = None
 
 
 class WorkerPresetBody(BaseModel):
@@ -117,7 +118,7 @@ class ShellBody(BaseModel):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Gnom-Hub v1", version="2.0.0")
+    app = FastAPI(title="Gnom-Hub v1", version="2.1.0")
 
     @app.get("/api/health")
     def health() -> dict[str, Any]:
@@ -125,7 +126,7 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "service": "gnom-hub-v1",
-            "version": "2.0.0",
+            "version": "2.1.0",
             "telegram": hub.telegram.enabled,
             "telegram_running": hub.telegram.running,
             "llm": {
@@ -260,9 +261,12 @@ def create_app() -> FastAPI:
         return get_hub().create_backup()
 
     @app.get("/api/session/pack")
-    def session_pack_export() -> dict[str, Any]:
+    def session_pack_export(
+        persist: bool = Query(True),
+        label: str | None = Query(None),
+    ) -> dict[str, Any]:
         """Downloadable portable session pack (HOT + WARM + agents + pipeline)."""
-        return get_hub().export_session_pack()
+        return get_hub().export_session_pack(label=label, persist=persist)
 
     @app.post("/api/session/pack")
     def session_pack_import(body: SessionPackBody) -> dict[str, Any]:
@@ -274,6 +278,45 @@ def create_app() -> FastAPI:
             )
         except (ValueError, TypeError) as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
+
+    @app.get("/api/session/packs")
+    def session_packs_list() -> dict[str, Any]:
+        return {"packs": get_hub().list_session_packs()}
+
+    @app.get("/api/session/packs/{name}")
+    def session_pack_get(name: str) -> dict[str, Any]:
+        try:
+            return get_hub().load_session_pack_file(name)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+
+    @app.post("/api/session/packs/{name}/import")
+    def session_pack_import_named(
+        name: str,
+        include_warm: bool = Query(True),
+        include_agents: bool = Query(True),
+    ) -> dict[str, Any]:
+        try:
+            return get_hub().import_session_pack_file(
+                name, include_warm=include_warm, include_agents=include_agents
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        except TypeError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
+    @app.delete("/api/session/packs/{name}")
+    def session_pack_delete(name: str) -> dict[str, Any]:
+        try:
+            return get_hub().delete_session_pack(name)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
 
     @app.post("/api/reexecute")
     def reexecute(body: ReexecuteBody, sync: bool = Query(False)) -> dict[str, Any]:

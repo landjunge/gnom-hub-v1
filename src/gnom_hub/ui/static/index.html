@@ -4,12 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=62" />
+  <link rel="stylesheet" href="/static/app.css?v=63" />
 </head>
 <body>
   <div id="app">
     <header class="top-bar">
-      <h1 class="app-title">Gnom-Hub <span id="ver-badge" class="ver-badge">v2.0</span></h1>
+      <h1 class="app-title">Gnom-Hub <span id="ver-badge" class="ver-badge">v2.1</span></h1>
       <div class="top-meta">
         <span id="llm-badge" class="llm-badge" title="LLM key status">LLM: —</span>
         <span id="cost-badge" class="cost-badge" title="Session spend / budget">$0.00</span>
@@ -268,12 +268,19 @@
           <button type="button" id="sys-ckpt-save" class="btn-ws-sm">Save checkpoint</button>
           <button type="button" id="sys-ckpt-load" class="btn-ws-sm">Load checkpoint</button>
           <button type="button" id="sys-backup" class="btn-ws-sm">Backup zip</button>
-          <button type="button" id="sys-pack-export" class="btn-ws-sm" title="Portable session JSON">Pack ↓</button>
-          <button type="button" id="sys-pack-import" class="btn-ws-sm" title="Import session JSON">Pack ↑</button>
+          <button type="button" id="sys-pack-export" class="btn-ws-sm" title="Save + download session pack">Pack ↓</button>
+          <button type="button" id="sys-pack-import" class="btn-ws-sm" title="Import session JSON file">Pack ↑</button>
           <input type="file" id="sys-pack-file" accept="application/json,.json" hidden />
           <button type="button" id="sys-clean" class="btn-ws-sm">Clean state</button>
         </div>
+        <label class="system-row">
+          <input id="sys-auto-pack" type="checkbox" /> Auto-pack after Execute
+        </label>
         <p id="system-ckpt" class="system-line muted">Checkpoint: —</p>
+        <div class="system-row">
+          <span>Session packs</span>
+          <ul id="sys-pack-list" class="ws-list" style="max-height:100px"></ul>
+        </div>
         <div class="system-row">
           <span>Worker presets</span>
           <div class="system-row-actions">
@@ -315,6 +322,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=62"></script>
+  <script src="/static/app.js?v=63"></script>
 </body>
 </html>

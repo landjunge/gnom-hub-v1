@@ -1,8 +1,8 @@
-# Gnom-Hub v2.0.0
+# Gnom-Hub v2.1.0
 
 Local multi-agent control hub: **brainstorm first**, then **Execute** workers.
 
-Desktop · USB-friendly · DeepSeek / Ollama · **Session pack** · **History Re-Exec** · Cost badge · Compact · Diff · Workspace.
+Desktop · USB-friendly · DeepSeek / Ollama · **Session packs on disk** · **Auto-pack** · History Re-Exec · Cost badge · Diff · Workspace.
 
 > **Convention:** every meaningful change is **pushed to `main`** and this **README is updated** in the same commit.
 
@@ -13,11 +13,10 @@ Desktop · USB-friendly · DeepSeek / Ollama · **Session pack** · **History Re
 ```
 Send / Enter              → Brainstorm (Box 2)
 Execute / Ctrl+Enter      → Distill → Flex → Workers → Quality → Memory
-Send+Exec                 → Brainstorm turn then Execute
+Pack ↓ (System)           → Save pack under data/packs/ + download JSON
+Pack list Load / Del      → Import or remove stored packs
+Auto-pack after Execute   → System toggle (or GNOM_AUTO_PACK=1)
 History → Re-Exec         → Re-run workers from a prior brainstorm
-System → Pack ↓ / Pack ↑  → Portable session JSON (USB hop)
-Ctrl/⌘+S                  → Save HOT + agents
-Esc                       → Close Diff/FS overlay, or cancel job
 ```
 
 ---
@@ -32,7 +31,7 @@ cd gnom-hub-v1
 ./scripts/quality_check.sh
 ```
 
-**http://127.0.0.1:8080/?v=62**
+**http://127.0.0.1:8080/?v=63**
 
 ---
 
@@ -40,12 +39,11 @@ cd gnom-hub-v1
 
 | Control | Action |
 |---------|--------|
-| **Pack ↓ / Pack ↑** (System) | Export / import portable session JSON |
-| **History… + Re-Exec** (Box 3) | Restore outputs or re-run workers |
-| **Cost badge** | Session spend (warn near budget) |
-| **Compact** | Toggle denser layout |
-| **Copy all / Diff** | All workers / line-diff W1–W2 |
-| **Send / Execute / Send+Exec / Cancel** | Pipeline control |
+| **Pack ↓ / Pack ↑** | Save+download / import session JSON |
+| **Session packs list** | Load or delete packs on disk |
+| **Auto-pack after Execute** | Persist pack automatically |
+| **History… + Re-Exec** | Restore outputs or re-run workers |
+| **Cost / Compact / Diff** | Spend badge, density, W1↔W2 |
 
 ---
 
@@ -53,19 +51,21 @@ cd gnom-hub-v1
 
 | Tag | Highlights |
 |-----|------------|
-| 1.5–1.8 | Send+Exec, Copy, Diff, timer, workspace |
-| 1.9 | Cost badge, result history, compact mode |
-| **2.0** | Session pack (USB), History Re-Exec |
+| 1.9 | Cost badge, result history, compact |
+| 2.0 | Session pack JSON, History Re-Exec |
+| **2.1** | Packs on disk, list Load/Del, auto-pack |
 
 ---
 
 ## Dev
 
 ```bash
-./scripts/quality_check.sh
+ruff check .
+ruff format .
+pytest tests/ -v --tb=short
 ```
 
-Docs: [`docs/ROADMAP.md`](docs/ROADMAP.md)
+Docs: [`docs/ROADMAP.md`](docs/ROADMAP.md) · Agent rules: [`AGENTS.md`](AGENTS.md)
 
 ## License
 

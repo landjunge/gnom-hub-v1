@@ -773,6 +773,14 @@
       } catch (_e2) {
         /* ignore */
       }
+      const ap = document.getElementById("sys-auto-pack");
+      if (ap) ap.checked = !!s.auto_pack_after_execute;
+      // Session packs list
+      try {
+        await renderPackList(s.packs);
+      } catch (_pe) {
+        /* ignore */
+      }
       // Backups list
       try {
         const bl = await api("GET", "/api/backups");
@@ -870,11 +878,13 @@
   async function saveSystemModal() {
     const budgetRaw = document.getElementById("sys-budget").value.trim();
     const langEl = document.getElementById("sys-lang");
+    const apEl = document.getElementById("sys-auto-pack");
     const body = {
       free_only: !!document.getElementById("sys-free-only").checked,
       default_model: document.getElementById("sys-model").value.trim() || "deepseek-chat",
       max_budget_usd: budgetRaw === "" ? null : Number(budgetRaw),
       ui_lang: langEl ? langEl.value : "en",
+      auto_pack_after_execute: apEl ? !!apEl.checked : false,
     };
     try {
       await api("POST", "/api/system", body);
@@ -1576,9 +1586,97 @@
     }
   }
 
+  async function renderPackList(items) {
+    const ul = document.getElementById("sys-pack-list");
+    if (!ul) return;
+    let list = items;
+    if (!list) {
+      try {
+        const data = await api("GET", "/api/session/packs");
+        list = data.packs || [];
+      } catch (_e) {
+        list = [];
+      }
+    }
+    ul.innerHTML = "";
+    if (!list.length) {
+      const li = document.createElement("li");
+      li.className = "muted";
+      li.textContent = "(no packs yet — Pack ↓ after Execute)";
+      ul.appendChild(li);
+      return;
+    }
+    list.slice(0, 12).forEach(function (p) {
+      const li = document.createElement("li");
+      li.style.display = "flex";
+      li.style.gap = "6px";
+      li.style.alignItems = "center";
+      const lab = document.createElement("span");
+      lab.style.flex = "1";
+      lab.style.minWidth = "0";
+      lab.style.overflow = "hidden";
+      lab.style.textOverflow = "ellipsis";
+      lab.style.whiteSpace = "nowrap";
+      lab.textContent = (p.label || p.name || "?") + " · " + (p.name || "");
+      lab.title = p.name || "";
+      const loadBtn = document.createElement("button");
+      loadBtn.type = "button";
+      loadBtn.className = "btn-ws-sm";
+      loadBtn.textContent = "Load";
+      loadBtn.title = "Import this pack";
+      loadBtn.addEventListener("click", function () {
+        loadNamedPack(p.name);
+      });
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "btn-ws-sm";
+      delBtn.textContent = "Del";
+      delBtn.title = "Delete pack file";
+      delBtn.addEventListener("click", function () {
+        deleteNamedPack(p.name);
+      });
+      li.appendChild(lab);
+      li.appendChild(loadBtn);
+      li.appendChild(delBtn);
+      ul.appendChild(li);
+    });
+  }
+
+  async function loadNamedPack(name) {
+    if (!name) return;
+    if (!confirm('Import pack "' + name + '"? Current HOT/pipeline will be replaced.')) {
+      return;
+    }
+    try {
+      const snap = await api(
+        "POST",
+        "/api/session/packs/" + encodeURIComponent(name) + "/import"
+      );
+      applySnapshot(snap);
+      appendChat("system", "Loaded pack: " + name);
+      toast("Pack loaded", "ok");
+    } catch (err) {
+      toast("Pack load failed: " + err.message, "error");
+    }
+  }
+
+  async function deleteNamedPack(name) {
+    if (!name || !confirm('Delete pack "' + name + '"?')) return;
+    try {
+      const data = await api(
+        "DELETE",
+        "/api/session/packs/" + encodeURIComponent(name)
+      );
+      await renderPackList(data.packs);
+      toast("Pack deleted", "ok");
+    } catch (err) {
+      toast("Pack delete failed: " + err.message, "error");
+    }
+  }
+
   async function exportSessionPack() {
     try {
-      const data = await api("GET", "/api/session/pack");
+      const data = await api("GET", "/api/session/pack?persist=1");
       const pack = data.pack || data;
       const blob = new Blob([JSON.stringify(pack, null, 2)], {
         type: "application/json",
@@ -1588,7 +1686,11 @@
       a.download = data.filename || "gnom-hub-session.json";
       a.click();
       URL.revokeObjectURL(a.href);
-      toast("Session pack downloaded", "ok");
+      await renderPackList(data.packs);
+      toast(
+        data.path ? "Pack saved + downloaded" : "Session pack downloaded",
+        "ok"
+      );
     } catch (err) {
       toast("Pack export failed: " + err.message, "error");
     }
