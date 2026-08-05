@@ -53,8 +53,13 @@ class BaseAgent:
         *,
         max_tokens: int = 500,
         temperature: float = 0.5,
+        prior: list[dict] | None = None,
     ) -> str:
-        """Call LLM with this agent's model/key/tuning overrides. Raises if no LLM."""
+        """Call LLM with this agent's model/key/tuning overrides. Raises if no LLM.
+
+        prior: optional prior turns [{"role": "user"|"brainstorm"|"assistant", "content"|"text": ...}]
+        for multi-turn dialogue (brainstorm chat).
+        """
         if self.llm is None:
             raise RuntimeError(f"{self.id}: no LLM manager")
         from gnom_hub.llm.types import LLMMessage
@@ -83,13 +88,22 @@ class BaseAgent:
             kwargs["api_key"] = self.state.api_key
         role_system = (self.state.system_prompt or "").strip() or system
         sys_full = f"{HUB_IDENTITY}\n\n{role_system}".strip()
-        result = self.llm.chat(
-            [
-                LLMMessage(role="system", content=sys_full),
-                LLMMessage(role="user", content=user),
-            ],
-            **kwargs,
-        )
+        messages: list[LLMMessage] = [LLMMessage(role="system", content=sys_full)]
+        for item in (prior or [])[-16:]:
+            if not isinstance(item, dict):
+                continue
+            raw_role = str(item.get("role") or "user").strip().lower()
+            content = str(item.get("content") or item.get("text") or "").strip()
+            if not content:
+                continue
+            if raw_role in ("brainstorm", "assistant", "agent"):
+                messages.append(LLMMessage(role="assistant", content=content[:2000]))
+            elif raw_role == "system":
+                continue
+            else:
+                messages.append(LLMMessage(role="user", content=content[:2000]))
+        messages.append(LLMMessage(role="user", content=user))
+        result = self.llm.chat(messages, **kwargs)
         return (result.content or "").strip()
 
     def has_llm(self) -> bool:
