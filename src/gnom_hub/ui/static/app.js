@@ -203,6 +203,11 @@
           ? '<div class="card-preset">preset: ' + agent.preset + "</div>"
           : "";
       const tok = agent.tokens || 0;
+      const cost =
+        agent.cost_usd != null && !isNaN(agent.cost_usd)
+          ? Number(agent.cost_usd)
+          : 0;
+      const costStr = cost > 0 ? "$" + cost.toFixed(4) : "$0";
       card.innerHTML =
         '<div class="card-name">' +
         agent.label +
@@ -212,7 +217,9 @@
         "</div>" +
         '<div class="card-tokens">tok: ' +
         tok +
-        "</div>" +
+        ' · <span class="card-cost">' +
+        costStr +
+        "</span></div>" +
         '<div class="card-online ' +
         (online ? "on" : "off") +
         '">' +
@@ -332,6 +339,8 @@
       else if (s.role) a.model = "default";
       if (s.preset) a.preset = s.preset;
       a.tokens = s.tokens || 0;
+      a.cost_usd = s.cost_usd != null ? Number(s.cost_usd) : 0;
+      a.calls = s.calls != null ? Number(s.calls) : 0;
       a.online = !!s.online;
       a.tts = !!s.tts;
       a.system_prompt = s.system_prompt || "";
@@ -2009,6 +2018,101 @@
     toast("Restored: " + (entry.label || id), "ok");
   }
 
+  function exportResultHistory() {
+    if (!resultHistory.length) {
+      toast("No history to export", "info");
+      return;
+    }
+    const lines = ["# Gnom-Hub result history", ""];
+    resultHistory.forEach(function (e, i) {
+      lines.push("## " + (i + 1) + ". " + (e.label || e.id));
+      lines.push("time: " + (e.ts || ""));
+      if (e.user_text) lines.push("user: " + e.user_text);
+      lines.push("");
+      (e.outputs || []).forEach(function (o) {
+        lines.push("### " + (o.name || o.worker || "worker"));
+        if (o.task) lines.push("Task: " + o.task);
+        lines.push(o.result || "");
+        lines.push("");
+      });
+      lines.push("---");
+      lines.push("");
+    });
+    const text = lines.join("\n");
+    const blob = new Blob([text], { type: "text/markdown;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "gnom-hub-history.md";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () {
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }, 500);
+    toast("History exported (" + resultHistory.length + " runs)", "ok");
+  }
+
+  async function rerunWorker(workerId) {
+    if (chatBusy) {
+      toast("Busy — wait for current job", "info");
+      return;
+    }
+    const wid = String(workerId || "").toLowerCase();
+    if (!wid) return;
+    setChatBusy(true);
+    appendChat("system", "Re-run " + wid + "…");
+    toast("Re-running " + wid + "…", "info");
+    try {
+      const live =
+        els.llmBadge && els.llmBadge.classList.contains("has-key");
+      const start = await api(
+        "POST",
+        "/api/workers/" + encodeURIComponent(wid) + "/rerun"
+      );
+      let snap = start;
+      if (start.job_id) {
+        const job = await pollJob(start.job_id, live ? 180000 : 30000);
+        snap = job.snapshot || (await api("GET", "/api/state"));
+        if (job.status === "error") {
+          appendChat("system", "Re-run error: " + (job.error || "?"));
+          toast(job.error || "Re-run failed", "error");
+          applySnapshot(snap);
+          return;
+        }
+        if (job.status === "cancelled") {
+          appendChat("system", "Re-run cancelled.");
+          applySnapshot(snap);
+          return;
+        }
+      }
+      applySnapshot(snap);
+      const stage = (snap.pipeline && snap.pipeline.stage) || "";
+      if (stage === "done") {
+        appendChat("system", "Re-run done: " + wid);
+        toast(wid + " re-run done", "ok");
+        focusBox3();
+        try {
+          pushResultHistory(snap.pipeline || {}, {
+            label: "↻ " + wid,
+          });
+        } catch (_h) {
+          /* ignore */
+        }
+      } else if (stage === "error") {
+        appendChat(
+          "system",
+          "Re-run failed: " + ((snap.pipeline && snap.pipeline.error) || "?")
+        );
+      }
+    } catch (err) {
+      appendChat("system", "Re-run failed: " + err.message);
+      toast("Re-run failed: " + err.message, "error");
+    } finally {
+      setChatBusy(false);
+      currentJobId = null;
+    }
+  }
+
   async function reexecFromHistory() {
     const re = document.getElementById("btn-reexec");
     const id = re && re.dataset.historyId;
@@ -3589,6 +3693,18 @@
     });
     mode.appendChild(btnPerm);
 
+    // Re-run this worker only
+    const btnRerun = document.createElement("button");
+    btnRerun.type = "button";
+    btnRerun.className = "worker-mode-btn rerun-btn";
+    btnRerun.textContent = "↻";
+    btnRerun.title = "Re-run this worker only";
+    btnRerun.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      rerunWorker(out.worker || "worker" + (idx + 1));
+    });
+    mode.appendChild(btnRerun);
+
     // Fullscreen preview (HTML) or source text
     const btnFs = document.createElement("button");
     btnFs.type = "button";
@@ -3944,6 +4060,8 @@
 
     const btnReexec = document.getElementById("btn-reexec");
     if (btnReexec) btnReexec.addEventListener("click", reexecFromHistory);
+    const btnHistExport = document.getElementById("btn-hist-export");
+    if (btnHistExport) btnHistExport.addEventListener("click", exportResultHistory);
     const histSel = document.getElementById("result-history");
     if (histSel) {
       histSel.addEventListener("change", function () {

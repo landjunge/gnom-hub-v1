@@ -349,7 +349,7 @@ class Hub:
             {
                 "format": "gnom-hub-trace",
                 "format_version": 1,
-                "app_version": "3.6.0",
+                "app_version": "3.7.0",
                 "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
                 "count": len(events),
                 "trace": events,
@@ -1256,7 +1256,7 @@ class Hub:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "3.6.0",
+            "version": "3.7.0",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -1464,7 +1464,7 @@ class Hub:
                         job["status"] = "done"
                         job["stage"] = stage_val
                         # Plan: agent outputs land in temp workspace first
-                        if name in ("execute", "pipeline"):
+                        if name in ("execute", "pipeline", "worker_rerun"):
                             self._capture_workspace_outputs()
                             if name == "execute":
                                 self.maybe_auto_pack()
@@ -1533,6 +1533,24 @@ class Hub:
     def execute_async(self) -> dict[str, Any]:
         """Async execute after brainstorm."""
         return self._start_job("execute", self.pipeline.execute)
+
+    def rerun_worker_sync(self, worker_id: str) -> dict[str, Any]:
+        """Re-run one worker from last task."""
+        self.last_error = None
+        self.pipeline.rerun_worker(worker_id)
+        if self.pipeline.state.error:
+            self.last_error = self.pipeline.state.error
+        elif self.pipeline.state.stage.value == "done":
+            self._capture_workspace_outputs()
+        return self.snapshot()
+
+    def rerun_worker_async(self, worker_id: str) -> dict[str, Any]:
+        wid = worker_id
+
+        def _runner() -> None:
+            self.pipeline.rerun_worker(wid)
+
+        return self._start_job("worker_rerun", _runner)
 
     def get_job(self, job_id: str) -> dict[str, Any] | None:
         jobs = getattr(self, "_jobs", {})
@@ -1780,7 +1798,7 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "3.6.0",
+            "version": "3.7.0",
             "providers": self.llm.providers_snapshot(),
             "backups": self.list_backups()[:8],
             "packs": self.list_session_packs()[:12],
@@ -2360,7 +2378,7 @@ class Hub:
         pack = {
             "format": "gnom-hub-session-pack",
             "format_version": 1,
-            "app_version": "3.6.0",
+            "app_version": "3.7.0",
             "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
             "label": pack_label,
             "notes": (str(notes).strip()[:200] if notes else ""),

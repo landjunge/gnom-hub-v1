@@ -260,7 +260,16 @@
 | Telegram /hot list\|add\|del\|clear\|promote | **done** |
 | Version / docs 3.6 | **done** |
 
-## Post-V3.6 (optional)
+## V3.7.0
+
+| Item | Status |
+|------|--------|
+| Re-run single worker (API + ↻ button) | **done** |
+| Cost USD on agent cards | **done** |
+| Export result history (Hist↓ Markdown) | **done** |
+| Version / docs 3.7 | **done** |
+
+## Post-V3.7 (optional)
 
 | Item | Notes |
 |------|--------|

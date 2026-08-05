@@ -29,8 +29,8 @@ def test_health(client: TestClient):
     assert r.json()["version"].split(".")[0] in ("2", "3")
 
 
-def test_ui_static_has_v16_v19_features(client: TestClient):
-    """Smoke: app.js ships 1.6–1.9 UI helpers."""
+def test_ui_static_has_v16_v37_features(client: TestClient):
+    """Smoke: app.js ships 1.6–3.7 UI helpers."""
     js = client.get("/static/app.js")
     assert js.status_code == 200
     body = js.text
@@ -46,6 +46,9 @@ def test_ui_static_has_v16_v19_features(client: TestClient):
     assert "updateCostBadge" in body
     assert "pushResultHistory" in body
     assert "toggleCompactMode" in body
+    assert "exportResultHistory" in body
+    assert "rerunWorker" in body
+    assert "card-cost" in body
     assert 'ev.key === "s"' in body or "ev.key === 's'" in body
 
     css = client.get("/static/app.css")
@@ -57,6 +60,7 @@ def test_ui_static_has_v16_v19_features(client: TestClient):
     assert "job-timer" in css.text
     assert "cost-badge" in css.text
     assert "body.compact" in css.text
+    assert "card-cost" in css.text
 
     html = client.get("/")
     assert html.status_code == 200
@@ -66,6 +70,7 @@ def test_ui_static_has_v16_v19_features(client: TestClient):
     assert "cost-badge" in html.text
     assert "result-history" in html.text
     assert "btn-compact" in html.text
+    assert "btn-hist-export" in html.text
 
 
 def test_state_exposes_cost_fields(client: TestClient):
@@ -75,6 +80,29 @@ def test_state_exposes_cost_fields(client: TestClient):
     assert "spent_usd" in llm
     assert "prompt_tokens" in llm
     assert "max_budget_usd" in llm or "spent_usd" in llm
+    agents = r.json().get("agents") or []
+    assert agents
+    assert "cost_usd" in agents[0]
+
+
+def test_worker_rerun_after_execute(client: TestClient):
+    client.post("/api/chat?sync=1", json={"text": "rerun single worker please"})
+    ex = client.post("/api/execute?sync=1")
+    assert ex.status_code == 200
+    assert (ex.json().get("pipeline") or {}).get("stage") == "done"
+    outs_before = (ex.json().get("pipeline") or {}).get("worker_outputs") or []
+    assert outs_before
+
+    r = client.post("/api/workers/worker1/rerun?sync=1")
+    assert r.status_code == 200
+    pipe = r.json().get("pipeline") or {}
+    assert pipe.get("stage") == "done"
+    assert not pipe.get("error")
+    outs = pipe.get("worker_outputs") or []
+    assert any(o.get("worker") == "worker1" for o in outs)
+
+    bad = client.post("/api/workers/notaworker/rerun?sync=1")
+    assert bad.status_code == 400
 
 
 def test_reexecute_after_error_job_done(client: TestClient, monkeypatch):

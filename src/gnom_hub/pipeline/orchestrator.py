@@ -241,6 +241,95 @@ class Orchestrator:
             self._fail(str(exc))
         return self._state
 
+    def rerun_worker(self, worker_id: str) -> PipelineState:
+        """Re-run a single worker using its last task (or user text fallback)."""
+        wid = (worker_id or "").strip().lower()
+        if wid not in self._workers:
+            self._fail(f"Unknown worker: {worker_id}")
+            return self._state
+        worker = self._workers[wid]
+        if not worker.enabled:
+            self._fail(f"{wid} is disabled")
+            return self._state
+
+        task = ""
+        index = 1
+        for out in self._state.worker_outputs or []:
+            if str(out.get("worker") or "") == wid:
+                task = str(out.get("task") or "")
+                index = int(out.get("index") or index)
+                break
+        if not task:
+            task = (self._state.user_text or "").strip() or "Continue previous assignment"
+        if not (self._state.user_text or "").strip() and not (self._state.worker_outputs or []):
+            self._fail("Nothing to re-run — execute first")
+            return self._state
+
+        try:
+            self._state.error = None
+            self._state.mode = "execute"
+            self._set_stage(PipelineStage.work)
+            text = self._state.user_text or task
+            mem = self._state.memory_context or self.memory.recall(text)
+            self._state.memory_context = mem
+            web_ctx = _prefetch_urls(f"{text}\n{task}")
+            if web_ctx:
+                mem = (mem or "").rstrip() + "\n\nWeb fetch (auto):\n" + web_ctx
+            result = worker.run(
+                task,
+                text,
+                list(self._state.distilled_requirements),
+                mem,
+            )
+            outputs = list(self._state.worker_outputs or [])
+            found = False
+            for i, out in enumerate(outputs):
+                if str(out.get("worker") or "") == wid:
+                    outputs[i] = {
+                        "worker": wid,
+                        "name": worker.state.name,
+                        "index": out.get("index") or index,
+                        "task": task,
+                        "result": result,
+                    }
+                    found = True
+                    break
+            if not found:
+                outputs.append(
+                    {
+                        "worker": wid,
+                        "name": worker.state.name,
+                        "index": len(outputs) + 1,
+                        "task": task,
+                        "result": result,
+                    }
+                )
+            self._state.worker_outputs = outputs
+            self._state.worker_results = [str(o.get("result") or "") for o in outputs]
+            self._state.quality_notes = _quality_check(
+                self._state.user_text,
+                self._state.distilled_requirements,
+                outputs,
+            )
+            self.bus.emit(
+                "pipeline.worker",
+                {
+                    "worker": wid,
+                    "index": index,
+                    "result": result,
+                    "task": task,
+                    "rerun": True,
+                },
+            )
+            self.bus.emit(
+                "pipeline.quality",
+                {"notes": self._state.quality_notes, "workers": len(outputs)},
+            )
+            self._finish()
+        except Exception as exc:  # noqa: BLE001
+            self._fail(str(exc))
+        return self._state
+
     def _run_flex_coord_workers(self) -> None:
         text = self._state.user_text
         mem = self._state.memory_context

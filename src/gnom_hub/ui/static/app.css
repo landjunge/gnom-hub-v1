@@ -1575,6 +1575,11 @@ body.worker-fs-open {
   border-color: #1864ab;
 }
 
+.card-cost {
+  color: #69db7c;
+  font-variant-numeric: tabular-nums;
+}
+
 .card-tokens {
   font-size: 10px;
   color: var(--text-muted);

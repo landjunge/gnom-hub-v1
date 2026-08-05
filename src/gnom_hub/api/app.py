@@ -139,7 +139,7 @@ class ShellBody(BaseModel):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Gnom-Hub v1", version="3.6.0")
+    app = FastAPI(title="Gnom-Hub v1", version="3.7.0")
 
     @app.get("/api/health")
     def health() -> dict[str, Any]:
@@ -147,7 +147,7 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "service": "gnom-hub-v1",
-            "version": "3.6.0",
+            "version": "3.7.0",
             "telegram": hub.telegram.enabled,
             "telegram_running": hub.telegram.running,
             "llm": {
@@ -491,6 +491,16 @@ def create_app() -> FastAPI:
         if sync:
             return get_hub().execute_sync()
         return get_hub().execute_async()
+
+    @app.post("/api/workers/{worker_id}/rerun")
+    def worker_rerun(worker_id: str, sync: bool = Query(False)) -> dict[str, Any]:
+        """Re-run a single worker (worker1–worker4) using its last task."""
+        wid = worker_id.strip().lower()
+        if wid not in ("worker1", "worker2", "worker3", "worker4"):
+            raise HTTPException(status_code=400, detail="worker_id must be worker1–worker4")
+        if sync:
+            return get_hub().rerun_worker_sync(wid)
+        return get_hub().rerun_worker_async(wid)
 
     @app.get("/api/jobs")
     def jobs_list(limit: int = Query(20, ge=1, le=50)) -> dict[str, Any]:
