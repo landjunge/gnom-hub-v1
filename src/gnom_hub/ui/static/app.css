@@ -10,8 +10,8 @@
   --gap: 5px;
   --card-w: 140px;
   --card-h: 100px;
-  /* Plan: 3 × 380 + 2 × 5 gap = 1150 (matches agent row ~1155) */
-  --box-size: 380px;
+  /* 3 × 360 + 2 × 5 gap = 1090 */
+  --box-size: 360px;
   --chat-h: 150px;
   --layout-w: 1150px;
 
@@ -293,12 +293,12 @@ html, body {
 .agent-card.color-worker3 { --card-color: var(--c-worker3); }
 .agent-card.color-worker4 { --card-color: var(--c-worker4); }
 
-/* —— Three boxes: FIXED 380×380, gap 5 — no scrollbars —— */
+/* —— Three boxes: FIXED 360×360, gap 5 — no scrollbars —— */
 .boxes {
   display: flex;
   flex-direction: row;
   gap: var(--gap);
-  width: calc(3 * var(--box-size) + 2 * var(--gap)); /* 1150px */
+  width: calc(3 * var(--box-size) + 2 * var(--gap)); /* 1090px */
   height: var(--box-size);
   margin-bottom: 10px;
   flex-shrink: 0;
