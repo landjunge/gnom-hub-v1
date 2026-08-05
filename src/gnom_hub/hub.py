@@ -349,7 +349,7 @@ class Hub:
             {
                 "format": "gnom-hub-trace",
                 "format_version": 1,
-                "app_version": "3.2.0",
+                "app_version": "3.3.0",
                 "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
                 "count": len(events),
                 "trace": events,
@@ -443,6 +443,10 @@ class Hub:
             return self._telegram_trace(arg.strip())
         if cmd == "backup":
             return self._telegram_backup(arg.strip())
+        if cmd in ("jobs", "job"):
+            return self._telegram_jobs(arg.strip())
+        if cmd in ("usage", "cost", "spend"):
+            return self._telegram_usage(arg.strip())
         if cmd == "cancel":
             return self._telegram_cancel()
         if cmd == "last":
@@ -792,6 +796,55 @@ class Hub:
                 return name
         return None
 
+    def _telegram_jobs(self, arg: str) -> str:
+        """Telegram: /jobs [n] | cancel <id>."""
+        parts = arg.split(maxsplit=1)
+        sub = (parts[0] if parts else "").lower()
+        rest = parts[1].strip() if len(parts) > 1 else ""
+        if sub in ("cancel", "stop") and rest:
+            try:
+                out = self.cancel_job(rest)
+            except FileNotFoundError:
+                return f"Unknown job {rest}"
+            return f"Job {out.get('id')}: {out.get('status')}"
+        limit = 10
+        if sub.isdigit():
+            limit = max(1, min(20, int(sub)))
+        rows = self.list_jobs(limit)
+        if not rows:
+            return "No jobs yet."
+        lines = [f"Jobs (last {len(rows)}):"]
+        for r in rows:
+            err = f" · {r['error'][:40]}" if r.get("error") else ""
+            lines.append(
+                f"{r.get('id')} · {r.get('name')} · {r.get('status')}/{r.get('stage')}{err}"
+            )
+        lines.append("Cancel: /jobs cancel <id> or /cancel")
+        return chr(10).join(lines)
+
+    def _telegram_usage(self, arg: str) -> str:
+        """Telegram: /usage [reset]."""
+        sub = (arg or "").strip().lower()
+        if sub in ("reset", "clear", "zero"):
+            self.reset_usage()
+            return "Usage counters reset."
+        u = self.usage_dict()
+        lines = [
+            f"spent=${float(u.get('spent_usd') or 0):.4f}",
+            f"tokens={int(u.get('prompt_tokens') or 0)}+{int(u.get('completion_tokens') or 0)}",
+            f"budget={u.get('max_budget_usd') if u.get('max_budget_usd') is not None else 'none'}",
+            f"free_only={u.get('free_only')}",
+        ]
+        by = u.get("by_agent") or {}
+        if by:
+            lines.append("by agent:")
+            for aid, bucket in list(by.items())[:8]:
+                cost = float(bucket.get("cost_usd") or 0)
+                calls = int(bucket.get("calls") or 0)
+                lines.append(f"  {aid}: ${cost:.4f} · calls={calls}")
+        lines.append("Reset: /usage reset")
+        return chr(10).join(lines)
+
     # ── agent persistence ───────────────────────────────────────────
 
     def _load_agent_state(self) -> None:
@@ -982,7 +1035,7 @@ class Hub:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "3.2.0",
+            "version": "3.3.0",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -1108,15 +1161,24 @@ class Hub:
         if not hasattr(self, "_pipeline_lock"):
             self._pipeline_lock = threading.Lock()
 
+        from datetime import datetime, timezone
+
         job_id = uuid.uuid4().hex[:12]
         job: dict[str, Any] = {
             "id": job_id,
+            "name": name,
             "status": "running",
             "stage": "idle",
             "error": None,
             "snapshot": None,
+            "started_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         }
         self._jobs[job_id] = job
+        # ring-buffer job map (keep last 40 keys)
+        if len(self._jobs) > 40:
+            for old_id in list(self._jobs.keys())[: len(self._jobs) - 40]:
+                if self._jobs.get(old_id, {}).get("status") != "running":
+                    self._jobs.pop(old_id, None)
         self.last_error = None
 
         def _on_stage(data: Any) -> None:
@@ -1258,9 +1320,11 @@ class Hub:
             return None
         out = {
             "id": job["id"],
+            "name": job.get("name"),
             "status": job["status"],
             "stage": job.get("stage"),
             "error": job.get("error"),
+            "started_at": job.get("started_at") or "",
         }
         if job.get("snapshot"):
             out["snapshot"] = job["snapshot"]
@@ -1282,10 +1346,47 @@ class Hub:
             self._append_trace("job.cancel", {"id": job_id})
         return {
             "id": job["id"],
+            "name": job.get("name"),
             "status": job["status"],
             "stage": job.get("stage"),
             "error": job.get("error"),
         }
+
+    def list_jobs(self, limit: int = 20) -> list[dict[str, Any]]:
+        """Recent jobs (newest first), without heavy snapshots."""
+        jobs = getattr(self, "_jobs", {})
+        rows: list[dict[str, Any]] = []
+        for j in jobs.values():
+            if not isinstance(j, dict):
+                continue
+            rows.append(
+                {
+                    "id": j.get("id"),
+                    "name": j.get("name") or "job",
+                    "status": j.get("status"),
+                    "stage": j.get("stage"),
+                    "error": j.get("error"),
+                    "started_at": j.get("started_at") or "",
+                }
+            )
+        rows.sort(key=lambda r: str(r.get("started_at") or r.get("id") or ""), reverse=True)
+        return rows[: max(1, min(50, int(limit)))]
+
+    def usage_dict(self) -> dict[str, Any]:
+        snap = self.llm.usage_snapshot()
+        return {
+            "spent_usd": snap.get("spent_usd", 0.0),
+            "prompt_tokens": snap.get("prompt_tokens", 0),
+            "completion_tokens": snap.get("completion_tokens", 0),
+            "by_agent": snap.get("by_agent") or {},
+            "free_only": self.llm.free_only,
+            "max_budget_usd": self.llm.max_budget_usd,
+        }
+
+    def reset_usage(self) -> dict[str, Any]:
+        data = self.llm.reset_usage()
+        self._append_trace("usage.reset", {"ok": True})
+        return {"ok": True, **data, **self.usage_dict()}
 
     def clarify(self, option: str) -> dict[str, Any]:
         """Synchronous clarify (also used after async reaches clarify)."""
@@ -1402,7 +1503,7 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "3.2.0",
+            "version": "3.3.0",
             "providers": self.llm.providers_snapshot(),
             "backups": self.list_backups()[:8],
             "packs": self.list_session_packs()[:12],
@@ -1982,7 +2083,7 @@ class Hub:
         pack = {
             "format": "gnom-hub-session-pack",
             "format_version": 1,
-            "app_version": "3.2.0",
+            "app_version": "3.3.0",
             "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
             "label": pack_label,
             "notes": (str(notes).strip()[:200] if notes else ""),
@@ -2390,7 +2491,7 @@ class Hub:
                 "5) Esc = close fullscreen or cancel job. "
                 "6) Box 3: Copy/DL/Tab/WS/↑perm/fullscreen; toolbar Copy all + Diff + History. "
                 "7) Cost badge + Compact density; job timer while busy. "
-                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat/history/workspace/ui_prefs/notes; list filter). 10) History Re-Exec. 11) Telegram: /bs /exec /pack /warm /cold /vec /trace /backup /cancel."
+                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat/history/workspace/ui_prefs/notes; list filter). 10) History Re-Exec. 11) Telegram: /jobs /usage /backup /pack /warm /cold /vec /trace /cancel."
             ),
             "example": "Type idea → Execute → Pack ↓ (USB) → History Re-Exec → Diff.",
             "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",

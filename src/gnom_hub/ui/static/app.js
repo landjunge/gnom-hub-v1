@@ -85,6 +85,7 @@
     stageBadge: document.getElementById("stage-badge"),
     llmBadge: document.getElementById("llm-badge"),
     costBadge: document.getElementById("cost-badge"),
+    usageModal: document.getElementById("usage-modal"),
     memBadge: document.getElementById("mem-badge"),
     vecBadge: document.getElementById("vec-badge"),
     godBadge: document.getElementById("god-badge"),
@@ -966,6 +967,139 @@
   function closeVectorModal() {
     if (els.vectorModal) els.vectorModal.hidden = true;
   }
+
+  function closeUsageModal() {
+    if (els.usageModal) els.usageModal.hidden = true;
+  }
+
+  async function openUsageModal() {
+    if (!els.usageModal) return;
+    els.usageModal.hidden = false;
+    await refreshUsageModal();
+  }
+
+  async function refreshUsageModal() {
+    const body = document.getElementById("usage-body");
+    const ul = document.getElementById("usage-jobs");
+    try {
+      const [usage, jobsData] = await Promise.all([
+        api("GET", "/api/usage"),
+        api("GET", "/api/jobs?limit=12"),
+      ]);
+      const spent = Number(usage.spent_usd || 0);
+      const pt = Number(usage.prompt_tokens || 0);
+      const ct = Number(usage.completion_tokens || 0);
+      const budget =
+        usage.max_budget_usd != null && usage.max_budget_usd !== ""
+          ? Number(usage.max_budget_usd)
+          : null;
+      const lines = [
+        "spent: $" + spent.toFixed(4),
+        "tokens: " + pt + " prompt + " + ct + " completion",
+        "budget: " + (budget != null && !isNaN(budget) ? "$" + budget.toFixed(2) : "none"),
+        "free_only: " + !!usage.free_only,
+        "",
+        "by agent:",
+      ];
+      const by = usage.by_agent || {};
+      const keys = Object.keys(by);
+      if (!keys.length) {
+        lines.push("(no LLM calls yet)");
+      } else {
+        keys.forEach(function (aid) {
+          const b = by[aid] || {};
+          lines.push(
+            "  " +
+              aid +
+              ": $" +
+              Number(b.cost_usd || 0).toFixed(4) +
+              " · calls=" +
+              (b.calls || 0) +
+              " · tok=" +
+              (Number(b.prompt_tokens || 0) + Number(b.completion_tokens || 0))
+          );
+        });
+      }
+      if (body) body.textContent = lines.join(String.fromCharCode(10));
+
+      if (ul) {
+        ul.innerHTML = "";
+        const jobs = jobsData.jobs || [];
+        if (!jobs.length) {
+          const li = document.createElement("li");
+          li.className = "muted";
+          li.textContent = "(no jobs yet)";
+          ul.appendChild(li);
+        } else {
+          jobs.forEach(function (j) {
+            const li = document.createElement("li");
+            li.style.display = "flex";
+            li.style.gap = "6px";
+            li.style.alignItems = "center";
+            const lab = document.createElement("span");
+            lab.style.flex = "1";
+            lab.style.minWidth = "0";
+            lab.style.overflow = "hidden";
+            lab.style.textOverflow = "ellipsis";
+            lab.style.whiteSpace = "nowrap";
+            lab.textContent =
+              (j.id || "") +
+              " · " +
+              (j.name || "") +
+              " · " +
+              (j.status || "") +
+              "/" +
+              (j.stage || "");
+            lab.title = (j.error || j.started_at || "");
+            li.appendChild(lab);
+            if (j.status === "running") {
+              const btn = document.createElement("button");
+              btn.type = "button";
+              btn.className = "btn-ws-sm";
+              btn.textContent = "Cancel";
+              btn.addEventListener("click", function () {
+                cancelJobById(j.id);
+              });
+              li.appendChild(btn);
+            }
+            ul.appendChild(li);
+          });
+        }
+      }
+    } catch (err) {
+      if (body) body.textContent = "Usage load failed: " + err.message;
+    }
+  }
+
+  async function cancelJobById(id) {
+    if (!id) return;
+    try {
+      await api("POST", "/api/jobs/" + encodeURIComponent(id) + "/cancel");
+      toast("Cancel requested", "ok");
+      await refreshUsageModal();
+    } catch (err) {
+      toast("Cancel failed: " + err.message, "error");
+    }
+  }
+
+  async function resetUsageCounters() {
+    if (!confirm("Reset session usage counters to zero?")) return;
+    try {
+      await api("POST", "/api/usage/reset");
+      toast("Usage reset", "ok");
+      await refreshUsageModal();
+      // refresh cost badge via state
+      try {
+        const st = await api("GET", "/api/state");
+        applySnapshot(st);
+      } catch (_e) {
+        /* ignore */
+      }
+    } catch (err) {
+      toast("Usage reset failed: " + err.message, "error");
+    }
+  }
+
 
   async function openVectorModal() {
     if (!els.vectorModal) return;
@@ -3471,6 +3605,11 @@
     document.addEventListener("keydown", function (ev) {
       // Esc: close overlays first, else cancel running job
       if (ev.key === "Escape") {
+        if (els.usageModal && !els.usageModal.hidden) {
+          ev.preventDefault();
+          closeUsageModal();
+          return;
+        }
         if (els.vectorModal && !els.vectorModal.hidden) {
           ev.preventDefault();
           closeVectorModal();
@@ -3654,6 +3793,26 @@
         }
       });
     }
+    if (els.costBadge) {
+      els.costBadge.addEventListener("click", openUsageModal);
+      els.costBadge.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          openUsageModal();
+        }
+      });
+    }
+    const usageClose = document.getElementById("usage-close");
+    if (usageClose) usageClose.addEventListener("click", closeUsageModal);
+    if (els.usageModal) {
+      els.usageModal.addEventListener("click", function (ev) {
+        if (ev.target === els.usageModal) closeUsageModal();
+      });
+    }
+    const usageRefresh = document.getElementById("usage-refresh");
+    if (usageRefresh) usageRefresh.addEventListener("click", refreshUsageModal);
+    const usageReset = document.getElementById("usage-reset");
+    if (usageReset) usageReset.addEventListener("click", resetUsageCounters);
     const vectorClose = document.getElementById("vector-close");
     if (vectorClose) vectorClose.addEventListener("click", closeVectorModal);
     if (els.vectorModal) {

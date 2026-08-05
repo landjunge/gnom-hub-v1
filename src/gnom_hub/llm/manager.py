@@ -92,6 +92,14 @@ class LLMManager:
             "by_agent": {k: dict(v) for k, v in self._by_agent.items()},
         }
 
+    def reset_usage(self) -> dict:
+        """Clear session spend counters (not invoice history)."""
+        self._spent_usd = 0.0
+        self._prompt_tokens = 0
+        self._completion_tokens = 0
+        self._by_agent = {}
+        return self.usage_snapshot()
+
     def deepseek_key(self, override: str | None = None) -> str:
         if override and override.strip():
             return override.strip()

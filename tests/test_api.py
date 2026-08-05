@@ -876,3 +876,35 @@ def test_backup_restore(client: TestClient):
     tg = client.post("/api/telegram/inbound", json={"text": "/backup list"})
     assert tg.status_code == 200
     assert "1." in tg.json()["reply"] or "backup" in tg.json()["reply"].lower()
+
+
+def test_jobs_list_and_usage(client: TestClient):
+    # async job creates entry
+    r = client.post("/api/chat", json={"text": "job list seed"})
+    assert r.status_code == 200
+    body = r.json()
+    if body.get("job_id"):
+        # wait briefly via poll
+        import time
+
+        for _ in range(20):
+            st = client.get(f"/api/jobs/{body['job_id']}")
+            if st.json().get("status") != "running":
+                break
+            time.sleep(0.05)
+    lst = client.get("/api/jobs")
+    assert lst.status_code == 200
+    assert "jobs" in lst.json()
+    usage = client.get("/api/usage")
+    assert usage.status_code == 200
+    assert "spent_usd" in usage.json()
+    assert "by_agent" in usage.json()
+    reset = client.post("/api/usage/reset")
+    assert reset.status_code == 200
+    assert reset.json().get("ok") is True
+    assert float(reset.json().get("spent_usd") or 0) == 0.0
+    tg = client.post("/api/telegram/inbound", json={"text": "/jobs"})
+    assert tg.status_code == 200
+    tg2 = client.post("/api/telegram/inbound", json={"text": "/usage"})
+    assert tg2.status_code == 200
+    assert "spent" in tg2.json()["reply"].lower() or "$" in tg2.json()["reply"]

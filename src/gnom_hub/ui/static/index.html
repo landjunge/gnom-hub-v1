@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=74" />
+  <link rel="stylesheet" href="/static/app.css?v=75" />
 </head>
 <body>
   <div id="app">
@@ -12,7 +12,7 @@
       <h1 class="app-title">Gnom-Hub <span id="ver-badge" class="ver-badge">v2.1</span></h1>
       <div class="top-meta">
         <span id="llm-badge" class="llm-badge" title="LLM key status">LLM: —</span>
-        <span id="cost-badge" class="cost-badge" title="Session spend / budget">$0.00</span>
+        <span id="cost-badge" class="cost-badge" title="Click: usage & jobs" role="button" tabindex="0">$0.00</span>
         <span id="mem-badge" class="mem-badge" title="HOT memory">Mem: —</span>
         <span id="vec-badge" class="vec-badge" title="Open vector store (click)" role="button" tabindex="0">Vec: —</span>
         <span id="god-badge" class="god-badge" title="God-Mode — click to toggle" role="button" tabindex="0">God: off</span>
@@ -350,6 +350,23 @@
     </div>
   </div>
 
+  <!-- Usage + jobs -->
+  <div id="usage-modal" class="modal" hidden>
+    <div class="modal-panel trace-panel">
+      <div class="modal-head">
+        <h2 class="modal-title">Usage & Jobs</h2>
+        <button type="button" id="usage-close" class="modal-close" title="Close">×</button>
+      </div>
+      <pre id="usage-body" class="trace-body muted">Loading…</pre>
+      <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">
+        <button type="button" id="usage-refresh" class="btn-ws-sm">Refresh</button>
+        <button type="button" id="usage-reset" class="btn-ws-sm" title="Zero session spend counters">Reset usage</button>
+      </div>
+      <p class="system-line muted">Recent jobs</p>
+      <ul id="usage-jobs" class="ws-list" style="max-height:160px"></ul>
+    </div>
+  </div>
+
   <!-- Light trace -->
   <div id="trace-modal" class="modal" hidden>
     <div class="modal-panel trace-panel">
@@ -370,6 +387,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=74"></script>
+  <script src="/static/app.js?v=75"></script>
 </body>
 </html>

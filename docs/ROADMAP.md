@@ -221,7 +221,17 @@
 | Telegram /backup list\|save\|load\|del | **done** |
 | Version / docs 3.2 | **done** |
 
-## Post-V3.2 (optional)
+## V3.3.0
+
+| Item | Status |
+|------|--------|
+| list_jobs + GET /api/jobs | **done** |
+| usage_dict / reset + API | **done** |
+| Cost badge → Usage & Jobs modal | **done** |
+| Telegram /jobs /usage | **done** |
+| Version / docs 3.3 | **done** |
+
+## Post-V3.3 (optional)
 
 | Item | Notes |
 |------|--------|

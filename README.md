@@ -1,23 +1,22 @@
-# Gnom-Hub v3.2.0
+# Gnom-Hub v3.3.0
 
 Local multi-agent control hub: **brainstorm first**, then **Execute** workers.
 
-Desktop · USB packs · COLD · Vector · Trace · **Backup restore** · Telegram full remote control.
+Desktop · USB · COLD · Vector · Trace · Backup restore · **Usage & Jobs** · Telegram remote.
 
 > **Convention:** every meaningful change is **pushed to `main`** and this **README is updated** in the same commit.
 
 ---
 
-## Backup restore
+## Usage & Jobs
 
 ```
-System → Backup zip     → creates data/backups/gnom-hub-backup-*.zip
-List item → Rest        → restore HOT + WARM + agents (+ checkpoint if present)
-Telegram /backup save | list | load <n|name> | del <n|name>
-API POST /api/backups/{name}/restore
+Click $ cost badge   → by-agent spend · recent jobs · Cancel · Reset usage
+GET /api/jobs        → list recent jobs
+GET /api/usage       → session spend snapshot
+POST /api/usage/reset
+Telegram /jobs · /usage [reset] · /jobs cancel <id>
 ```
-
-Current non-empty HOT is archived to COLD before restore (safety).
 
 ---
 
@@ -30,7 +29,7 @@ cd gnom-hub-v1
 ./scripts/quality_check.sh
 ```
 
-**http://127.0.0.1:8080/?v=74**
+**http://127.0.0.1:8080/?v=75**
 
 ---
 
@@ -38,9 +37,9 @@ cd gnom-hub-v1
 
 | Tag | Highlights |
 |-----|------------|
-| 3.0 | Vector browser + /vec |
-| 3.1 | Trace export + /trace |
-| **3.2** | Backup restore (UI/API/Telegram) |
+| 3.1 | Trace export |
+| 3.2 | Backup restore |
+| **3.3** | Usage modal + jobs list + /jobs /usage |
 
 ---
 

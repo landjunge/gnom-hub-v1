@@ -135,7 +135,7 @@ class ShellBody(BaseModel):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Gnom-Hub v1", version="3.2.0")
+    app = FastAPI(title="Gnom-Hub v1", version="3.3.0")
 
     @app.get("/api/health")
     def health() -> dict[str, Any]:
@@ -143,7 +143,7 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "service": "gnom-hub-v1",
-            "version": "3.2.0",
+            "version": "3.3.0",
             "telegram": hub.telegram.enabled,
             "telegram_running": hub.telegram.running,
             "llm": {
@@ -488,6 +488,12 @@ def create_app() -> FastAPI:
             return get_hub().execute_sync()
         return get_hub().execute_async()
 
+    @app.get("/api/jobs")
+    def jobs_list(limit: int = Query(20, ge=1, le=50)) -> dict[str, Any]:
+        jobs = get_hub().list_jobs(limit)
+        running = sum(1 for j in jobs if j.get("status") == "running")
+        return {"jobs": jobs, "count": len(jobs), "running": running}
+
     @app.get("/api/jobs/{job_id}")
     def job_status(job_id: str) -> dict[str, Any]:
         job = get_hub().get_job(job_id)
@@ -501,6 +507,14 @@ def create_app() -> FastAPI:
             return get_hub().cancel_job(job_id)
         except FileNotFoundError as e:
             raise HTTPException(status_code=404, detail=str(e)) from e
+
+    @app.get("/api/usage")
+    def usage_get() -> dict[str, Any]:
+        return get_hub().usage_dict()
+
+    @app.post("/api/usage/reset")
+    def usage_reset() -> dict[str, Any]:
+        return get_hub().reset_usage()
 
     @app.post("/api/clarify")
     def clarify(body: ClarifyBody, sync: bool = Query(False)) -> dict[str, Any]:
