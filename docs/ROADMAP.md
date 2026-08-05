@@ -250,7 +250,17 @@
 | Plain-text arg convenience | **done** |
 | Version / docs 3.5 | **done** |
 
-## Post-V3.5 (optional)
+## V3.6.0
+
+| Item | Status |
+|------|--------|
+| HOT fact add/remove/clear/promote | **done** |
+| API /api/memory/hot* | **done** |
+| System HOT list UI | **done** |
+| Telegram /hot list\|add\|del\|clear\|promote | **done** |
+| Version / docs 3.6 | **done** |
+
+## Post-V3.6 (optional)
 
 | Item | Notes |
 |------|--------|

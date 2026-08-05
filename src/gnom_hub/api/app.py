@@ -62,6 +62,10 @@ class WarmFactBody(BaseModel):
     text: str = Field(min_length=1)
 
 
+class HotFactBody(BaseModel):
+    text: str = Field(min_length=1)
+
+
 class WorkspaceWriteBody(BaseModel):
     zone: str = "temp"
     name: str = Field(min_length=1)
@@ -135,7 +139,7 @@ class ShellBody(BaseModel):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Gnom-Hub v1", version="3.5.0")
+    app = FastAPI(title="Gnom-Hub v1", version="3.6.0")
 
     @app.get("/api/health")
     def health() -> dict[str, Any]:
@@ -143,7 +147,7 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "service": "gnom-hub-v1",
-            "version": "3.5.0",
+            "version": "3.6.0",
             "telegram": hub.telegram.enabled,
             "telegram_running": hub.telegram.running,
             "llm": {
@@ -547,6 +551,35 @@ def create_app() -> FastAPI:
     @app.get("/api/memory")
     def memory() -> dict[str, Any]:
         return get_hub().memory_dict()
+
+    @app.post("/api/memory/hot")
+    def hot_add(body: HotFactBody) -> dict[str, Any]:
+        return get_hub().add_hot_fact(body.text.strip())
+
+    @app.delete("/api/memory/hot")
+    def hot_delete(
+        text: str | None = Query(None),
+        index: int | None = Query(None),
+    ) -> dict[str, Any]:
+        try:
+            return get_hub().delete_hot_fact(text=text, index=index)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+
+    @app.post("/api/memory/hot/clear")
+    def hot_clear() -> dict[str, Any]:
+        return get_hub().clear_hot_facts()
+
+    @app.post("/api/memory/hot/promote")
+    def hot_promote(body: HotFactBody) -> dict[str, Any]:
+        try:
+            return get_hub().promote_hot_fact(body.text.strip())
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
 
     @app.post("/api/memory/warm")
     def warm_add(body: WarmFactBody) -> dict[str, Any]:

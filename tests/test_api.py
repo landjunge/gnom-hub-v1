@@ -965,3 +965,33 @@ def test_tools_call_and_telegram(client: TestClient):
         or "stage" in tg2.json()["reply"].lower()
         or "agents" in tg2.json()["reply"].lower()
     )
+
+
+def test_hot_facts_manager(client: TestClient):
+    r = client.post("/api/memory/hot", json={"text": "session prefers compact UI"})
+    assert r.status_code == 200
+    assert r.json()["ok"] is True
+    assert any("compact UI" in f for f in r.json()["facts"])
+    mem = client.get("/api/memory").json()
+    assert any("compact UI" in f for f in mem.get("facts") or [])
+    promo = client.post(
+        "/api/memory/hot/promote",
+        json={"text": "session prefers compact UI"},
+    )
+    assert promo.status_code == 200
+    assert promo.json().get("warm_added") is True
+    warm = client.get("/api/memory").json().get("warm_facts") or []
+    assert any("compact UI" in f for f in warm)
+    gone = client.delete(
+        "/api/memory/hot",
+        params={"text": "session prefers compact UI"},
+    )
+    assert gone.status_code == 200
+    client.post("/api/memory/hot", json={"text": "temp only"})
+    cleared = client.post("/api/memory/hot/clear")
+    assert cleared.status_code == 200
+    assert cleared.json()["hot_count"] == 0
+    tg = client.post("/api/telegram/inbound", json={"text": "/hot add from tg"})
+    assert "added" in tg.json()["reply"].lower() or "HOT" in tg.json()["reply"]
+    tg2 = client.post("/api/telegram/inbound", json={"text": "/hot list"})
+    assert "from tg" in tg2.json()["reply"]

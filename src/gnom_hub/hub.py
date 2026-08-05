@@ -349,7 +349,7 @@ class Hub:
             {
                 "format": "gnom-hub-trace",
                 "format_version": 1,
-                "app_version": "3.5.0",
+                "app_version": "3.6.0",
                 "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
                 "count": len(events),
                 "trace": events,
@@ -453,6 +453,8 @@ class Hub:
             return self._telegram_tools(arg.strip(), cmd=cmd)
         if cmd in ("fetch", "web"):
             return self._telegram_fetch(arg.strip())
+        if cmd == "hot":
+            return self._telegram_hot(arg.strip())
         if cmd == "cancel":
             return self._telegram_cancel()
         if cmd == "last":
@@ -1012,6 +1014,57 @@ class Hub:
             text = text[:2799] + "…"
         return f"fetch {url}" + chr(10) + text
 
+    def _telegram_hot(self, arg: str) -> str:
+        """Telegram: /hot list | add | del | clear | promote."""
+        parts = arg.split(maxsplit=1)
+        sub = (parts[0] if parts else "list").lower()
+        rest = parts[1].strip() if len(parts) > 1 else ""
+        if sub in ("", "list", "ls"):
+            facts = self.hot.all_facts()
+            if not facts:
+                return "HOT facts empty. /hot add <fact>"
+            lines = [f"HOT facts ({len(facts)}):"]
+            start = max(0, len(facts) - 12)
+            for i, f in enumerate(facts[start:], start=start + 1):
+                lines.append(f"{i}. {f[:160]}")
+            return chr(10).join(lines)
+        if sub in ("add", "a", "+"):
+            if not rest:
+                return "Usage: /hot add <fact text>"
+            data = self.add_hot_fact(rest)
+            return "HOT added." if data.get("ok") else "HOT unchanged (empty or duplicate)."
+        if sub in ("del", "rm", "delete", "remove"):
+            if not rest:
+                return "Usage: /hot del <n|exact text>"
+            try:
+                if rest.isdigit():
+                    data = self.delete_hot_fact(index=int(rest))
+                else:
+                    data = self.delete_hot_fact(text=rest)
+            except (FileNotFoundError, ValueError) as exc:
+                return str(exc)
+            return f"HOT removed: {str(data.get('removed') or '')[:120]}"
+        if sub == "clear":
+            data = self.clear_hot_facts()
+            return f"HOT facts cleared ({data.get('cleared')})."
+        if sub in ("promote", "warm", "keep"):
+            if not rest:
+                return "Usage: /hot promote <n|exact text>"
+            facts = self.hot.all_facts()
+            text = rest
+            if rest.isdigit():
+                idx = int(rest)
+                if idx < 1 or idx > len(facts):
+                    return f"No HOT fact at index {rest}"
+                text = facts[idx - 1]
+            try:
+                data = self.promote_hot_fact(text)
+            except (FileNotFoundError, ValueError) as exc:
+                return str(exc)
+            note = " (already in WARM)" if not data.get("warm_added") else ""
+            return f"Promoted to WARM{note}: {text[:120]}"
+        return "Usage: /hot list | add <fact> | del <n|text> | clear | promote <n|text>"
+
     # ── agent persistence ───────────────────────────────────────────
 
     def _load_agent_state(self) -> None:
@@ -1161,7 +1214,8 @@ class Hub:
     def memory_dict(self) -> dict[str, Any]:
         return {
             "summary": self.hot.get_context_summary(),
-            "facts": self.hot.recent_facts(12),
+            "facts": self.hot.all_facts()[-30:],
+            "hot_count": len(self.hot.all_facts()),
             "warm_facts": self.warm.all_facts()[-30:],
             "warm_count": len(self.warm.all_facts()),
             "recent_messages": self.hot.recent_messages(6),
@@ -1202,7 +1256,7 @@ class Hub:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "3.5.0",
+            "version": "3.6.0",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -1555,6 +1609,62 @@ class Hub:
         self._append_trace("usage.reset", {"ok": True})
         return {"ok": True, **data, **self.usage_dict()}
 
+    def add_hot_fact(self, text: str) -> dict[str, Any]:
+        ok = self.hot.add_fact(text)
+        if ok:
+            self.hot.save()
+        return {
+            "ok": ok,
+            "facts": self.hot.all_facts()[-30:],
+            "hot_count": len(self.hot.all_facts()),
+        }
+
+    def delete_hot_fact(
+        self, *, text: str | None = None, index: int | None = None
+    ) -> dict[str, Any]:
+        removed = None
+        if index is not None:
+            removed = self.hot.remove_fact_at(int(index))
+            if removed is None:
+                raise FileNotFoundError("index out of range")
+        elif text and text.strip():
+            ok = self.hot.remove_fact(text.strip())
+            if not ok:
+                raise FileNotFoundError("fact not found")
+            removed = text.strip()
+        else:
+            raise ValueError("text or index required")
+        self.hot.save()
+        return {
+            "ok": True,
+            "removed": removed,
+            "facts": self.hot.all_facts()[-30:],
+            "hot_count": len(self.hot.all_facts()),
+        }
+
+    def clear_hot_facts(self) -> dict[str, Any]:
+        n = self.hot.clear_facts()
+        self.hot.save()
+        return {"ok": True, "cleared": n, "facts": [], "hot_count": 0}
+
+    def promote_hot_fact(self, text: str) -> dict[str, Any]:
+        """Copy a HOT fact into WARM (durable)."""
+        t = " ".join(str(text).split()).strip()
+        if not t:
+            raise ValueError("text required")
+        facts = self.hot.all_facts()
+        if t not in facts:
+            # allow promote by index via caller resolving text
+            raise FileNotFoundError("HOT fact not found")
+        added = self.warm.add_fact(t)
+        return {
+            "ok": True,
+            "promoted": t,
+            "warm_added": added,
+            "facts": self.hot.all_facts()[-30:],
+            "warm_facts": self.warm.all_facts()[-30:],
+        }
+
     def clarify(self, option: str) -> dict[str, Any]:
         """Synchronous clarify (also used after async reaches clarify)."""
         self.last_error = None
@@ -1670,7 +1780,7 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "3.5.0",
+            "version": "3.6.0",
             "providers": self.llm.providers_snapshot(),
             "backups": self.list_backups()[:8],
             "packs": self.list_session_packs()[:12],
@@ -2250,7 +2360,7 @@ class Hub:
         pack = {
             "format": "gnom-hub-session-pack",
             "format_version": 1,
-            "app_version": "3.5.0",
+            "app_version": "3.6.0",
             "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
             "label": pack_label,
             "notes": (str(notes).strip()[:200] if notes else ""),
@@ -2658,7 +2768,7 @@ class Hub:
                 "5) Esc = close fullscreen or cancel job. "
                 "6) Box 3: Copy/DL/Tab/WS/↑perm/fullscreen; toolbar Copy all + Diff + History. "
                 "7) Cost badge + Compact density; job timer while busy. "
-                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat/history/workspace/ui_prefs/notes; list filter). 10) History Re-Exec. 11) Telegram: /tools /fetch /ws /jobs /usage /backup /pack …"
+                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat/history/workspace/ui_prefs/notes; list filter). 10) History Re-Exec. 11) Telegram: /hot /tools /fetch /ws /jobs /usage /backup …"
             ),
             "example": "Type idea → Execute → Pack ↓ (USB) → History Re-Exec → Diff.",
             "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",

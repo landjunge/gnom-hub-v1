@@ -784,6 +784,11 @@
       const pm = document.getElementById("sys-pack-max");
       if (pm && s.pack_max != null) pm.value = String(s.pack_max);
       try {
+        await renderHotList();
+      } catch (_h) {
+        /* ignore */
+      }
+      try {
         await renderWarmList();
       } catch (_w) {
         /* ignore */
@@ -2060,6 +2065,119 @@
     }
   }
 
+
+  async function renderHotList(facts) {
+    const ul = document.getElementById("sys-hot-list");
+    if (!ul) return;
+    let list = facts;
+    if (!list) {
+      try {
+        const data = await api("GET", "/api/memory");
+        list = data.facts || [];
+      } catch (_e) {
+        list = [];
+      }
+    }
+    ul.innerHTML = "";
+    if (!list || !list.length) {
+      const li = document.createElement("li");
+      li.className = "muted";
+      li.textContent = "(no HOT facts yet)";
+      ul.appendChild(li);
+      return;
+    }
+    list.slice(-12).forEach(function (text) {
+      const li = document.createElement("li");
+      li.style.display = "flex";
+      li.style.gap = "6px";
+      li.style.alignItems = "center";
+      const lab = document.createElement("span");
+      lab.style.flex = "1";
+      lab.style.minWidth = "0";
+      lab.style.overflow = "hidden";
+      lab.style.textOverflow = "ellipsis";
+      lab.style.whiteSpace = "nowrap";
+      lab.textContent = text;
+      lab.title = text;
+      const promo = document.createElement("button");
+      promo.type = "button";
+      promo.className = "btn-ws-sm";
+      promo.textContent = "→W";
+      promo.title = "Promote to WARM";
+      promo.addEventListener("click", function () {
+        promoteHotFact(text);
+      });
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "btn-ws-sm";
+      del.textContent = "Del";
+      del.addEventListener("click", function () {
+        deleteHotFact(text);
+      });
+      li.appendChild(lab);
+      li.appendChild(promo);
+      li.appendChild(del);
+      ul.appendChild(li);
+    });
+  }
+
+  async function addHotFact() {
+    const input = document.getElementById("sys-hot-input");
+    const text = input ? String(input.value || "").trim() : "";
+    if (!text) {
+      toast("Enter a HOT fact", "info");
+      return;
+    }
+    try {
+      const data = await api("POST", "/api/memory/hot", { text: text });
+      if (input) input.value = "";
+      await renderHotList(data.facts);
+      toast(data.ok ? "HOT fact added" : "Already present", "ok");
+    } catch (err) {
+      toast("HOT add failed: " + err.message, "error");
+    }
+  }
+
+  async function deleteHotFact(text) {
+    if (!confirm("Delete HOT fact: " + String(text || "").slice(0, 60) + "?")) return;
+    try {
+      const data = await api(
+        "DELETE",
+        "/api/memory/hot?text=" + encodeURIComponent(text || "")
+      );
+      await renderHotList(data.facts);
+      toast("HOT fact removed", "ok");
+    } catch (err) {
+      toast("HOT delete failed: " + err.message, "error");
+    }
+  }
+
+  async function promoteHotFact(text) {
+    try {
+      const data = await api("POST", "/api/memory/hot/promote", {
+        text: text,
+      });
+      await renderHotList(data.facts);
+      await renderWarmList(data.warm_facts);
+      toast(
+        data.warm_added ? "Promoted to WARM" : "Already in WARM",
+        "ok"
+      );
+    } catch (err) {
+      toast("Promote failed: " + err.message, "error");
+    }
+  }
+
+  async function clearHotFacts() {
+    if (!confirm("Clear all HOT session facts?")) return;
+    try {
+      await api("POST", "/api/memory/hot/clear");
+      await renderHotList([]);
+      toast("HOT facts cleared", "ok");
+    } catch (err) {
+      toast("HOT clear failed: " + err.message, "error");
+    }
+  }
 
   async function renderWarmList(facts) {
     const ul = document.getElementById("sys-warm-list");
@@ -3846,6 +3964,19 @@
     if (packFilter) {
       packFilter.addEventListener("input", function () {
         renderPackList(packListCache);
+      });
+    }
+    const hotAdd = document.getElementById("sys-hot-add");
+    if (hotAdd) hotAdd.addEventListener("click", addHotFact);
+    const hotClear = document.getElementById("sys-hot-clear");
+    if (hotClear) hotClear.addEventListener("click", clearHotFacts);
+    const hotInput = document.getElementById("sys-hot-input");
+    if (hotInput) {
+      hotInput.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          addHotFact();
+        }
       });
     }
     const warmAdd = document.getElementById("sys-warm-add");

@@ -1,24 +1,26 @@
-# Gnom-Hub v3.5.0
+# Gnom-Hub v3.6.0
 
 Local multi-agent control hub: **brainstorm first**, then **Execute** workers.
 
-Desktop · USB · COLD · Vector · Trace · Backup · Jobs · Workspace · **Tools browser**.
+Desktop · USB · COLD · Vector · Trace · Backup · Jobs · Workspace · Tools · **HOT facts**.
 
 > **Convention:** every meaningful change is **pushed to `main`** and this **README is updated** in the same commit.
 
 ---
 
-## Tools
+## HOT vs WARM
+
+| Layer | Lifetime | System | Telegram |
+|-------|----------|--------|----------|
+| **HOT** | Session (reset clears) | Add / Del / Clear / →W promote | `/hot …` |
+| **WARM** | Durable across reset | Add / Del / Clear | `/warm …` |
 
 ```
-Header Tools button     → list plugins/tools · Run · Quick Fetch
-POST /api/tools/call    → { name, arguments }
-Telegram /tools         → list
-Telegram /tool <name> [json|plain]
-Telegram /fetch <url>   → web_fetch shortcut
+POST /api/memory/hot
+DELETE /api/memory/hot?text=
+POST /api/memory/hot/clear
+POST /api/memory/hot/promote
 ```
-
-Core tools: `hub_status`, `memory_search`, `pipeline_do`, `web_fetch` (+ any loaded plugins).
 
 ---
 
@@ -31,7 +33,7 @@ cd gnom-hub-v1
 ./scripts/quality_check.sh
 ```
 
-**http://127.0.0.1:8080/?v=77**
+**http://127.0.0.1:8080/?v=78**
 
 ---
 
@@ -39,9 +41,9 @@ cd gnom-hub-v1
 
 | Tag | Highlights |
 |-----|------------|
-| 3.3 | Usage & Jobs |
 | 3.4 | Workspace zip + /ws |
-| **3.5** | Tools browser + /tools /fetch |
+| 3.5 | Tools browser + /tools /fetch |
+| **3.6** | HOT facts manager + promote to WARM |
 
 ---
 

@@ -69,10 +69,53 @@ class HotMemory:
         self.session["messages"].append({"role": role, "content": stored})
         self._touch()
 
-    def add_fact(self, text: str) -> None:
-        stored = self._store_text(text, "fact")
-        self.session["facts"].append(stored)
+    def add_fact(self, text: str) -> bool:
+        t = " ".join(str(text).split()).strip()
+        if not t:
+            return False
+        facts = list(self.session.get("facts") or [])
+        # de-dupe exact stored text after short-path store
+        stored = self._store_text(t, "fact")
+        if stored in facts:
+            return False
+        facts.append(stored)
+        self.session["facts"] = facts
         self._touch()
+        return True
+
+    def all_facts(self) -> list[str]:
+        out: list[str] = []
+        for f in self.session.get("facts") or []:
+            if isinstance(f, str) and f.strip():
+                out.append(f.strip())
+        return out
+
+    def remove_fact(self, text: str) -> bool:
+        t = " ".join(str(text).split()).strip()
+        if not t:
+            return False
+        facts = list(self.session.get("facts") or [])
+        if t not in facts:
+            return False
+        self.session["facts"] = [f for f in facts if f != t]
+        self._touch()
+        return True
+
+    def remove_fact_at(self, index: int) -> str | None:
+        """1-based index into all_facts order."""
+        facts = list(self.session.get("facts") or [])
+        if index < 1 or index > len(facts):
+            return None
+        removed = facts.pop(index - 1)
+        self.session["facts"] = facts
+        self._touch()
+        return str(removed)
+
+    def clear_facts(self) -> int:
+        n = len(self.session.get("facts") or [])
+        self.session["facts"] = []
+        self._touch()
+        return n
 
     def save(self) -> None:
         self.hot_dir.mkdir(parents=True, exist_ok=True)
