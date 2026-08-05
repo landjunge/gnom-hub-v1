@@ -200,12 +200,8 @@ class Orchestrator:
         try:
             text = (self._state.user_text or "").strip()
             if self._state.brainstorm_turns:
-                # Prefer the most recent user turn (current intent)
-                for t in reversed(self._state.brainstorm_turns):
-                    if t.get("role") == "user" and str(t.get("text") or "").strip():
-                        text = str(t["text"]).strip()
-                        self._state.user_text = text
-                        break
+                text = _pick_execute_task(self._state.brainstorm_turns, fallback=text)
+                self._state.user_text = text
             if not text:
                 self._fail("Nothing to execute — brainstorm first")
                 return self._state
@@ -541,6 +537,24 @@ class Orchestrator:
         self.bus.emit("pipeline.error", {"error": message})
 
 
+def _pick_execute_task(turns: list[dict], fallback: str = "") -> str:
+    """Pick the real task from brainstorm turns, not a short chat reply."""
+    from gnom_hub.agents.roles_ext import _wants_one_html_page
+
+    users = [
+        str(t.get("text") or "").strip()
+        for t in turns
+        if t.get("role") == "user" and str(t.get("text") or "").strip()
+    ]
+    if not users:
+        return (fallback or "").strip()
+    # Prefer last user line that looks like a build/page task
+    for u in reversed(users):
+        if _wants_one_html_page(u) or len(u) >= 48:
+            return u
+    return users[-1]
+
+
 def _format_turns(turns: list[dict]) -> str:
     lines: list[str] = []
     for t in turns:
@@ -656,20 +670,9 @@ def _definition_of_done(user_text: str, requirements: list[str]) -> str:
 
 
 def _wants_html_artifact(user_text: str, task: str = "") -> bool:
-    blob = f"{user_text or ''} {task or ''}".lower()
-    keys = (
-        "html",
-        "landing",
-        "webpage",
-        "web page",
-        "css",
-        "frontend",
-        "seite",
-        "website",
-        "ui page",
-        "single file",
-    )
-    return any(k in blob for k in keys)
+    from gnom_hub.agents.roles_ext import _wants_one_html_page
+
+    return _wants_one_html_page(f"{user_text or ''} {task or ''}")
 
 
 def _html_complete(body: str) -> bool:

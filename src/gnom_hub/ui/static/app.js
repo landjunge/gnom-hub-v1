@@ -516,23 +516,6 @@
 
     renderBox3Workers(p);
 
-    // Quality strip under box 3
-    const box3 = document.getElementById("box3-content");
-    if (box3) {
-      let qel = box3.querySelector(".quality-strip");
-      if (p.quality_notes) {
-        if (!qel) {
-          qel = document.createElement("div");
-          qel.className = "quality-strip";
-          box3.appendChild(qel);
-        }
-        qel.textContent = p.quality_notes;
-        qel.hidden = false;
-      } else if (qel) {
-        qel.hidden = true;
-      }
-    }
-
     if (p.pending_question && p.pending_question.text) {
       showClarify(p.pending_question.text);
     } else if (p.stage !== "clarify") {

@@ -162,9 +162,14 @@ def _wants_one_html_page(user_text: str) -> bool:
             "web page",
             "website",
             "seite",
+            " page",
+            "page ",
+            "page.",
             "single file",
             "single-file",
             "frontend",
+            "baue die",
+            "build a",
         )
     )
 
