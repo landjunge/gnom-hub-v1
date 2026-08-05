@@ -10,6 +10,7 @@
   --gap: 5px;
   --card-w: 140px;
   --card-h: 100px;
+  /* Plan: 3 × 380 + 2 × 5 gap = 1150 (matches agent row ~1155) */
   --box-size: 380px;
   --chat-h: 150px;
   --layout-w: 1150px;
@@ -154,8 +155,8 @@ html, body {
   margin-top: 8px;
   padding-top: 6px;
   border-top: 1px solid var(--border);
-  max-height: 280px;
-  overflow: auto;
+  max-height: 100%;
+  overflow: hidden; /* fixed box — no scrollbar */
 }
 
 .cold-list {
@@ -185,8 +186,8 @@ html, body {
   font-size: 10px;
   white-space: pre-wrap;
   color: var(--text-muted);
-  max-height: 120px;
-  overflow: auto;
+  max-height: 80px;
+  overflow: hidden;
 }
 
 .btn-cold-close {
@@ -292,25 +293,31 @@ html, body {
 .agent-card.color-worker3 { --card-color: var(--c-worker3); }
 .agent-card.color-worker4 { --card-color: var(--c-worker4); }
 
-/* —— Three boxes: 380×380, gap 5 —— */
+/* —— Three boxes: FIXED 380×380, gap 5 — no scrollbars —— */
 .boxes {
   display: flex;
   flex-direction: row;
   gap: var(--gap);
   width: calc(3 * var(--box-size) + 2 * var(--gap)); /* 1150px */
+  height: var(--box-size);
   margin-bottom: 10px;
+  flex-shrink: 0;
 }
 
 .box {
   width: var(--box-size);
   height: var(--box-size);
+  min-width: var(--box-size);
+  min-height: var(--box-size);
+  max-width: var(--box-size);
+  max-height: var(--box-size);
   flex: 0 0 var(--box-size);
   background: var(--bg-panel);
   border: 1px solid var(--border);
   border-radius: 4px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: hidden; /* clip only — never scrollbars */
 }
 
 .box-header {
@@ -328,27 +335,55 @@ html, body {
 
 .box-body {
   flex: 1 1 auto;
-  padding: 10px;
-  overflow: auto;
+  padding: 8px 10px;
+  overflow: hidden; /* no scrollbar — content is clipped */
   min-height: 0;
   white-space: pre-wrap;
   word-break: break-word;
   font-size: 12px;
-  line-height: 1.45;
+  line-height: 1.4;
+}
+
+/* Hide scrollbars if any browser still shows them inside boxes */
+.box-body,
+.box-body *,
+.box3-dynamic,
+.worker-panel,
+.worker-panel-body,
+.memory-strip,
+.memory-strip-body,
+.canvas-preview,
+.result-block {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* legacy Edge */
+}
+.box-body::-webkit-scrollbar,
+.box-body *::-webkit-scrollbar,
+.box3-dynamic::-webkit-scrollbar,
+.worker-panel-body::-webkit-scrollbar,
+.memory-strip-body::-webkit-scrollbar,
+.canvas-preview::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
 }
 
 .box-body .result-block {
   white-space: pre-wrap;
   margin: 0;
+  overflow: hidden;
+  max-height: 100%;
 }
 
 /* —— Box 3: dynamic Worker 1 / Worker 2 panels + HTML preview —— */
 .box3-dynamic {
   white-space: normal;
-  padding: 6px;
+  padding: 4px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
+  height: 100%;
+  overflow: hidden;
 }
 
 .worker-panel {
@@ -358,7 +393,8 @@ html, body {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  flex: 1 1 auto;
+  flex: 1 1 0;
+  overflow: hidden;
 }
 
 .worker-panel[data-worker="worker1"] {
@@ -373,7 +409,7 @@ html, body {
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  padding: 4px 8px;
+  padding: 3px 6px;
   background: #2c2e33;
   border-bottom: 1px solid var(--border);
   flex: 0 0 auto;
@@ -391,8 +427,8 @@ html, body {
 }
 
 .worker-mode-btn {
-  height: 22px;
-  padding: 0 8px;
+  height: 20px;
+  padding: 0 6px;
   border: 1px solid var(--border);
   border-radius: 3px;
   background: #343a40;
@@ -412,48 +448,47 @@ html, body {
 }
 
 .worker-panel-task {
-  padding: 4px 8px;
+  padding: 2px 6px;
   font-size: 10px;
   color: var(--text-muted);
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 0 0 auto;
 }
 
 .worker-panel-body {
   flex: 1 1 auto;
-  min-height: 80px;
-  max-height: 220px;
-  overflow: auto;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden; /* no scrollbar */
   position: relative;
 }
 
 .worker-panel-body .worker-source {
   margin: 0;
-  padding: 8px;
-  font-size: 11px;
-  line-height: 1.4;
+  padding: 6px;
+  font-size: 10px;
+  line-height: 1.35;
   white-space: pre-wrap;
   word-break: break-word;
+  overflow: hidden;
+  max-height: 100%;
 }
 
 .worker-preview-frame {
   display: block;
   width: 100%;
-  height: 200px;
+  height: 100%;
+  min-height: 100px;
   border: 0;
   background: #fff;
+  overflow: hidden;
 }
 
 .canvas-preview {
-  margin: 4px 0 0;
-  padding: 6px;
-  font-size: 10px;
-  color: var(--text-muted);
-  max-height: 60px;
-  overflow: auto;
-  border-top: 1px dashed var(--border);
+  display: none; /* keep box 3 free of extra chrome / scroll */
 }
 
 .muted,
@@ -651,23 +686,12 @@ html, body {
   color: var(--text-muted);
 }
 
-.canvas-preview {
-  margin-top: 8px;
-  padding-top: 6px;
-  border-top: 1px dashed var(--border);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 10px;
-  white-space: pre-wrap;
-  color: var(--text-muted);
-  max-height: 120px;
-  overflow: auto;
-}
-
 .memory-strip {
   border-top: 1px solid var(--border);
-  padding: 6px 8px 8px;
-  max-height: 96px;
-  overflow: auto;
+  padding: 4px 8px 6px;
+  flex: 0 0 auto;
+  max-height: 72px;
+  overflow: hidden; /* no scrollbar inside fixed 380 box */
   background: #1e2228;
 }
 
@@ -675,7 +699,7 @@ html, body {
   font-size: 11px;
   font-weight: 600;
   color: var(--c-memory);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .memory-strip-body {
@@ -684,6 +708,8 @@ html, body {
   font-size: 10px;
   white-space: pre-wrap;
   color: var(--text-muted);
+  overflow: hidden;
+  max-height: 52px;
 }
 
 .empty-hint {
