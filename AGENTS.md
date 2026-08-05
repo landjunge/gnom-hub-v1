@@ -37,3 +37,11 @@ Canonical real-user regression (keyboard chat → landing page):
 - **Must pass criteria:** brainstorm Box 2 non-empty, Execute works after Send, ≥1 worker panel, no pipeline error
 - **Known pitfall fixed in 3.7.1:** after brainstorm, Execute must re-enable when `chatBusy` clears (`lastCanExecute`)
 - Re-run this script when touching chat busy, Execute button, pipeline stages, or Box 3
+
+## Keys & models (do not re-research)
+
+**Single reference:** [`docs/KEYS_AND_MODELS.md`](docs/KEYS_AND_MODELS.md)
+
+- Default model: **`deepseek-v4-flash`** (official DeepSeek API id)
+- `Key.txt`: `DEEPSEEK_API_KEY` (system) + `WORKER_API_KEY` (workers) + `DEEPSEEK_MODEL`
+- Never commit real keys; never invent model ids — update that doc when DeepSeek changes IDs

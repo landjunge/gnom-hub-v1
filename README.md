@@ -63,7 +63,7 @@ Doc: [`docs/BASIC_USER_TEST.md`](docs/BASIC_USER_TEST.md)
 python scripts/user_landing_e2e.py   # needs server + key + playwright
 ```
 
-Docs: [`docs/ROADMAP.md`](docs/ROADMAP.md) · [`docs/BASIC_USER_TEST.md`](docs/BASIC_USER_TEST.md)
+Docs: [`docs/ROADMAP.md`](docs/ROADMAP.md) · [`docs/BASIC_USER_TEST.md`](docs/BASIC_USER_TEST.md) · [`docs/KEYS_AND_MODELS.md`](docs/KEYS_AND_MODELS.md)
 
 ## License
 
