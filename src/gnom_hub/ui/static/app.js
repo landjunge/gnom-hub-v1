@@ -4118,8 +4118,6 @@
         });
       });
     } else {
-      // Text-only: not absolute so short results don't force empty space scroll
-      sourcePre.style.position = "static";
       content.appendChild(sourcePre);
     }
     panel.appendChild(content);

@@ -918,8 +918,10 @@ body.compact .kbd-hint {
 .worker-panel-body {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto; /* only if this tile's content exceeds its share */
+  overflow: auto;
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .worker-panel-body .worker-source {
@@ -929,22 +931,21 @@ body.compact .kbd-hint {
   line-height: 1.35;
   white-space: pre-wrap;
   word-break: break-word;
-  /* Absolute fill when shown alone so preview area is used fully */
-  position: absolute;
-  inset: 0;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
-  max-height: none;
+  position: static;
 }
 
 .worker-preview-frame {
   display: block;
-  position: absolute;
-  inset: 0;
+  flex: 1 1 auto;
   width: 100%;
+  min-height: 120px;
   height: 100%;
-  min-height: 0;
   border: 0;
   background: #fff;
+  position: static;
 }
 
 /* Box 3 flash after Execute */
@@ -1075,20 +1076,23 @@ body.worker-fs-open {
   font-weight: 500;
 }
 
-/* —— 4 square slots: quiet when idle, clear when usable —— */
+/* —— 4 square slots: hidden when idle, clear when usable —— */
 .box-action-bar {
   flex: 0 0 auto;
-  display: flex;
+  display: none; /* no empty strip stealing box height */
   flex-direction: row;
   gap: 3px;
-  padding: 4px 6px 5px;
+  padding: 0;
   border-top: 1px solid transparent;
   background: transparent;
-  min-height: 38px;
+  min-height: 0;
 }
 
-/* Bar slightly more present when any slot is live */
+/* Only reserve space when at least one action is live */
 .box-action-bar:has(.box-action-btn:not(:disabled)) {
+  display: flex;
+  padding: 4px 6px 5px;
+  min-height: 38px;
   border-top-color: rgba(255, 255, 255, 0.06);
 }
 
