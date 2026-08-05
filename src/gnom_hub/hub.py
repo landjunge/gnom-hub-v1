@@ -349,7 +349,7 @@ class Hub:
             {
                 "format": "gnom-hub-trace",
                 "format_version": 1,
-                "app_version": "3.3.0",
+                "app_version": "3.4.0",
                 "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
                 "count": len(events),
                 "trace": events,
@@ -447,6 +447,8 @@ class Hub:
             return self._telegram_jobs(arg.strip())
         if cmd in ("usage", "cost", "spend"):
             return self._telegram_usage(arg.strip())
+        if cmd in ("ws", "workspace", "files"):
+            return self._telegram_workspace(arg.strip())
         if cmd == "cancel":
             return self._telegram_cancel()
         if cmd == "last":
@@ -845,6 +847,94 @@ class Hub:
         lines.append("Reset: /usage reset")
         return chr(10).join(lines)
 
+    def export_workspace_zip(self, zone: str = "all") -> dict[str, Any]:
+        path = self.workspace.export_zip(zone)
+        self._append_trace(
+            "workspace.export",
+            {"zone": zone, "name": path.name, "bytes": path.stat().st_size},
+        )
+        return {
+            "ok": True,
+            "name": path.name,
+            "path": str(path),
+            "bytes": path.stat().st_size,
+            "zone": zone,
+        }
+
+    def workspace_export_path(self, name: str) -> Path:
+        """Safe path under data/workspace/exports for download."""
+        safe = Path(name).name
+        if not safe.startswith("gnom-hub-workspace-") or not safe.endswith(".zip"):
+            raise ValueError("invalid workspace export name")
+        export_dir = (self.root / "data" / "workspace" / "exports").resolve()
+        path = (export_dir / safe).resolve()
+        if not str(path).startswith(str(export_dir)) or not path.is_file():
+            raise FileNotFoundError(safe)
+        return path
+
+    def _telegram_workspace(self, arg: str) -> str:
+        """Telegram: /ws list | cat | promote | del | clear | write."""
+        parts = arg.split(maxsplit=1)
+        sub = (parts[0] if parts else "list").lower()
+        rest = parts[1].strip() if len(parts) > 1 else ""
+        if sub in ("", "list", "ls"):
+            snap = self.workspace.snapshot()
+            lines = ["Workspace:"]
+            for zone in ("temp", "perm"):
+                files = snap.get(zone) or []
+                lines.append(f"[{zone}] {len(files)}")
+                for f in files[:8]:
+                    lines.append(f"  {f.get('name')} ({f.get('bytes')} B)")
+                if len(files) > 8:
+                    lines.append(f"  … +{len(files) - 8} more")
+            return chr(10).join(lines)
+        if sub in ("cat", "read", "show"):
+            bits = rest.split(maxsplit=1)
+            if len(bits) < 2:
+                return "Usage: /ws cat <temp|perm> <name>"
+            zone, name = bits[0], bits[1]
+            try:
+                text = self.workspace.read_text(zone, name, max_chars=1500)
+            except (FileNotFoundError, ValueError) as exc:
+                return f"Read failed: {exc}"
+            return f"{zone}/{name}:" + chr(10) + text
+        if sub in ("promote", "keep", "perm"):
+            if not rest:
+                return "Usage: /ws promote <temp-name>"
+            try:
+                path = self.workspace.promote(rest.strip())
+            except FileNotFoundError as exc:
+                return f"Promote failed: {exc}"
+            return f"Promoted → {path.name}"
+        if sub in ("del", "rm", "delete"):
+            bits = rest.split(maxsplit=1)
+            if len(bits) < 2:
+                return "Usage: /ws del <temp|perm> <name>"
+            zone, name = bits[0], bits[1]
+            try:
+                ok = self.workspace.delete(zone, name)
+            except ValueError as exc:
+                return str(exc)
+            return f"Deleted {zone}/{name}." if ok else f"Not found: {zone}/{name}"
+        if sub in ("clear", "clear-temp", "cleartemp"):
+            n = self.workspace.clear_temp()
+            return f"Cleared temp ({n} files)."
+        if sub in ("write", "add", "put"):
+            # /ws write temp name.txt content...
+            bits = rest.split(maxsplit=2)
+            if len(bits) < 3:
+                return "Usage: /ws write <temp|perm> <name> <content>"
+            zone, name, content = bits[0], bits[1], bits[2]
+            try:
+                path = self.workspace.write_text(zone, name, content)
+            except ValueError as exc:
+                return str(exc)
+            return f"Wrote {zone}/{path.name} ({len(content)} chars)"
+        return (
+            "Usage: /ws list | cat <zone> <name> | promote <name> | "
+            "del <zone> <name> | clear | write <zone> <name> <text>"
+        )
+
     # ── agent persistence ───────────────────────────────────────────
 
     def _load_agent_state(self) -> None:
@@ -1035,7 +1125,7 @@ class Hub:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "3.3.0",
+            "version": "3.4.0",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -1503,7 +1593,7 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "3.3.0",
+            "version": "3.4.0",
             "providers": self.llm.providers_snapshot(),
             "backups": self.list_backups()[:8],
             "packs": self.list_session_packs()[:12],
@@ -2083,7 +2173,7 @@ class Hub:
         pack = {
             "format": "gnom-hub-session-pack",
             "format_version": 1,
-            "app_version": "3.3.0",
+            "app_version": "3.4.0",
             "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
             "label": pack_label,
             "notes": (str(notes).strip()[:200] if notes else ""),
@@ -2491,7 +2581,7 @@ class Hub:
                 "5) Esc = close fullscreen or cancel job. "
                 "6) Box 3: Copy/DL/Tab/WS/↑perm/fullscreen; toolbar Copy all + Diff + History. "
                 "7) Cost badge + Compact density; job timer while busy. "
-                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat/history/workspace/ui_prefs/notes; list filter). 10) History Re-Exec. 11) Telegram: /jobs /usage /backup /pack /warm /cold /vec /trace /cancel."
+                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat/history/workspace/ui_prefs/notes; list filter). 10) History Re-Exec. 11) Telegram: /ws /jobs /usage /backup /pack /warm /cold /vec /trace."
             ),
             "example": "Type idea → Execute → Pack ↓ (USB) → History Re-Exec → Diff.",
             "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",

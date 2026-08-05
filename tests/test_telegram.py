@@ -32,6 +32,8 @@ def test_telegram_commands_via_handler():
             return f"jobs:{arg}"
         if cmd in ("usage", "cost", "spend"):
             return f"usage:{arg}"
+        if cmd in ("ws", "workspace", "files"):
+            return f"ws:{arg}"
         return f"cmd:{cmd}"
 
     bot = TelegramBridge(bus, token="", on_command=on_cmd)
@@ -48,6 +50,7 @@ def test_telegram_commands_via_handler():
     assert bot.handle_text("/backup list") == "backup:list"
     assert bot.handle_text("/jobs") == "jobs:"
     assert bot.handle_text("/usage reset") == "usage:reset"
+    assert bot.handle_text("/ws list") == "ws:list"
     assert ("warm", "add fact") in seen
     assert ("cancel", "") in seen
     assert ("cold", "list") in seen
@@ -56,3 +59,4 @@ def test_telegram_commands_via_handler():
     assert ("backup", "list") in seen
     assert ("jobs", "") in seen
     assert ("usage", "reset") in seen
+    assert ("ws", "list") in seen

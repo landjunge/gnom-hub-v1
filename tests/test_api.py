@@ -908,3 +908,29 @@ def test_jobs_list_and_usage(client: TestClient):
     tg2 = client.post("/api/telegram/inbound", json={"text": "/usage"})
     assert tg2.status_code == 200
     assert "spent" in tg2.json()["reply"].lower() or "$" in tg2.json()["reply"]
+
+
+def test_workspace_export_and_telegram(client: TestClient):
+    w = client.post(
+        "/api/workspace/write",
+        json={"zone": "temp", "name": "note.txt", "content": "hello workspace export"},
+    )
+    assert w.status_code == 200
+    exp = client.post("/api/workspace/export?zone=temp")
+    assert exp.status_code == 200
+    name = exp.json()["name"]
+    assert name.startswith("gnom-hub-workspace-")
+    assert exp.json()["bytes"] > 0
+    dl = client.get(f"/api/workspace/exports/{name}")
+    assert dl.status_code == 200
+    assert (
+        dl.headers.get("content-type", "").startswith("application/zip") or dl.content[:2] == b"PK"
+    )
+    tg = client.post("/api/telegram/inbound", json={"text": "/ws list"})
+    assert tg.status_code == 200
+    assert "temp" in tg.json()["reply"].lower() or "note.txt" in tg.json()["reply"]
+    tg2 = client.post(
+        "/api/telegram/inbound",
+        json={"text": "/ws cat temp note.txt"},
+    )
+    assert "hello workspace" in tg2.json()["reply"]

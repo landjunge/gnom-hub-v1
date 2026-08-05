@@ -231,7 +231,17 @@
 | Telegram /jobs /usage | **done** |
 | Version / docs 3.3 | **done** |
 
-## Post-V3.3 (optional)
+## V3.4.0
+
+| Item | Status |
+|------|--------|
+| Workspace export_zip (temp/perm/all) | **done** |
+| POST export + GET download | **done** |
+| UI ↓ zip buttons | **done** |
+| Telegram /ws list\|cat\|promote\|del\|clear\|write | **done** |
+| Version / docs 3.4 | **done** |
+
+## Post-V3.4 (optional)
 
 | Item | Notes |
 |------|--------|

@@ -135,7 +135,7 @@ class ShellBody(BaseModel):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Gnom-Hub v1", version="3.3.0")
+    app = FastAPI(title="Gnom-Hub v1", version="3.4.0")
 
     @app.get("/api/health")
     def health() -> dict[str, Any]:
@@ -143,7 +143,7 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "service": "gnom-hub-v1",
-            "version": "3.3.0",
+            "version": "3.4.0",
             "telegram": hub.telegram.enabled,
             "telegram_running": hub.telegram.running,
             "llm": {
@@ -585,6 +585,28 @@ def create_app() -> FastAPI:
     @app.get("/api/workspace")
     def workspace() -> dict[str, Any]:
         return get_hub().workspace.snapshot()
+
+    @app.post("/api/workspace/export")
+    def workspace_export(zone: str = Query("all")) -> dict[str, Any]:
+        """Create zip of temp/perm/all under data/workspace/exports/."""
+        try:
+            return get_hub().export_workspace_zip(zone)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
+    @app.get("/api/workspace/exports/{name}")
+    def workspace_export_download(name: str) -> FileResponse:
+        try:
+            path = get_hub().workspace_export_path(name)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        return FileResponse(
+            path,
+            media_type="application/zip",
+            filename=path.name,
+        )
 
     @app.post("/api/workspace/write")
     def workspace_write(body: WorkspaceWriteBody) -> dict[str, Any]:

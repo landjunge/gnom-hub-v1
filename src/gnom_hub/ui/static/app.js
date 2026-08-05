@@ -1353,6 +1353,29 @@
     }
   }
 
+  async function downloadWorkspaceZip(zone) {
+    try {
+      const data = await api(
+        "POST",
+        "/api/workspace/export?zone=" + encodeURIComponent(zone || "all")
+      );
+      if (!data.name) {
+        toast("Export failed", "error");
+        return;
+      }
+      window.location.href =
+        "/api/workspace/exports/" + encodeURIComponent(data.name);
+      toast(
+        "Workspace zip ready (" +
+          (data.bytes != null ? Math.round(data.bytes / 1024) + " KB" : data.name) +
+          ")",
+        "ok"
+      );
+    } catch (err) {
+      toast("Workspace export failed: " + err.message, "error");
+    }
+  }
+
   function renderWorkspaceLists(snap) {
     const tempUl = document.getElementById("ws-temp-list");
     const permUl = document.getElementById("ws-perm-list");
@@ -3742,6 +3765,24 @@
     const wsClear = document.getElementById("ws-clear-temp");
     if (wsClose) wsClose.addEventListener("click", closeWorkspaceModal);
     if (wsClear) wsClear.addEventListener("click", clearTempWs);
+    const wsDlTemp = document.getElementById("ws-dl-temp");
+    if (wsDlTemp) {
+      wsDlTemp.addEventListener("click", function () {
+        downloadWorkspaceZip("temp");
+      });
+    }
+    const wsDlPerm = document.getElementById("ws-dl-perm");
+    if (wsDlPerm) {
+      wsDlPerm.addEventListener("click", function () {
+        downloadWorkspaceZip("perm");
+      });
+    }
+    const wsDlAll = document.getElementById("ws-dl-all");
+    if (wsDlAll) {
+      wsDlAll.addEventListener("click", function () {
+        downloadWorkspaceZip("all");
+      });
+    }
     if (els.workspaceModal) {
       els.workspaceModal.addEventListener("click", function (ev) {
         if (ev.target === els.workspaceModal) closeWorkspaceModal();

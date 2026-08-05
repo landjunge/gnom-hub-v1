@@ -80,6 +80,42 @@ class WorkspaceStore:
             "paths": {"temp": str(self.temp), "perm": str(self.perm)},
         }
 
+    def export_zip(self, zone: str = "all") -> Path:
+        """Zip temp, perm, or both into data/workspace/exports/."""
+        import zipfile
+        from datetime import datetime, timezone
+
+        z = (zone or "all").strip().lower()
+        if z in ("temp", "temporary", "tmp"):
+            folders = [("temp", self.temp)]
+            tag = "temp"
+        elif z in ("perm", "permanent", "keep"):
+            folders = [("perm", self.perm)]
+            tag = "perm"
+        elif z in ("all", "both", "*"):
+            folders = [("temp", self.temp), ("perm", self.perm)]
+            tag = "all"
+        else:
+            raise ValueError(f"Unknown workspace zone: {zone!r}")
+
+        export_dir = self.base / "exports"
+        export_dir.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        out = export_dir / f"gnom-hub-workspace-{tag}-{stamp}.zip"
+        count = 0
+        with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            for label, folder in folders:
+                if not folder.is_dir():
+                    continue
+                for p in sorted(folder.iterdir()):
+                    if p.is_file():
+                        zf.write(p, arcname=f"{label}/{p.name}")
+                        count += 1
+        if count == 0:
+            # still return empty zip for consistent API
+            pass
+        return out
+
     def _dir(self, which: str) -> Path:
         w = which.strip().lower()
         if w in ("temp", "temporary", "tmp"):

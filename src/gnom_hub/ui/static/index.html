@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=75" />
+  <link rel="stylesheet" href="/static/app.css?v=76" />
 </head>
 <body>
   <div id="app">
@@ -219,12 +219,15 @@
           <div class="workspace-col-head">
             <h3>Temp (scratch)</h3>
             <button type="button" id="ws-clear-temp" class="btn-ws-sm">Clear temp</button>
+            <button type="button" id="ws-dl-temp" class="btn-ws-sm" title="Download temp as zip">↓ zip</button>
           </div>
           <ul id="ws-temp-list" class="ws-list"></ul>
         </div>
         <div class="workspace-col">
           <div class="workspace-col-head">
             <h3>Permanent</h3>
+            <button type="button" id="ws-dl-perm" class="btn-ws-sm" title="Download perm as zip">↓ zip</button>
+            <button type="button" id="ws-dl-all" class="btn-ws-sm" title="Download temp+perm zip">↓ all</button>
           </div>
           <ul id="ws-perm-list" class="ws-list"></ul>
         </div>
@@ -387,6 +390,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=75"></script>
+  <script src="/static/app.js?v=76"></script>
 </body>
 </html>
