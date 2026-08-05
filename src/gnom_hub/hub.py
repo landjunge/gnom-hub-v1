@@ -79,6 +79,8 @@ class Hub:
         self._presets_path = self.root / "data" / "hot" / "worker_presets.json"
         self.telegram = self._init_telegram()
         self._load_agent_state()
+        # Key.txt: DEEPSEEK_API_KEY = system, WORKER_API_KEY = all workers
+        self._apply_keys_from_keyfile()
         # Core agents + worker1/2 on; worker3/4 stay off until user enables
         self.agents.enable_all(include_extra_workers=False)
         self._wire_memory()
@@ -1066,6 +1068,46 @@ class Hub:
         return "Usage: /hot list | add <fact> | del <n|text> | clear | promote <n|text>"
 
     # ── agent persistence ───────────────────────────────────────────
+
+    def _apply_keys_from_keyfile(self) -> None:
+        """
+        Map Key.txt keys onto agents:
+          DEEPSEEK_API_KEY / SYSTEM → brainstorm, memory, flex, coordinator
+          WORKER_API_KEY / WORKER → worker1–4
+        """
+        system_key = (self.keys.get("DEEPSEEK_API_KEY") or "").strip() or None
+        worker_key = (self.keys.get("WORKER_API_KEY") or "").strip() or None
+        if not system_key and not worker_key:
+            return
+        system_ids = (
+            AgentId.BRAINSTORM,
+            AgentId.MEMORY,
+            AgentId.FLEX,
+            AgentId.COORDINATOR,
+        )
+        worker_ids = (
+            AgentId.WORKER1,
+            AgentId.WORKER2,
+            AgentId.WORKER3,
+            AgentId.WORKER4,
+        )
+        if system_key:
+            for aid in system_ids:
+                try:
+                    self.agents.get(aid).api_key = system_key
+                except ValueError:
+                    pass
+        if worker_key:
+            for aid in worker_ids:
+                try:
+                    self.agents.get(aid).api_key = worker_key
+                except ValueError:
+                    pass
+        # Keep agents.json in sync (gitignored)
+        try:
+            self._save_agent_state()
+        except OSError:
+            pass
 
     def _load_agent_state(self) -> None:
         path = self._agent_state_path

@@ -13,6 +13,16 @@ _ALIASES: dict[str, str] = {
     "deepseek": "DEEPSEEK_API_KEY",
     "deepseek_key": "DEEPSEEK_API_KEY",
     "deepseek_api_key": "DEEPSEEK_API_KEY",
+    # System agents (brainstorm / memory / flex / coordinator) + global default
+    "system": "DEEPSEEK_API_KEY",
+    "system_key": "DEEPSEEK_API_KEY",
+    "system_api_key": "DEEPSEEK_API_KEY",
+    # All workers (worker1–4)
+    "worker": "WORKER_API_KEY",
+    "worker_key": "WORKER_API_KEY",
+    "worker_api_key": "WORKER_API_KEY",
+    "workers": "WORKER_API_KEY",
+    "deepseek_worker": "WORKER_API_KEY",
 }
 
 _LINE_RE = re.compile(r"^\s*(?:export\s+)?([A-Za-z_][\w]*)\s*[=:]\s*(.+?)\s*$")

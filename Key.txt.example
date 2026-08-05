@@ -2,10 +2,13 @@
 # On start, Gnom-Hub writes a private .env from Key.txt (if needed).
 # Never commit Key.txt or .env.
 
-DEEPSEEK_API_KEY=sk-your-deepseek-key-here
+# System agents (Brainstorm, Memory, Flex, Coordinator) + global default
+DEEPSEEK_API_KEY=sk-your-system-deepseek-key
+# alias: SYSTEM=sk-...
 
-# Optional aliases also work:
-# deepseek=sk-your-deepseek-key-here
+# All workers (Worker 1–4) — optional; falls back to DEEPSEEK_API_KEY if empty
+WORKER_API_KEY=sk-your-worker-deepseek-key
+# alias: WORKER=sk-...
 
 # Optional Telegram bot (set GNOM_TELEGRAM_POLL=1 to auto long-poll)
 # TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
