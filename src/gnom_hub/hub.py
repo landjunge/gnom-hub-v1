@@ -546,7 +546,7 @@ class Hub:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "2.4.0",
+            "version": "2.5.0",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -911,7 +911,7 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "2.4.0",
+            "version": "2.5.0",
             "providers": self.llm.providers_snapshot(),
             "backups": self.list_backups()[:8],
             "packs": self.list_session_packs()[:12],
@@ -1266,6 +1266,65 @@ class Hub:
             )
         return out
 
+    def _collect_workspace_for_pack(
+        self,
+        *,
+        max_files_per_zone: int = 20,
+        max_chars_per_file: int = 100_000,
+        max_total_chars: int = 500_000,
+    ) -> dict[str, list[dict[str, str]]]:
+        """Read temp/perm text files for pack (size-capped)."""
+        out: dict[str, list[dict[str, str]]] = {"temp": [], "perm": []}
+        total = 0
+        for zone in ("temp", "perm"):
+            try:
+                files = self.workspace.list_files(zone)
+            except OSError:
+                continue
+            for meta in files[:max_files_per_zone]:
+                if total >= max_total_chars:
+                    break
+                name = str(meta.get("name") or "")
+                if not name:
+                    continue
+                try:
+                    # read full then cap (read_text already caps with ellipsis)
+                    text = self.workspace.read_text(zone, name, max_chars=max_chars_per_file)
+                except (OSError, FileNotFoundError, ValueError):
+                    continue
+                if total + len(text) > max_total_chars:
+                    remain = max_total_chars - total
+                    if remain < 64:
+                        break
+                    text = text[: remain - 1] + "…"
+                out[zone].append({"name": name, "content": text})
+                total += len(text)
+        return out
+
+    def _restore_workspace_from_pack(self, raw: Any) -> dict[str, int]:
+        """Write pack workspace files into temp/perm. Returns counts."""
+        if not isinstance(raw, dict):
+            return {"temp": 0, "perm": 0}
+        counts = {"temp": 0, "perm": 0}
+        for zone in ("temp", "perm"):
+            items = raw.get(zone)
+            if not isinstance(items, list):
+                continue
+            for item in items[:20]:
+                if not isinstance(item, dict):
+                    continue
+                name = Path(str(item.get("name") or "")).name
+                content = item.get("content")
+                if not name or content is None:
+                    continue
+                text = str(content)[:100_000]
+                try:
+                    self.workspace.write_text(zone, name, text)
+                    counts[zone] += 1
+                except (OSError, ValueError):
+                    continue
+        return counts
+
     def export_session_pack(
         self,
         label: str | None = None,
@@ -1273,8 +1332,9 @@ class Hub:
         persist: bool = True,
         ui_chat_log: list | None = None,
         ui_result_history: list | None = None,
+        include_workspace: bool = True,
     ) -> dict[str, Any]:
-        """Portable JSON pack: HOT + WARM + agents + pipeline (+ optional UI state)."""
+        """Portable JSON pack: HOT + WARM + agents + pipeline + workspace (+ UI)."""
         from datetime import datetime, timezone
 
         self.hot.save()
@@ -1332,7 +1392,7 @@ class Hub:
         pack = {
             "format": "gnom-hub-session-pack",
             "format_version": 1,
-            "app_version": "2.4.0",
+            "app_version": "2.5.0",
             "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
             "label": pack_label,
             "hot": dict(self.hot.session),
@@ -1345,6 +1405,8 @@ class Hub:
             pack["ui_chat_log"] = self._sanitize_ui_chat_log(ui_chat_log)
         if ui_result_history is not None:
             pack["ui_result_history"] = self._sanitize_ui_result_history(ui_result_history)
+        if include_workspace:
+            pack["workspace"] = self._collect_workspace_for_pack()
         filename = f"gnom-hub-session-{stamp}.json"
         saved_path: str | None = None
         pruned: list[str] = []
@@ -1561,6 +1623,9 @@ class Hub:
             self.hot.canvas.clear()
         self.hot.save()
 
+        if isinstance(pack.get("workspace"), dict):
+            self._restore_workspace_from_pack(pack.get("workspace"))
+
         if include_warm:
             for fact in pack.get("warm_facts") or []:
                 text = str(fact).strip()
@@ -1702,7 +1767,7 @@ class Hub:
                 "5) Esc = close fullscreen or cancel job. "
                 "6) Box 3: Copy/DL/Tab/WS/↑perm/fullscreen; toolbar Copy all + Diff + History. "
                 "7) Cost badge + Compact density; job timer while busy. "
-                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (Pack ↓/↑ incl. chat+history, list Load/Ren/↓/Del). 10) History Re-Exec. 11) Import from USB can store into data/packs/."
+                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat+history+workspace, list filter/Load/Ren/↓/Del). 10) History Re-Exec. 11) Import from USB can store into data/packs/."
             ),
             "example": "Type idea → Execute → Pack ↓ (USB) → History Re-Exec → Diff.",
             "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",

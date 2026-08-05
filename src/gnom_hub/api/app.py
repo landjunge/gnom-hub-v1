@@ -111,6 +111,7 @@ class PackRenameBody(BaseModel):
 class PackExportBody(BaseModel):
     label: str | None = None
     persist: bool = True
+    include_workspace: bool = True
     ui_chat_log: list[dict[str, Any]] | None = None
     ui_result_history: list[dict[str, Any]] | None = None
 
@@ -131,7 +132,7 @@ class ShellBody(BaseModel):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Gnom-Hub v1", version="2.4.0")
+    app = FastAPI(title="Gnom-Hub v1", version="2.5.0")
 
     @app.get("/api/health")
     def health() -> dict[str, Any]:
@@ -139,7 +140,7 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "service": "gnom-hub-v1",
-            "version": "2.4.0",
+            "version": "2.5.0",
             "telegram": hub.telegram.enabled,
             "telegram_running": hub.telegram.running,
             "llm": {
@@ -287,6 +288,7 @@ def create_app() -> FastAPI:
         return get_hub().export_session_pack(
             label=body.label,
             persist=body.persist,
+            include_workspace=body.include_workspace,
             ui_chat_log=body.ui_chat_log,
             ui_result_history=body.ui_result_history,
         )

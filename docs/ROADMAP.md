@@ -143,7 +143,16 @@
 | Import restores chat + History in UI | **done** |
 | Version / docs 2.4 | **done** |
 
-## Post-V2.4 (optional)
+## V2.5.0
+
+| Item | Status |
+|------|--------|
+| Pack workspace temp/perm (size-capped) | **done** |
+| include_workspace on export | **done** |
+| Pack list filter (label/name) | **done** |
+| Version / docs 2.5 | **done** |
+
+## Post-V2.5 (optional)
 
 | Item | Notes |
 |------|--------|

@@ -1,8 +1,8 @@
-# Gnom-Hub v2.4.0
+# Gnom-Hub v2.5.0
 
 Local multi-agent control hub: **brainstorm first**, then **Execute** workers.
 
-Desktop · USB-friendly · DeepSeek / Ollama · **Session packs** (chat + history) · rename · prune · Re-Exec.
+Desktop · USB-friendly · DeepSeek / Ollama · **Session packs** (chat · history · **workspace**) · filter · Re-Exec.
 
 > **Convention:** every meaningful change is **pushed to `main`** and this **README is updated** in the same commit.
 
@@ -13,10 +13,10 @@ Desktop · USB-friendly · DeepSeek / Ollama · **Session packs** (chat + histor
 ```
 Send / Enter              → Brainstorm (Box 2)
 Execute / Ctrl+Enter      → Distill → Flex → Workers → Quality → Memory
-Pack ↓ (System)           → HOT/WARM/agents/pipeline + chat log + result history
-Pack list Load/Ren/↓/Del  → Import (restores UI chat/history), rename, USB copy
+Pack ↓ (System)           → HOT/WARM/agents/pipeline + chat + history + workspace
+Pack list filter/Load…    → Filter by label · Load · Ren · ↓ · Del
 Pack ↑                    → Import JSON + store under data/packs/
-Auto-pack / Max packs     → Server auto-save (no browser UI state) + prune
+Auto-pack / Max packs     → Server auto-save + workspace files + prune
 History → Re-Exec         → Re-run workers from a prior brainstorm
 ```
 
@@ -32,7 +32,7 @@ cd gnom-hub-v1
 ./scripts/quality_check.sh
 ```
 
-**http://127.0.0.1:8080/?v=66**
+**http://127.0.0.1:8080/?v=67**
 
 ---
 
@@ -40,10 +40,10 @@ cd gnom-hub-v1
 
 | Control | Action |
 |---------|--------|
-| **Pack ↓ / Pack ↑** | Full USB hop incl. chat + result history |
-| **Session packs list** | Load · Ren · ↓ · Del (+ mtime) |
-| **Auto-pack / Max packs** | Server-side pack after Execute; prune |
-| **History… + Re-Exec** | Restore outputs or re-run workers |
+| **Pack ↓ / Pack ↑** | Full USB hop: chat, history, temp+perm workspace |
+| **Filter packs…** | Client-side filter by label/name/date |
+| **Session packs list** | Load · Ren · ↓ · Del |
+| **Auto-pack / Max packs** | After Execute; prune oldest |
 
 ---
 
@@ -51,10 +51,10 @@ cd gnom-hub-v1
 
 | Tag | Highlights |
 |-----|------------|
-| 2.1 | Packs on disk, list Load/Del, auto-pack |
 | 2.2 | List download, import→store, pack_max prune |
 | 2.3 | Rename label, mtime, label on export |
-| **2.4** | Pack includes chat log + result history |
+| 2.4 | Chat log + result history in pack |
+| **2.5** | Workspace temp/perm in pack + pack filter |
 
 ---
 

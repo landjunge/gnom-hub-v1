@@ -1595,6 +1595,8 @@
     }
   }
 
+  let packListCache = [];
+
   async function renderPackList(items) {
     const ul = document.getElementById("sys-pack-list");
     if (!ul) return;
@@ -1607,11 +1609,32 @@
         list = [];
       }
     }
+    packListCache = list || [];
+    const filterEl = document.getElementById("sys-pack-filter");
+    const q = filterEl ? String(filterEl.value || "").trim().toLowerCase() : "";
+    if (q) {
+      list = packListCache.filter(function (p) {
+        const hay = (
+          (p.label || "") +
+          " " +
+          (p.name || "") +
+          " " +
+          (p.mtime || "") +
+          " " +
+          (p.exported_at || "")
+        ).toLowerCase();
+        return hay.indexOf(q) !== -1;
+      });
+    } else {
+      list = packListCache;
+    }
     ul.innerHTML = "";
     if (!list.length) {
       const li = document.createElement("li");
       li.className = "muted";
-      li.textContent = "(no packs yet — Pack ↓ after Execute)";
+      li.textContent = q
+        ? "(no packs match filter)"
+        : "(no packs yet — Pack ↓ after Execute)";
       ul.appendChild(li);
       return;
     }
@@ -3118,6 +3141,12 @@
     if (packExp) packExp.addEventListener("click", exportSessionPack);
     const packImp = document.getElementById("sys-pack-import");
     if (packImp) packImp.addEventListener("click", importSessionPack);
+    const packFilter = document.getElementById("sys-pack-filter");
+    if (packFilter) {
+      packFilter.addEventListener("input", function () {
+        renderPackList(packListCache);
+      });
+    }
     const packFile = document.getElementById("sys-pack-file");
     if (packFile) packFile.addEventListener("change", onSessionPackFile);
 

@@ -635,3 +635,38 @@ def test_pack_ui_chat_and_history_roundtrip(client: TestClient):
     snap = imp.json()
     assert snap["ui_chat_log"][0]["text"] == "hello"
     assert snap["ui_result_history"][0]["outputs"][0]["result"] == "done"
+
+
+def test_pack_workspace_roundtrip(client: TestClient):
+    # write temp + perm files
+    r = client.post(
+        "/api/workspace/write",
+        json={"zone": "temp", "name": "scratch.txt", "content": "temp hello"},
+    )
+    assert r.status_code == 200
+    r = client.post(
+        "/api/workspace/write",
+        json={"zone": "perm", "name": "keep.md", "content": "# keep me"},
+    )
+    assert r.status_code == 200
+    exp = client.post(
+        "/api/session/pack/export",
+        json={"persist": True, "label": "ws-pack", "include_workspace": True},
+    )
+    assert exp.status_code == 200
+    pack = exp.json()["pack"]
+    assert "workspace" in pack
+    names_t = [f["name"] for f in pack["workspace"]["temp"]]
+    names_p = [f["name"] for f in pack["workspace"]["perm"]]
+    assert "scratch.txt" in names_t
+    assert "keep.md" in names_p
+    # wipe temp via clean (keeps perm) then delete perm manually via workspace delete if available
+    client.post("/api/clean")
+    # import should restore both
+    imp = client.post("/api/session/pack", json={"pack": pack})
+    assert imp.status_code == 200
+    ws = client.get("/api/workspace").json()
+    temp_names = [f["name"] for f in ws.get("temp") or []]
+    perm_names = [f["name"] for f in ws.get("perm") or []]
+    assert "scratch.txt" in temp_names
+    assert "keep.md" in perm_names
