@@ -1051,37 +1051,72 @@ body.worker-fs-open {
   color: var(--text-muted);
 }
 
-/* Clarify Yes / No / Whatever / Later */
+/* Clarify prompt (buttons live in .box-action-bar) */
 .clarify {
-  margin-top: 14px;
-  padding-top: 12px;
+  margin-top: 10px;
+  padding-top: 8px;
   border-top: 1px solid var(--border);
 }
 
 .clarify-question {
-  margin: 0 0 10px;
+  margin: 0;
   font-weight: 500;
 }
 
-.clarify-actions {
+/* —— Always-visible 4 square action slots per box —— */
+.box-action-bar {
+  flex: 0 0 auto;
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-direction: row;
+  gap: 3px;
+  padding: 4px 6px 5px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.12);
+  min-height: 40px;
 }
 
-.btn-clarify {
-  min-width: 72px;
-  height: 28px;
-  border: 1px solid var(--border);
+.box-action-btn {
+  flex: 1 1 0;
+  aspect-ratio: 1 / 1;
+  max-height: 36px;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  /* always-visible light frame (even when empty / disabled) */
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 4px;
-  background: #343a40;
+  background: transparent;
   color: var(--text);
-  font-size: 12px;
-  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.1;
+  cursor: default;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
 }
 
-.btn-clarify:hover {
-  background: #495057;
+.box-action-btn:not(:disabled) {
+  cursor: pointer;
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.box-action-btn:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.45);
+  color: #fff;
+}
+
+.box-action-btn:disabled {
+  color: transparent; /* empty slot, frame stays */
+  pointer-events: none;
+}
+
+.box-action-btn.is-active:not(:disabled) {
+  border-color: rgba(116, 192, 252, 0.55);
+  background: rgba(116, 192, 252, 0.12);
 }
 
 /* —— Chat: full width, fixed band at bottom of viewport —— */

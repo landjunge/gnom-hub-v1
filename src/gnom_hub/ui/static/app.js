@@ -552,7 +552,7 @@
     }
 
     if (p.pending_question && p.pending_question.text) {
-      showClarify(p.pending_question.text);
+      showClarify(p.pending_question.text, p.pending_question.options);
     } else if (p.stage !== "clarify") {
       hideClarify();
     }
@@ -1890,15 +1890,80 @@
     });
   }
 
-  function showClarify(question) {
-    els.clarify.hidden = false;
-    els.clarifyQ.textContent = question || "Please choose:";
-    els.clarify.dataset.tooltipId = "clarify";
+  /**
+   * 4 always-visible square slots per box.
+   * actions: [{ label, value, title? }] length 0–4
+   */
+  function setBoxActions(boxId, actions, opts) {
+    const bar = document.querySelector(
+      '.box-action-bar[data-box="' + boxId + '"]'
+    );
+    if (!bar) return;
+    const list = Array.isArray(actions) ? actions.slice(0, 4) : [];
+    const mode = (opts && opts.mode) || "";
+    bar.dataset.mode = mode;
+    bar.querySelectorAll(".box-action-btn").forEach(function (btn, i) {
+      const act = list[i];
+      btn.classList.remove("is-active");
+      if (!act || act.value == null || act.value === "") {
+        btn.disabled = true;
+        btn.textContent = "";
+        btn.removeAttribute("data-value");
+        btn.removeAttribute("title");
+        btn.setAttribute("aria-label", "Action " + (i + 1));
+        return;
+      }
+      const label = String(act.label != null ? act.label : act.value).slice(0, 12);
+      const value = String(act.value);
+      const title = String(act.title || act.label || value);
+      btn.disabled = false;
+      btn.textContent = label;
+      btn.dataset.value = value;
+      btn.title = title;
+      btn.setAttribute("aria-label", title);
+    });
+  }
+
+  function clearBoxActions(boxId) {
+    setBoxActions(boxId, [], { mode: "" });
+  }
+
+  function showClarify(question, options) {
+    if (els.clarify) els.clarify.hidden = false;
+    if (els.clarifyQ) {
+      els.clarifyQ.textContent = question || "Please choose:";
+    }
+    if (els.clarify) els.clarify.dataset.tooltipId = "clarify";
+    const opts = options && options.length ? options : ["Yes", "No", "Whatever", "Later"];
+    setBoxActions(
+      "box1",
+      opts.slice(0, 4).map(function (o) {
+        const s = String(o);
+        return { label: s.slice(0, 10), value: s, title: s };
+      }),
+      { mode: "clarify" }
+    );
   }
 
   function hideClarify() {
-    els.clarify.hidden = true;
-    els.clarifyQ.textContent = "";
+    if (els.clarify) els.clarify.hidden = true;
+    if (els.clarifyQ) els.clarifyQ.textContent = "";
+    clearBoxActions("box1");
+  }
+
+  function onBoxActionClick(btn) {
+    if (!btn || btn.disabled) return;
+    const bar = btn.closest(".box-action-bar");
+    if (!bar) return;
+    const value = btn.getAttribute("data-value");
+    if (!value) return;
+    const mode = bar.dataset.mode || "";
+    if (mode === "clarify") {
+      onClarify(value);
+      return;
+    }
+    // Reserved for future box2/box3 actions
+    toast(value, "info");
   }
 
   let chatBusy = false;
@@ -4517,11 +4582,9 @@
       btnColdDelete.addEventListener("click", deleteSelectedCold);
     }
 
-    document.querySelectorAll(".btn-clarify").forEach(function (btn) {
+    document.querySelectorAll(".box-action-btn").forEach(function (btn) {
       btn.addEventListener("click", function () {
-        const answer = btn.getAttribute("data-answer");
-        // Do NOT hideClarify here — only after successful onClarify
-        onClarify(answer);
+        onBoxActionClick(btn);
       });
     });
 
