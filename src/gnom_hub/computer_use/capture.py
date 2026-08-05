@@ -21,7 +21,19 @@ class CaptureModule:
     def screenshot(self, name: str = "screen.png") -> CaptureResult:
         safe = Path(name).name
         path = self.out_dir / safe
-        # Try Pillow ImageGrab (often available); never hard-require
+        # Prefer mss (fast), then Pillow ImageGrab; never hard-require
+        try:
+            import mss  # type: ignore
+            from PIL import Image  # type: ignore
+
+            with mss.mss() as sct:
+                mon = sct.monitors[0]  # virtual full desktop
+                shot = sct.grab(mon)
+                img = Image.frombytes("RGB", shot.size, shot.bgra, "raw", "BGRX")
+                img.save(path)
+            return CaptureResult(True, str(path), "captured via mss")
+        except Exception:  # noqa: BLE001 — optional dep / display backend
+            pass
         try:
             from PIL import ImageGrab  # type: ignore
 
@@ -29,7 +41,6 @@ class CaptureModule:
             img.save(path)
             return CaptureResult(True, str(path), "captured via Pillow ImageGrab")
         except Exception as exc:  # noqa: BLE001
-            # Write a tiny placeholder so path exists for workflow demos
             path.write_bytes(
                 b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01"
                 b"\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00"
@@ -39,5 +50,5 @@ class CaptureModule:
             return CaptureResult(
                 False,
                 str(path),
-                f"stub capture (install Pillow for real screenshots): {exc}",
+                f"stub capture (install: pip install mss Pillow): {exc}",
             )
