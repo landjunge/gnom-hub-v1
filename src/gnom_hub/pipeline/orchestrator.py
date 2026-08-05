@@ -1,7 +1,9 @@
 """
-V1 Orchestrator — implements the plan pipeline using real agent roles.
+V1 Orchestrator — real agent roles.
 
-Chat → Brainstorm → Distillation → [Clarify] → Flex → Coordinator → Workers → Memory
+Default UX: brainstorm_turn (dialogue only).
+Explicit execute: distill → flex → coordinator → workers → memory.
+start() still runs full pipeline (tests / Telegram /do).
 """
 
 from __future__ import annotations
@@ -22,11 +24,6 @@ from gnom_hub.pipeline.models import PipelineStage, PipelineState
 
 
 class Orchestrator:
-    """
-    Same public surface as the old Pipeline (start / answer_clarify / state)
-    so Hub and tests keep working — but execution goes through role agents.
-    """
-
     def __init__(
         self,
         bus: EventBus,
@@ -60,33 +57,145 @@ class Orchestrator:
         return self._state
 
     def start(self, user_text: str) -> PipelineState:
+        """Full pipeline in one go (compat for tests / Telegram /do)."""
         text = user_text.strip()
-        self._state = PipelineState(user_text=text)
+        self._state = PipelineState(user_text=text, mode="full")
         self._clarified_once = False
         try:
             if not text:
                 self._fail("Empty user text")
                 return self._state
 
-            # Memory always on — LLM-assisted recall (uses memory agent tokens)
-            self._set_stage(PipelineStage.brainstorm)  # brief; real stage below
-            # Use idle→memory via event before brainstorm
             self.bus.emit("pipeline.stage", {"stage": "memory"})
             mem = self.memory.recall(text)
             self._state.memory_context = mem
             if mem:
                 self.bus.emit("pipeline.memory_context", {"context": mem})
 
-            # 1) Brainstorm
             if self.brainstorm.enabled:
                 self._set_stage(PipelineStage.brainstorm)
-                notes = self.brainstorm.run(text, mem)
+                notes = self.brainstorm.run(text, mem, history=[])
                 self._state.brainstorm_notes = notes
-                self.bus.emit("pipeline.brainstorm", {"notes": notes})
+                self._state.brainstorm_turns = [
+                    {"role": "user", "text": text},
+                    {"role": "brainstorm", "text": notes},
+                ]
+                self.bus.emit("pipeline.brainstorm", {"notes": notes, "mode": "full"})
 
-            # 2) Distill (Coordinator)
             self._set_stage(PipelineStage.distill)
             reqs, question = self.coordinator.distill(text, self._state.brainstorm_notes, mem)
+            self._state.distilled_requirements = reqs
+            self.bus.emit("pipeline.distill", {"requirements": list(reqs)})
+
+            if question is not None and not self._clarified_once:
+                self._state.pending_question = question
+                self._set_stage(PipelineStage.clarify)
+                self.bus.emit(
+                    "pipeline.question",
+                    {
+                        "id": question.id,
+                        "text": question.text,
+                        "options": list(question.options),
+                    },
+                )
+                return self._state
+
+            self._run_flex_coord_workers()
+        except Exception as exc:  # noqa: BLE001
+            self._fail(str(exc))
+        return self._state
+
+    def brainstorm_turn(self, user_text: str) -> PipelineState:
+        """One dialogue turn — does NOT distill or run workers."""
+        text = user_text.strip()
+        try:
+            if not text:
+                self._fail("Empty user text")
+                return self._state
+
+            continuing = (
+                self._state.mode == "brainstorm"
+                and self._state.stage == PipelineStage.brainstorm
+                and bool(self._state.brainstorm_turns)
+            )
+            if not continuing:
+                self._state = PipelineState(user_text=text, mode="brainstorm")
+            else:
+                self._state.mode = "brainstorm"
+                self._state.error = None
+                self._state.worker_results = []
+                self._state.worker_outputs = []
+                self._state.distilled_requirements = []
+                self._state.flex_notes = ""
+                self._state.pending_question = None
+
+            self._clarified_once = False
+
+            self.bus.emit("pipeline.stage", {"stage": "memory"})
+            topic = self._state.user_text or text
+            mem = self.memory.recall(topic)
+            self._state.memory_context = mem
+            if mem:
+                self.bus.emit("pipeline.memory_context", {"context": mem})
+
+            history = list(self._state.brainstorm_turns)
+            self._state.brainstorm_turns.append({"role": "user", "text": text})
+
+            if not self.brainstorm.enabled:
+                notes = "(Brainstorm agent is off — enable it to collect ideas.)"
+            else:
+                self._set_stage(PipelineStage.brainstorm)
+                notes = self.brainstorm.run(text, mem, history=history)
+
+            self._state.brainstorm_turns.append({"role": "brainstorm", "text": notes})
+            self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
+            if not history:
+                self._state.user_text = text
+
+            self._set_stage(PipelineStage.brainstorm)
+            self.bus.emit(
+                "pipeline.brainstorm",
+                {
+                    "notes": notes,
+                    "turns": list(self._state.brainstorm_turns),
+                    "mode": "brainstorm",
+                },
+            )
+            self.bus.emit(
+                "pipeline.brainstorm_ready",
+                {
+                    "can_execute": bool(self._state.brainstorm_notes.strip()),
+                    "turns": len(self._state.brainstorm_turns),
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            self._fail(str(exc))
+        return self._state
+
+    def execute(self) -> PipelineState:
+        """Distill + run workers from accumulated brainstorm."""
+        try:
+            text = (self._state.user_text or "").strip()
+            if not text and self._state.brainstorm_turns:
+                for t in self._state.brainstorm_turns:
+                    if t.get("role") == "user" and str(t.get("text") or "").strip():
+                        text = str(t["text"]).strip()
+                        self._state.user_text = text
+                        break
+            if not text:
+                self._fail("Nothing to execute — brainstorm first")
+                return self._state
+
+            notes = self._state.brainstorm_notes or _format_turns(self._state.brainstorm_turns)
+            self._state.brainstorm_notes = notes
+            self._state.mode = "execute"
+            self._clarified_once = False
+
+            mem = self._state.memory_context or self.memory.recall(text)
+            self._state.memory_context = mem
+
+            self._set_stage(PipelineStage.distill)
+            reqs, question = self.coordinator.distill(text, notes, mem)
             self._state.distilled_requirements = reqs
             self.bus.emit("pipeline.distill", {"requirements": list(reqs)})
 
@@ -127,7 +236,6 @@ class Orchestrator:
         mem = self._state.memory_context
         reqs = list(self._state.distilled_requirements)
 
-        # 3) Flex
         if self.flex.enabled:
             self._set_stage(PipelineStage.flex)
             notes = self.flex.run(text, reqs, mem)
@@ -141,7 +249,6 @@ class Orchestrator:
                 preset = self.flex.state.preset or "security"
                 self._state.distilled_requirements.append(f"Flex/{preset}: {first}")
 
-        # 4) Coordinator plan + 5) Workers
         if not self.coordinator.enabled:
             self.bus.emit(
                 "pipeline.coordinate",
@@ -220,5 +327,19 @@ class Orchestrator:
         self.bus.emit("pipeline.error", {"error": message})
 
 
-# Back-compat alias used by older imports
+def _format_turns(turns: list[dict]) -> str:
+    lines: list[str] = []
+    for t in turns:
+        role = str(t.get("role") or "")
+        text = str(t.get("text") or "").strip()
+        if not text:
+            continue
+        if role == "user":
+            lines.append(f"You: {text}")
+        else:
+            lines.append(f"Brainstorm:\n{text}")
+        lines.append("")
+    return "\n".join(lines).strip()
+
+
 Pipeline = Orchestrator
