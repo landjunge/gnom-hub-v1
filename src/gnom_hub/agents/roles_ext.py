@@ -174,26 +174,34 @@ def _html_full_page_plan(
     worker_ids: list[str],
     clean: list[str],
 ) -> list[tuple[str, str]]:
-    """Deterministic plan: primary = full page; others = variant / QA / a11y."""
+    """One HTML page only (first worker). Extra workers: text notes, not more pages."""
     topic = (user_text or "").strip().rstrip(".")
-    templates = [
-        (
-            f"ONE complete single-file HTML page for: {topic}. "
-            "Include ALL requested sections in the SAME file "
-            "(hero/features/footer as applicable). "
-            "<!DOCTYPE html> … </html>. Functions first, minimal CSS. "
-            "At least one real interaction (onclick or addEventListener)."
-        ),
-        (
-            f"Full-page HTML VARIANT (still one complete file) for: {topic}. "
-            "Different layout/accent, same sections, must close </html>."
-        ),
-        f"QA checklist + interaction test plan for the landing page: {topic}",
-        f"Accessibility / empty-state notes for: {topic}",
-    ]
+    if not worker_ids:
+        return []
+    primary = (
+        f"ONE complete single-file HTML page for: {topic}. "
+        "Include ALL requested sections in the SAME file "
+        "(hero/features/footer as applicable). "
+        "<!DOCTYPE html> … </html>. Functions first, minimal CSS. "
+        "At least one real interaction (onclick or addEventListener)."
+    )
     if clean:
-        templates[0] += "\nDoD:\n" + "\n".join(f"- {r}" for r in clean[:4])
-    return [(wid, templates[i % len(templates)]) for i, wid in enumerate(worker_ids[:4])]
+        primary += "\nDoD:\n" + "\n".join(f"- {r}" for r in clean[:4])
+    # Only the first worker delivers the page — others must not build competing HTML
+    text_only = (
+        "TEXT ONLY (no HTML file, no <!DOCTYPE>, no full webpage). "
+        "Short checklist / review notes for: {topic}. "
+        "Bullet points, max ~20 lines."
+    )
+    extras = [
+        text_only.format(topic=topic) + " Focus: QA / interactions / empty states.",
+        text_only.format(topic=topic) + " Focus: accessibility and mobile risks.",
+        text_only.format(topic=topic) + " Focus: copy, SEO title, and next-step polish.",
+    ]
+    out: list[tuple[str, str]] = [(worker_ids[0], primary)]
+    for i, wid in enumerate(worker_ids[1:4]):
+        out.append((wid, extras[i % len(extras)]))
+    return out
 
 
 def _simple_task_plan(

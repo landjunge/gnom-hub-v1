@@ -404,7 +404,7 @@ def test_coordinator_html_plan_prefers_full_page():
     )
     assert len(tasks) == 3
     assert "ONE complete single-file HTML" in tasks[0][1]
-    assert "VARIANT" in tasks[1][1]
+    assert "TEXT ONLY" in tasks[1][1]
     assert "ALL requested sections" in tasks[0][1]
     assert "hero section only" not in tasks[0][1].lower()
     assert _wants_one_html_page("landing page HTML")
@@ -412,6 +412,7 @@ def test_coordinator_html_plan_prefers_full_page():
     forced = _html_full_page_plan("Landing HTML", ["worker1", "worker2"], ["DoD line"])
     assert "DoD:" in forced[0][1]
     assert forced[0][0] == "worker1"
+    assert "TEXT ONLY" in forced[1][1]
     qa = coord.plan(
         "Review the checkout flow", ["tests"], ["worker1", "worker2"], plan_mode="plan_qa"
     )

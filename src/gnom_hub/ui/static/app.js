@@ -1961,8 +1961,69 @@
     const mode = bar.dataset.mode || "";
     if (mode === "clarify") {
       onClarify(value);
+      return;
     }
-    // No default icons/arrows — other modes only when pipeline fills labels
+    if (mode === "worker_focus") {
+      const idx = parseInt(value, 10);
+      if (!isNaN(idx)) setBox3Focus(idx);
+    }
+  }
+
+  /** Box 3: only one worker panel visible at a time (slots switch focus). */
+  let box3FocusIndex = 0;
+
+  function setBox3Focus(idx) {
+    const n = lastWorkerOutputs.length;
+    if (!n) return;
+    box3FocusIndex = Math.max(0, Math.min(n - 1, idx | 0));
+    const body = document.getElementById("box3-content");
+    if (!body) return;
+    const panels = body.querySelectorAll(".worker-panel");
+    panels.forEach(function (panel, i) {
+      panel.hidden = i !== box3FocusIndex;
+      panel.classList.toggle("is-focus", i === box3FocusIndex);
+    });
+    const title = document.querySelector(".box3-header-title");
+    if (title) {
+      const out = lastWorkerOutputs[box3FocusIndex];
+      const name = (out && out.name) || "Worker " + (box3FocusIndex + 1);
+      title.textContent =
+        n > 1
+          ? "Worker results · " + name + " (" + (box3FocusIndex + 1) + "/" + n + ")"
+          : "Worker results · " + name;
+    }
+    // Mark active slot on box3 bar
+    const bar = document.querySelector('.box-action-bar[data-box="box3"]');
+    if (bar) {
+      bar.querySelectorAll(".box-action-btn").forEach(function (btn, i) {
+        btn.classList.toggle("is-active", i === box3FocusIndex && !btn.disabled);
+      });
+    }
+  }
+
+  function syncBox3WorkerSlots() {
+    const outs = lastWorkerOutputs || [];
+    if (!outs.length) {
+      clearBoxActions("box3");
+      const title = document.querySelector(".box3-header-title");
+      if (title) title.textContent = "Worker results";
+      return;
+    }
+    setBoxActions(
+      "box3",
+      outs.map(function (o, i) {
+        const html = extractHtml(o.result || "");
+        return {
+          value: String(i),
+          title:
+            (o.name || "Worker " + (i + 1)) +
+            (html ? " · page" : " · notes") +
+            " (show this result)",
+        };
+      }),
+      { mode: "worker_focus" }
+    );
+    setBox3Focus(box3FocusIndex < outs.length ? box3FocusIndex : 0);
   }
 
   let chatBusy = false;
@@ -3598,12 +3659,14 @@
     const canvas = body.querySelector(".canvas-preview");
     body.innerHTML = "";
     body.classList.add("box3-dynamic");
+    body.classList.add("box3-single-focus");
 
     const outputs = normalizeWorkerOutputs(pipeline);
     lastWorkerOutputs = outputs;
     updateBox3Toolbar();
 
     if (!outputs.length) {
+      clearBoxActions("box3");
       const empty = document.createElement("p");
       empty.className = "muted empty-hint";
       if (pipeline && pipeline.stage === "done") {
@@ -3613,18 +3676,25 @@
         empty.textContent = "Workers running…";
       } else {
         empty.textContent =
-          "Worker results appear here (text, plans, full HTML preview).";
+          "Worker results appear here (one at a time; slots switch focus).";
       }
       body.appendChild(empty);
       if (canvas) body.appendChild(canvas);
+      const title = document.querySelector(".box3-header-title");
+      if (title) title.textContent = "Worker results";
       return;
     }
 
     body.dataset.workers = String(outputs.length);
+    if (box3FocusIndex >= outputs.length) box3FocusIndex = 0;
     outputs.forEach(function (out, idx) {
-      body.appendChild(buildWorkerPanel(out, idx));
+      const panel = buildWorkerPanel(out, idx);
+      panel.hidden = idx !== box3FocusIndex;
+      if (idx === box3FocusIndex) panel.classList.add("is-focus");
+      body.appendChild(panel);
     });
     if (canvas) body.appendChild(canvas);
+    syncBox3WorkerSlots();
   }
 
   function copyAllWorkerResults() {

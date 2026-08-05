@@ -812,7 +812,7 @@ body.compact .kbd-hint {
   max-height: none;
 }
 
-/* —— Box 3: equal-height worker tiles (use space, avoid outer scroll) —— */
+/* —— Box 3: one worker at a time (full pane); slots switch focus —— */
 .box3-dynamic {
   white-space: normal;
   padding: 4px;
@@ -821,7 +821,16 @@ body.compact .kbd-hint {
   gap: 4px;
   height: 100%;
   min-height: 0;
-  overflow: hidden; /* tiles share height; no stack-scroll */
+  overflow: hidden;
+}
+
+.box3-dynamic.box3-single-focus .worker-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.box3-dynamic.box3-single-focus .worker-panel[hidden] {
+  display: none !important;
 }
 
 .worker-panel {
@@ -830,10 +839,13 @@ body.compact .kbd-hint {
   background: #1e1f23;
   display: flex;
   flex-direction: column;
-  /* N workers split available height evenly */
   flex: 1 1 0;
   min-height: 0;
   overflow: hidden;
+}
+
+.worker-panel.is-focus {
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .worker-panel[data-worker="worker1"] {
