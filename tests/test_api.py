@@ -64,13 +64,11 @@ def test_ui_static_has_v16_v37_features(client: TestClient):
 
     html = client.get("/")
     assert html.status_code == 200
-    assert "btn-copy-all" in html.text
-    assert "btn-diff" in html.text
-    assert "job-timer" in html.text
+    assert "box3-content" in html.text
+    assert "Worker results" in html.text
     assert "cost-badge" in html.text
-    assert "result-history" in html.text
     assert "btn-compact" in html.text
-    assert "btn-hist-export" in html.text
+    assert "box-action-bar" in html.text
 
 
 def test_state_exposes_cost_fields(client: TestClient):

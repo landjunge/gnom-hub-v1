@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=93" />
+  <link rel="stylesheet" href="/static/app.css?v=94" />
 </head>
 <body>
   <div id="app">
@@ -113,28 +113,10 @@
       <div id="box3" class="box box-worker" data-tooltip-id="box3">
         <div class="box-header box3-header">
           <span class="box3-header-title">Worker results</span>
-          <span class="box3-toolbar">
-            <span id="job-timer" class="job-timer" hidden title="Job duration">0.0s</span>
-            <select id="result-history" class="result-history" title="Previous execute results" aria-label="Result history">
-              <option value="">History…</option>
-            </select>
-            <button type="button" id="btn-reexec" class="box3-tool-btn" title="Re-run workers from selected history brainstorm" disabled>
-              Re-Exec
-            </button>
-            <button type="button" id="btn-hist-export" class="box3-tool-btn" title="Export result history as Markdown">
-              Hist↓
-            </button>
-            <button type="button" id="btn-copy-all" class="box3-tool-btn" title="Copy all worker results">
-              Copy all
-            </button>
-            <button type="button" id="btn-diff" class="box3-tool-btn" title="Diff first two worker results" disabled>
-              Diff
-            </button>
-          </span>
         </div>
         <div id="box3-content" class="box-body box3-dynamic">
-          <p class="muted">Worker results appear here (text + HTML preview).</p>
-          <p class="muted empty-hint">(Empty — Execute after brainstorm to fill worker panels.)</p>
+          <p class="muted">Worker result (page or text) after Execute.</p>
+          <p class="muted empty-hint">(Empty until Execute finishes.)</p>
         </div>
         <div class="box-action-bar" data-box="box3" aria-label="Box 3 actions">
           <button type="button" class="box-action-btn" data-slot="0" disabled aria-label="Action 1"></button>
@@ -458,6 +440,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=93"></script>
+  <script src="/static/app.js?v=94"></script>
 </body>
 </html>

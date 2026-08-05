@@ -3758,10 +3758,7 @@
    * HTML → sandboxed Preview + Source; plain text → scrollable pre.
    */
   function updateBox3Toolbar() {
-    const btnDiff = document.getElementById("btn-diff");
-    const btnCopy = document.getElementById("btn-copy-all");
-    if (btnDiff) btnDiff.disabled = lastWorkerOutputs.length < 2;
-    if (btnCopy) btnCopy.disabled = lastWorkerOutputs.length < 1;
+    // Box 3 toolbar intentionally minimal (no history/diff chrome)
   }
 
   function renderBox3Workers(pipeline) {
@@ -4020,6 +4017,7 @@
     const html = extractHtml(raw);
     const isHtml = !!html;
 
+    // Minimal controls only — Preview/Source (HTML) + Copy
     const mode = document.createElement("div");
     mode.className = "worker-panel-modes";
     if (isHtml) {
@@ -4040,14 +4038,14 @@
     btnCopy.type = "button";
     btnCopy.className = "worker-mode-btn copy-btn";
     btnCopy.textContent = "Copy";
-    btnCopy.title = "Copy result to clipboard";
+    btnCopy.title = "Copy result";
     btnCopy.addEventListener("click", function (ev) {
       ev.stopPropagation();
       const text = raw || "";
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(
           function () {
-            toast("Copied " + text.length + " chars", "ok");
+            toast("Copied", "ok");
           },
           function () {
             toast("Copy failed", "error");
@@ -4058,94 +4056,8 @@
       }
     });
     mode.appendChild(btnCopy);
-
-    // Download (HTML file if detected, else .txt)
-    const btnDl = document.createElement("button");
-    btnDl.type = "button";
-    btnDl.className = "worker-mode-btn download-btn";
-    btnDl.textContent = "DL";
-    btnDl.title = isHtml ? "Download as HTML" : "Download as text";
-    btnDl.addEventListener("click", function (ev) {
-      ev.stopPropagation();
-      downloadWorkerResult(out, raw, html);
-    });
-    mode.appendChild(btnDl);
-
-    // Open HTML in new browser tab
-    if (isHtml) {
-      const btnTab = document.createElement("button");
-      btnTab.type = "button";
-      btnTab.className = "worker-mode-btn tab-btn";
-      btnTab.textContent = "Tab";
-      btnTab.title = "Open HTML in new tab";
-      btnTab.addEventListener("click", function (ev) {
-        ev.stopPropagation();
-        openWorkerInTab(html);
-      });
-      mode.appendChild(btnTab);
-    }
-
-    // Save to temp workspace
-    const btnWs = document.createElement("button");
-    btnWs.type = "button";
-    btnWs.className = "worker-mode-btn ws-btn";
-    btnWs.textContent = "WS";
-    btnWs.title = "Save to temp workspace";
-    btnWs.addEventListener("click", function (ev) {
-      ev.stopPropagation();
-      saveWorkerToWorkspace(out, raw, html, "temp");
-    });
-    mode.appendChild(btnWs);
-
-    // Save to permanent workspace (or temp + promote)
-    const btnPerm = document.createElement("button");
-    btnPerm.type = "button";
-    btnPerm.className = "worker-mode-btn perm-btn";
-    btnPerm.textContent = "↑";
-    btnPerm.title = "Save to permanent workspace";
-    btnPerm.addEventListener("click", function (ev) {
-      ev.stopPropagation();
-      saveWorkerToWorkspace(out, raw, html, "perm");
-    });
-    mode.appendChild(btnPerm);
-
-    // Re-run this worker only
-    const btnRerun = document.createElement("button");
-    btnRerun.type = "button";
-    btnRerun.className = "worker-mode-btn rerun-btn";
-    btnRerun.textContent = "↻";
-    btnRerun.title = "Re-run this worker only";
-    btnRerun.addEventListener("click", function (ev) {
-      ev.stopPropagation();
-      rerunWorker(out.worker || "worker" + (idx + 1));
-    });
-    mode.appendChild(btnRerun);
-
-    // Fullscreen preview (HTML) or source text
-    const btnFs = document.createElement("button");
-    btnFs.type = "button";
-    btnFs.className = "worker-mode-btn fullscreen-btn";
-    btnFs.textContent = "⛶";
-    btnFs.title = "Fullscreen preview";
-    btnFs.addEventListener("click", function (ev) {
-      ev.stopPropagation();
-      openWorkerFullscreen(out, raw, html);
-    });
-    mode.appendChild(btnFs);
-
     head.appendChild(mode);
     panel.appendChild(head);
-
-    if (out.task) {
-      const taskEl = document.createElement("div");
-      taskEl.className = "worker-panel-task";
-      // One line in UI (saves height); full task on hover + Fullscreen
-      const taskFull = String(out.task);
-      const taskOne = taskFull.split("\n")[0].trim();
-      taskEl.textContent = "Task: " + taskOne;
-      taskEl.title = taskFull;
-      panel.appendChild(taskEl);
-    }
 
     const content = document.createElement("div");
     content.className = "worker-panel-body";
