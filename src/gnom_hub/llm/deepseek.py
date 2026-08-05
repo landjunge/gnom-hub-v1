@@ -11,10 +11,16 @@ from typing import Any
 from gnom_hub.llm.types import LLMError, LLMMessage, LLMResult
 
 DEFAULT_BASE_URL = "https://api.deepseek.com"
-DEFAULT_MODEL = "deepseek-chat"
+# Official model id (DeepSeek API Docs 2026): deepseek-v4-flash
+# https://api-docs.deepseek.com/quick_start/pricing/
+DEFAULT_MODEL = "deepseek-v4-flash"
 
 # Approx. USD per 1M tokens (input, output) — budget guard only, not billing
 _PRICE_PER_M: dict[str, tuple[float, float]] = {
+    # USD per 1M tokens (cache-miss input / output) — api-docs.deepseek.com pricing
+    "deepseek-v4-flash": (0.14, 0.28),
+    "deepseek-v4-pro": (0.435, 0.87),
+    # Legacy aliases (older docs / compatibility)
     "deepseek-chat": (0.14, 0.28),
     "deepseek-reasoner": (0.55, 2.19),
 }

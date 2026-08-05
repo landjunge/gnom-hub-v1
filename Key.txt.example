@@ -2,6 +2,12 @@
 # On start, Gnom-Hub writes a private .env from Key.txt (if needed).
 # Never commit Key.txt or .env.
 
+# Official DeepSeek model id (API docs):
+#   deepseek-v4-flash  — fast / economical (recommended)
+#   deepseek-v4-pro    — higher quality
+#   deepseek-chat      — legacy alias
+DEEPSEEK_MODEL=deepseek-v4-flash
+
 # System agents (Brainstorm, Memory, Flex, Coordinator) + global default
 DEEPSEEK_API_KEY=sk-your-system-deepseek-key
 # alias: SYSTEM=sk-...

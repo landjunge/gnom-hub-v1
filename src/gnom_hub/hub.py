@@ -1071,14 +1071,16 @@ class Hub:
 
     def _apply_keys_from_keyfile(self) -> None:
         """
-        Map Key.txt keys onto agents:
+        Map Key.txt onto agents:
           DEEPSEEK_API_KEY / SYSTEM → brainstorm, memory, flex, coordinator
           WORKER_API_KEY / WORKER → worker1–4
+          DEEPSEEK_MODEL → default + every agent model
         """
         system_key = (self.keys.get("DEEPSEEK_API_KEY") or "").strip() or None
         worker_key = (self.keys.get("WORKER_API_KEY") or "").strip() or None
-        if not system_key and not worker_key:
-            return
+        model = (self.keys.get("DEEPSEEK_MODEL") or "").strip() or None
+        if model:
+            self.llm.default_model = model
         system_ids = (
             AgentId.BRAINSTORM,
             AgentId.MEMORY,
@@ -1103,6 +1105,11 @@ class Hub:
                     self.agents.get(aid).api_key = worker_key
                 except ValueError:
                     pass
+        if model:
+            for a in self.agents.list_agents():
+                a.model = model
+        if not system_key and not worker_key and not model:
+            return
         # Keep agents.json in sync (gitignored)
         try:
             self._save_agent_state()
