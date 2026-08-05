@@ -20,14 +20,28 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Operating System :: OS Independent",
 ]
-dependencies = []
+dependencies = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
+  "pydantic>=2.0",
+]
 
 [project.optional-dependencies]
-dev = ["ruff", "pytest", "pytest-asyncio"]
+dev = ["ruff", "pytest", "pytest-asyncio", "httpx"]
+
+[project.scripts]
+gnom-hub = "gnom_hub.main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+gnom_hub = ["ui/static/*"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

@@ -4,15 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="app.css" />
+  <link rel="stylesheet" href="/static/app.css" />
 </head>
 <body>
   <div id="app">
     <header class="top-bar">
       <h1 class="app-title">Gnom-Hub</h1>
-      <button type="button" id="btn-save" class="btn-save" data-tooltip-id="save" title="Save">
-        Save
-      </button>
+      <div class="top-meta">
+        <span id="stage-badge" class="stage-badge" title="Pipeline stage">idle</span>
+        <button type="button" id="btn-save" class="btn-save" data-tooltip-id="save" title="Save">
+          Save
+        </button>
+      </div>
     </header>
 
     <!-- 8 agent cards: 140×100, gap 5 -->
@@ -32,10 +35,10 @@
           <div id="clarify" class="clarify" hidden>
             <p id="clarify-question" class="clarify-question"></p>
             <div class="clarify-actions">
-              <button type="button" class="btn-clarify" data-answer="yes">Yes</button>
-              <button type="button" class="btn-clarify" data-answer="no">No</button>
-              <button type="button" class="btn-clarify" data-answer="whatever">Whatever</button>
-              <button type="button" class="btn-clarify" data-answer="later">Later</button>
+              <button type="button" class="btn-clarify" data-answer="Yes">Yes</button>
+              <button type="button" class="btn-clarify" data-answer="No">No</button>
+              <button type="button" class="btn-clarify" data-answer="Whatever">Whatever</button>
+              <button type="button" class="btn-clarify" data-answer="Later">Later</button>
             </div>
           </div>
         </div>
@@ -72,6 +75,6 @@
     </section>
   </div>
 
-  <script src="app.js"></script>
+  <script src="/static/app.js"></script>
 </body>
 </html>

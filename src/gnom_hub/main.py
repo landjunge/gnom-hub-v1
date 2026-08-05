@@ -1,12 +1,15 @@
-"""Gnom-Hub v1 entry point."""
+"""Gnom-Hub v1 entry point – CLI smoke or HTTP server."""
 
-from gnom_hub.config.keys import ensure_env_from_key_txt, has_deepseek_key, load_keys
-from gnom_hub.config.paths import project_root
-from gnom_hub.core.event_bus import EventBus
-from gnom_hub.llm.manager import LLMManager
+from __future__ import annotations
+
+import argparse
+import os
 
 
-def main() -> None:
+def run_smoke() -> None:
+    from gnom_hub.core.event_bus import EventBus
+    from gnom_hub.hub import Hub
+
     bus = EventBus()
 
     def on_hello(data):
@@ -15,20 +18,39 @@ def main() -> None:
     bus.on("hello", on_hello)
     bus.emit("hello", {"msg": "Gnom-Hub v1 ready"})
 
-    root = project_root()
-    env_path = ensure_env_from_key_txt(root)
-    keys = load_keys(root)
-    llm = LLMManager(keys=keys)
+    hub = Hub()
+    snap = hub.snapshot()
+    print(f"[Keys] root={hub.root}")
+    print(f"[LLM] DeepSeek key={'yes' if snap['llm']['deepseek'] else 'no'}")
+    print(f"[Agents] {len(snap['agents'])} active roster")
+    print(f"[Memory] {snap['memory_summary']}")
+    print("Gnom-Hub v1 - Step 1.0 OK (smoke)")
 
-    key_ok = has_deepseek_key(keys)
-    print(f"[Keys] root={root}")
-    print(f"[Keys] .env={'yes' if env_path and env_path.is_file() else 'no'}")
-    print(f"[LLM] DeepSeek key={'yes' if key_ok else 'no (see Key.txt.example)'}")
-    print(
-        f"[LLM] free_only={llm.free_only} "
-        f"max_budget_usd={llm.max_budget_usd} model={llm.default_model}"
+
+def run_server(host: str, port: int) -> None:
+    import uvicorn
+
+    from gnom_hub.api.app import app
+
+    print(f"Gnom-Hub v1 UI → http://{host}:{port}/")
+    uvicorn.run(app, host=host, port=port, log_level="info")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Gnom-Hub v1")
+    parser.add_argument(
+        "--smoke",
+        action="store_true",
+        help="Run smoke checks without starting the HTTP server",
     )
-    print("Gnom-Hub v1 - Step 0.2 OK")
+    parser.add_argument("--host", default=os.getenv("GNOM_HUB_HOST", "127.0.0.1"))
+    parser.add_argument("--port", type=int, default=int(os.getenv("GNOM_HUB_PORT", "8080")))
+    args = parser.parse_args()
+
+    if args.smoke:
+        run_smoke()
+    else:
+        run_server(args.host, args.port)
 
 
 if __name__ == "__main__":

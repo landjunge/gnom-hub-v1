@@ -1,6 +1,6 @@
 /**
- * Gnom-Hub v1 – desktop UI skeleton (static).
- * Hooks: window.GnomHub.onSend / onSave / onToggle / onClarify
+ * Gnom-Hub v1 – desktop UI wired to /api/*
+ * Hooks still available: window.GnomHub.onSend / onSave / onToggle / onClarify
  */
 (function () {
   "use strict";
@@ -9,7 +9,8 @@
   const w = window;
   w.GnomHub = w.GnomHub || {};
 
-  // Mirror of tooltips.py (en). Served static until /api/tooltips exists.
+  const API = "";
+
   const TOOLTIPS = {
     brainstorm: {
       title: "Brainstorm",
@@ -53,35 +54,29 @@
     },
     worker3: {
       title: "Worker 3 (parked)",
-      how_to:
-        "Slot reserved for later. v1 uses at most two workers. Double-click still toggles local state.",
-      example:
-        "Shows as off/parked until more workers are enabled in a later release.",
+      how_to: "Slot reserved for later. v1 uses at most two workers.",
+      example: "Shows as off/parked until more workers are enabled later.",
     },
     worker4: {
       title: "Worker 4 (parked)",
-      how_to:
-        "Slot reserved for later. v1 uses at most two workers. Double-click still toggles local state.",
-      example:
-        "Shows as off/parked until more workers are enabled in a later release.",
+      how_to: "Slot reserved for later. v1 uses at most two workers.",
+      example: "Shows as off/parked until more workers are enabled later.",
     },
     box1: {
       title: "Arounder (Box 1)",
       how_to:
-        "Hover cards and controls to see title, how-to, and example here. Clarify Yes/No/Whatever/Later when asked.",
+        "Hover cards and controls for help. Clarify Yes/No/Whatever/Later when asked.",
       example: "Hover Memory → this panel explains what Memory does.",
     },
     box2: {
       title: "Brainstorm (Box 2)",
-      how_to:
-        "Shows free thoughts and distilled summary from the Brainstorm agent.",
-      example:
-        "Ideas stream here while you chat; distillation may ask questions in Box 1.",
+      how_to: "Shows free thoughts from the Brainstorm agent.",
+      example: "Ideas stream here while you chat.",
     },
     box3: {
       title: "Worker results (Box 3)",
       how_to: "Live output from active workers driven by the Coordinator.",
-      example: "Drafts, research notes, and task results appear here.",
+      example: "Drafts and task results appear here.",
     },
     chat: {
       title: "Chat",
@@ -90,28 +85,26 @@
     },
     save: {
       title: "Save",
-      how_to:
-        "One global Save. Persists session / memory state (wired later via API).",
+      how_to: "One global Save. Persists HOT session + mermaid canvas.",
       example: "Click Save after a good brainstorm so work is not lost.",
     },
     clarify: {
       title: "Clarify",
-      how_to:
-        "Answer distillation questions with Yes, No, Whatever, or Later.",
+      how_to: "Answer distillation questions with Yes, No, Whatever, or Later.",
       example: "Question: 'Use dark theme?' → Yes / No / Whatever / Later.",
     },
   };
 
-  /** 8 slots – Worker3/4 parked for v1 */
+  /** 8 slots – Worker3/4 parked for v1 (local only until API has them) */
   const AGENTS = [
-    { id: "brainstorm", label: "Brainstorm", color: "brainstorm", enabled: true, toggleable: true, parked: false },
-    { id: "memory", label: "Memory", color: "memory", enabled: true, toggleable: false, parked: false },
-    { id: "flex", label: "Flex", color: "flex", enabled: true, toggleable: true, parked: false },
-    { id: "coordinator", label: "Coordinator", color: "coordinator", enabled: true, toggleable: true, parked: false },
-    { id: "worker1", label: "Worker 1", color: "worker1", enabled: true, toggleable: true, parked: false },
-    { id: "worker2", label: "Worker 2", color: "worker2", enabled: true, toggleable: true, parked: false },
-    { id: "worker3", label: "Worker 3", color: "worker3", enabled: false, toggleable: true, parked: true },
-    { id: "worker4", label: "Worker 4", color: "worker4", enabled: false, toggleable: true, parked: true },
+    { id: "brainstorm", label: "Brainstorm", color: "brainstorm", enabled: true, toggleable: true, parked: false, model: "—" },
+    { id: "memory", label: "Memory", color: "memory", enabled: true, toggleable: false, parked: false, model: "—" },
+    { id: "flex", label: "Flex", color: "flex", enabled: true, toggleable: true, parked: false, model: "—" },
+    { id: "coordinator", label: "Coordinator", color: "coordinator", enabled: true, toggleable: true, parked: false, model: "—" },
+    { id: "worker1", label: "Worker 1", color: "worker1", enabled: true, toggleable: true, parked: false, model: "—" },
+    { id: "worker2", label: "Worker 2", color: "worker2", enabled: true, toggleable: true, parked: false, model: "—" },
+    { id: "worker3", label: "Worker 3", color: "worker3", enabled: false, toggleable: true, parked: true, model: "—" },
+    { id: "worker4", label: "Worker 4", color: "worker4", enabled: false, toggleable: true, parked: true, model: "—" },
   ];
 
   const els = {
@@ -127,6 +120,7 @@
     chatLog: document.getElementById("chat-log"),
     btnSend: document.getElementById("btn-send"),
     btnSave: document.getElementById("btn-save"),
+    stageBadge: document.getElementById("stage-badge"),
   };
 
   function statusLabel(agent) {
@@ -153,7 +147,9 @@
         '<div class="card-name">' +
         agent.label +
         "</div>" +
-        '<div class="card-meta">LLM: —</div>' +
+        '<div class="card-meta">LLM: ' +
+        (agent.model || "—") +
+        "</div>" +
         '<div class="card-status">' +
         statusLabel(agent) +
         "</div>";
@@ -177,26 +173,81 @@
     return null;
   }
 
-  function toggleAgent(id) {
-    const agent = findAgent(id);
-    if (!agent || !agent.toggleable) return;
-    agent.enabled = !agent.enabled;
-    if (agent.enabled) agent.parked = false;
+  async function api(method, path, body) {
+    const opts = { method: method, headers: { "Content-Type": "application/json" } };
+    if (body !== undefined) opts.body = JSON.stringify(body);
+    const res = await fetch(API + path, opts);
+    if (!res.ok) {
+      let detail = res.statusText;
+      try {
+        const j = await res.json();
+        detail = j.detail || JSON.stringify(j);
+      } catch (e) { /* ignore */ }
+      throw new Error(detail);
+    }
+    return res.json();
+  }
 
-    const card = els.cards.querySelector('[data-agent-id="' + id + '"]');
-    if (card) {
-      card.dataset.enabled = agent.enabled ? "true" : "false";
-      card.dataset.parked = agent.parked ? "true" : "false";
-      const st = card.querySelector(".card-status");
-      if (st) st.textContent = statusLabel(agent);
+  function applyAgentsFromServer(list) {
+    if (!list || !list.length) return;
+    list.forEach(function (s) {
+      const a = findAgent(s.id);
+      if (!a) return;
+      a.enabled = !!s.enabled;
+      a.toggleable = s.toggleable !== false;
+      if (s.model) a.model = s.model;
+      else if (s.role) a.model = "default";
+      a.parked = false;
+    });
+    renderCards();
+  }
+
+  function applySnapshot(snap) {
+    if (!snap) return;
+    if (snap.agents) applyAgentsFromServer(snap.agents);
+    const p = snap.pipeline || {};
+    if (els.stageBadge) els.stageBadge.textContent = p.stage || "idle";
+
+    const box2 = [];
+    if (p.brainstorm_notes) box2.push(p.brainstorm_notes);
+    if (p.distilled_requirements && p.distilled_requirements.length) {
+      box2.push("Requirements:");
+      p.distilled_requirements.forEach(function (r) {
+        box2.push("• " + r);
+      });
+    }
+    if (box2.length) setBox2(box2.join("\n"));
+
+    if (p.worker_results && p.worker_results.length) {
+      setBox3(p.worker_results.join("\n"));
     }
 
-    const payload = { id: agent.id, enabled: agent.enabled };
+    if (p.pending_question && p.pending_question.text) {
+      showClarify(p.pending_question.text);
+    } else if (p.stage !== "clarify") {
+      hideClarify();
+    }
+
+    if (p.error) appendChat("system", "Error: " + p.error);
+  }
+
+  async function toggleAgent(id) {
+    const agent = findAgent(id);
+    if (!agent || !agent.toggleable || agent.parked) return;
+
+    const payload = { id: agent.id, enabled: !agent.enabled };
     const cb = w.GnomHub.onToggle;
-    if (typeof cb === "function") {
-      cb(payload);
-    } else {
-      console.log("[GnomHub] toggle", payload);
+    if (typeof cb === "function") cb(payload);
+
+    try {
+      const data = await api("POST", "/api/agents/" + encodeURIComponent(id) + "/toggle");
+      if (data.agents) applyAgentsFromServer(data.agents);
+      else {
+        agent.enabled = !!data.enabled;
+        renderCards();
+      }
+    } catch (err) {
+      appendChat("system", "Toggle failed: " + err.message);
     }
   }
 
@@ -219,7 +270,6 @@
     });
   }
 
-  /** Show Yes/No/Whatever/Later until answered. */
   function showClarify(question) {
     els.clarify.hidden = false;
     els.clarifyQ.textContent = question || "Please choose:";
@@ -231,16 +281,24 @@
     els.clarifyQ.textContent = "";
   }
 
-  function sendChat() {
+  async function sendChat() {
     const text = (els.chatInput.value || "").trim();
     if (!text) return;
     appendChat("you", text);
     els.chatInput.value = "";
     const cb = w.GnomHub.onSend;
-    if (typeof cb === "function") {
-      cb(text);
-    } else {
-      console.log("[GnomHub] send", text);
+    if (typeof cb === "function") cb(text);
+
+    try {
+      const snap = await api("POST", "/api/chat", { text: text });
+      applySnapshot(snap);
+      if (snap.pipeline && snap.pipeline.stage === "done") {
+        appendChat("system", "Pipeline done.");
+      } else if (snap.pipeline && snap.pipeline.stage === "clarify") {
+        appendChat("system", "Need a clarify answer in Box 1.");
+      }
+    } catch (err) {
+      appendChat("system", "Chat failed: " + err.message);
     }
   }
 
@@ -252,16 +310,32 @@
     els.chatLog.scrollTop = els.chatLog.scrollHeight;
   }
 
-  function onSave() {
+  async function onSave() {
     const cb = w.GnomHub.onSave;
-    if (typeof cb === "function") {
-      cb();
-    } else {
-      console.log("[GnomHub] save");
+    if (typeof cb === "function") cb();
+    try {
+      const data = await api("POST", "/api/save");
+      appendChat("system", "Saved. " + (data.summary || ""));
+    } catch (err) {
+      appendChat("system", "Save failed: " + err.message);
     }
   }
 
-  // Public API for later pipeline / tests
+  async function onClarify(answer) {
+    const cb = w.GnomHub.onClarify;
+    if (typeof cb === "function") cb(answer);
+    try {
+      const snap = await api("POST", "/api/clarify", { option: answer });
+      applySnapshot(snap);
+      appendChat("you", "[clarify] " + answer);
+      if (snap.pipeline && snap.pipeline.stage === "done") {
+        appendChat("system", "Pipeline done.");
+      }
+    } catch (err) {
+      appendChat("system", "Clarify failed: " + err.message);
+    }
+  }
+
   w.GnomHub.showClarify = showClarify;
   w.GnomHub.hideClarify = hideClarify;
   w.GnomHub.showTooltip = showTooltip;
@@ -275,14 +349,32 @@
       };
     });
   };
-  w.GnomHub.setBox2 = function (htmlOrText) {
+  w.GnomHub.setBox2 = setBox2;
+  w.GnomHub.setBox3 = setBox3;
+  w.GnomHub.applySnapshot = applySnapshot;
+
+  function setBox2(htmlOrText) {
     const body = document.getElementById("box2-content");
     if (body) body.textContent = htmlOrText;
-  };
-  w.GnomHub.setBox3 = function (htmlOrText) {
+  }
+  function setBox3(htmlOrText) {
     const body = document.getElementById("box3-content");
     if (body) body.textContent = htmlOrText;
-  };
+  }
+
+  async function bootstrap() {
+    try {
+      const snap = await api("GET", "/api/state");
+      applySnapshot(snap);
+      const defaultModel = (snap.llm && snap.llm.default_model) || "deepseek-chat";
+      AGENTS.forEach(function (a) {
+        if (!a.parked && (!a.model || a.model === "—")) a.model = defaultModel;
+      });
+      renderCards();
+    } catch (err) {
+      console.warn("[GnomHub] offline / no API yet:", err.message);
+    }
+  }
 
   function init() {
     renderCards();
@@ -300,18 +392,13 @@
     document.querySelectorAll(".btn-clarify").forEach(function (btn) {
       btn.addEventListener("click", function () {
         const answer = btn.getAttribute("data-answer");
-        const cb = w.GnomHub.onClarify;
-        if (typeof cb === "function") {
-          cb(answer);
-        } else {
-          console.log("[GnomHub] clarify", answer);
-        }
         hideClarify();
+        onClarify(answer);
       });
     });
 
-    // Default Box 1 hint
     showTooltip("box1");
+    bootstrap();
   }
 
   if (document.readyState === "loading") {

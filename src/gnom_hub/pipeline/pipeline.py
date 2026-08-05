@@ -181,6 +181,23 @@ class Pipeline:
 
     # ── optional live LLM hooks (minimal) ────────────────────────────
 
+    def _agent_llm_kwargs(self, agent_id: str) -> dict[str, str]:
+        """Optional per-agent model/key from AgentManager."""
+        out: dict[str, str] = {"agent": agent_id}
+        if self._agents is None:
+            return out
+        try:
+            agent = self._agents.get(agent_id)
+        except (KeyError, ValueError):
+            return out
+        model = getattr(agent, "model", None)
+        key = getattr(agent, "api_key", None)
+        if model:
+            out["model"] = str(model)
+        if key:
+            out["api_key"] = str(key)
+        return out
+
     def _llm_brainstorm(self, text: str) -> str:
         from gnom_hub.llm.types import LLMMessage
 
@@ -192,7 +209,7 @@ class Pipeline:
                 ),
                 LLMMessage(role="user", content=text),
             ],
-            agent="brainstorm",
+            **self._agent_llm_kwargs("brainstorm"),
         )
         return result.content
 
@@ -202,6 +219,7 @@ class Pipeline:
         context = text
         if self._state.brainstorm_notes:
             context = f"{text}\n\nBrainstorm notes:\n{self._state.brainstorm_notes}"
+        # Distill uses coordinator slot for optional key override (no distill agent card)
         result = self._llm.chat(
             [
                 LLMMessage(
@@ -213,7 +231,7 @@ class Pipeline:
                 ),
                 LLMMessage(role="user", content=context),
             ],
-            agent="distill",
+            **self._agent_llm_kwargs("coordinator"),
         )
         lines = [ln.strip("-• \t") for ln in result.content.splitlines() if ln.strip()]
         requirements = lines or [f"Fulfill: {text}"]

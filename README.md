@@ -2,84 +2,97 @@
 
 Local-first multi-agent system.
 
-**Pipeline:** Brainstorm → Distillation → Coordinator → Workers  
+**Pipeline:** Chat → Brainstorm → Distillation → Coordinator → Workers → Box 3 + Memory  
 **Control:** Toggle agents, budget protection, free models only when you want  
 **UI:** Agent cards + 3 boxes + interactive Box 1  
 **Portable:** USB-capable, desktop-only
 
 ## Status
 
-**Step 0.1 done** – project structure + EventBus  
-**Step 0.2 done** – Key.txt → `.env` + LLM-Manager (DeepSeek)
+| Step | Topic | Status |
+|------|--------|--------|
+| 0.1 | EventBus + structure | done |
+| 0.2 | Key.txt → .env + LLM-Manager (DeepSeek) | done |
+| 0.3 | Agents + toggle + Flex presets | done |
+| 0.4 | Pipeline | done |
+| 0.5 | Memory HOT + Mermaid + offload | done |
+| 0.6 | Desktop UI skeleton | done |
+| 0.7–0.8 | HTTP API + wire + interactive clarify | done |
+| 0.9 | Per-agent model/key + Flex API | done |
+| 1.0 | Runbook / start script | done |
 
-Full plan: [`docs/PRE_PLAN.md`](docs/PRE_PLAN.md)  
-V1 scope: [`docs/V1_SCOPE.md`](docs/V1_SCOPE.md)
+Full plan: [`docs/PRE_PLAN.md`](docs/PRE_PLAN.md) · V1 scope: [`docs/V1_SCOPE.md`](docs/V1_SCOPE.md) · Roadmap: [`docs/ROADMAP.md`](docs/ROADMAP.md)
 
 ## Quick start
 
 ```bash
-# 1) Keys (optional for smoke; required for live LLM)
+cd gnom-hub-v1
+python3.11 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+
+# optional keys
 cp Key.txt.example Key.txt
-# edit Key.txt → set DEEPSEEK_API_KEY=...
+# edit DEEPSEEK_API_KEY=...
 
-# 2) Smoke
-PYTHONPATH=src python -m gnom_hub.main
+# UI server (default http://127.0.0.1:8080/)
+python -m gnom_hub.main
+# or:
+./scripts/start.sh
+
+# smoke only (no server)
+python -m gnom_hub.main --smoke
 ```
 
-Expected:
-```
-[EventBus] hello -> {'msg': 'Gnom-Hub v1 ready'}
-[Keys] ...
-[LLM] DeepSeek key=yes|no ...
-Gnom-Hub v1 - Step 0.2 OK
-```
+Open **http://127.0.0.1:8080/** — desktop layout (13″ fixed sizes).
 
-### Keys
+### Keys / budget
 
 | File | Role |
 |------|------|
-| `Key.txt` | Your secrets (gitignored). Source of truth on first setup. |
-| `.env` | Private env written/merged from `Key.txt` (gitignored). |
-| `Key.txt.example` / `.env.example` | Templates only |
+| `Key.txt` | Secrets (gitignored) → merged into `.env` |
+| `.env` | Private env (gitignored) |
+| `GNOM_FREE_ONLY=1` | Block non-free models |
+| `GNOM_MAX_BUDGET_USD=1.0` | Session spend guard |
 
-Optional policy env vars:
+Without a DeepSeek key the pipeline still runs on **deterministic stubs** (great for UI debug).
 
-- `GNOM_FREE_ONLY=1` — block non-free models
-- `GNOM_MAX_BUDGET_USD=1.0` — session spend guard (estimate)
+### API (summary)
 
-### Live DeepSeek call (manual)
-
-```python
-from gnom_hub.config import ensure_env_from_key_txt, load_keys
-from gnom_hub.llm import LLMManager, LLMMessage
-
-ensure_env_from_key_txt()
-llm = LLMManager(keys=load_keys())
-print(llm.chat([LLMMessage(role="user", content="Say hi in one word.")]).content)
-```
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/api/health` | Liveness |
+| GET | `/api/state` | Full snapshot |
+| POST | `/api/chat` | `{ "text": "..." }` start pipeline |
+| POST | `/api/clarify` | `{ "option": "Yes" }` Box-1 answer |
+| POST | `/api/agents/{id}/toggle` | Double-click toggle |
+| POST | `/api/agents/flex/preset` | `{ "preset": "security" }` |
+| POST | `/api/agents/{id}/llm` | `{ "model", "api_key" }` optional |
+| POST | `/api/save` | Persist HOT memory |
+| GET | `/api/tooltips` | Box-1 registry |
 
 ## Structure
 
 ```
 src/gnom_hub/
-├── core/       EventBus
-├── agents/     Brainstorm, Memory, Flex, Coordinator, Workers
-├── memory/     HOT / WARM / COLD + Mermaid
-├── llm/        LLM-Manager, DeepSeek
-├── ui/         Desktop UI
-├── config/     paths, Key.txt → .env
-└── main.py
+├── core/        EventBus
+├── agents/      Manager, toggle, Flex presets
+├── pipeline/    Chat → … → workers
+├── memory/      HOT session + mermaid + offload
+├── llm/         DeepSeek + budget / free_only
+├── api/         FastAPI
+├── ui/static/   Desktop UI
+├── hub.py       Wiring facade
+└── main.py      Server / smoke
 ```
 
 ## Dev
 
 ```bash
-pip install -e ".[dev]"
 ruff check .
 ruff format --check .
 pytest tests/ -v
 ```
 
-## Next
+## Agent notes
 
-Step 0.3 – (TBD) Agent shells / UI skeleton per V1_SCOPE
+See [`AGENTS.md`](AGENTS.md) — **commit + push after every section**.

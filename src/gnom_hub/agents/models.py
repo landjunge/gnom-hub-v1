@@ -39,6 +39,9 @@ class AgentState:
     enabled: bool
     toggleable: bool
     preset: str | None = None
+    # Optional per-agent LLM override (falls back to global DeepSeek key/model)
+    model: str | None = None
+    api_key: str | None = None
 
     def status_payload(self) -> dict:
         """Payload for EventBus 'agent.status' events."""
@@ -50,4 +53,6 @@ class AgentState:
         }
         if self.preset is not None:
             data["preset"] = self.preset
+        if self.model is not None:
+            data["model"] = self.model
         return data

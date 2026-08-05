@@ -98,6 +98,10 @@ class AgentManager:
         """Enabled workers only (max 2 in v1)."""
         return [self._agents[aid] for aid in _WORKER_IDS if self._agents[aid].enabled]
 
+    def emit_status(self, agent_id: AgentId | str) -> None:
+        """Re-broadcast one agent's status (e.g. after LLM override change)."""
+        self._emit_status(self._agents[self._resolve_id(agent_id)])
+
     def _emit_status(self, agent: AgentState) -> None:
         self._bus.emit(STATUS_EVENT, agent.status_payload())
 

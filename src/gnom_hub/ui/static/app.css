@@ -76,6 +76,26 @@ html, body {
   background: #495057;
 }
 
+.top-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stage-badge {
+  min-width: 72px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-panel);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 26px;
+  text-align: center;
+  text-transform: lowercase;
+}
+
 /* —— Agent cards: 140×100, gap 5 —— */
 .agent-cards {
   display: flex;
