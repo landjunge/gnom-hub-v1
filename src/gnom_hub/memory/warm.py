@@ -47,7 +47,19 @@ class WarmMemory:
                 self._facts.append(str(obj["text"]).strip())
             elif isinstance(obj, str):
                 self._facts.append(obj.strip())
-        self._facts = [f for f in self._facts if f]
+        self._facts = self._filter_facts(self._facts)
+        # Rewrite file if garbage was dropped (one-time scrub on boot)
+        if self.facts_path.is_file():
+            try:
+                raw_n = sum(
+                    1
+                    for ln in self.facts_path.read_text(encoding="utf-8").splitlines()
+                    if ln.strip()
+                )
+            except OSError:
+                raw_n = len(self._facts)
+            if raw_n != len(self._facts):
+                self.save()
 
     def save(self) -> None:
         self.warm_dir.mkdir(parents=True, exist_ok=True)
@@ -58,11 +70,36 @@ class WarmMemory:
             body += json.dumps({"text": text, "ts": _utc_now_iso()}, ensure_ascii=False) + "\n"
         atomic_write_text(self.facts_path, body)
 
+    @staticmethod
+    def _filter_facts(facts: list[str]) -> list[str]:
+        from gnom_hub.agents.roles_helpers import _is_garbage_fact
+
+        out: list[str] = []
+        seen: set[str] = set()
+        for f in facts:
+            t = " ".join(str(f).split()).strip()
+            if not t or _is_garbage_fact(t):
+                continue
+            key = t.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(t)
+        return out
+
     def add_fact(self, text: str) -> bool:
         t = " ".join(text.split()).strip()
         if not t:
             return False
+        from gnom_hub.agents.roles_helpers import _is_garbage_fact
+
+        if _is_garbage_fact(t):
+            return False
         if t in self._facts:
+            return False
+        # case-insensitive de-dupe
+        low = t.lower()
+        if any(f.lower() == low for f in self._facts):
             return False
         self._facts.append(t)
         if len(self._facts) > self.max_facts:

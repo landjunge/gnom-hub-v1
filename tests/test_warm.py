@@ -26,3 +26,23 @@ def test_facade_merges_warm_into_context(tmp_path: Path):
     ctx = fac.pipeline_context()
     assert "USB portable mode" in ctx
     assert "WARM facts" in ctx
+
+
+def test_warm_rejects_and_scrubs_garbage(tmp_path: Path):
+    warm = WarmMemory(tmp_path)
+    assert warm.add_fact("<!DOCTYPE html>") is False
+    assert warm.add_fact("(no durable facts to store)") is False
+    assert warm.add_fact("Prefer portable single-file HTML exports.") is True
+    # Inject garbage on disk then reload
+    path = warm.facts_path
+    path.write_text(
+        path.read_text(encoding="utf-8")
+        + '{"text": "<html lang=\\"de\\">", "ts": "x"}\n'
+        + '{"text": "Worker produced partial HTML", "ts": "x"}\n',
+        encoding="utf-8",
+    )
+    warm2 = WarmMemory(tmp_path)
+    facts = warm2.all_facts()
+    assert "Prefer portable single-file HTML exports." in facts
+    assert not any("<html" in f.lower() for f in facts)
+    assert not any("worker produced" in f.lower() for f in facts)

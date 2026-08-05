@@ -28,9 +28,12 @@ class MemoryFacade:
         self._last_query = (text or "").strip()
 
     def pipeline_context(self, *, max_chars: int = 1100) -> str:
+        from gnom_hub.agents.roles_helpers import _is_garbage_fact
+
+        warm = [f for f in self.warm.recent_facts(8) if not _is_garbage_fact(f)]
         base = self.hot.pipeline_context(
             max_chars=max_chars,
-            warm_facts=self.warm.recent_facts(8),
+            warm_facts=warm,
         )
         chunks: list[str] = []
         if base:
@@ -38,11 +41,16 @@ class MemoryFacade:
         if self.vectors is not None and self._last_query:
             hits = self.vectors.search(self._last_query, limit=3)
             if hits:
-                chunks.append("Vector recall:")
+                lines = []
                 for h in hits:
-                    score = h.get("score", 0)
                     text = str(h.get("text") or "")[:120]
-                    chunks.append(f"- ({score}) {text}")
+                    if not text or _is_garbage_fact(text):
+                        continue
+                    score = h.get("score", 0)
+                    lines.append(f"- ({score}) {text}")
+                if lines:
+                    chunks.append("Vector recall:")
+                    chunks.extend(lines)
         text = "\n".join(chunks).strip()
         if len(text) > max_chars:
             return text[: max_chars - 1] + "…"

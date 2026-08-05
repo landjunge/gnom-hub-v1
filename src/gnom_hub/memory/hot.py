@@ -73,15 +73,43 @@ class HotMemory:
         t = " ".join(str(text).split()).strip()
         if not t:
             return False
+        from gnom_hub.agents.roles_helpers import _is_garbage_fact
+
+        if _is_garbage_fact(t):
+            return False
         facts = list(self.session.get("facts") or [])
         # de-dupe exact stored text after short-path store
         stored = self._store_text(t, "fact")
         if stored in facts:
             return False
+        if any(str(f).strip().lower() == t.lower() for f in facts):
+            return False
         facts.append(stored)
         self.session["facts"] = facts
         self._touch()
         return True
+
+    def scrub_facts(self) -> int:
+        """Drop garbage facts from session; returns number removed."""
+        from gnom_hub.agents.roles_helpers import _is_garbage_fact
+
+        facts = list(self.session.get("facts") or [])
+        kept: list[str] = []
+        seen: set[str] = set()
+        for f in facts:
+            t = " ".join(str(f).split()).strip()
+            if not t or _is_garbage_fact(t):
+                continue
+            key = t.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            kept.append(t)
+        removed = len(facts) - len(kept)
+        if removed:
+            self.session["facts"] = kept
+            self._touch()
+        return removed
 
     def all_facts(self) -> list[str]:
         out: list[str] = []
@@ -203,12 +231,17 @@ class HotMemory:
         return "HOT: " + " | ".join(parts)
 
     def recent_facts(self, limit: int = 8) -> list[str]:
+        from gnom_hub.agents.roles_helpers import _is_garbage_fact
+
         facts = self.session.get("facts") or []
         out: list[str] = []
-        for f in facts[-limit:]:
-            if isinstance(f, str) and f.strip():
-                out.append(f.strip())
-        return out
+        for f in facts[-limit * 2 :]:  # oversample then filter
+            if not isinstance(f, str):
+                continue
+            t = f.strip()
+            if t and not _is_garbage_fact(t):
+                out.append(t)
+        return out[-limit:]
 
     def recent_messages(self, limit: int = 4) -> list[dict[str, str]]:
         msgs = self.session.get("messages") or []

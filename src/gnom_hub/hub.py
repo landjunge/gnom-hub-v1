@@ -44,6 +44,14 @@ class Hub:
         self.workspace = WorkspaceStore(self.root)
         self.cold = ColdArchive(self.root)
         self.vectors = VectorStore(self.root)
+        # One-shot scrub: drop HTML/meta junk left by older Memory agent runs
+        try:
+            n_hot = self.hot.scrub_facts()
+            if n_hot:
+                self.hot.save()
+            self.vectors.scrub()
+        except Exception:  # noqa: BLE001
+            pass
         self.memory = MemoryFacade(self.hot, self.warm, self.vectors)
         self.god_mode = god_mode_from_env()
         self.computer = ComputerUseKit(self.root, god_mode=self.god_mode.enabled)
@@ -200,18 +208,18 @@ class Hub:
         def on_memory_hint(data: Any) -> None:
             if not isinstance(data, dict):
                 return
-            user_text = str(data.get("user_text") or "")
-            if user_text:
-                self.hot.add_message("user", user_text)
-            notes = str(data.get("brainstorm_notes") or "")
-            if notes:
-                self.hot.add_message("brainstorm", notes)
-            flex = str(data.get("flex_notes") or "")
-            if flex:
-                self.hot.add_message("flex", flex)
-            from gnom_hub.agents.roles import _is_garbage_fact
+            from gnom_hub.agents.roles_helpers import _is_garbage_fact
 
-            # HOT: clean requirements only — never store product-hallucinations
+            user_text = str(data.get("user_text") or "").strip()
+            if user_text:
+                self.hot.add_message("user", user_text[:500])
+            notes = str(data.get("brainstorm_notes") or "").strip()
+            if notes:
+                self.hot.add_message("brainstorm", notes[:800])
+            flex = str(data.get("flex_notes") or "").strip()
+            if flex:
+                self.hot.add_message("flex", flex[:500])
+            # HOT: clean requirements only — never HTML / meta
             for req in (data.get("requirements") or [])[:5]:
                 text = str(req).strip()
                 if (
@@ -221,19 +229,27 @@ class Hub:
                 ):
                     self.hot.add_fact(text)
                     self.vectors.add(text, meta={"source": "requirement"})
+            # Goal lines are durable (WARM)
             for req in data.get("requirements") or []:
                 text = str(req).strip()
-                if text.lower().startswith("ziel:") or text.lower().startswith("goal:"):
+                low = text.lower()
+                if low.startswith("ziel:") or low.startswith("goal:"):
                     if 8 <= len(text) <= 160 and not _is_garbage_fact(text):
                         self.warm.add_fact(text)
                     break
-            # Worker outputs: messages only, not auto-facts (stops echo loops)
+            # Worker outputs: short text notes only — never code/HTML bodies
             for res in (data.get("results") or [])[:2]:
-                snippet = str(res).strip()[:400]
-                if snippet and not _is_garbage_fact(snippet):
+                snippet = str(res).strip()
+                if "```" in snippet:
+                    snippet = snippet.split("```", 1)[0].strip()
+                snippet = snippet[:280]
+                if (
+                    snippet
+                    and len(snippet) >= 20
+                    and not _is_garbage_fact(snippet)
+                    and not snippet.lstrip().startswith("<")
+                ):
                     self.hot.add_message("worker", snippet)
-            if data.get("user_text"):
-                self.hot.add_message("user", str(data.get("user_text"))[:500])
             self.hot.save()
 
         def on_error(data: Any) -> None:
@@ -243,10 +259,10 @@ class Hub:
                 self.last_error = str(data)
 
         def on_memory_curated(data: Any) -> None:
-            """LLM-extracted durable facts from Memory agent."""
+            """LLM-extracted durable facts from Memory agent → WARM (+ HOT mirror)."""
             if not isinstance(data, dict):
                 return
-            from gnom_hub.agents.roles import _is_garbage_fact
+            from gnom_hub.agents.roles_helpers import _is_garbage_fact
 
             for fact in data.get("facts") or []:
                 text = str(fact).strip()
@@ -257,9 +273,11 @@ class Hub:
             self.hot.save()
 
         def on_done(_data: Any) -> None:
-            # Long-session compression after each successful pipeline finish
+            # Scrub + compress after each successful pipeline finish
             try:
+                self.hot.scrub_facts()
                 self.hot.compress_if_needed()
+                self.hot.save()
             except Exception as exc:  # noqa: BLE001
                 self._append_trace("compress.error", {"error": str(exc)})
 

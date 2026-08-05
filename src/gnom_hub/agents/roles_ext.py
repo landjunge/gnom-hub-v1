@@ -318,6 +318,10 @@ class MemoryAgent(BaseAgent):
                 fn = getattr(self.memory, "pipeline_context", None)
                 if callable(fn):
                     raw = str(fn() or "").strip()
+            # Always drop garbage lines before LLM / injection
+            from gnom_hub.agents.roles_helpers import _sanitize_memory_ctx
+
+            raw = _sanitize_memory_ctx(raw)
             if not raw:
                 return ""
             if not self.has_llm() or not user_text.strip():
@@ -326,15 +330,19 @@ class MemoryAgent(BaseAgent):
                 curated = self.ask(
                     system=(
                         "You are the Memory agent. From the stored context, select only "
-                        "what is relevant for the current user task. "
-                        "Output 3–8 short bullet facts. No preamble. "
-                        "If nothing is relevant, output: (no relevant memory)"
+                        "facts relevant to the CURRENT user task. "
+                        "Ignore HTML, code, other projects, and pipeline meta. "
+                        "Output 2–6 short bullet facts. No preamble. "
+                        "If nothing is relevant: (no relevant memory)"
                     ),
-                    user=f"Task:\n{user_text}\n\nStored context:\n{raw[:2500]}",
-                    max_tokens=350,
-                    temperature=0.2,
+                    user=f"Task:\n{user_text}\n\nStored context:\n{raw[:2200]}",
+                    max_tokens=280,
+                    temperature=0.1,
                 )
-                return curated or raw[:900]
+                cleaned = _sanitize_memory_ctx(curated or "")
+                if not cleaned or cleaned.lower().startswith("(no relevant"):
+                    return ""
+                return cleaned[:900]
             except Exception as exc:  # noqa: BLE001
                 self.bus.emit(
                     "pipeline.warning",
@@ -355,7 +363,13 @@ class MemoryAgent(BaseAgent):
     ) -> None:
         self.emit_active(True)
         try:
-            clean_reqs = [r for r in requirements if not r.startswith("Flex/") and len(r) < 160][:5]
+            clean_reqs = [
+                r
+                for r in requirements
+                if not r.startswith("Flex/")
+                and 8 <= len(r) < 160
+                and not _is_garbage_fact(r)
+            ][:5]
             self.bus.emit(
                 "pipeline.memory_hint",
                 {
@@ -368,36 +382,61 @@ class MemoryAgent(BaseAgent):
             )
             if self.has_llm():
                 try:
+                    # Do not feed raw HTML/worker dumps into durable extraction
+                    safe_results: list[str] = []
+                    for r in results[:2]:
+                        snip = (r or "").strip()
+                        if not snip or _is_garbage_fact(snip[:200]):
+                            continue
+                        # strip fenced code blocks — never memorize source
+                        if "```" in snip:
+                            snip = snip.split("```", 1)[0].strip()
+                        if snip and len(snip) >= 20:
+                            safe_results.append(snip[:280])
                     pack = (
-                        f"User: {user_text}\n"
+                        f"User task: {user_text}\n"
                         f"Requirements:\n"
                         + "\n".join(f"- {r}" for r in clean_reqs)
-                        + f"\nBrainstorm (head):\n{(brainstorm or '')[:600]}\n"
-                        f"Worker results (head):\n"
-                        + "\n---\n".join((r or "")[:400] for r in results[:2])
+                        + f"\nBrainstorm head:\n{(brainstorm or '')[:400]}\n"
                     )
+                    if safe_results:
+                        pack += "Worker notes (no code):\n" + "\n---\n".join(safe_results)
                     curated = self.ask(
                         system=(
-                            "You are the Memory agent curating long-term facts. "
-                            "Extract 1–3 durable facts worth remembering. "
-                            "One fact per line. No intro. If nothing: (none)"
+                            "You are the Memory agent. Extract 0–3 DURABLE facts only.\n"
+                            "Durable = user preference, brand/product name, standing constraint, "
+                            "or a decision that should survive a NEW unrelated session.\n"
+                            "NEVER store: HTML/CSS/JS, code, session requirements lists, "
+                            "worker drafts, test chatter, empty meta, or pipeline status.\n"
+                            "One short fact per line. No numbering. No intro.\n"
+                            "If nothing durable: (none)"
                         ),
                         user=pack,
-                        max_tokens=200,
-                        temperature=0.2,
+                        max_tokens=180,
+                        temperature=0.1,
                     )
                     facts: list[str] = []
                     for ln in (curated or "").splitlines():
-                        s = ln.strip().lstrip("-•* ")
-                        if not s or s.lower() in ("(none)", "none", "n/a"):
+                        s = ln.strip().lstrip("-•*0123456789. \t")
+                        if not s:
                             continue
-                        if len(s) > 8:
+                        if _is_garbage_fact(s):
+                            continue
+                        if 8 <= len(s) <= 200:
                             facts.append(s[:200])
-                    facts = [f for f in facts if not _is_garbage_fact(f)]
-                    if facts:
+                    # de-dupe preserve order
+                    seen: set[str] = set()
+                    uniq: list[str] = []
+                    for f in facts:
+                        key = f.lower()
+                        if key in seen:
+                            continue
+                        seen.add(key)
+                        uniq.append(f)
+                    if uniq:
                         self.bus.emit(
                             "pipeline.memory_curated",
-                            {"facts": facts[:3], "user_text": user_text},
+                            {"facts": uniq[:3], "user_text": user_text},
                         )
                 except Exception as exc:  # noqa: BLE001
                     self.bus.emit(

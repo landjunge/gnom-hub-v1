@@ -57,35 +57,107 @@ def _with_memory(text: str, memory_ctx: str) -> str:
 
 
 def _sanitize_memory_ctx(memory_ctx: str) -> str:
+    """Drop garbage lines from memory context before injecting into prompts."""
     if not memory_ctx:
         return ""
-    bad = (
-        "localstorage",
-        "notiz-speicher",
-        "notizspeicher",
-        "notes app",
-        "ohne backend, der notizen",
-        "json-array in localstorage",
-        "json in localstorage",
-        "responsive liste",
-        "mini-notiz",
-        "note storage",
-        "notebook",
-    )
     kept: list[str] = []
     for ln in memory_ctx.splitlines():
-        low = ln.lower()
-        if any(b in low for b in bad):
+        s = ln.strip()
+        if not s:
             continue
-        if "gnom-hub" in low and ("ist ein" in low or "is a" in low or "is an" in low):
+        # keep section headers from pipeline_context
+        if s.endswith(":") and len(s) < 40:
+            kept.append(ln)
             continue
-        kept.append(ln)
+        body = s.lstrip("-•* ").strip()
+        if body and not _is_garbage_fact(body):
+            kept.append(ln)
     return "\n".join(kept).strip()
 
 
 def _is_garbage_fact(text: str) -> bool:
-    low = text.lower()
-    markers = (
+    """
+    True if text must never enter HOT/WARM as a fact.
+
+    Rejects HTML/code dumps, empty meta from the Memory LLM, pipeline chatter,
+    and known product-hallucination loops — not a second product layer.
+    """
+    t = " ".join(str(text or "").split()).strip()
+    if not t:
+        return True
+    if len(t) < 8:
+        return True
+    # bare markdown / list chrome
+    if re.fullmatch(r"#{1,6}\s*[\w\s\-]+", t):
+        return True
+    if t in ("## Requirements", "Requirements", "HOT facts", "WARM facts"):
+        return True
+
+    low = t.lower()
+
+    # empty / meta answers from Memory agent
+    meta_exact = (
+        "(none)",
+        "none",
+        "n/a",
+        "(no relevant memory)",
+        "(no durable facts to store)",
+        "no durable facts to store",
+        "no personal preferences or long-term commitments stated yet.",
+        "no personal preferences or long-term commitments stated yet",
+    )
+    if low in meta_exact or low.startswith("(no ") or low.startswith("no durable"):
+        return True
+    if "nothing to store" in low or "no relevant memory" in low:
+        return True
+    if low.startswith("memory:") and ("store" in low or "durable" in low):
+        return True
+
+    # HTML / code dumps
+    html_markers = (
+        "<!doctype",
+        "<html",
+        "</html>",
+        "<head",
+        "<body",
+        "<meta ",
+        "<div",
+        "<script",
+        "<style",
+        "```html",
+        "```css",
+        "```js",
+        "```javascript",
+    )
+    if any(m in low for m in html_markers):
+        return True
+    if t.lstrip().startswith("<") and ">" in t[:80]:
+        return True
+    if low.count("<") >= 2 and low.count(">") >= 2:
+        return True
+
+    # pipeline / worker meta (not user knowledge)
+    pipeline_meta = (
+        "worker produced",
+        "worker built",
+        "worker-output",
+        "worker output",
+        "partial html",
+        "incomplete css",
+        "truncated",
+        "max_tokens",
+        "quality check",
+        "fehlerschicht",
+        "user is testing gnom",
+        "basic brainstorm task (b1)",
+        "basic tests (b1)",
+        "running basic tests",
+    )
+    if any(m in low for m in pipeline_meta):
+        return True
+
+    # known hallucination loop topics from older sessions
+    notes_markers = (
         "localstorage",
         "notiz-speicher",
         "notizspeicher",
@@ -98,9 +170,16 @@ def _is_garbage_fact(text: str) -> bool:
         "mini-notiz",
         "notiztext",
     )
-    return any(b in low for b in markers) or (
-        "gnom-hub" in low and ("ist ein" in low or "is a" in low or "is an" in low)
-    )
+    if any(b in low for b in notes_markers):
+        return True
+    if "gnom-hub" in low and ("ist ein" in low or "is a" in low or "is an" in low):
+        return True
+
+    # broken markdown fragments like "Today** – …"
+    if re.search(r"\w\*\*\s*[–—-]", t):
+        return True
+
+    return False
 
 
 def _lines(raw: str) -> list[str]:

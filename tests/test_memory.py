@@ -115,7 +115,7 @@ def test_get_context_summary(tmp_path: Path):
     mem = HotMemory(tmp_path, auto_load=False)
     mem.add_message("user", "a")
     mem.add_message("assistant", "b")
-    mem.add_fact("note")
+    mem.add_fact("prefer dark theme")
     s = mem.get_context_summary()
     assert s.startswith("HOT:")
     assert "messages=2" in s
@@ -130,3 +130,36 @@ def test_pipeline_context_includes_facts(tmp_path: Path):
     ctx = mem.pipeline_context()
     assert "Prefer dark theme" in ctx
     assert "HOT facts" in ctx
+
+
+def test_garbage_fact_rejected():
+    from gnom_hub.agents.roles_helpers import _is_garbage_fact
+
+    assert _is_garbage_fact("<!DOCTYPE html>")
+    assert _is_garbage_fact("<html lang=\"de\">")
+    assert _is_garbage_fact("(no durable facts to store)")
+    assert _is_garbage_fact("## Requirements")
+    assert _is_garbage_fact("Worker produced a partial HTML snippet")
+    assert _is_garbage_fact("Today** – Only tasks due today")
+    assert not _is_garbage_fact("User prefers German UI and single-file HTML deliverables.")
+    assert not _is_garbage_fact("Brand is Bean & Bloom coffee shop with tagline Kaffee der blüht.")
+
+
+def test_hot_rejects_garbage_facts(tmp_path: Path):
+    mem = HotMemory(tmp_path, auto_load=False)
+    assert mem.add_fact("<!DOCTYPE html>") is False
+    assert mem.add_fact("Prefer dark theme always") is True
+    assert mem.all_facts() == ["Prefer dark theme always"]
+
+
+def test_hot_scrub_facts(tmp_path: Path):
+    mem = HotMemory(tmp_path, auto_load=False)
+    mem.session["facts"] = [
+        "Prefer dark theme always",
+        "<!DOCTYPE html>",
+        "(no durable facts to store)",
+        "Prefer dark theme always",
+    ]
+    n = mem.scrub_facts()
+    assert n == 3
+    assert mem.all_facts() == ["Prefer dark theme always"]

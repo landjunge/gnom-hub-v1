@@ -83,8 +83,42 @@ class VectorStore:
         return doc_id
 
     def add(self, text: str, meta: dict[str, Any] | None = None) -> str:
+        text = (text or "").strip()
+        if not text:
+            return ""
+        try:
+            from gnom_hub.agents.roles_helpers import _is_garbage_fact
+
+            if _is_garbage_fact(text):
+                return ""
+        except Exception:  # noqa: BLE001
+            pass
         doc_id = f"v{len(self._docs) + 1}"
         return self.upsert(doc_id, text, meta)
+
+    def scrub(self) -> int:
+        """Drop garbage docs; returns number removed."""
+        try:
+            from gnom_hub.agents.roles_helpers import _is_garbage_fact
+        except Exception:  # noqa: BLE001
+            return 0
+        before = len(self._docs)
+        kept: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for d in self._docs:
+            text = str(d.get("text") or "").strip()
+            if not text or _is_garbage_fact(text):
+                continue
+            key = text.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            kept.append(d)
+        removed = before - len(kept)
+        if removed:
+            self._docs = kept
+            self.save()
+        return removed
 
     def search(self, query: str, *, limit: int = 5) -> list[dict[str, Any]]:
         qv = _embed(query)
