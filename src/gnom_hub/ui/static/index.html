@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=47" />
+  <link rel="stylesheet" href="/static/app.css?v=48" />
 </head>
 <body>
   <div id="app">
@@ -97,10 +97,13 @@
           type="text"
           id="chat-input"
           class="chat-input"
-          placeholder="Type a message… or use Mic"
+          placeholder="Brainstorm freely… then press Execute"
           autocomplete="off"
         />
         <button type="button" id="btn-send" class="btn-send">Send</button>
+        <button type="button" id="btn-execute" class="btn-execute" title="Run distill + workers from brainstorm" disabled>
+          Execute
+        </button>
       </div>
     </section>
   </div>
@@ -184,6 +187,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=47"></script>
+  <script src="/static/app.js?v=48"></script>
 </body>
 </html>

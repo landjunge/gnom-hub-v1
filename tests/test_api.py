@@ -35,17 +35,36 @@ def test_state_and_agents(client: TestClient):
     assert data["pipeline"]["stage"] == "idle"
 
 
-def test_chat_pipeline_done(client: TestClient):
+def test_chat_brainstorm_then_execute(client: TestClient):
     r = client.post("/api/chat?sync=1", json={"text": "Build a simple landing page"})
     assert r.status_code == 200
     data = r.json()
-    assert data["pipeline"]["stage"] == "done"
+    assert data["pipeline"]["stage"] == "brainstorm"
     assert data["pipeline"]["brainstorm_notes"]
+    assert data["pipeline"].get("can_execute") is True
+    assert data["pipeline"].get("worker_results") in (None, [])
+
+    r2 = client.post("/api/execute?sync=1")
+    assert r2.status_code == 200
+    data2 = r2.json()
+    assert data2["pipeline"]["stage"] == "done"
+    assert data2["pipeline"]["worker_results"]
+
+
+def test_chat_full_pipeline_compat(client: TestClient):
+    r = client.post(
+        "/api/chat?sync=1&full=1",
+        json={"text": "Build a simple landing page"},
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["pipeline"]["stage"] == "done"
     assert data["pipeline"]["worker_results"]
 
 
 def test_chat_clarify_then_continue(client: TestClient):
-    r = client.post("/api/chat?sync=1", json={"text": "maybe dark mode?"})
+    # full path so clarify is reached
+    r = client.post("/api/chat?sync=1&full=1", json={"text": "maybe dark mode?"})
     assert r.status_code == 200
     assert r.json()["pipeline"]["stage"] == "clarify"
     assert r.json()["pipeline"]["pending_question"]

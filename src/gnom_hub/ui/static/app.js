@@ -172,6 +172,7 @@
     chatInput: document.getElementById("chat-input"),
     chatLog: document.getElementById("chat-log"),
     btnSend: document.getElementById("btn-send"),
+    btnExecute: document.getElementById("btn-execute"),
     btnMic: document.getElementById("btn-mic"),
     btnSave: document.getElementById("btn-save"),
     btnHelp: document.getElementById("btn-help"),
@@ -537,7 +538,15 @@
     }
 
     const box2 = [];
-    if (p.brainstorm_notes) {
+    if (p.brainstorm_turns && p.brainstorm_turns.length) {
+      box2.push("=== Brainstorm dialogue ===");
+      p.brainstorm_turns.forEach(function (t) {
+        const role = t.role === "user" ? "You" : "Brainstorm";
+        box2.push("");
+        box2.push(role + ":");
+        box2.push(String(t.text || ""));
+      });
+    } else if (p.brainstorm_notes) {
       box2.push("=== Brainstorm ===");
       box2.push(p.brainstorm_notes);
     }
@@ -556,7 +565,15 @@
     if (box2.length) {
       setBox2(box2.join("\n"));
     } else if (p.stage === "idle") {
-      setBox2("Brainstorm thoughts appear here.\n\n(Type a message below and press Send.)");
+      setBox2(
+        "Brainstorm dialogue appears here.\n\n" +
+          "1) Send messages to brainstorm freely\n" +
+          "2) Press Execute when ready for workers"
+      );
+    }
+
+    if (els.btnExecute) {
+      els.btnExecute.disabled = !p.can_execute || chatBusy;
     }
 
     renderBox3Workers(p);
@@ -899,6 +916,11 @@
       els.btnSend.disabled = chatBusy;
       els.btnSend.textContent = chatBusy ? "…" : "Send";
     }
+    if (els.btnExecute) {
+      // re-evaluated in applySnapshot; only hard-disable while busy
+      if (chatBusy) els.btnExecute.disabled = true;
+    }
+    if (els.btnMic) els.btnMic.disabled = chatBusy;
     if (els.chatInput) els.chatInput.disabled = chatBusy;
     if (els.stageBadge && chatBusy) els.stageBadge.textContent = "running…";
   }
@@ -940,30 +962,33 @@
     appendChat(
       "system",
       live
-        ? "Pipeline started (Live LLM — stages update live)…"
-        : "Pipeline started (stub mode)…"
+        ? "Brainstorm turn (Live LLM)…"
+        : "Brainstorm turn (stub)…"
     );
-    toast(live ? "Running live…" : "Running…", "info");
+    toast(live ? "Brainstorming…" : "Brainstorming…", "info");
 
     try {
-      // async by default — UI stays responsive
       const start = await api("POST", "/api/chat", { text: text });
       let snap = start;
       if (start.job_id) {
         const job = await pollJob(start.job_id, live ? 180000 : 30000);
         snap = job.snapshot || (await api("GET", "/api/state"));
         if (job.status === "error") {
-          appendChat("system", "Pipeline error: " + (job.error || "?"));
-          toast(job.error || "Pipeline error", "error");
+          appendChat("system", "Brainstorm error: " + (job.error || "?"));
+          toast(job.error || "Brainstorm error", "error");
           return;
         }
       }
       applySnapshot(snap);
       const stage =
-        (snap.pipeline && snap.pipeline.stage) ||
-        (start.stage) ||
-        "";
-      if (stage === "done") {
+        (snap.pipeline && snap.pipeline.stage) || start.stage || "";
+      if (stage === "brainstorm") {
+        appendChat(
+          "system",
+          "Brainstorm ready — keep chatting, or press Execute for workers."
+        );
+        toast("Brainstorm ready · Execute when ready", "ok");
+      } else if (stage === "done") {
         appendChat("system", "Pipeline done.");
         toast("Pipeline done", "ok");
       } else if (stage === "clarify") {
@@ -973,6 +998,51 @@
     } catch (err) {
       appendChat("system", "Chat failed: " + err.message);
       toast("Chat failed: " + err.message, "error");
+    } finally {
+      setChatBusy(false);
+    }
+  }
+
+  async function runExecute() {
+    if (chatBusy) return;
+    if (els.btnExecute && els.btnExecute.disabled) {
+      toast("Brainstorm first, then Execute", "info");
+      return;
+    }
+    setChatBusy(true);
+    const live =
+      els.llmBadge && els.llmBadge.classList.contains("has-key");
+    appendChat(
+      "system",
+      live
+        ? "Execute started (distill → flex → workers)…"
+        : "Execute started (stub)…"
+    );
+    toast("Executing…", "info");
+    try {
+      const start = await api("POST", "/api/execute");
+      let snap = start;
+      if (start.job_id) {
+        const job = await pollJob(start.job_id, live ? 180000 : 30000);
+        snap = job.snapshot || (await api("GET", "/api/state"));
+        if (job.status === "error") {
+          appendChat("system", "Execute error: " + (job.error || "?"));
+          toast(job.error || "Execute error", "error");
+          return;
+        }
+      }
+      applySnapshot(snap);
+      const stage = (snap.pipeline && snap.pipeline.stage) || "";
+      if (stage === "done") {
+        appendChat("system", "Execute done — see Box 3.");
+        toast("Execute done", "ok");
+      } else if (stage === "clarify") {
+        appendChat("system", "Clarify needed in Box 1 before workers finish.");
+        toast("Clarify needed", "info");
+      }
+    } catch (err) {
+      appendChat("system", "Execute failed: " + err.message);
+      toast("Execute failed: " + err.message, "error");
     } finally {
       setChatBusy(false);
     }
@@ -1419,6 +1489,7 @@
     bindTuneSliders();
 
     els.btnSend.addEventListener("click", sendChat);
+    if (els.btnExecute) els.btnExecute.addEventListener("click", runExecute);
     if (els.btnMic) els.btnMic.addEventListener("click", toggleMic);
     els.chatInput.addEventListener("keydown", function (ev) {
       if (ev.key === "Enter") {

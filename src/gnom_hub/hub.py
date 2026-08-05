@@ -109,7 +109,7 @@ class Hub:
                 name="pipeline_do",
                 description="Run chat pipeline with a task",
                 handler=lambda text: {
-                    "stage": self.chat(str(text))["pipeline"]["stage"],
+                    "stage": self.chat(str(text), full=True)["pipeline"]["stage"],
                     "results": list(self.pipeline.state.worker_results[:3]),
                 },
                 input_schema={
@@ -218,7 +218,8 @@ class Hub:
         if cmd == "do":
             if not arg.strip():
                 return "Usage: /do <task text>"
-            snap = self.chat(arg.strip())
+            # Full pipeline for Telegram one-shot tasks
+            snap = self.chat(arg.strip(), full=True)
             p = snap["pipeline"]
             if p["stage"] == "clarify" and p.get("pending_question"):
                 q = p["pending_question"]["text"]
@@ -373,11 +374,22 @@ class Hub:
                 "text": st.pending_question.text,
                 "options": list(st.pending_question.options),
             }
+        can_execute = bool((st.brainstorm_notes or "").strip()) and st.stage.value in (
+            "brainstorm",
+            "idle",
+            "done",
+            "error",
+        )
+        if st.stage.value in ("distill", "flex", "coordinate", "work", "clarify"):
+            can_execute = False
         return {
             "stage": st.stage.value,
+            "mode": getattr(st, "mode", "brainstorm") or "brainstorm",
             "user_text": st.user_text,
             "memory_context": st.memory_context,
             "brainstorm_notes": st.brainstorm_notes,
+            "brainstorm_turns": list(getattr(st, "brainstorm_turns", None) or []),
+            "can_execute": can_execute,
             "distilled_requirements": list(st.distilled_requirements),
             "flex_notes": st.flex_notes,
             "pending_question": q,
@@ -450,20 +462,30 @@ class Hub:
 
     # ── commands ────────────────────────────────────────────────────
 
-    def chat(self, text: str) -> dict[str, Any]:
-        """Synchronous pipeline (tests / scripts)."""
-        return self.chat_sync(text)
+    def chat(self, text: str, *, full: bool = False) -> dict[str, Any]:
+        """Synchronous chat. Default: brainstorm turn. full=True: whole pipeline."""
+        return self.chat_sync(text, full=full)
 
-    def chat_sync(self, text: str) -> dict[str, Any]:
+    def chat_sync(self, text: str, *, full: bool = False) -> dict[str, Any]:
         self.last_error = None
         self.memory.set_query_hint(text)
-        self.pipeline.start(text)
+        if full:
+            self.pipeline.start(text)
+        else:
+            self.pipeline.brainstorm_turn(text)
         if self.pipeline.state.error:
             self.last_error = self.pipeline.state.error
         return self.snapshot()
 
-    def chat_async(self, text: str) -> dict[str, Any]:
-        """Start pipeline in background; poll GET /api/jobs/{id}."""
+    def execute_sync(self) -> dict[str, Any]:
+        """Run distill → flex → workers from accumulated brainstorm."""
+        self.last_error = None
+        self.pipeline.execute()
+        if self.pipeline.state.error:
+            self.last_error = self.pipeline.state.error
+        return self.snapshot()
+
+    def _start_job(self, name: str, runner: Any) -> dict[str, Any]:
         import threading
         import uuid
 
@@ -480,11 +502,24 @@ class Hub:
         }
         self._jobs[job_id] = job
         self.last_error = None
-        self.memory.set_query_hint(text)
+
+        def _on_stage(data: Any) -> None:
+            if isinstance(data, dict) and data.get("stage"):
+                job["stage"] = str(data["stage"])
+                try:
+                    job["snapshot"] = self.snapshot()
+                except Exception as exc:  # noqa: BLE001
+                    job["snapshot_error"] = str(exc)
+
+        self.bus.on("pipeline.stage", _on_stage)
+        self.bus.on("pipeline.brainstorm", lambda _d: _on_stage({"stage": "brainstorm"}))
+        self.bus.on("pipeline.distill", lambda _d: _on_stage({"stage": "distill"}))
+        self.bus.on("pipeline.flex", lambda _d: _on_stage({"stage": "flex"}))
+        self.bus.on("pipeline.worker", lambda _d: _on_stage({"stage": "work"}))
 
         def _run() -> None:
             try:
-                self.pipeline.start(text)
+                runner()
                 if self.pipeline.state.error:
                     self.last_error = self.pipeline.state.error
                     job["status"] = "error"
@@ -502,30 +537,30 @@ class Hub:
                 self.last_error = str(exc)
                 job["snapshot"] = self.snapshot()
 
-        # Live stage updates into job while running
-        def _on_stage(data: Any) -> None:
-            if isinstance(data, dict) and data.get("stage"):
-                job["stage"] = str(data["stage"])
-                # light snapshot for UI progress (may be mid-flight)
-                try:
-                    job["snapshot"] = self.snapshot()
-                except Exception as exc:  # noqa: BLE001
-                    job["snapshot_error"] = str(exc)
-
-        self.bus.on("pipeline.stage", _on_stage)
-        self.bus.on("pipeline.brainstorm", lambda _d: _on_stage({"stage": "brainstorm"}))
-        self.bus.on("pipeline.distill", lambda _d: _on_stage({"stage": "distill"}))
-        self.bus.on("pipeline.flex", lambda _d: _on_stage({"stage": "flex"}))
-        self.bus.on("pipeline.worker", lambda _d: _on_stage({"stage": "work"}))
-
-        t = threading.Thread(target=_run, name=f"pipeline-{job_id}", daemon=True)
+        t = threading.Thread(target=_run, name=f"{name}-{job_id}", daemon=True)
         t.start()
         return {
             "job_id": job_id,
             "status": "running",
             "stage": "idle",
-            "message": "Pipeline started — poll /api/jobs/{id}",
+            "message": f"{name} started — poll /api/jobs/{{id}}",
         }
+
+    def chat_async(self, text: str, *, full: bool = False) -> dict[str, Any]:
+        """Async: brainstorm turn by default; full=True runs entire pipeline."""
+        self.memory.set_query_hint(text)
+
+        def _runner() -> None:
+            if full:
+                self.pipeline.start(text)
+            else:
+                self.pipeline.brainstorm_turn(text)
+
+        return self._start_job("brainstorm" if not full else "pipeline", _runner)
+
+    def execute_async(self) -> dict[str, Any]:
+        """Async execute after brainstorm."""
+        return self._start_job("execute", self.pipeline.execute)
 
     def get_job(self, job_id: str) -> dict[str, Any] | None:
         jobs = getattr(self, "_jobs", {})

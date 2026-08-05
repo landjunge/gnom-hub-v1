@@ -166,12 +166,23 @@ def create_app() -> FastAPI:
         return get_hub().set_system(body.model_dump(exclude_unset=True))
 
     @app.post("/api/chat")
-    def chat(body: ChatBody, sync: bool = Query(False)) -> dict[str, Any]:
-        """Default: async job (poll /api/jobs/{id}). Use ?sync=1 for tests."""
+    def chat(
+        body: ChatBody,
+        sync: bool = Query(False),
+        full: bool = Query(False),
+    ) -> dict[str, Any]:
+        """Default: brainstorm turn only. full=1 runs whole pipeline (tests/Telegram)."""
         text = body.text.strip()
         if sync:
-            return get_hub().chat_sync(text)
-        return get_hub().chat_async(text)
+            return get_hub().chat_sync(text, full=full)
+        return get_hub().chat_async(text, full=full)
+
+    @app.post("/api/execute")
+    def execute(sync: bool = Query(False)) -> dict[str, Any]:
+        """Run distill → workers from accumulated brainstorm."""
+        if sync:
+            return get_hub().execute_sync()
+        return get_hub().execute_async()
 
     @app.get("/api/jobs/{job_id}")
     def job_status(job_id: str) -> dict[str, Any]:

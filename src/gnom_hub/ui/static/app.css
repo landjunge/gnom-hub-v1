@@ -670,6 +670,27 @@ html, body {
   cursor: pointer;
 }
 
+.btn-execute {
+  flex: 0 0 78px;
+  height: 28px;
+  border: 1px solid #2f9e44;
+  border-radius: 4px;
+  background: #2b8a3e;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-execute:hover:not(:disabled) {
+  background: #37b24d;
+}
+
+.btn-execute:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* —— Modals (tuning + system) —— */
 .modal {
   position: fixed;
