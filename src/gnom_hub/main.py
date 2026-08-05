@@ -25,10 +25,14 @@ def run_smoke() -> None:
     print(f"[Agents] {len(snap['agents'])} active roster")
     print(f"[Memory] {snap['memory_summary']}")
 
-    # Stub pipeline path (works without API key)
-    out = hub.chat("Smoke: one-line plan for a notes app")
+    # Brainstorm turn, then execute (works without API key via stubs)
+    out = hub.chat("Smoke: one-line plan for a checklist app")
     stage = out["pipeline"]["stage"]
-    print(f"[Pipeline] stage={stage}")
+    print(f"[Brainstorm] stage={stage}")
+    assert stage == "brainstorm", f"expected brainstorm, got {stage}"
+    out = hub.execute_sync()
+    stage = out["pipeline"]["stage"]
+    print(f"[Execute] stage={stage}")
     if stage == "clarify":
         out = hub.clarify("Yes")
         stage = out["pipeline"]["stage"]

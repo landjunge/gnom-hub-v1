@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Start Gnom-Hub v1 (desktop UI on :8080 by default)
+# Start Gnom-Hub v1 (desktop UI, default :8080)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -9,8 +9,11 @@ if [ -d .venv ]; then
   source .venv/bin/activate
 fi
 
-export PYTHONPATH="${PYTHONPATH:-}:src"
+# Prefer project Key.txt / .env
+export PYTHONPATH="${ROOT}/src${PYTHONPATH:+:$PYTHONPATH}"
 HOST="${GNOM_HUB_HOST:-127.0.0.1}"
 PORT="${GNOM_HUB_PORT:-8080}"
 
+echo "Gnom-Hub v1 → http://${HOST}:${PORT}/"
+echo "  Send = brainstorm · Execute = workers · System = keys/backup/clean"
 exec python -m gnom_hub.main --host "$HOST" --port "$PORT"

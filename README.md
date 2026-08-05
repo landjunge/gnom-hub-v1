@@ -1,145 +1,103 @@
-# Gnom-Hub v1
+# Gnom-Hub v1.0.0
 
-Local-first multi-agent system.
+Local multi-agent control hub: **free brainstorm first**, then **Execute** workers.
 
-**Pipeline:** Chat → Brainstorm → Distillation → Flex → Coordinator → Workers → Memory  
-**Memory:** HOT · WARM · **COLD archive** · Mermaid · **Vector lite**  
-**Control:** Agent toggles · budget · **God-Mode** (explicit)  
-**Optional:** Telegram · dual workspace · **Computer-Use kit** · **Plugins / MCP-lite**  
-**Portable:** USB-capable, desktop-only (LAN OK)
+Desktop-only · USB-friendly · DeepSeek LLM · no mandatory cloud backend for the app process.
 
-## Status
+## Flow
 
-| Wave | Topic | Status |
-|------|--------|--------|
-| 0.x–1.6 | Core hub, UI, API, quality/CI | done |
-| 2.0 | WARM + workspace + Telegram | done |
-| **3.0** | COLD, vector, God-Mode, computer-use, plugins/MCP | **done** |
-| **3.1** | Vector recall in pipeline, Archive UI, safe God-Mode shell | **done** |
-| **3.2** | UI God toggle, COLD browser, optional live smoke | **done** |
-| **3.3** | Async chat jobs + better pipeline quality | **done** |
+```
+Chat (Send)  →  Brainstorm dialogue (Box 2)
+                      │
+                 Execute button
+                      ▼
+         Distill → Flex → Coordinator → Workers 1–4 → Quality → Memory
+                      │
+                 Box 3 + Workspace temp
+```
 
-Docs: [`docs/PRE_PLAN.md`](docs/PRE_PLAN.md) · [`docs/V1_SCOPE.md`](docs/V1_SCOPE.md) · [`docs/ROADMAP.md`](docs/ROADMAP.md)
-
-## Quick start
+## Install & run
 
 ```bash
 cd gnom-hub-v1
 ./scripts/install.sh
 source .venv/bin/activate
-# Key.txt → DEEPSEEK_API_KEY=...  (optional)
 
-./scripts/start.sh            # http://127.0.0.1:8080/
-# LAN: GNOM_HUB_HOST=0.0.0.0 ./scripts/start.sh
-./scripts/quality_check.sh    # ruff + pytest + smoke_e2e
+# Edit Key.txt:
+#   DEEPSEEK_API_KEY=sk-...
+
+./scripts/start.sh                 # http://127.0.0.1:8080/
+./scripts/quality_check.sh         # ruff + pytest + smoke_e2e
 ```
 
-### UI tips
+LAN: `GNOM_HUB_HOST=0.0.0.0 ./scripts/start.sh`
 
-- Double-click card = toggle (Memory locked)
-- Flex: Shift+double-click → preset cycle
-- Clarify on `?` / `maybe` → Box 1 buttons
-- **Reset** = clear HOT only (WARM stays)
-- **Save** = HOT + WARM + agent state
+## UI (essentials)
 
-### Keys / flags
+| Control | Action |
+|---------|--------|
+| **Send** | One brainstorm turn |
+| **Execute** | Distill + workers |
+| **Mic** | Speech-to-text (browser) |
+| **Card click** | Agent tuning (prompt + 5 sliders) |
+| **Card double-click** | Toggle agent on/off (Memory locked) |
+| **Flex dropdown** | security / neutral / researcher |
+| **Worker 3/4** | Off by default — double-click to enable |
+| **Workspace** | Temp outputs → promote to permanent |
+| **Trace** | Light pipeline log |
+| **System** | Budget, free-only, language DE/EN, checkpoint, **backup zip**, **clean state** |
+| **TTS** | Checkbox on card — browser reads outputs |
 
-| Key / env | Role |
-|-----------|------|
-| `DEEPSEEK_API_KEY` | Live LLM |
+Hard-reload after updates: `http://127.0.0.1:8080/?v=51` (or higher).
+
+## Keys & env
+
+| Variable | Role |
+|----------|------|
+| `DEEPSEEK_API_KEY` | Live LLM (Key.txt → private `.env`) |
 | `TELEGRAM_BOT_TOKEN` | Optional bot |
-| `GNOM_TELEGRAM_POLL=1` | Auto Telegram long-poll |
-| `GNOM_GOD_MODE_AUTO=1` | Start with God-Mode on (discouraged) |
+| `GNOM_TELEGRAM_POLL=1` | Long-poll Telegram |
 | `GNOM_FREE_ONLY` / `GNOM_MAX_BUDGET_USD` | LLM policy |
+| `GNOM_UI_LANG` | `en` or `de` |
+| `GNOM_PHASE3=0` | Hide God/Cold/Vec chrome |
+| `GNOM_GOD_MODE_AUTO=1` | Start elevated (discouraged) |
 
-## API map
+## API (core)
 
-### Core
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/api/health` | Liveness |
-| GET | `/api/state` | Full snapshot |
-| POST | `/api/chat` | Run pipeline |
+| POST | `/api/chat` | Brainstorm turn (`?full=1` = one-shot pipeline) |
+| POST | `/api/execute` | Distill → workers |
 | POST | `/api/clarify` | Distillation answer |
-| POST | `/api/save` | Persist HOT+WARM+agents |
-| POST | `/api/reset` | Clear HOT (`?clear_warm=true` optional) |
+| GET | `/api/state` | Full snapshot |
+| POST | `/api/save` | HOT + WARM + agents |
+| POST | `/api/reset` | Clear HOT (optional archive) |
+| POST | `/api/clean` | Clean HOT + temp + pipeline (WARM kept) |
+| POST | `/api/backup` | Zip → `data/backups/` |
+| POST | `/api/checkpoint/save\|load` | Resume pipeline state |
+| GET | `/api/trace` | Light event log |
+| POST | `/api/agents/{id}/tune` | Per-agent knobs |
+| GET/POST | `/api/system` | Global LLM + UI lang |
+| * | `/api/workspace/*` | Temp/perm files |
+| * | `/api/worker-presets*` | Save/apply worker presets |
 
-### Memory
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET | `/api/memory` | HOT + WARM + context |
-| POST | `/api/memory/warm` | Add durable fact |
-| GET/POST | `/api/canvas` | Mermaid HOT |
-| POST | `/api/cold/archive` | Snapshot HOT → COLD |
-| GET | `/api/cold` | List archives |
-| GET | `/api/cold/{id}` | Load archive |
-| POST | `/api/vector/add` | Index text |
-| POST | `/api/vector/search` | Lexical cosine search |
-
-### Security / automation / plugins
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET/POST | `/api/god-mode` | Explicit elevated mode |
-| POST | `/api/computer-use/inspect` | Capture+vision+OCR kit |
-| POST | `/api/computer-use/click` | Click (dry-run unless God-Mode) |
-| POST | `/api/computer-use/shell` | Allowlisted cmds only when God-Mode on |
-| GET | `/api/plugins` | Loaded plugins + tools |
-| GET | `/api/mcp/tools` | MCP-style tools/list |
-| POST | `/api/tools/call` | Invoke tool by name |
-
-### Workspace / Telegram
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET | `/api/workspace` | temp/perm files |
-| POST | `/api/workspace/write` | Write file |
-| POST | `/api/workspace/promote/{name}` | temp → perm |
-| POST | `/api/telegram/*` | start/stop/inbound |
-
-## Modules (layout)
+## Modules
 
 ```
 src/gnom_hub/
-  core/ agents/ pipeline/ llm/ ui/ api/ hub.py main.py
-  memory/   hot warm cold vector_store canvas workspace facade
+  hub.py  main.py  api/  agents/  pipeline/  llm/  ui/
+  memory/   (hot warm cold vector canvas workspace facade)
   telegram/ computer_use/ plugins/ security/
-plugins/echo/          # demo plugin (echo tool)
 ```
 
-### God-Mode
-Off by default. **Click the God badge** in the UI (confirm dialog) or  
-`POST /api/god-mode {"enabled":true,"reason":"..."}`.  
-Clicks need God-Mode; shell only allowlisted binaries  
-(`ls pwd date uname whoami echo cat head tail wc df du`) — no pipes/metacharacters.
+## V1 complete vs parked (Pre-Plan)
 
-### Reset / Archive / COLD browser
-**Archive** → COLD snapshot of current HOT.  
-**Reset** → auto-archives non-empty HOT, then clears HOT (WARM kept).  
-**Click Cold badge** → browse archives in Box 1 (list + fact preview).
+**Done:** brainstorm→execute, 4+4 agent slots, memory tiers, workspace, tuning, TTS/STT, trace, quality, checkpoint, clean, backup, DE/EN tooltips, CI.
 
-### Live smoke (optional)
-```bash
-python scripts/smoke_live.py          # skips if no DEEPSEEK_API_KEY
-GNOM_LIVE_SMOKE=1 python scripts/smoke_live.py   # fail if no key
-```
-CI runs live smoke only when secret `DEEPSEEK_API_KEY` is configured (non-blocking).
+**Parked / lite only:** full skill marketplace, web surfing agent, real kernel God-Mode, auto-update channel, true embedding vectors, self-explaining videos.
 
-### Vector lite
-No heavy deps — bag-of-words + cosine. Pipeline requirements/worker outputs are auto-indexed.
+See [`docs/PLAN_VS_CODE.md`](docs/PLAN_VS_CODE.md) · [`docs/PRE_PLAN.md`](docs/PRE_PLAN.md) · [`docs/V1_SCOPE.md`](docs/V1_SCOPE.md)
 
-### Computer-Use
-Capture (Pillow if present, else stub PNG) · Vision notes · OCR (optional pytesseract) · Action dry-run.
+## License
 
-### Plugins / MCP-lite
-Drop folders under `plugins/<id>/plugin.json` + `main.py`. Example: `plugins/echo`.  
-`GET /api/mcp/tools` exposes a tools/list-style manifest.
-
-## Dev
-
-```bash
-pip install -e ".[dev]"   # httpx required for TestClient
-./scripts/quality_check.sh
-```
-
-## Agent notes
-
-[`AGENTS.md`](AGENTS.md) — commit **and push** after every section.
+Private use.

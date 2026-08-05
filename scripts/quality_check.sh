@@ -9,7 +9,7 @@ if [ -d .venv ]; then
   source .venv/bin/activate
 fi
 
-export PYTHONPATH="${PYTHONPATH:-}:src"
+export PYTHONPATH="${ROOT}/src${PYTHONPATH:+:$PYTHONPATH}"
 
 echo "▸ ruff check"
 ruff check .

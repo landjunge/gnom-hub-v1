@@ -1,87 +1,63 @@
-# Gnom-Hub – V1 Scope (harte Schnittmenge)
+# Gnom-Hub – V1 Scope (final, 1.0.0)
 
 Stand: 05.08.2026
 
-Nur das, was wirklich im ersten Wurf gebaut wird.
-Alles andere bleibt im PRE_PLAN.md als Zielbild dokumentiert und wird später aktiviert.
+V1 ist **fertig** als lauffähiger Multi-Agent-Hub.  
+Alles darüber hinaus → `PRE_PLAN.md` / Roadmap, nicht blockierend.
 
 ---
 
-## Ziel von v1
+## Ziel von v1.0
 
-Ein lauffähiges, debuggbares System, mit dem man:
-
-1. Frei brainstormen kann
-2. Das Ergebnis destillieren lässt
-3. Den Coordinator 1–2 Worker steuern lässt
-4. Alles über eine klare Desktop-UI sieht und steuert
+1. Frei brainstormen (mehrere Chat-Turns)
+2. Explizit **Execute** → Destillation + Worker
+3. 1–4 Worker steuern (3/4 default aus)
+4. Desktop-UI: Karten, 3 Boxen, Chat, System, Workspace
 
 ---
 
-## Was in v1 **rein** kommt
+## In v1.0 **drin**
 
 ### Agenten
-- 4 feste Agenten: Brainstorm, Memory, Flex, Coordinator
-- Bis zu 2 Worker (dynamisch)
-- Doppelklick-Toggle für alle außer Memory
-- Flex mit Presets (Standard: Security, weitere: Neutral / Researcher …)
-- Live-Status über EventBus (active / disabled)
+- Brainstorm, Memory, Flex, Coordinator
+- Worker 1–4 (EventBus, Toggle, Tuning, TTS)
+- Flex-Presets: security / neutral / researcher
+
+### Pipeline
+- `brainstorm_turn` + `execute` (+ `full` one-shot)
+- Clarify in Box 1
+- Quality-Heuristik + Light Trace + Checkpoint
 
 ### LLM
-- LLM-Manager
-- Erster Test-Provider: **DeepSeek**
-- Jeder Agent kann eigenes Modell + Key haben
-- Free-Modelle nur wenn explizit aktiviert
-- Budget-Schutz
+- DeepSeek, pro Agent Model/Key, free-only, Budget
 
-### UI (Desktop-only, 13″ optimiert)
-- 8 Agentenkarten: **140 × 100 px**, Abstand **5 px**
-- 3 Boxen: **380 × 380 px**, Abstand **5 px**
-- Box 1 = reiche Tooltip-/Erklärungsfläche (Titel + How-to + Beispiel)
-- Box 2 = Brainstorm-Gedanken
-- Box 3 = Worker-Ergebnisse
-- Chatfenster (~150 px)
-- Globaler Speicher-Button
-- UI-Sprache: Basic English
-- Box-1-Texte: mehrsprachig vorbereitet
+### UI
+- Viewport-füllend, Agent-Zeile = Box-Breite
+- Box-Rahmenfarbe = aktiver Agent
+- HTML Preview in Box 3
+- System: lang DE/EN, backup, clean, checkpoint
+- Mic STT
 
-### Memory
-- HOT-Layer (session.json + mermaid_canvas.mmd)
-- Einfaches Mermaid-Canvas + node_id Offload
-- Memory-Agent immer aktiv
+### Memory & Workspace
+- HOT / WARM / COLD, Mermaid + Offload, Kompression
+- Temp + Permanent Workspace + Auto-Capture nach Execute
 
 ### Technik
-- EventBus
-- Schmale Interfaces / Facade
-- Atomic Writes
-- Relative Pfade (USB-fähig)
-- Einfache Installation + Key.txt → .env
+- EventBus, Atomic Writes, relative Pfade, Key.txt → .env
+- Install mit OS/USB-Hinweis, pinned dev-tools für CI
 
 ---
 
-## Was in v1 **draußen** bleibt (geparkt)
+## Parked (nicht v1-Blocker)
 
-- WARM / COLD Persistenz
-- Vektor-Plugin + Hybrid Ranking
-- Computer-Use / UI-Automation
-- Volles Plugin-System + MCP
-- God-Mode
-- Workspace-Previews + temporärer/permanenter Workspace
-- Self-Explaining Videos
-- Volle Accessibility-Profile
-- Mehr als 2 Worker
-- Update-/Backup-System (nur Basis)
-- Responsive / Mobile / Remote-Zugriff von Handy
+- Skill-Marketplace / auto tool load
+- Web-Surfing-Agent
+- Echte Kernel-Rechte
+- Auto-Update-Kanal
+- True embeddings
+- Self-explaining videos
+- Mobile UI
 
 ---
 
-## Design-Entscheidung Layout
-
-Festes Desktop-Layout, optimiert für 13-Zoll und größer.
-Keine Mobile-Responsive-Anforderungen.
-
-Gesamtbreite Agentenkarten ≈ Gesamtbreite der drei Boxen (≈ 1150–1155 px).
-
----
-
-**Ende V1 Scope**
+**Ende V1 Scope — v1.0.0 complete**
