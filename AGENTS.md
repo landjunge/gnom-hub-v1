@@ -10,12 +10,15 @@
 3. **Stay inside `docs/V1_SCOPE.md`.** Do not implement pre-plan features.
 4. **YAGNI + KISS** — no overengineering.
 5. **line-length = 100** (see `pyproject.toml`). Break long assert/expressions accordingly.
-6. **Run before committing:**
+6. **Run before every commit/push (do not skip):**
    ```bash
    ruff check .
    ruff format .
-   pytest tests/ -v --tb=short
+   ruff format --check .
+   pytest tests/ -q --tb=short
+   # if server up: python scripts/basic_tests.py   # B1–B3
    ```
+   Never push with ruff/format/pytest red. Never commit `Key.txt` / `.env` / real secrets.
 
 ## Product rules
 
