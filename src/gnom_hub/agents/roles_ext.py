@@ -145,15 +145,30 @@ class WorkerAgent(BaseAgent):
                         system=(
                             "You are a Worker agent. Deliver a concrete useful result "
                             "for the assigned task (plan, structure, checklist, draft, "
-                            "or full HTML when the task is a page/UI). "
-                            "If the task is HTML/landing/page: output ONE complete HTML "
-                            "document starting with <!DOCTYPE html> (inline CSS/JS ok). "
+                            "or full HTML when the task is a page/UI).\n"
+                            "PRIORITY ORDER (mandatory — do not reverse):\n"
+                            "  1) Complete structure / skeleton (always finish the file)\n"
+                            "  2) Core interactive behavior (JS/handlers, DOM updates)\n"
+                            "  3) Error/empty states for those core flows\n"
+                            "  4) CSS/styling LAST (max ~30% of effort; minimal layout first)\n"
+                            "Budget: ~70% functions+structure, ~30% styling. If near limit, "
+                            "CUT CSS — never omit </html> or core interactions.\n"
+                            "If HTML/landing/page/UI:\n"
+                            "  - ONE complete file: <!DOCTYPE html> … </html>\n"
+                            "  - At least one real interaction "
+                            "(onclick= or addEventListener or form submit handler)\n"
+                            "  - Prefer working demo over pretty design\n"
+                            "BEFORE SUBMIT checklist:\n"
+                            "  [ ] ends with </html> (if HTML)\n"
+                            "  [ ] tags/braces closed\n"
+                            "  [ ] core functions present (not only empty-state markup)\n"
+                            "  [ ] no truncation mid-CSS/JS\n"
                             "Work on the USER task only. Do not redefine Gnom-Hub. "
                             "No meta fluff. Match user language."
                         ),
                         user=_with_memory(body, memory_ctx),
-                        max_tokens=1800,
-                        temperature=0.5,
+                        max_tokens=2200,
+                        temperature=0.45,
                     )
                 except Exception as exc:  # noqa: BLE001
                     self.bus.emit(

@@ -411,18 +411,30 @@ class Orchestrator:
                 self._state.distilled_requirements,
                 mem,
             )
-            # One soft retry if HTML was expected but draft is incomplete/truncated
+            # Soft retry: incomplete HTML or interactive task without handlers
+            gate0 = _validate_worker_draft(result, user_text=text, task=task)
+            need_retry = False
+            retry_why = ""
             if _wants_html_artifact(text, task) and not _html_complete(result):
+                need_retry, retry_why = True, "incomplete_html"
+            elif "missing_required_interaction" in (gate0.get("issues") or []):
+                need_retry, retry_why = True, "missing_interaction"
+            if need_retry:
                 self.bus.emit(
                     "pipeline.quality_retry",
-                    {"worker": wid, "reason": "incomplete_html"},
+                    {"worker": wid, "reason": retry_why},
                 )
                 self._check_cancel()
+                hint = (
+                    "RETRY (mandatory): ONE complete HTML file "
+                    "<!DOCTYPE html>…</html>. "
+                    "PRIORITY: structure + working JS interactions FIRST, "
+                    "minimal CSS only. Empty/error states only after functions. "
+                    "Must include at least one onclick= or addEventListener. "
+                    "Never truncate mid-CSS. Finish with </html>."
+                )
                 result = worker.run(
-                    task_full
-                    + "\n\nRETRY (mandatory): Output ONE complete HTML file. "
-                    "Must start with <!DOCTYPE html> and end with </html>. "
-                    "No truncation, no markdown fences only — full document.",
+                    task_full + "\n\n" + hint,
                     text,
                     self._state.distilled_requirements,
                     mem,
@@ -538,17 +550,23 @@ def _definition_of_done(user_text: str, requirements: list[str]) -> str:
     reqs = [r for r in (requirements or []) if r and not str(r).startswith("Flex/")][:6]
     lines = [
         "=== DEFINITION OF DONE (mandatory) ===",
-        "Deliver a COMPLETE artifact for the user task — not a partial draft.",
+        "DONE means functional complete — not 'draft exists' or 'pretty CSS only'.",
+        (
+            "ORDER: (1) structure (2) core functions/interactions "
+            "(3) error/empty states (4) CSS last (~30% max)."
+        ),
         "If HTML/page/landing/UI is required:",
-        "  - Single complete document: <!DOCTYPE html> … </html>",
-        "  - No mid-file truncation; close all opened tags",
-        "  - Prefer one self-contained file (inline CSS/JS ok)",
+        "  [ ] Single complete document: <!DOCTYPE html> … </html>",
+        "  [ ] No mid-file truncation; close all tags/braces",
+        "  [ ] At least one working interaction (onclick / addEventListener / form)",
+        "  [ ] Empty/error states only AFTER core functions, never instead of them",
+        "  [ ] Prefer minimal CSS over incomplete JS",
         "If code is required: runnable/readable end-to-end, not stubs-only.",
-        "Mark incomplete work explicitly only if impossible within limits.",
+        "If budget is tight: drop decoration, keep structure + functions + </html>.",
     ]
     if reqs:
-        lines.append("Requirements to satisfy:")
-        lines.extend(f"  - {r}" for r in reqs)
+        lines.append("Requirements (MUSS):")
+        lines.extend(f"  [ ] {r}" for r in reqs)
     if (user_text or "").strip():
         lines.append(f"User task: {(user_text or '').strip()[:400]}")
     lines.append("=== END DoD ===")
@@ -595,6 +613,33 @@ def _html_complete(body: str) -> bool:
     return not (open_tags > 5 and close_tags < open_tags * 0.85)
 
 
+def _has_interaction(body: str) -> bool:
+    """Heuristic: at least one client-side interaction hook."""
+    low = (body or "").lower()
+    keys = (
+        "onclick=",
+        "onchange=",
+        "onsubmit=",
+        "addEventListener",
+        "addeventlistener",
+        "oninput=",
+        "ontoggle=",
+    )
+    return any(k.lower() in low for k in keys)
+
+
+def _css_heavy_without_js(body: str) -> bool:
+    """True if lots of CSS but almost no interaction/JS — priority inverted."""
+    low = (body or "").lower()
+    style_n = low.count("<style") + low.count("stylesheet")
+    css_blocks = low.count("{")
+    js = low.count("<script") + low.count("function ") + low.count("=>")
+    interact = _has_interaction(body)
+    return bool(
+        style_n + (1 if css_blocks > 15 else 0) >= 1 and css_blocks > 20 and not interact and js < 2
+    )
+
+
 def _validate_worker_draft(body: str, *, user_text: str = "", task: str = "") -> dict:
     """Per-draft validation gate (P0)."""
     s = (body or "").strip()
@@ -612,6 +657,29 @@ def _validate_worker_draft(body: str, *, user_text: str = "", task: str = "") ->
             issues.append("incomplete_html")
         if "</html>" not in s.lower():
             issues.append("missing_html_close")
+        # Soft preference: interactive UIs should not be CSS-only shells
+        if _html_complete(s) and not _has_interaction(s):
+            issues.append("no_interaction")
+            # do not hard-fail pure static pages unless task asks interactive
+            blob = f"{user_text} {task}".lower()
+            if any(
+                k in blob
+                for k in (
+                    "interact",
+                    "click",
+                    "demo",
+                    "nav",
+                    "todo",
+                    "filter",
+                    "state",
+                    "klick",
+                    "dom",
+                )
+            ):
+                ok = False
+                issues.append("missing_required_interaction")
+        if _css_heavy_without_js(s):
+            issues.append("css_before_functions")
     if s.rstrip().endswith(("...", "…")) and len(s) > 80:
         ok = False
         issues.append("truncated_ellipsis")
@@ -620,10 +688,9 @@ def _validate_worker_draft(body: str, *, user_text: str = "", task: str = "") ->
         "issues": issues,
         "chars": len(s),
         "html_complete": (
-            _html_complete(s)
-            if ("<html" in s.lower() or "<!doctype" in s.lower())
-            else None
+            _html_complete(s) if ("<html" in s.lower() or "<!doctype" in s.lower()) else None
         ),
+        "has_interaction": _has_interaction(s),
     }
 
 
