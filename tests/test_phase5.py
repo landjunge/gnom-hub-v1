@@ -56,6 +56,39 @@ def test_plugin_echo_loads(tmp_path: Path):
     assert out["echo"] == "hi"
 
 
+def test_shell_allowlist():
+    from gnom_hub.computer_use.action import ActionModule
+
+    a = ActionModule(god_mode_enabled=False)
+    r = a.run_shell("pwd")
+    assert r.dry_run is True
+    a.set_god_mode(True)
+    r2 = a.run_shell("pwd")
+    assert r2.dry_run is False
+    assert r2.ok is True
+    bad = a.run_shell("rm -rf /")
+    assert bad.ok is False
+    pipe = a.run_shell("ls | wc")
+    assert pipe.ok is False
+
+
+def test_vector_in_pipeline_context(tmp_path: Path):
+    from gnom_hub.memory.facade import MemoryFacade
+    from gnom_hub.memory.hot import HotMemory
+    from gnom_hub.memory.vector_store import VectorStore
+    from gnom_hub.memory.warm import WarmMemory
+
+    hot = HotMemory(tmp_path, auto_load=False)
+    warm = WarmMemory(tmp_path)
+    vec = VectorStore(tmp_path)
+    vec.add("unique xylophone constellation recipe")
+    fac = MemoryFacade(hot, warm, vec)
+    fac.set_query_hint("xylophone constellation")
+    ctx = fac.pipeline_context()
+    assert "Vector recall" in ctx
+    assert "xylophone" in ctx.lower()
+
+
 def test_api_phase5(tmp_path, monkeypatch):
     monkeypatch.setattr(hub_mod, "project_root", lambda: tmp_path)
     monkeypatch.setattr(hub_mod, "_HUB", None)

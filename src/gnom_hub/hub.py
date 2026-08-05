@@ -41,10 +41,10 @@ class Hub:
         self.llm = LLMManager(keys=self.keys)
         self.hot = HotMemory(self.root)
         self.warm = WarmMemory(self.root)
-        self.memory = MemoryFacade(self.hot, self.warm)
         self.workspace = WorkspaceStore(self.root)
         self.cold = ColdArchive(self.root)
         self.vectors = VectorStore(self.root)
+        self.memory = MemoryFacade(self.hot, self.warm, self.vectors)
         self.god_mode = god_mode_from_env()
         self.computer = ComputerUseKit(self.root, god_mode=self.god_mode.enabled)
         self.tools = ToolRegistry()
@@ -382,6 +382,7 @@ class Hub:
 
     def chat(self, text: str) -> dict[str, Any]:
         self.last_error = None
+        self.memory.set_query_hint(text)
         self.pipeline.start(text)
         if self.pipeline.state.error:
             self.last_error = self.pipeline.state.error
@@ -436,9 +437,16 @@ class Hub:
         }
 
     def reset_session(
-        self, *, keep_agents: bool = True, clear_warm: bool = False
+        self,
+        *,
+        keep_agents: bool = True,
+        clear_warm: bool = False,
+        archive: bool = True,
     ) -> dict[str, Any]:
-        """Clear HOT session. WARM kept unless clear_warm=True."""
+        """Clear HOT session. Optionally archive to COLD first. WARM kept unless clear_warm."""
+        archived = None
+        if archive and (self.hot.session.get("messages") or self.hot.session.get("facts")):
+            archived = self.archive_cold(label="auto-reset")
         self.hot.clear(save=True)
         if clear_warm:
             self.warm.clear()
@@ -447,7 +455,10 @@ class Hub:
             self.agents.on_start()
         self.pipeline = self._new_pipeline()
         self.last_error = None
-        return self.snapshot()
+        snap = self.snapshot()
+        if archived:
+            snap["archived"] = archived
+        return snap
 
     def telegram_start(self) -> dict[str, Any]:
         ok = self.telegram.start()

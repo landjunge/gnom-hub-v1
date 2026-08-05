@@ -13,11 +13,16 @@
       <div class="top-meta">
         <span id="llm-badge" class="llm-badge" title="LLM key status">LLM: —</span>
         <span id="mem-badge" class="mem-badge" title="HOT memory">Mem: —</span>
+        <span id="vec-badge" class="vec-badge" title="Vector store">Vec: —</span>
+        <span id="god-badge" class="god-badge" title="God-Mode">God: off</span>
         <span id="stage-badge" class="stage-badge" title="Pipeline stage">idle</span>
         <button type="button" id="btn-help" class="btn-help" data-tooltip-id="help" title="Help">
           Help
         </button>
-        <button type="button" id="btn-reset" class="btn-reset" data-tooltip-id="reset" title="Reset session">
+        <button type="button" id="btn-archive" class="btn-archive" data-tooltip-id="archive" title="Archive HOT to COLD">
+          Archive
+        </button>
+        <button type="button" id="btn-reset" class="btn-reset" data-tooltip-id="reset" title="Reset session (archives HOT first)">
           Reset
         </button>
         <button type="button" id="btn-save" class="btn-save" data-tooltip-id="save" title="Save">

@@ -63,7 +63,8 @@ html, body {
 
 .btn-save,
 .btn-help,
-.btn-reset {
+.btn-reset,
+.btn-archive {
   width: 72px;
   height: 28px;
   border: 1px solid var(--border);
@@ -76,8 +77,14 @@ html, body {
 
 .btn-save:hover,
 .btn-help:hover,
-.btn-reset:hover {
+.btn-reset:hover,
+.btn-archive:hover {
   background: #495057;
+}
+
+.btn-archive {
+  border-color: #364fc7;
+  color: #91a7ff;
 }
 
 .btn-reset {
@@ -93,21 +100,29 @@ html, body {
 
 .stage-badge,
 .llm-badge,
-.mem-badge {
-  min-width: 72px;
-  max-width: 220px;
+.mem-badge,
+.vec-badge,
+.god-badge {
+  min-width: 64px;
+  max-width: 200px;
   height: 28px;
-  padding: 0 10px;
+  padding: 0 8px;
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--bg-panel);
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 11px;
   line-height: 26px;
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.god-badge.on {
+  color: #ffa94d;
+  border-color: #e8590c;
+  background: #3d2a14;
 }
 
 .stage-badge {

@@ -137,6 +137,9 @@
     stageBadge: document.getElementById("stage-badge"),
     llmBadge: document.getElementById("llm-badge"),
     memBadge: document.getElementById("mem-badge"),
+    vecBadge: document.getElementById("vec-badge"),
+    godBadge: document.getElementById("god-badge"),
+    btnArchive: document.getElementById("btn-archive"),
   };
 
   let activeStage = "idle";
@@ -306,6 +309,16 @@
           : "";
       els.memBadge.textContent = "Mem: " + short + nodes;
       els.memBadge.title = snap.memory_summary;
+    }
+    if (els.vecBadge && snap.vectors) {
+      els.vecBadge.textContent = "Vec: " + (snap.vectors.count || 0);
+      const coldN = snap.cold && snap.cold.count != null ? snap.cold.count : "—";
+      els.vecBadge.title = "Vector docs + COLD archives=" + coldN;
+    }
+    if (els.godBadge) {
+      const on = !!(snap.god_mode && snap.god_mode.enabled);
+      els.godBadge.textContent = on ? "God: ON" : "God: off";
+      els.godBadge.classList.toggle("on", on);
     }
 
     if (snap.last_error) {
@@ -529,7 +542,11 @@
   }
 
   async function onReset() {
-    if (!window.confirm("Reset HOT session and pipeline? Agent toggles stay.")) {
+    if (
+      !window.confirm(
+        "Reset HOT session? Current HOT is archived to COLD first. WARM facts stay."
+      )
+    ) {
       return;
     }
     try {
@@ -540,10 +557,21 @@
       const strip = document.getElementById("memory-strip");
       if (strip) strip.hidden = true;
       hideClarify();
-      appendChat("system", "Session reset.");
+      appendChat("system", "Session reset (HOT archived to COLD if non-empty).");
       toast("Session reset", "ok");
     } catch (err) {
       appendChat("system", "Reset failed: " + err.message);
+    }
+  }
+
+  async function onArchive() {
+    try {
+      const data = await api("POST", "/api/cold/archive", { label: "manual" });
+      toast("Archived to COLD: " + (data.archive && data.archive.id), "ok");
+      const snap = await api("GET", "/api/state");
+      applySnapshot(snap);
+    } catch (err) {
+      toast("Archive failed: " + err.message, "error");
     }
   }
 
@@ -616,6 +644,7 @@
     els.btnSave.addEventListener("click", onSave);
     if (els.btnHelp) els.btnHelp.addEventListener("click", onHelp);
     if (els.btnReset) els.btnReset.addEventListener("click", onReset);
+    if (els.btnArchive) els.btnArchive.addEventListener("click", onArchive);
 
     document.querySelectorAll(".btn-clarify").forEach(function (btn) {
       btn.addEventListener("click", function () {

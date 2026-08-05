@@ -76,6 +76,10 @@ class ActionClickBody(BaseModel):
     y: int
 
 
+class ShellBody(BaseModel):
+    cmd: str = Field(min_length=1, max_length=200)
+
+
 def create_app() -> FastAPI:
     app = FastAPI(title="Gnom-Hub v1", version="0.3.0")
 
@@ -135,8 +139,11 @@ def create_app() -> FastAPI:
         return get_hub().save()
 
     @app.post("/api/reset")
-    def reset(clear_warm: bool = Query(False)) -> dict[str, Any]:
-        return get_hub().reset_session(keep_agents=True, clear_warm=clear_warm)
+    def reset(
+        clear_warm: bool = Query(False),
+        archive: bool = Query(True),
+    ) -> dict[str, Any]:
+        return get_hub().reset_session(keep_agents=True, clear_warm=clear_warm, archive=archive)
 
     @app.get("/api/help")
     def help_() -> dict[str, Any]:
@@ -232,6 +239,17 @@ def create_app() -> FastAPI:
     def computer_click(body: ActionClickBody) -> dict[str, Any]:
         r = get_hub().computer.action.click(body.x, body.y)
         return {"ok": r.ok, "dry_run": r.dry_run, "detail": r.detail}
+
+    @app.post("/api/computer-use/shell")
+    def computer_shell(body: ShellBody) -> dict[str, Any]:
+        r = get_hub().computer.action.run_shell(body.cmd)
+        return {
+            "ok": r.ok,
+            "dry_run": r.dry_run,
+            "detail": r.detail,
+            "stdout": r.stdout,
+            "stderr": r.stderr,
+        }
 
     @app.get("/api/plugins")
     def plugins() -> dict[str, Any]:

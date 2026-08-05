@@ -15,6 +15,7 @@ Local-first multi-agent system.
 | 0.x–1.6 | Core hub, UI, API, quality/CI | done |
 | 2.0 | WARM + workspace + Telegram | done |
 | **3.0** | COLD, vector, God-Mode, computer-use, plugins/MCP | **done** |
+| **3.1** | Vector recall in pipeline, Archive UI, safe God-Mode shell | **done** |
 
 Docs: [`docs/PRE_PLAN.md`](docs/PRE_PLAN.md) · [`docs/V1_SCOPE.md`](docs/V1_SCOPE.md) · [`docs/ROADMAP.md`](docs/ROADMAP.md)
 
@@ -79,6 +80,7 @@ source .venv/bin/activate
 | GET/POST | `/api/god-mode` | Explicit elevated mode |
 | POST | `/api/computer-use/inspect` | Capture+vision+OCR kit |
 | POST | `/api/computer-use/click` | Click (dry-run unless God-Mode) |
+| POST | `/api/computer-use/shell` | Allowlisted cmds only when God-Mode on |
 | GET | `/api/plugins` | Loaded plugins + tools |
 | GET | `/api/mcp/tools` | MCP-style tools/list |
 | POST | `/api/tools/call` | Invoke tool by name |
@@ -103,7 +105,12 @@ plugins/echo/          # demo plugin (echo tool)
 
 ### God-Mode
 Off by default. Enable via `POST /api/god-mode {"enabled":true,"reason":"..."}`.  
-Computer-Use **actions** stay dry-run until enabled; shell stays dry-run even then (safety).
+UI shows **God: on/off**. Clicks need God-Mode; shell only allowlisted binaries  
+(`ls pwd date uname whoami echo cat head tail wc df du`) — no pipes/metacharacters.
+
+### Reset / Archive
+**Archive** button → COLD snapshot of current HOT.  
+**Reset** auto-archives non-empty HOT to COLD, then clears HOT (WARM kept).
 
 ### Vector lite
 No heavy deps — bag-of-words + cosine. Pipeline requirements/worker outputs are auto-indexed.

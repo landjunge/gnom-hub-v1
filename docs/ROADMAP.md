@@ -21,5 +21,6 @@
 | 1.6 | Quality: smoke_e2e, quality_check.sh, empty hints, CI smoke | **done** |
 | 2.0 | WARM lite (durable facts) + dual workspace + optional Telegram | **done** |
 | 3.0 | COLD archive, vector lite, God-Mode, Computer-Use kit, plugins/MCP-lite | **done** |
+| 3.1 | Vector→pipeline, auto-COLD on reset, UI badges, allowlisted shell | **done** |
 
 Heavy optional still (real OCR/pyautogui/embeddings models): install extras yourself if needed.
