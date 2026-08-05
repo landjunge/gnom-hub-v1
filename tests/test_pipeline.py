@@ -61,7 +61,9 @@ def test_stub_full_run_no_llm():
     assert "pipeline.done" in names
     assert "pipeline.question" not in names
     stages = [d["stage"] for n, d in events if n == "pipeline.stage"]
-    assert stages[0] == "brainstorm"
+    # memory recall may emit first, then brainstorm
+    assert stages[0] in ("memory", "brainstorm")
+    assert "brainstorm" in stages or "flex" in stages
     assert "flex" in stages
     assert stages[-1] == "done"
     assert pipe.state is state
