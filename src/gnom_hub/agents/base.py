@@ -86,7 +86,13 @@ class BaseAgent:
             kwargs["model"] = self.state.model
         if self.state.api_key:
             kwargs["api_key"] = self.state.api_key
-        role_system = (self.state.system_prompt or "").strip() or system
+        # Code role prompt is always the base. Persisted tuning may *append*,
+        # never fully replace — old agents.json strings were wiping Brainstorm rules.
+        custom = (self.state.system_prompt or "").strip()
+        if custom and custom != system.strip():
+            role_system = f"{system.strip()}\n\n# Extra agent tuning (user):\n{custom}"
+        else:
+            role_system = system
         sys_full = f"{HUB_IDENTITY}\n\n{role_system}".strip()
         messages: list[LLMMessage] = [LLMMessage(role="system", content=sys_full)]
         for item in (prior or [])[-16:]:

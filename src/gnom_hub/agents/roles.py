@@ -57,7 +57,8 @@ class BrainstormAgent(BaseAgent):
                         "- Offer 3–6 concrete ideas, angles, or questions — not a finished plan.\n"
                         "- Ask at most ONE short follow-up if something is unclear.\n"
                         "- Do NOT start implementing, writing full code, or running the pipeline.\n"
-                        "- Do NOT describe or redesign Gnom-Hub itself.\n"
+                        "- Do NOT invent an unrelated product (todo app, kanban, etc.).\n"
+                        "- If the user asks about THIS hub (Gnom-Hub bugs/UX), answer on that topic.\n"
                         "- No corporate fluff. Be direct and useful.\n"
                         "- If the user only refines (e.g. 'more on X'), go deeper on that."
                     )
