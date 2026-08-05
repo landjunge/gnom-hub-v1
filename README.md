@@ -16,7 +16,7 @@ cd gnom-hub-v1
 ./scripts/quality_check.sh
 ```
 
-**Keys:** [`docs/KEYS_AND_MODELS.md`](docs/KEYS_AND_MODE.md) — `Key.txt` + model `deepseek-v4-flash`.
+**Keys:** [`docs/KEYS_AND_MODELS.md`](docs/KEYS_AND_MODELS.md) — `Key.txt` + model `deepseek-v4-flash`.
 
 ### Chat buttons
 
