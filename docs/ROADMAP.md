@@ -70,7 +70,16 @@
 | Save worker result to temp workspace (WS) | **done** |
 | Chat log timestamps + structured persist | **done** |
 
-## Post-V1.7 (optional)
+## V1.8.0
+
+| Item | Status |
+|------|--------|
+| Copy all worker results (Box 3 toolbar) | **done** |
+| Diff first two workers (line LCS overlay) | **done** |
+| Job duration timer in Box 3 header | **done** |
+| Save worker result to permanent workspace (↑) | **done** |
+
+## Post-V1.8 (optional)
 
 | Item | Notes |
 |------|--------|

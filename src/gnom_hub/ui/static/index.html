@@ -4,12 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=58" />
+  <link rel="stylesheet" href="/static/app.css?v=59" />
 </head>
 <body>
   <div id="app">
     <header class="top-bar">
-      <h1 class="app-title">Gnom-Hub <span id="ver-badge" class="ver-badge">v1.7</span></h1>
+      <h1 class="app-title">Gnom-Hub <span id="ver-badge" class="ver-badge">v1.8</span></h1>
       <div class="top-meta">
         <span id="llm-badge" class="llm-badge" title="LLM key status">LLM: —</span>
         <span id="mem-badge" class="mem-badge" title="HOT memory">Mem: —</span>
@@ -100,7 +100,18 @@
       </div>
 
       <div id="box3" class="box box-worker" data-tooltip-id="box3">
-        <div class="box-header">Worker results · W1 / W2</div>
+        <div class="box-header box3-header">
+          <span class="box3-header-title">Worker results · W1 / W2</span>
+          <span class="box3-toolbar">
+            <span id="job-timer" class="job-timer" hidden title="Job duration">0.0s</span>
+            <button type="button" id="btn-copy-all" class="box3-tool-btn" title="Copy all worker results">
+              Copy all
+            </button>
+            <button type="button" id="btn-diff" class="box3-tool-btn" title="Diff first two worker results" disabled>
+              Diff
+            </button>
+          </span>
+        </div>
         <div id="box3-content" class="box-body box3-dynamic">
           <p class="muted">Worker 1 &amp; 2 results appear here (text + HTML preview).</p>
           <p class="muted empty-hint">(Empty — send a chat to fill both worker panels.)</p>
@@ -131,7 +142,7 @@
           Cancel
         </button>
       </div>
-      <p class="kbd-hint">Enter = Send · Ctrl/⌘+Enter = Execute · Ctrl/⌘+S = Save · Esc = Cancel / close FS · Auto-save after Execute</p>
+      <p class="kbd-hint">Enter = Send · Ctrl/⌘+Enter = Execute · Ctrl/⌘+S = Save · Esc = Cancel / close FS · Box3: Copy all / Diff · Auto-save</p>
     </section>
   </div>
 
@@ -293,6 +304,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=58"></script>
+  <script src="/static/app.js?v=59"></script>
 </body>
 </html>

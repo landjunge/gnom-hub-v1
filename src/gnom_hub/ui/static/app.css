@@ -544,6 +544,137 @@ html, body {
   background: #2c2e33;
 }
 
+.box3-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.box3-header-title {
+  white-space: nowrap;
+}
+
+.box3-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.box3-tool-btn {
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: #343a40;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.box3-tool-btn:hover:not(:disabled) {
+  color: var(--text);
+  border-color: #868e96;
+}
+
+.box3-tool-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.job-timer {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: #ffd43b;
+  min-width: 3.2em;
+  text-align: right;
+}
+
+.job-timer.is-running {
+  color: #69db7c;
+}
+
+.job-timer.is-done {
+  color: var(--text-muted);
+}
+
+/* Diff overlay */
+.diff-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9100;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  gap: 6px;
+}
+
+.diff-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px;
+  background: #2c2e33;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  flex: 0 0 auto;
+}
+
+.diff-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.diff-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  background: #1e1f23;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.diff-line {
+  display: block;
+  padding: 0 4px;
+  border-left: 3px solid transparent;
+}
+
+.diff-line.diff-same {
+  color: var(--text-muted);
+}
+
+.diff-line.diff-add {
+  color: #69db7c;
+  background: rgba(105, 219, 124, 0.08);
+  border-left-color: #69db7c;
+}
+
+.diff-line.diff-del {
+  color: #ff8787;
+  background: rgba(255, 135, 135, 0.08);
+  border-left-color: #ff8787;
+}
+
+.diff-line.diff-meta {
+  color: #74c0fc;
+  margin: 6px 0 2px;
+  font-weight: 600;
+}
+
 .box-arounder .box-header { color: #74c0fc; }
 .box-brainstorm .box-header { color: var(--c-brainstorm); }
 .box-worker .box-header { color: var(--c-worker1); }

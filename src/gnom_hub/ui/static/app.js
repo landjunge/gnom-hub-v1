@@ -109,6 +109,10 @@
   let listening = false;
   let lastSpokenKey = "";
   let currentJobId = null;
+  let lastWorkerOutputs = [];
+  let jobTimerStart = null;
+  let jobTimerInterval = null;
+  let lastJobElapsedSec = 0;
   const CHAT_STORAGE_KEY = "gnom-hub-chat-log-v1";
 
   function statusLabel(agent) {
@@ -1291,8 +1295,58 @@
 
   let chatBusy = false;
 
+  function formatDuration(sec) {
+    if (sec < 60) return sec.toFixed(1) + "s";
+    const m = Math.floor(sec / 60);
+    const s = (sec % 60).toFixed(1);
+    return m + "m " + s + "s";
+  }
+
+  function startJobTimer() {
+    jobTimerStart = Date.now();
+    lastJobElapsedSec = 0;
+    const el = document.getElementById("job-timer");
+    if (el) {
+      el.hidden = false;
+      el.classList.remove("is-done");
+      el.classList.add("is-running");
+      el.textContent = "0.0s";
+    }
+    if (jobTimerInterval) clearInterval(jobTimerInterval);
+    jobTimerInterval = setInterval(function () {
+      if (!jobTimerStart) return;
+      const sec = (Date.now() - jobTimerStart) / 1000;
+      const t = document.getElementById("job-timer");
+      if (t) t.textContent = formatDuration(sec);
+    }, 100);
+  }
+
+  function stopJobTimer() {
+    if (jobTimerInterval) {
+      clearInterval(jobTimerInterval);
+      jobTimerInterval = null;
+    }
+    let sec = 0;
+    if (jobTimerStart) {
+      sec = (Date.now() - jobTimerStart) / 1000;
+      lastJobElapsedSec = sec;
+    }
+    jobTimerStart = null;
+    const el = document.getElementById("job-timer");
+    if (el) {
+      el.hidden = false;
+      el.classList.remove("is-running");
+      el.classList.add("is-done");
+      el.textContent = formatDuration(sec);
+    }
+    return sec;
+  }
+
   function setChatBusy(busy) {
-    chatBusy = !!busy;
+    const next = !!busy;
+    if (next && !chatBusy) startJobTimer();
+    if (!next && chatBusy) stopJobTimer();
+    chatBusy = next;
     if (els.btnSend) {
       els.btnSend.disabled = chatBusy;
       els.btnSend.textContent = chatBusy ? "…" : "Send";
@@ -1541,8 +1595,14 @@
       applySnapshot(snap);
       const stage = (snap.pipeline && snap.pipeline.stage) || "";
       if (stage === "done") {
-        appendChat("system", "Execute done — see Box 3.");
-        toast("Execute done", "ok");
+        const dur =
+          lastJobElapsedSec ||
+          (jobTimerStart ? (Date.now() - jobTimerStart) / 1000 : 0);
+        appendChat(
+          "system",
+          "Execute done in " + formatDuration(dur) + " — see Box 3."
+        );
+        toast("Execute done · " + formatDuration(dur), "ok");
         focusBox3();
         try {
           await api("POST", "/api/save");
@@ -1841,6 +1901,13 @@
    * Box 3: dynamic Worker 1 / Worker 2 panels.
    * HTML → sandboxed Preview + Source; plain text → readable pre.
    */
+  function updateBox3Toolbar() {
+    const btnDiff = document.getElementById("btn-diff");
+    const btnCopy = document.getElementById("btn-copy-all");
+    if (btnDiff) btnDiff.disabled = lastWorkerOutputs.length < 2;
+    if (btnCopy) btnCopy.disabled = lastWorkerOutputs.length < 1;
+  }
+
   function renderBox3Workers(pipeline) {
     const body = document.getElementById("box3-content");
     if (!body) return;
@@ -1849,6 +1916,9 @@
     body.classList.add("box3-dynamic");
 
     const outputs = normalizeWorkerOutputs(pipeline);
+    lastWorkerOutputs = outputs;
+    updateBox3Toolbar();
+
     if (!outputs.length) {
       const empty = document.createElement("p");
       empty.className = "muted empty-hint";
@@ -1870,6 +1940,175 @@
       body.appendChild(buildWorkerPanel(out, idx));
     });
     if (canvas) body.appendChild(canvas);
+  }
+
+  function copyAllWorkerResults() {
+    if (!lastWorkerOutputs.length) {
+      toast("No worker results to copy", "info");
+      return;
+    }
+    const parts = lastWorkerOutputs.map(function (o, i) {
+      const label = o.name || "Worker " + (i + 1);
+      return "=== " + label + " ===\n" + (o.result || "");
+    });
+    const text = parts.join("\n\n");
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () {
+          toast("Copied all (" + text.length + " chars)", "ok");
+        },
+        function () {
+          toast("Copy failed", "error");
+        }
+      );
+    } else {
+      toast("Clipboard not available", "error");
+    }
+  }
+
+  /**
+   * Simple line LCS unified-style diff (capped for large texts).
+   * Returns array of {type: same|add|del|meta, text}.
+   */
+  function computeLineDiff(textA, textB) {
+    const MAX = 400;
+    let a = String(textA || "").split("\n");
+    let b = String(textB || "").split("\n");
+    let truncated = false;
+    if (a.length > MAX) {
+      a = a.slice(0, MAX);
+      truncated = true;
+    }
+    if (b.length > MAX) {
+      b = b.slice(0, MAX);
+      truncated = true;
+    }
+    const n = a.length;
+    const m = b.length;
+    // DP LCS lengths
+    const dp = [];
+    for (let i = 0; i <= n; i++) {
+      dp[i] = new Array(m + 1).fill(0);
+    }
+    for (let i = n - 1; i >= 0; i--) {
+      for (let j = m - 1; j >= 0; j--) {
+        if (a[i] === b[j]) dp[i][j] = dp[i + 1][j + 1] + 1;
+        else dp[i][j] = Math.max(dp[i + 1][j], dp[i][j + 1]);
+      }
+    }
+    const lines = [];
+    let i = 0;
+    let j = 0;
+    while (i < n && j < m) {
+      if (a[i] === b[j]) {
+        lines.push({ type: "same", text: "  " + a[i] });
+        i++;
+        j++;
+      } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+        lines.push({ type: "del", text: "- " + a[i] });
+        i++;
+      } else {
+        lines.push({ type: "add", text: "+ " + b[j] });
+        j++;
+      }
+    }
+    while (i < n) {
+      lines.push({ type: "del", text: "- " + a[i] });
+      i++;
+    }
+    while (j < m) {
+      lines.push({ type: "add", text: "+ " + b[j] });
+      j++;
+    }
+    if (truncated) {
+      lines.push({
+        type: "meta",
+        text: "… truncated to first " + MAX + " lines per side",
+      });
+    }
+    return lines;
+  }
+
+  function closeDiffOverlay() {
+    const el = document.getElementById("diff-overlay");
+    if (el) el.remove();
+  }
+
+  function openWorkerDiff() {
+    if (lastWorkerOutputs.length < 2) {
+      toast("Need at least two worker results to diff", "info");
+      return;
+    }
+    closeDiffOverlay();
+    closeWorkerFullscreen();
+    const a = lastWorkerOutputs[0];
+    const b = lastWorkerOutputs[1];
+    const nameA = a.name || "Worker 1";
+    const nameB = b.name || "Worker 2";
+    const rows = computeLineDiff(a.result || "", b.result || "");
+
+    const overlay = document.createElement("div");
+    overlay.id = "diff-overlay";
+    overlay.className = "diff-overlay";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-label", "Worker diff");
+
+    const bar = document.createElement("div");
+    bar.className = "diff-bar";
+    const title = document.createElement("span");
+    title.className = "diff-title";
+    title.textContent = "Diff: " + nameA + " → " + nameB;
+    const actions = document.createElement("div");
+    actions.className = "worker-fs-actions";
+    const btnCopy = document.createElement("button");
+    btnCopy.type = "button";
+    btnCopy.className = "worker-mode-btn";
+    btnCopy.textContent = "Copy diff";
+    btnCopy.addEventListener("click", function () {
+      const text = rows.map(function (r) {
+        return r.text;
+      }).join("\n");
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(
+          function () {
+            toast("Diff copied", "ok");
+          },
+          function () {
+            toast("Copy failed", "error");
+          }
+        );
+      }
+    });
+    const btnClose = document.createElement("button");
+    btnClose.type = "button";
+    btnClose.className = "worker-mode-btn";
+    btnClose.textContent = "Close · Esc";
+    btnClose.addEventListener("click", closeDiffOverlay);
+    actions.appendChild(btnCopy);
+    actions.appendChild(btnClose);
+    bar.appendChild(title);
+    bar.appendChild(actions);
+
+    const body = document.createElement("div");
+    body.className = "diff-body";
+    const meta = document.createElement("span");
+    meta.className = "diff-line diff-meta";
+    meta.textContent =
+      "− " + nameA + "   + " + nameB + "   (" + rows.length + " lines)";
+    body.appendChild(meta);
+    rows.forEach(function (r) {
+      const span = document.createElement("span");
+      span.className = "diff-line diff-" + r.type;
+      span.textContent = r.text;
+      body.appendChild(span);
+    });
+
+    overlay.appendChild(bar);
+    overlay.appendChild(body);
+    overlay.addEventListener("click", function (ev) {
+      if (ev.target === overlay) closeDiffOverlay();
+    });
+    document.body.appendChild(overlay);
   }
 
   function normalizeWorkerOutputs(pipeline) {
@@ -1988,9 +2227,21 @@
     btnWs.title = "Save to temp workspace";
     btnWs.addEventListener("click", function (ev) {
       ev.stopPropagation();
-      saveWorkerToWorkspace(out, raw, html);
+      saveWorkerToWorkspace(out, raw, html, "temp");
     });
     mode.appendChild(btnWs);
+
+    // Save to permanent workspace (or temp + promote)
+    const btnPerm = document.createElement("button");
+    btnPerm.type = "button";
+    btnPerm.className = "worker-mode-btn perm-btn";
+    btnPerm.textContent = "↑";
+    btnPerm.title = "Save to permanent workspace";
+    btnPerm.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      saveWorkerToWorkspace(out, raw, html, "perm");
+    });
+    mode.appendChild(btnPerm);
 
     // Fullscreen preview (HTML) or source text
     const btnFs = document.createElement("button");
@@ -2115,8 +2366,9 @@
     toast("Opened in new tab", "ok");
   }
 
-  async function saveWorkerToWorkspace(out, raw, html) {
+  async function saveWorkerToWorkspace(out, raw, html, zone) {
     const isHtml = !!html;
+    const z = zone === "perm" ? "perm" : "temp";
     const name =
       workerFileBase(out) +
       "_" +
@@ -2125,12 +2377,16 @@
     const content = isHtml ? wrapHtmlDocument(html) : raw || "";
     try {
       const data = await api("POST", "/api/workspace/write", {
-        zone: "temp",
+        zone: z,
         name: name,
         content: content,
       });
-      toast("Saved to workspace: " + name, "ok");
-      appendChat("system", "Workspace ← " + name + (data.path ? " (" + data.path + ")" : ""));
+      const label = z === "perm" ? "perm" : "temp";
+      toast("Saved → " + label + ": " + name, "ok");
+      appendChat(
+        "system",
+        "Workspace[" + label + "] ← " + name + (data.path ? " (" + data.path + ")" : "")
+      );
     } catch (err) {
       toast("Workspace save failed: " + err.message, "error");
     }
@@ -2286,8 +2542,13 @@
       }
     });
     document.addEventListener("keydown", function (ev) {
-      // Esc: close fullscreen first, else cancel running job
+      // Esc: close overlays first, else cancel running job
       if (ev.key === "Escape") {
+        if (document.getElementById("diff-overlay")) {
+          ev.preventDefault();
+          closeDiffOverlay();
+          return;
+        }
         if (document.getElementById("worker-fs-overlay")) {
           ev.preventDefault();
           closeWorkerFullscreen();
@@ -2305,6 +2566,11 @@
         onSave();
       }
     });
+    const btnCopyAll = document.getElementById("btn-copy-all");
+    if (btnCopyAll) btnCopyAll.addEventListener("click", copyAllWorkerResults);
+    const btnDiff = document.getElementById("btn-diff");
+    if (btnDiff) btnDiff.addEventListener("click", openWorkerDiff);
+    updateBox3Toolbar();
     const btnClearChat = document.getElementById("btn-clear-chat");
     if (btnClearChat) btnClearChat.addEventListener("click", clearChatLog);
     els.btnSave.addEventListener("click", onSave);

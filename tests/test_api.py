@@ -26,11 +26,11 @@ def test_health(client: TestClient):
     assert r.status_code == 200
     assert r.json()["status"] == "ok"
     assert "version" in r.json()
-    assert r.json()["version"].startswith("1.7")
+    assert r.json()["version"].startswith("1.8")
 
 
-def test_ui_static_has_v16_v17_features(client: TestClient):
-    """Smoke: app.js ships 1.6 + 1.7 UI helpers."""
+def test_ui_static_has_v16_v18_features(client: TestClient):
+    """Smoke: app.js ships 1.6–1.8 UI helpers."""
     js = client.get("/static/app.js")
     assert js.status_code == 200
     body = js.text
@@ -40,6 +40,9 @@ def test_ui_static_has_v16_v17_features(client: TestClient):
     assert "openWorkerInTab" in body
     assert "saveWorkerToWorkspace" in body
     assert "formatChatTime" in body
+    assert "copyAllWorkerResults" in body
+    assert "computeLineDiff" in body
+    assert "startJobTimer" in body
     assert 'ev.key === "s"' in body or "ev.key === 's'" in body
 
     css = client.get("/static/app.css")
@@ -47,9 +50,17 @@ def test_ui_static_has_v16_v17_features(client: TestClient):
     assert "worker-fs-overlay" in css.text
     assert "box3-flash" in css.text
     assert "chat-ts" in css.text
+    assert "diff-overlay" in css.text
+    assert "job-timer" in css.text
+
+    html = client.get("/")
+    assert html.status_code == 200
+    assert "btn-copy-all" in html.text
+    assert "btn-diff" in html.text
+    assert "job-timer" in html.text
 
 
-def test_workspace_write_from_ui_contract(client: TestClient):
+def test_workspace_write_temp_and_perm(client: TestClient):
     r = client.post(
         "/api/workspace/write",
         json={
@@ -62,6 +73,20 @@ def test_workspace_write_from_ui_contract(client: TestClient):
     body = r.json()
     assert body.get("ok") is True
     assert "worker1_ui.html" in (body.get("path") or "")
+
+    p = client.post(
+        "/api/workspace/write",
+        json={
+            "zone": "perm",
+            "name": "worker1_keep.txt",
+            "content": "keep me",
+        },
+    )
+    assert p.status_code == 200
+    assert p.json().get("ok") is True
+    snap = client.get("/api/workspace").json()
+    perm_names = [f["name"] for f in snap.get("perm") or []]
+    assert "worker1_keep.txt" in perm_names
 
 
 def test_cancel_backups_presets_delete(client: TestClient):

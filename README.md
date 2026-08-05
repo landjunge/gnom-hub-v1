@@ -1,8 +1,8 @@
-# Gnom-Hub v1.7.0
+# Gnom-Hub v1.8.0
 
 Local multi-agent control hub: **brainstorm first**, then **Execute** workers.
 
-Desktop · USB-friendly · DeepSeek / Ollama · URL fetch · Export · Cancel · **Send+Exec** · Box 3 **Copy / DL / Tab / WS / Fullscreen** · **Ctrl+S** · chat **timestamps** · auto-save.
+Desktop · USB-friendly · DeepSeek / Ollama · **Copy all** · **Diff W1/W2** · **Job timer** · **↑ permanent workspace** · Box 3 full toolbar · timestamps · auto-save.
 
 > **Convention:** every meaningful change is **pushed to `main`** and this **README is updated** in the same commit.
 
@@ -15,10 +15,10 @@ Send / Enter              → Brainstorm (Box 2)
 Execute / Ctrl+Enter      → Distill → Flex → Workers → Quality → Memory
 Send+Exec                 → Brainstorm turn then Execute
 Ctrl/⌘+S                  → Save HOT + agents
-Esc                       → Close fullscreen, or cancel running job
+Esc                       → Close Diff/FS overlay, or cancel job
 ```
 
-After a successful **Execute**, HOT + agents are **auto-saved** and **Box 3** is focused (flash highlight).
+While a job runs, the **job timer** ticks in the Box 3 header. After Execute, duration is logged in chat and Box 3 flashes.
 
 ---
 
@@ -32,7 +32,7 @@ cd gnom-hub-v1
 ./scripts/quality_check.sh
 ```
 
-**http://127.0.0.1:8080/?v=58**
+**http://127.0.0.1:8080/?v=59**
 
 ---
 
@@ -45,19 +45,12 @@ cd gnom-hub-v1
 | **Send+Exec** | Send then Execute |
 | **Cancel** / Esc | Soft-cancel job |
 | **Ctrl/⌘+S** | Save HOT + agents |
-| **Copy** (Box 3) | Copy worker result |
-| **DL** (Box 3) | Download `.html` / `.txt` |
-| **Tab** (Box 3) | Open HTML in new browser tab |
-| **WS** (Box 3) | Save result to temp workspace |
-| **⛶** (Box 3) | Fullscreen preview (Esc closes) |
-| **Export** | Download last run as Markdown |
-| **Clear chat** | Wipe browser chat log (timestamps kept while open) |
-| **Mic** | Speech-to-text |
-| **Card click** | Tuning |
-| **Double-click** | Toggle agent |
+| **Copy all** (Box 3 header) | Copy every worker result |
+| **Diff** (Box 3 header) | Line diff first two workers |
+| **Copy / DL / Tab / WS / ↑** | Per-panel clipboard, download, new tab, temp WS, **perm** WS |
+| **⛶** | Fullscreen preview |
+| **Export** | Markdown download of last run |
 | **Workspace / Trace / System** | Files, log, keys/backup/presets |
-
-System → backups: **click name = download**, **× = delete**.
 
 ---
 
@@ -77,7 +70,7 @@ System → backups: **click name = download**, **× = delete**.
 
 ## API
 
-Uses existing workspace write. Prior: chat, execute, cancel, export, ollama, backups, presets, clean, checkpoint, trace, tools (`web_fetch`), save.
+No new endpoints in 1.8. Workspace write already supports `zone: "perm"`.
 
 ---
 
@@ -85,14 +78,11 @@ Uses existing workspace write. Prior: chat, execute, cancel, export, ollama, bac
 
 | Tag | Highlights |
 |-----|------------|
-| 1.0 | Pre-plan core |
-| 1.1 | Ollama + web_fetch |
-| 1.2 | Model list, auto URL, Export |
-| 1.3 | Cancel, chat persist, presets UI |
-| 1.4 | Backup download, keyboard, clear chat |
-| 1.5 | Send+Exec, Copy, auto-save, delete backup |
-| 1.6 | HTML download, fullscreen, Ctrl+S, focus Box 3 |
-| **1.7** | Open HTML in tab, save to workspace (WS), chat timestamps |
+| 1.0–1.4 | Core → cancel, keyboard, backups |
+| 1.5 | Send+Exec, Copy, auto-save |
+| 1.6 | DL, fullscreen, Ctrl+S, focus Box 3 |
+| 1.7 | Tab, WS temp, chat timestamps |
+| **1.8** | Copy all, Diff W1/W2, job timer, ↑ perm |
 
 ---
 

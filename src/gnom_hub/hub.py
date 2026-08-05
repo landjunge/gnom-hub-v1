@@ -535,7 +535,7 @@ class Hub:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "1.7.0",
+            "version": "1.8.0",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -914,7 +914,7 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "1.7.0",
+            "version": "1.8.0",
             "providers": self.llm.providers_snapshot(),
             "backups": self.list_backups()[:8],
         }
@@ -1203,14 +1203,14 @@ class Hub:
                 "3) Send+Execute = one shot after typing. "
                 "4) Ctrl/⌘+S = save HOT + agents. "
                 "5) Esc = close fullscreen or cancel job. "
-                "6) Box 3: Preview/Source, Copy, DL, Tab, WS (workspace), fullscreen. "
-                "7) Click card = tune; double-click = toggle (Memory locked). "
+                "6) Box 3: Copy/DL/Tab/WS/↑perm/fullscreen; toolbar Copy all + Diff. "
+                "7) Job timer shows duration while busy. "
                 "8) Auto-save + Box 3 focus after successful Execute."
             ),
-            "example": "Type idea → Send+Execute → Box 3 → Tab / WS / DL → Export.",
+            "example": "Type idea → Send+Execute → Box 3 Diff/Copy all → ↑ perm → Export.",
             "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",
             "keys": (
-                "Keyboard: Enter send · Ctrl/⌘+Enter execute · Ctrl/⌘+S save · Esc cancel/close FS. "
+                "Keyboard: Enter send · Ctrl/⌘+Enter execute · Ctrl/⌘+S save · Esc cancel/close overlay. "
                 "DEEPSEEK_API_KEY or Ollama. TELEGRAM optional."
             ),
         }
