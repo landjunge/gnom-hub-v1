@@ -344,6 +344,7 @@
 
   function applySnapshot(snap) {
     if (!snap) return;
+    applyUiPackExtras(snap);
     if (snap.agents) applyAgentsFromServer(snap.agents);
     const p = snap.pipeline || {};
     activeStage = p.stage || "idle";
@@ -1750,11 +1751,15 @@
   async function exportSessionPack() {
     try {
       var labelHint = window.prompt("Pack label (optional, Enter to skip):", "");
-      var q = "persist=1";
+      var body = {
+        persist: true,
+        ui_chat_log: collectChatLog().slice(-80),
+        ui_result_history: resultHistory.slice(0, HISTORY_MAX),
+      };
       if (labelHint !== null && String(labelHint).trim()) {
-        q += "&label=" + encodeURIComponent(String(labelHint).trim().slice(0, 80));
+        body.label = String(labelHint).trim().slice(0, 80);
       }
-      const data = await api("GET", "/api/session/pack?" + q);
+      const data = await api("POST", "/api/session/pack/export", body);
       const pack = data.pack || data;
       const blob = new Blob([JSON.stringify(pack, null, 2)], {
         type: "application/json",
@@ -1850,20 +1855,52 @@
   function persistChatLog() {
     if (!els.chatLog) return;
     try {
-      const lines = [];
-      els.chatLog.querySelectorAll(".chat-line").forEach(function (el) {
-        lines.push({
-          who: el.dataset.who || "system",
-          text: el.dataset.text || el.textContent || "",
-          ts: el.dataset.ts || "",
-        });
-      });
       sessionStorage.setItem(
         CHAT_STORAGE_KEY,
-        JSON.stringify(lines.slice(-80))
+        JSON.stringify(collectChatLog().slice(-80))
       );
     } catch (_e) {
       /* quota / private mode */
+    }
+  }
+
+  function collectChatLog() {
+    const lines = [];
+    if (!els.chatLog) return lines;
+    els.chatLog.querySelectorAll(".chat-line").forEach(function (el) {
+      lines.push({
+        who: el.dataset.who || "system",
+        text: el.dataset.text || el.textContent || "",
+        ts: el.dataset.ts || "",
+      });
+    });
+    return lines;
+  }
+
+  function applyUiPackExtras(snap) {
+    if (!snap) return;
+    if (Array.isArray(snap.ui_chat_log)) {
+      if (els.chatLog) {
+        els.chatLog.innerHTML = "";
+        snap.ui_chat_log.forEach(function (entry) {
+          if (typeof entry === "string") {
+            renderChatLine("system", entry, "");
+          } else {
+            renderChatLine(
+              entry.who || "system",
+              entry.text || "",
+              entry.ts || ""
+            );
+          }
+        });
+        els.chatLog.scrollTop = els.chatLog.scrollHeight;
+      }
+      persistChatLog();
+    }
+    if (Array.isArray(snap.ui_result_history)) {
+      resultHistory = snap.ui_result_history.slice(0, HISTORY_MAX);
+      saveResultHistory();
+      renderHistorySelect();
     }
   }
 

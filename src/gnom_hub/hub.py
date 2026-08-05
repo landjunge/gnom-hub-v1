@@ -546,7 +546,7 @@ class Hub:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "2.3.0",
+            "version": "2.4.0",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -911,7 +911,7 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "2.3.0",
+            "version": "2.4.0",
             "providers": self.llm.providers_snapshot(),
             "backups": self.list_backups()[:8],
             "packs": self.list_session_packs()[:12],
@@ -1194,13 +1194,87 @@ class Hub:
             },
         )
 
+    @staticmethod
+    def _sanitize_ui_chat_log(raw: Any) -> list[dict[str, str]]:
+        """Cap chat lines for pack portability."""
+        if not isinstance(raw, list):
+            return []
+        out: list[dict[str, str]] = []
+        for item in raw[-80:]:
+            if isinstance(item, str):
+                text = item.strip()[:4000]
+                if text:
+                    out.append({"who": "system", "text": text, "ts": ""})
+                continue
+            if not isinstance(item, dict):
+                continue
+            text = str(item.get("text") or "").strip()[:4000]
+            if not text:
+                continue
+            out.append(
+                {
+                    "who": str(item.get("who") or "system")[:40],
+                    "text": text,
+                    "ts": str(item.get("ts") or "")[:32],
+                }
+            )
+        return out
+
+    @staticmethod
+    def _sanitize_ui_result_history(raw: Any) -> list[dict[str, Any]]:
+        """Cap result-history entries for pack portability."""
+        if not isinstance(raw, list):
+            return []
+        out: list[dict[str, Any]] = []
+        for item in raw[:12]:
+            if not isinstance(item, dict):
+                continue
+            outputs: list[dict[str, Any]] = []
+            for o in (item.get("outputs") or [])[:8]:
+                if not isinstance(o, dict):
+                    continue
+                outputs.append(
+                    {
+                        "worker": str(o.get("worker") or "")[:40],
+                        "name": str(o.get("name") or "")[:80],
+                        "task": str(o.get("task") or "")[:2000],
+                        "result": str(o.get("result") or "")[:50000],
+                        "index": o.get("index"),
+                    }
+                )
+            turns: list[dict[str, str]] = []
+            for tr in (item.get("brainstorm_turns") or [])[:40]:
+                if not isinstance(tr, dict):
+                    continue
+                turns.append(
+                    {
+                        "role": str(tr.get("role") or "")[:40],
+                        "text": str(tr.get("text") or "")[:4000],
+                    }
+                )
+            out.append(
+                {
+                    "id": str(item.get("id") or "")[:40],
+                    "ts": str(item.get("ts") or "")[:40],
+                    "label": str(item.get("label") or "")[:80],
+                    "user_text": str(item.get("user_text") or "")[:4000],
+                    "brainstorm_notes": str(item.get("brainstorm_notes") or "")[:20000],
+                    "brainstorm_turns": turns,
+                    "can_reexec": bool(item.get("can_reexec")),
+                    "outputs": outputs,
+                }
+            )
+        return out
+
     def export_session_pack(
         self,
         label: str | None = None,
         *,
         persist: bool = True,
+        ui_chat_log: list | None = None,
+        ui_result_history: list | None = None,
     ) -> dict[str, Any]:
-        """Portable JSON pack: HOT + WARM + agents + pipeline (USB / machine hop)."""
+        """Portable JSON pack: HOT + WARM + agents + pipeline (+ optional UI state)."""
         from datetime import datetime, timezone
 
         self.hot.save()
@@ -1258,7 +1332,7 @@ class Hub:
         pack = {
             "format": "gnom-hub-session-pack",
             "format_version": 1,
-            "app_version": "2.3.0",
+            "app_version": "2.4.0",
             "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
             "label": pack_label,
             "hot": dict(self.hot.session),
@@ -1267,6 +1341,10 @@ class Hub:
             "agents": agents_payload.get("agents") or [],
             "pipeline": pipeline,
         }
+        if ui_chat_log is not None:
+            pack["ui_chat_log"] = self._sanitize_ui_chat_log(ui_chat_log)
+        if ui_result_history is not None:
+            pack["ui_result_history"] = self._sanitize_ui_result_history(ui_result_history)
         filename = f"gnom-hub-session-{stamp}.json"
         saved_path: str | None = None
         pruned: list[str] = []
@@ -1558,7 +1636,14 @@ class Hub:
             "session.pack.import",
             {"label": pack.get("label"), "stage": stage.value},
         )
-        return self.snapshot()
+        snap = self.snapshot()
+        if "ui_chat_log" in pack:
+            snap["ui_chat_log"] = self._sanitize_ui_chat_log(pack.get("ui_chat_log"))
+        if "ui_result_history" in pack:
+            snap["ui_result_history"] = self._sanitize_ui_result_history(
+                pack.get("ui_result_history")
+            )
+        return snap
 
     def restore_for_reexecute(
         self,
@@ -1617,7 +1702,7 @@ class Hub:
                 "5) Esc = close fullscreen or cancel job. "
                 "6) Box 3: Copy/DL/Tab/WS/↑perm/fullscreen; toolbar Copy all + Diff + History. "
                 "7) Cost badge + Compact density; job timer while busy. "
-                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (Pack ↓/↑, list Load/Ren/↓/Del, auto-pack, prune). 10) History Re-Exec. 11) Import from USB can store into data/packs/."
+                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (Pack ↓/↑ incl. chat+history, list Load/Ren/↓/Del). 10) History Re-Exec. 11) Import from USB can store into data/packs/."
             ),
             "example": "Type idea → Execute → Pack ↓ (USB) → History Re-Exec → Diff.",
             "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",

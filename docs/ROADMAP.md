@@ -134,7 +134,16 @@
 | Optional label prompt on Pack ↓ | **done** |
 | Version / docs 2.3 | **done** |
 
-## Post-V2.3 (optional)
+## V2.4.0
+
+| Item | Status |
+|------|--------|
+| Pack ui_chat_log + ui_result_history | **done** |
+| POST /api/session/pack/export with UI state | **done** |
+| Import restores chat + History in UI | **done** |
+| Version / docs 2.4 | **done** |
+
+## Post-V2.4 (optional)
 
 | Item | Notes |
 |------|--------|

@@ -1,8 +1,8 @@
-# Gnom-Hub v2.3.0
+# Gnom-Hub v2.4.0
 
 Local multi-agent control hub: **brainstorm first**, then **Execute** workers.
 
-Desktop · USB-friendly · DeepSeek / Ollama · **Session packs** · rename · prune · History Re-Exec · Cost · Diff · Workspace.
+Desktop · USB-friendly · DeepSeek / Ollama · **Session packs** (chat + history) · rename · prune · Re-Exec.
 
 > **Convention:** every meaningful change is **pushed to `main`** and this **README is updated** in the same commit.
 
@@ -13,10 +13,10 @@ Desktop · USB-friendly · DeepSeek / Ollama · **Session packs** · rename · p
 ```
 Send / Enter              → Brainstorm (Box 2)
 Execute / Ctrl+Enter      → Distill → Flex → Workers → Quality → Memory
-Pack ↓ (System)           → Optional label → save data/packs/ + download
-Pack list Load/Ren/↓/Del  → Import, rename label, download, delete
+Pack ↓ (System)           → HOT/WARM/agents/pipeline + chat log + result history
+Pack list Load/Ren/↓/Del  → Import (restores UI chat/history), rename, USB copy
 Pack ↑                    → Import JSON + store under data/packs/
-Auto-pack / Max packs     → Auto-save + prune oldest (GNOM_PACK_MAX)
+Auto-pack / Max packs     → Server auto-save (no browser UI state) + prune
 History → Re-Exec         → Re-run workers from a prior brainstorm
 ```
 
@@ -32,7 +32,7 @@ cd gnom-hub-v1
 ./scripts/quality_check.sh
 ```
 
-**http://127.0.0.1:8080/?v=65**
+**http://127.0.0.1:8080/?v=66**
 
 ---
 
@@ -40,11 +40,10 @@ cd gnom-hub-v1
 
 | Control | Action |
 |---------|--------|
-| **Pack ↓ / Pack ↑** | Save+download (optional label) / import+store |
+| **Pack ↓ / Pack ↑** | Full USB hop incl. chat + result history |
 | **Session packs list** | Load · Ren · ↓ · Del (+ mtime) |
-| **Auto-pack / Max packs** | Auto-save after Execute; prune oldest |
+| **Auto-pack / Max packs** | Server-side pack after Execute; prune |
 | **History… + Re-Exec** | Restore outputs or re-run workers |
-| **Cost / Compact / Diff** | Spend badge, density, W1↔W2 |
 
 ---
 
@@ -52,10 +51,10 @@ cd gnom-hub-v1
 
 | Tag | Highlights |
 |-----|------------|
-| 2.0 | Session pack JSON, History Re-Exec |
 | 2.1 | Packs on disk, list Load/Del, auto-pack |
 | 2.2 | List download, import→store, pack_max prune |
-| **2.3** | Rename pack label, mtime in list, label on export |
+| 2.3 | Rename label, mtime, label on export |
+| **2.4** | Pack includes chat log + result history |
 
 ---
 

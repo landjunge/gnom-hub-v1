@@ -108,6 +108,13 @@ class PackRenameBody(BaseModel):
     label: str = Field(min_length=1, max_length=80)
 
 
+class PackExportBody(BaseModel):
+    label: str | None = None
+    persist: bool = True
+    ui_chat_log: list[dict[str, Any]] | None = None
+    ui_result_history: list[dict[str, Any]] | None = None
+
+
 class ReexecuteBody(BaseModel):
     user_text: str = ""
     brainstorm_notes: str = ""
@@ -124,7 +131,7 @@ class ShellBody(BaseModel):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Gnom-Hub v1", version="2.3.0")
+    app = FastAPI(title="Gnom-Hub v1", version="2.4.0")
 
     @app.get("/api/health")
     def health() -> dict[str, Any]:
@@ -132,7 +139,7 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "service": "gnom-hub-v1",
-            "version": "2.3.0",
+            "version": "2.4.0",
             "telegram": hub.telegram.enabled,
             "telegram_running": hub.telegram.running,
             "llm": {
@@ -273,6 +280,16 @@ def create_app() -> FastAPI:
     ) -> dict[str, Any]:
         """Downloadable portable session pack (HOT + WARM + agents + pipeline)."""
         return get_hub().export_session_pack(label=label, persist=persist)
+
+    @app.post("/api/session/pack/export")
+    def session_pack_export_post(body: PackExportBody) -> dict[str, Any]:
+        """Export pack; optional UI chat log + result history for USB hop."""
+        return get_hub().export_session_pack(
+            label=body.label,
+            persist=body.persist,
+            ui_chat_log=body.ui_chat_log,
+            ui_result_history=body.ui_result_history,
+        )
 
     @app.post("/api/session/pack")
     def session_pack_import(body: SessionPackBody) -> dict[str, Any]:

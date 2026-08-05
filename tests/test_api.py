@@ -583,3 +583,55 @@ def test_pack_rename_and_list_mtime(client: TestClient):
     assert got["label"] == "USB-project-alpha"
     bad = client.patch(f"/api/session/packs/{name}", json={"label": "   "})
     assert bad.status_code == 422 or bad.status_code == 400
+
+
+def test_pack_ui_chat_and_history_roundtrip(client: TestClient):
+    client.post("/api/chat?sync=1", json={"text": "UI pack topic"})
+    client.post("/api/execute?sync=1")
+    exp = client.post(
+        "/api/session/pack/export",
+        json={
+            "persist": True,
+            "label": "with-ui",
+            "ui_chat_log": [
+                {"who": "user", "text": "hello", "ts": "12:00:00"},
+                {"who": "brainstorm", "text": "ideas…", "ts": "12:00:01"},
+            ],
+            "ui_result_history": [
+                {
+                    "id": "h1",
+                    "ts": "2026-08-05T10:00:00Z",
+                    "label": "UI pack topic · 1w",
+                    "user_text": "UI pack topic",
+                    "brainstorm_notes": "notes",
+                    "brainstorm_turns": [{"role": "user", "text": "UI pack topic"}],
+                    "can_reexec": True,
+                    "outputs": [
+                        {
+                            "worker": "worker1",
+                            "name": "W1",
+                            "task": "t",
+                            "result": "done",
+                            "index": 0,
+                        }
+                    ],
+                }
+            ],
+        },
+    )
+    assert exp.status_code == 200
+    pack = exp.json()["pack"]
+    assert pack["label"] == "with-ui"
+    assert len(pack["ui_chat_log"]) == 2
+    assert pack["ui_chat_log"][0]["who"] == "user"
+    assert pack["ui_result_history"][0]["id"] == "h1"
+    client.post("/api/reset")
+    client.post("/api/clean")
+    imp = client.post(
+        "/api/session/pack",
+        json={"pack": pack, "include_warm": True, "include_agents": True},
+    )
+    assert imp.status_code == 200
+    snap = imp.json()
+    assert snap["ui_chat_log"][0]["text"] == "hello"
+    assert snap["ui_result_history"][0]["outputs"][0]["result"] == "done"
