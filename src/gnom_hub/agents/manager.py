@@ -13,8 +13,13 @@ from gnom_hub.core.event_bus import EventBus
 
 STATUS_EVENT = "agent.status"
 
-# v1: only two workers (UI may show 8 slots later).
-_WORKER_IDS: tuple[AgentId, ...] = (AgentId.WORKER1, AgentId.WORKER2)
+# Plan: up to 4 workers (3/4 off by default so pipelines stay light)
+_WORKER_IDS: tuple[AgentId, ...] = (
+    AgentId.WORKER1,
+    AgentId.WORKER2,
+    AgentId.WORKER3,
+    AgentId.WORKER4,
+)
 
 
 class AgentManager:
@@ -33,6 +38,8 @@ class AgentManager:
             (AgentId.COORDINATOR, "Coordinator", "coordinator", True, True, None),
             (AgentId.WORKER1, "Worker 1", "worker", True, True, None),
             (AgentId.WORKER2, "Worker 2", "worker", True, True, None),
+            (AgentId.WORKER3, "Worker 3", "worker", False, True, None),
+            (AgentId.WORKER4, "Worker 4", "worker", False, True, None),
         ]
         agents: dict[AgentId, AgentState] = {}
         for agent_id, name, role, enabled, toggleable, preset in specs:
@@ -56,7 +63,7 @@ class AgentManager:
         return self._agents[self._resolve_id(agent_id)]
 
     def list_agents(self) -> list[AgentState]:
-        """Agents in stable card order."""
+        """Agents in stable card order (8 slots)."""
         order = [
             AgentId.BRAINSTORM,
             AgentId.MEMORY,
@@ -64,6 +71,8 @@ class AgentManager:
             AgentId.COORDINATOR,
             AgentId.WORKER1,
             AgentId.WORKER2,
+            AgentId.WORKER3,
+            AgentId.WORKER4,
         ]
         return [self._agents[aid] for aid in order]
 
@@ -95,12 +104,14 @@ class AgentManager:
         self._emit_status(flex)
 
     def enabled_workers(self) -> list[AgentState]:
-        """Enabled workers only (max 2 in v1)."""
+        """Enabled workers only (up to 4)."""
         return [self._agents[aid] for aid in _WORKER_IDS if self._agents[aid].enabled]
 
-    def enable_all(self) -> list[AgentState]:
-        """Turn every agent on (Memory already locked on). Emits status for flips."""
+    def enable_all(self, *, include_extra_workers: bool = False) -> list[AgentState]:
+        """Turn core agents on. Worker3/4 stay off unless include_extra_workers."""
         for agent in self._agents.values():
+            if agent.id in (AgentId.WORKER3, AgentId.WORKER4) and not include_extra_workers:
+                continue
             if not agent.enabled:
                 agent.enabled = True
                 self._emit_status(agent)

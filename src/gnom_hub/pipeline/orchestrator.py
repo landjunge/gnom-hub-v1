@@ -46,10 +46,14 @@ class Orchestrator:
         self.coordinator = CoordinatorAgent(get(AgentId.COORDINATOR), self.bus, self.llm)
         self.worker1 = WorkerAgent(get(AgentId.WORKER1), self.bus, self.llm)
         self.worker2 = WorkerAgent(get(AgentId.WORKER2), self.bus, self.llm)
+        self.worker3 = WorkerAgent(get(AgentId.WORKER3), self.bus, self.llm)
+        self.worker4 = WorkerAgent(get(AgentId.WORKER4), self.bus, self.llm)
         self.memory = MemoryAgent(get(AgentId.MEMORY), self.bus, self.llm, memory=self.memory_store)
         self._workers = {
             "worker1": self.worker1,
             "worker2": self.worker2,
+            "worker3": self.worker3,
+            "worker4": self.worker4,
         }
 
     @property

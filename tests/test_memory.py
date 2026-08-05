@@ -57,6 +57,21 @@ def test_mermaid_canvas_save_load(tmp_path: Path):
     assert c2.nodes[1]["label"] == 'quote"y'
 
 
+def test_hot_compress_if_needed(tmp_path: Path):
+    from gnom_hub.memory.hot import HotMemory
+
+    hot = HotMemory(tmp_path, auto_load=False)
+    for i in range(30):
+        hot.add_fact(f"fact number {i} about something durable")
+    for i in range(50):
+        hot.add_message("user", f"message content {i} " + ("x" * 20))
+    stats = hot.compress_if_needed(max_facts=24, max_messages=40)
+    assert stats["facts_collapsed"] > 0
+    assert stats["messages_collapsed"] > 0
+    assert len(hot.session["facts"]) <= 24
+    assert len(hot.session["messages"]) <= 40
+
+
 def test_hot_memory_session_roundtrip(tmp_path: Path):
     mem = HotMemory(tmp_path, auto_load=False)
     mem.add_message("user", "hi")

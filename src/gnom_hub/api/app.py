@@ -51,6 +51,11 @@ class SystemBody(BaseModel):
     ui_lang: str | None = None
 
 
+class WorkerPresetBody(BaseModel):
+    name: str = Field(min_length=1)
+    agent_id: str = "worker1"
+
+
 class WarmFactBody(BaseModel):
     text: str = Field(min_length=1)
 
@@ -181,6 +186,33 @@ def create_app() -> FastAPI:
             return get_hub().load_checkpoint()
         except FileNotFoundError as e:
             raise HTTPException(status_code=404, detail=str(e)) from e
+
+    @app.post("/api/clean")
+    def clean_state() -> dict[str, Any]:
+        """One-click clean: HOT + temp workspace + pipeline; WARM kept."""
+        return get_hub().clean_state()
+
+    @app.post("/api/backup")
+    def backup() -> dict[str, Any]:
+        return get_hub().create_backup()
+
+    @app.get("/api/worker-presets")
+    def worker_presets_list() -> dict[str, Any]:
+        return {"presets": get_hub().list_worker_presets()}
+
+    @app.post("/api/worker-presets")
+    def worker_presets_save(body: WorkerPresetBody) -> dict[str, Any]:
+        try:
+            return get_hub().save_worker_preset(body.name, body.agent_id)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
+    @app.post("/api/worker-presets/apply")
+    def worker_presets_apply(body: WorkerPresetBody) -> dict[str, Any]:
+        try:
+            return get_hub().apply_worker_preset(body.name, body.agent_id)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
     @app.post("/api/chat")
     def chat(

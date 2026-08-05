@@ -13,9 +13,11 @@ class AgentId(str, Enum):
     COORDINATOR = "coordinator"
     WORKER1 = "worker1"
     WORKER2 = "worker2"
+    WORKER3 = "worker3"
+    WORKER4 = "worker4"
 
 
-# Fixed card frame colors (UI later).
+# Fixed card frame colors (plan: 8 agents).
 COLORS: dict[AgentId, str] = {
     AgentId.BRAINSTORM: "red",
     AgentId.MEMORY: "blue",
@@ -23,6 +25,8 @@ COLORS: dict[AgentId, str] = {
     AgentId.COORDINATOR: "green",
     AgentId.WORKER1: "orange",
     AgentId.WORKER2: "purple",
+    AgentId.WORKER3: "teal",
+    AgentId.WORKER4: "gray",
 }
 
 # Flex role presets (v1). Default is security.

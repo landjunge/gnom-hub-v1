@@ -60,8 +60,8 @@
     { id: "coordinator", label: "Coordinator", color: "coordinator", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
     { id: "worker1", label: "Worker 1", color: "worker1", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
     { id: "worker2", label: "Worker 2", color: "worker2", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
-    { id: "worker3", label: "Worker 3", color: "worker3", enabled: true, toggleable: false, parked: true, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
-    { id: "worker4", label: "Worker 4", color: "worker4", enabled: true, toggleable: false, parked: true, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
+    { id: "worker3", label: "Worker 3", color: "worker3", enabled: false, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
+    { id: "worker4", label: "Worker 4", color: "worker4", enabled: false, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
   ];
 
   const els = {
@@ -123,10 +123,11 @@
       (activeStage === "clarify" && agent.id === "coordinator") ||
       (activeStage === "flex" && agent.id === "flex") ||
       (activeStage === "coordinate" && agent.id === "coordinator") ||
-      (activeStage === "work" &&
-        (agent.id === "worker1" || agent.id === "worker2")) ||
+      (activeStage === "work" && agent.id.indexOf("worker") === 0) ||
       (activeStage === "worker1" && agent.id === "worker1") ||
       (activeStage === "worker2" && agent.id === "worker2") ||
+      (activeStage === "worker3" && agent.id === "worker3") ||
+      (activeStage === "worker4" && agent.id === "worker4") ||
       (activeStage === "done" && agent.id === "memory")
     );
   }
@@ -225,7 +226,6 @@
         if (ev.target && ev.target.closest && ev.target.closest("[data-stop]")) {
           return;
         }
-        if (agent.parked) return;
         if (clickTimer) clearTimeout(clickTimer);
         clickTimer = setTimeout(function () {
           clickTimer = null;
@@ -325,7 +325,7 @@
         s.frequency_penalty != null ? s.frequency_penalty : null;
       a.presence_penalty =
         s.presence_penalty != null ? s.presence_penalty : null;
-      if (!a.parked) a.parked = false;
+      a.parked = false;
     });
     renderCards();
   }
@@ -588,7 +588,7 @@
 
   function openTuneModal(id) {
     const a = findAgent(id);
-    if (!a || a.parked || !els.tuneModal) return;
+    if (!a || !els.tuneModal) return;
     tuneAgentId = id;
     document.getElementById("tune-title").textContent = a.label + " — tuning";
     document.getElementById("tune-prompt").value =
@@ -785,6 +785,61 @@
       closeSystemModal();
     } catch (err) {
       toast("Checkpoint load failed: " + err.message, "error");
+    }
+  }
+
+  async function runCleanState() {
+    if (
+      !confirm(
+        "Clean state: clear HOT session, temp workspace, pipeline & checkpoint. WARM facts stay. Continue?"
+      )
+    ) {
+      return;
+    }
+    try {
+      const snap = await api("POST", "/api/clean");
+      applySnapshot(snap);
+      toast(
+        "Clean done (temp removed: " +
+          ((snap.clean && snap.clean.temp_removed) || 0) +
+          ")",
+        "ok"
+      );
+    } catch (err) {
+      toast("Clean failed: " + err.message, "error");
+    }
+  }
+
+  async function runBackup() {
+    try {
+      const data = await api("POST", "/api/backup");
+      toast("Backup: " + (data.path || "ok"), "ok");
+      appendChat("system", "Backup saved: " + (data.path || ""));
+    } catch (err) {
+      toast("Backup failed: " + err.message, "error");
+    }
+  }
+
+  async function saveWorkerPresetFromTune() {
+    if (!tuneAgentId || tuneAgentId.indexOf("worker") !== 0) {
+      toast("Open a Worker card to save a worker preset", "info");
+      return;
+    }
+    const name = prompt("Preset name:", tuneAgentId + "-preset");
+    if (!name) return;
+    try {
+      // apply current form first
+      await saveTuneModal();
+      const data = await api("POST", "/api/worker-presets", {
+        name: name,
+        agent_id: tuneAgentId,
+      });
+      toast(
+        "Preset saved: " + ((data.preset && data.preset.name) || name),
+        "ok"
+      );
+    } catch (err) {
+      toast("Preset save failed: " + err.message, "error");
     }
   }
 
@@ -1633,18 +1688,16 @@
       const snap = await api("GET", "/api/state");
       await loadTooltips((snap && snap.ui_lang) || "en");
       applySnapshot(snap);
-      // Force UI cards on for active slots
-      AGENTS.forEach(function (a) {
-        if (a.id === "worker3" || a.id === "worker4") {
-          a.enabled = true;
-        } else {
-          a.enabled = true;
-        }
-      });
       const defaultModel = (snap.llm && snap.llm.default_model) || "deepseek-chat";
       AGENTS.forEach(function (a) {
         if (!a.model || a.model === "—") a.model = defaultModel;
       });
+      // phase3 UI chrome (god/cold/vec badges)
+      if (snap.features && snap.features.phase3 === false) {
+        document.body.classList.add("phase3-off");
+      } else {
+        document.body.classList.remove("phase3-off");
+      }
       renderCards();
     } catch (err) {
       console.warn("[GnomHub] offline / no API yet:", err.message);
@@ -1682,6 +1735,12 @@
     const ckLoad = document.getElementById("sys-ckpt-load");
     if (ckSave) ckSave.addEventListener("click", saveCheckpoint);
     if (ckLoad) ckLoad.addEventListener("click", loadCheckpoint);
+    const sysBackup = document.getElementById("sys-backup");
+    const sysClean = document.getElementById("sys-clean");
+    if (sysBackup) sysBackup.addEventListener("click", runBackup);
+    if (sysClean) sysClean.addEventListener("click", runCleanState);
+    const tunePreset = document.getElementById("tune-preset-save");
+    if (tunePreset) tunePreset.addEventListener("click", saveWorkerPresetFromTune);
     if (els.btnReset) els.btnReset.addEventListener("click", onReset);
     const wsClose = document.getElementById("workspace-close");
     const wsClear = document.getElementById("ws-clear-temp");

@@ -31,8 +31,9 @@ def test_state_and_agents(client: TestClient):
     r = client.get("/api/state")
     assert r.status_code == 200
     data = r.json()
-    assert len(data["agents"]) == 6
+    assert len(data["agents"]) == 8
     assert data["pipeline"]["stage"] == "idle"
+    assert data["features"]["workers_max"] == 4
 
 
 def test_chat_brainstorm_then_execute(client: TestClient):
@@ -144,6 +145,30 @@ def test_tooltips(client: TestClient):
         "Ideen" in r_de.json()["brainstorm"]["how_to"]
         or "Brainstorm" in r_de.json()["brainstorm"]["title"]
     )
+
+
+def test_clean_backup_presets(client: TestClient):
+    client.post("/api/chat?sync=1", json={"text": "idea"})
+    client.post(
+        "/api/agents/worker1/tune",
+        json={"system_prompt": "Write HTML only.", "temperature": 0.1},
+    )
+    pr = client.post(
+        "/api/worker-presets",
+        json={"name": "html-worker", "agent_id": "worker1"},
+    )
+    assert pr.status_code == 200
+    assert pr.json()["ok"] is True
+
+    b = client.post("/api/backup")
+    assert b.status_code == 200
+    assert b.json()["ok"] is True
+    assert "backup" in b.json()["path"]
+
+    c = client.post("/api/clean")
+    assert c.status_code == 200
+    assert c.json()["clean"]["ok"] is True
+    assert c.json()["pipeline"]["stage"] == "idle"
 
 
 def test_trace_quality_checkpoint(client: TestClient):

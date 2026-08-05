@@ -103,6 +103,43 @@ class HotMemory:
         if save:
             self.save()
 
+    def compress_if_needed(
+        self,
+        *,
+        max_facts: int = 24,
+        max_messages: int = 40,
+    ) -> dict[str, int]:
+        """
+        Context compression for long sessions (plan §8.4).
+        Collapses old facts/messages into one summary fact; keeps recent tail.
+        """
+        facts = list(self.session.get("facts") or [])
+        msgs = list(self.session.get("messages") or [])
+        removed_facts = 0
+        removed_msgs = 0
+        if len(facts) > max_facts:
+            old = facts[: -max_facts // 2]
+            keep = facts[-max_facts // 2 :]
+            summary = "Compressed older facts: " + " | ".join(
+                _short_label(str(f), 60) for f in old[:12]
+            )
+            self.session["facts"] = [summary[:200], *keep]
+            removed_facts = len(old)
+        if len(msgs) > max_messages:
+            old_m = msgs[: -max_messages // 2]
+            keep_m = msgs[-max_messages // 2 :]
+            roles = [str(m.get("role") or "?") for m in old_m if isinstance(m, dict)]
+            summary_msg = {
+                "role": "system",
+                "content": (f"[compressed {len(old_m)} messages: " + ",".join(roles[-8:]) + "]"),
+            }
+            self.session["messages"] = [summary_msg, *keep_m]
+            removed_msgs = len(old_m)
+        if removed_facts or removed_msgs:
+            self._touch()
+            self.save()
+        return {"facts_collapsed": removed_facts, "messages_collapsed": removed_msgs}
+
     def get_context_summary(self) -> str:
         """Short string for the pipeline (not full session dump)."""
         msgs = self.session.get("messages") or []

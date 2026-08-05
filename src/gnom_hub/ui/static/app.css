@@ -515,6 +515,12 @@ html, body {
 .worker-panel[data-worker="worker2"] {
   border-left: 3px solid var(--c-worker2);
 }
+.worker-panel[data-worker="worker3"] {
+  border-left: 3px solid var(--c-worker3);
+}
+.worker-panel[data-worker="worker4"] {
+  border-left: 3px solid var(--c-worker4);
+}
 
 .worker-panel-head {
   display: flex;
@@ -1159,6 +1165,17 @@ html, body {
   font-size: 10px;
   color: var(--text-muted);
 }
+
+/* Hide phase-3 chrome when GNOM_PHASE3=0 */
+body.phase3-off .god-badge,
+body.phase3-off .cold-badge,
+body.phase3-off .vec-badge,
+body.phase3-off .btn-archive {
+  display: none !important;
+}
+
+.agent-card.color-worker3 { --card-color: var(--c-worker3); }
+.agent-card.color-worker4 { --card-color: var(--c-worker4); }
 
 .memory-strip {
   border-top: 1px solid var(--border);

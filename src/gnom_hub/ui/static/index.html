@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=50" />
+  <link rel="stylesheet" href="/static/app.css?v=51" />
 </head>
 <body>
   <div id="app">
@@ -165,6 +165,7 @@
         </div>
       </div>
       <div class="modal-actions">
+        <button type="button" id="tune-preset-save" class="btn-ws-sm">Save as worker preset</button>
         <button type="button" id="tune-save" class="btn-save">Apply</button>
       </div>
     </div>
@@ -232,9 +233,11 @@
         <div class="system-row system-row-actions">
           <button type="button" id="sys-ckpt-save" class="btn-ws-sm">Save checkpoint</button>
           <button type="button" id="sys-ckpt-load" class="btn-ws-sm">Load checkpoint</button>
+          <button type="button" id="sys-backup" class="btn-ws-sm">Backup zip</button>
+          <button type="button" id="sys-clean" class="btn-ws-sm">Clean state</button>
         </div>
         <p id="system-ckpt" class="system-line muted">Checkpoint: —</p>
-        <p class="system-hint muted">Keys: put DEEPSEEK_API_KEY in Key.txt on Desktop or project root → private .env</p>
+        <p class="system-hint muted">Keys: put DEEPSEEK_API_KEY in Key.txt on Desktop or project root → private .env. Worker 3/4: double-click cards to enable.</p>
       </div>
       <div class="modal-actions">
         <button type="button" id="system-save" class="btn-save">Apply</button>
@@ -255,6 +258,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=50"></script>
+  <script src="/static/app.js?v=51"></script>
 </body>
 </html>

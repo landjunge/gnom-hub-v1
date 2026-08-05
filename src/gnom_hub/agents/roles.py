@@ -196,21 +196,25 @@ class CoordinatorAgent(BaseAgent):
                         if wid in worker_ids and task:
                             tasks.append((wid, task))
                     if tasks:
-                        return tasks[:2]
+                        return tasks[:4]
                 except Exception as exc:  # noqa: BLE001
                     self.bus.emit(
                         "pipeline.warning",
                         {"stage": "coordinate", "error": str(exc)},
                     )
             clean = [r for r in requirements if not r.startswith("Flex/")]
-            t1 = f"Umsetzungsplan (Schritte) für: {user_text}"
-            t2 = f"Konkretes Ergebnis-Artefakt für: {user_text}"
+            templates = [
+                f"Umsetzungsplan (Schritte) für: {user_text}",
+                f"Konkretes Ergebnis-Artefakt für: {user_text}",
+                f"Checkliste / QA für: {user_text}",
+                f"Alternativen / Edge-Cases für: {user_text}",
+            ]
             if clean:
-                t1 += "\n" + "\n".join(f"- {r}" for r in clean[:4])
-                t2 += "\nFokus: " + clean[min(1, len(clean) - 1)]
+                templates[0] += "\n" + "\n".join(f"- {r}" for r in clean[:4])
+                templates[1] += "\nFokus: " + clean[min(1, len(clean) - 1)]
             out: list[tuple[str, str]] = []
-            for i, wid in enumerate(worker_ids[:2]):
-                out.append((wid, t1 if i == 0 else t2))
+            for i, wid in enumerate(worker_ids[:4]):
+                out.append((wid, templates[i % len(templates)]))
             return out
         finally:
             self.emit_active(False)
@@ -397,10 +401,7 @@ def _format_brainstorm_history(history: list[dict]) -> str:
 def _brainstorm_user_payload(user_text: str, hist_block: str) -> str:
     if not hist_block:
         return f"USER MESSAGE:\n{user_text}"
-    return (
-        f"Earlier brainstorm dialogue:\n{hist_block}\n\n"
-        f"Latest USER MESSAGE:\n{user_text}"
-    )
+    return f"Earlier brainstorm dialogue:\n{hist_block}\n\nLatest USER MESSAGE:\n{user_text}"
 
 
 def _stub_brainstorm(user_text: str, history: list[dict]) -> str:

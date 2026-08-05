@@ -31,8 +31,12 @@ def test_creates_fixed_agents():
         AgentId.COORDINATOR,
         AgentId.WORKER1,
         AgentId.WORKER2,
+        AgentId.WORKER3,
+        AgentId.WORKER4,
     ]
-    assert len(agents) == 6
+    assert len(agents) == 8
+    assert mgr.get(AgentId.WORKER3).enabled is False
+    assert mgr.get(AgentId.WORKER4).enabled is False
 
 
 def test_colors_and_defaults():
@@ -43,6 +47,8 @@ def test_colors_and_defaults():
     assert mgr.get(AgentId.COORDINATOR).color == "green"
     assert mgr.get(AgentId.WORKER1).color == "orange"
     assert mgr.get(AgentId.WORKER2).color == "purple"
+    assert mgr.get(AgentId.WORKER3).color == "teal"
+    assert mgr.get(AgentId.WORKER4).color == "gray"
 
     assert mgr.get(AgentId.MEMORY).enabled is True
     assert mgr.get(AgentId.MEMORY).toggleable is False
@@ -81,8 +87,14 @@ def test_enable_all_turns_workers_on():
     assert mgr.get(AgentId.WORKER1).enabled is False
     assert mgr.get(AgentId.WORKER2).enabled is False
     mgr.enable_all()
-    for a in mgr.list_agents():
-        assert a.enabled is True
+    assert mgr.get(AgentId.BRAINSTORM).enabled is True
+    assert mgr.get(AgentId.WORKER1).enabled is True
+    assert mgr.get(AgentId.WORKER2).enabled is True
+    # w3/w4 stay off unless include_extra_workers
+    assert mgr.get(AgentId.WORKER3).enabled is False
+    mgr.enable_all(include_extra_workers=True)
+    assert mgr.get(AgentId.WORKER3).enabled is True
+    assert mgr.get(AgentId.WORKER4).enabled is True
 
 
 def test_flex_preset():
@@ -115,7 +127,7 @@ def test_flex_preset_unknown():
 def test_on_start_bulk_emit():
     _, mgr, events = _manager()
     mgr.on_start()
-    assert len(events) == 6
+    assert len(events) == 8
     ids = {e["id"] for e in events}
     assert ids == {
         "brainstorm",
@@ -124,6 +136,8 @@ def test_on_start_bulk_emit():
         "coordinator",
         "worker1",
         "worker2",
+        "worker3",
+        "worker4",
     }
     flex = next(e for e in events if e["id"] == "flex")
     assert flex["preset"] == "security"
@@ -154,8 +168,10 @@ def test_status_payload_fields():
 
 def test_enabled_workers():
     _, mgr, _ = _manager()
-    assert len(mgr.enabled_workers()) == 2
+    assert len(mgr.enabled_workers()) == 2  # w3/w4 off by default
     mgr.toggle(AgentId.WORKER1)
     workers = mgr.enabled_workers()
     assert len(workers) == 1
+    mgr.toggle(AgentId.WORKER3)
+    assert len(mgr.enabled_workers()) == 2
     assert workers[0].id == AgentId.WORKER2

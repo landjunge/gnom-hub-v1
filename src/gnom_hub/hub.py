@@ -59,10 +59,17 @@ class Hub:
         # Light tracing (plan §8.2) — ring buffer of pipeline events
         self.trace: list[dict[str, Any]] = []
         self.ui_lang: str = os.getenv("GNOM_UI_LANG", "en").strip().lower() or "en"
+        # Feature flags (plan phase 3+ chrome can be dimmed)
+        self.feature_phase3: bool = os.getenv("GNOM_PHASE3", "1").strip() not in (
+            "0",
+            "false",
+            "no",
+        )
+        self._presets_path = self.root / "data" / "hot" / "worker_presets.json"
         self.telegram = self._init_telegram()
         self._load_agent_state()
-        # User expectation: all agents (incl. both workers) start ON
-        self.agents.enable_all()
+        # Core agents + worker1/2 on; worker3/4 stay off until user enables
+        self.agents.enable_all(include_extra_workers=False)
         self._wire_memory()
         self._wire_trace()
         self.agents.on_start()
@@ -196,9 +203,17 @@ class Hub:
                     self.vectors.add(text, meta={"source": "memory_agent"})
             self.hot.save()
 
+        def on_done(_data: Any) -> None:
+            # Long-session compression after each successful pipeline finish
+            try:
+                self.hot.compress_if_needed()
+            except Exception:  # noqa: BLE001
+                pass
+
         self.bus.on("pipeline.memory_hint", on_memory_hint)
         self.bus.on("pipeline.memory_curated", on_memory_curated)
         self.bus.on("pipeline.error", on_error)
+        self.bus.on("pipeline.done", on_done)
 
     def _wire_trace(self) -> None:
         """Subscribe to pipeline events for light tracing (no heavy spans)."""
@@ -502,6 +517,11 @@ class Hub:
                 "exists": self._checkpoint_path.is_file(),
                 "path": str(self._checkpoint_path),
             },
+            "features": {
+                "phase3": self.feature_phase3,
+                "workers_max": 4,
+            },
+            "worker_presets": self.list_worker_presets(),
         }
 
     def archive_cold(self, label: str = "") -> dict[str, Any]:
@@ -959,21 +979,126 @@ class Hub:
         reply = self.telegram.handle_text(text, chat_id)
         return {"reply": reply, "snapshot": self.snapshot()}
 
+    def clean_state(self) -> dict[str, Any]:
+        """
+        One-click clean state (plan §7): clear HOT + temp workspace + pipeline,
+        keep WARM long-term memory and agent toggles.
+        """
+        archived = None
+        if self.hot.session.get("messages") or self.hot.session.get("facts"):
+            archived = self.archive_cold(label="clean-state")
+        self.hot.clear(save=True)
+        removed = self.workspace.clear_temp()
+        self.pipeline = self._new_pipeline()
+        self.last_error = None
+        self.trace = []
+        if self._checkpoint_path.is_file():
+            try:
+                self._checkpoint_path.unlink()
+            except OSError:
+                pass
+        snap = self.snapshot()
+        snap["clean"] = {
+            "ok": True,
+            "temp_removed": removed,
+            "archived": archived,
+            "warm_kept": True,
+        }
+        return snap
+
+    def create_backup(self) -> dict[str, Any]:
+        """Zip HOT + WARM + agents + checkpoint into data/backups/."""
+        import zipfile
+        from datetime import datetime, timezone
+
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        backup_dir = self.root / "data" / "backups"
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        path = backup_dir / f"gnom-hub-backup-{stamp}.zip"
+        # Ensure current state on disk
+        self.hot.save()
+        self.warm.save()
+        self._save_agent_state()
+        with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            for folder in ("hot", "warm"):
+                base = self.root / "data" / folder
+                if not base.is_dir():
+                    continue
+                for f in base.rglob("*"):
+                    if f.is_file():
+                        zf.write(f, arcname=str(f.relative_to(self.root / "data")))
+        self._append_trace("backup.create", {"path": str(path)})
+        return {"ok": True, "path": str(path), "bytes": path.stat().st_size}
+
+    def list_worker_presets(self) -> list[dict[str, Any]]:
+        path = self._presets_path
+        if not path.is_file():
+            return []
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return []
+        if isinstance(data, list):
+            return data
+        return list(data.get("presets") or [])
+
+    def save_worker_preset(self, name: str, agent_id: str = "worker1") -> dict[str, Any]:
+        """Save current worker tuning as a named preset (plan: reusable workers)."""
+        agent = self.agents.get(agent_id)
+        presets = self.list_worker_presets()
+        entry = {
+            "name": name.strip() or f"preset-{agent_id}",
+            "source_agent": agent.id.value,
+            "system_prompt": agent.system_prompt or "",
+            "model": agent.model,
+            "temperature": agent.temperature,
+            "top_p": agent.top_p,
+            "max_tokens": agent.max_tokens,
+            "frequency_penalty": agent.frequency_penalty,
+            "presence_penalty": agent.presence_penalty,
+        }
+        presets = [p for p in presets if p.get("name") != entry["name"]]
+        presets.append(entry)
+        self._presets_path.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_text(
+            self._presets_path,
+            json.dumps({"presets": presets}, ensure_ascii=False, indent=2) + "\n",
+        )
+        return {"ok": True, "preset": entry, "presets": presets}
+
+    def apply_worker_preset(self, name: str, agent_id: str = "worker1") -> dict[str, Any]:
+        presets = self.list_worker_presets()
+        match = next((p for p in presets if p.get("name") == name), None)
+        if not match:
+            raise ValueError(f"Unknown preset: {name!r}")
+        return self.set_agent_tune(
+            agent_id,
+            {
+                "system_prompt": match.get("system_prompt"),
+                "model": match.get("model"),
+                "temperature": match.get("temperature"),
+                "top_p": match.get("top_p"),
+                "max_tokens": match.get("max_tokens"),
+                "frequency_penalty": match.get("frequency_penalty"),
+                "presence_penalty": match.get("presence_penalty"),
+            },
+        )
+
     def help_text(self) -> dict[str, Any]:
         return {
             "title": "Gnom-Hub help",
             "how_to": (
                 "1) Send = free brainstorm dialogue. "
-                "2) Execute = distill + workers. "
+                "2) Execute = distill + workers (enable Worker 3/4 cards for more slots). "
                 "3) Click card = tune; double-click = toggle. "
                 "4) Workspace holds temp outputs; promote to keep. "
-                "5) System = keys/budget/lang; Trace = light pipeline log. "
-                "6) Checkpoint save/load resumes pipeline state. "
-                "7) Save = HOT/WARM/agents; Reset = clear HOT (WARM stays)."
+                "5) System = keys/budget/lang; Trace = pipeline log; Backup zip. "
+                "6) Checkpoint save/load resumes pipeline; Clean clears HOT+temp. "
+                "7) Save = HOT/WARM/agents; Reset = archive HOT (WARM stays)."
             ),
-            "example": "Chat ideas → Execute → Box 3 + Workspace temp.",
-            "pipeline": "Brainstorm (turns) → Execute → Distill → [Clarify] → Flex → Workers → Quality → Memory",
-            "keys": "DEEPSEEK_API_KEY in Key.txt. Optional TELEGRAM_BOT_TOKEN.",
+            "example": "Chat ideas → Execute → Box 3 + Workspace temp → Promote.",
+            "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",
+            "keys": "DEEPSEEK_API_KEY in Key.txt. Optional TELEGRAM_BOT_TOKEN. GNOM_PHASE3=0 hides chrome.",
         }
 
     def canvas(self) -> dict[str, Any]:
