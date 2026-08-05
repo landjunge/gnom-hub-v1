@@ -174,7 +174,7 @@ def _html_full_page_plan(
     worker_ids: list[str],
     clean: list[str],
 ) -> list[tuple[str, str]]:
-    """One HTML page only (first worker). Extra workers: text notes, not more pages."""
+    """Exactly one worker builds the page — no second page, no parallel HTML."""
     topic = (user_text or "").strip().rstrip(".")
     if not worker_ids:
         return []
@@ -183,25 +183,13 @@ def _html_full_page_plan(
         "Include ALL requested sections in the SAME file "
         "(hero/features/footer as applicable). "
         "<!DOCTYPE html> … </html>. Functions first, minimal CSS. "
-        "At least one real interaction (onclick or addEventListener)."
+        "At least one real interaction (onclick or addEventListener). "
+        "You are the only worker for this deliverable — deliver the full page."
     )
     if clean:
         primary += "\nDoD:\n" + "\n".join(f"- {r}" for r in clean[:4])
-    # Only the first worker delivers the page — others must not build competing HTML
-    text_only = (
-        "TEXT ONLY (no HTML file, no <!DOCTYPE>, no full webpage). "
-        "Short checklist / review notes for: {topic}. "
-        "Bullet points, max ~20 lines."
-    )
-    extras = [
-        text_only.format(topic=topic) + " Focus: QA / interactions / empty states.",
-        text_only.format(topic=topic) + " Focus: accessibility and mobile risks.",
-        text_only.format(topic=topic) + " Focus: copy, SEO title, and next-step polish.",
-    ]
-    out: list[tuple[str, str]] = [(worker_ids[0], primary)]
-    for i, wid in enumerate(worker_ids[1:4]):
-        out.append((wid, extras[i % len(extras)]))
-    return out
+    # Intentionally ignore worker2–4: one page = one worker
+    return [(worker_ids[0], primary)]
 
 
 def _simple_task_plan(

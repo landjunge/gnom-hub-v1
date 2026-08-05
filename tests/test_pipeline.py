@@ -60,12 +60,11 @@ def test_stub_full_run_no_llm():
     assert state.distilled_requirements
     assert state.flex_notes
     assert state.pending_question is None
-    assert len(state.worker_results) == 2
+    # Landing/HTML → exactly one worker builds the page
+    assert len(state.worker_results) == 1
     assert "Worker 1" in state.worker_results[0]
-    assert "Worker 2" in state.worker_results[1]
-    assert len(state.worker_outputs) == 2
+    assert len(state.worker_outputs) == 1
     assert state.worker_outputs[0]["worker"] == "worker1"
-    assert state.worker_outputs[1]["worker"] == "worker2"
     assert state.worker_outputs[0]["result"] == state.worker_results[0]
 
     names = [n for n, _ in events]
@@ -402,17 +401,19 @@ def test_coordinator_html_plan_prefers_full_page():
         ["complete HTML"],
         ["worker1", "worker2", "worker3"],
     )
-    assert len(tasks) == 3
+    assert len(tasks) == 1
+    assert tasks[0][0] == "worker1"
     assert "ONE complete single-file HTML" in tasks[0][1]
-    assert "TEXT ONLY" in tasks[1][1]
     assert "ALL requested sections" in tasks[0][1]
     assert "hero section only" not in tasks[0][1].lower()
     assert _wants_one_html_page("landing page HTML")
     assert not _wants_one_html_page("write a business plan")
-    forced = _html_full_page_plan("Landing HTML", ["worker1", "worker2"], ["DoD line"])
-    assert "DoD:" in forced[0][1]
+    forced = _html_full_page_plan(
+        "Landing HTML", ["worker1", "worker2", "worker3"], ["DoD line"]
+    )
+    assert len(forced) == 1
     assert forced[0][0] == "worker1"
-    assert "TEXT ONLY" in forced[1][1]
+    assert "DoD:" in forced[0][1]
     qa = coord.plan(
         "Review the checkout flow", ["tests"], ["worker1", "worker2"], plan_mode="plan_qa"
     )
