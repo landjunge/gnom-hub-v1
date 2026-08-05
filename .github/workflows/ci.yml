@@ -58,6 +58,19 @@ jobs:
           export PYTHONPATH=src
           python scripts/smoke_e2e.py
 
+      - name: Live DeepSeek smoke (optional)
+        # Runs only when repo secret DEEPSEEK_API_KEY is set; otherwise skips.
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          export PYTHONPATH=src
+          if [ -z "$DEEPSEEK_API_KEY" ]; then
+            echo "SKIP live smoke — no DEEPSEEK_API_KEY secret"
+            exit 0
+          fi
+          # Do not fail the whole matrix if provider flakes; report status only.
+          python scripts/smoke_live.py || echo "LIVE smoke non-blocking failure"
+
   release:
     name: Create GitHub Release & Publish Package
     needs: lint-and-test

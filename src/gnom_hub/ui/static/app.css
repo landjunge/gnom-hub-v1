@@ -125,6 +125,76 @@ html, body {
   background: #3d2a14;
 }
 
+.god-badge,
+.cold-badge {
+  cursor: pointer;
+  user-select: none;
+}
+
+.cold-badge {
+  min-width: 64px;
+  max-width: 120px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-panel);
+  color: #91a7ff;
+  font-size: 11px;
+  line-height: 26px;
+  text-align: center;
+}
+
+.cold-browser {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  max-height: 280px;
+  overflow: auto;
+}
+
+.cold-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+}
+
+.cold-list li {
+  padding: 4px 6px;
+  margin-bottom: 2px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.cold-list li:hover,
+.cold-list li.active {
+  border-color: #4c6ef5;
+  background: #1c2540;
+}
+
+.cold-detail {
+  margin: 0 0 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  white-space: pre-wrap;
+  color: var(--text-muted);
+  max-height: 120px;
+  overflow: auto;
+}
+
+.btn-cold-close {
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #343a40;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
 .stage-badge {
   text-transform: lowercase;
   min-width: 88px;

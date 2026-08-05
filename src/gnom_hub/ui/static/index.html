@@ -14,7 +14,8 @@
         <span id="llm-badge" class="llm-badge" title="LLM key status">LLM: —</span>
         <span id="mem-badge" class="mem-badge" title="HOT memory">Mem: —</span>
         <span id="vec-badge" class="vec-badge" title="Vector store">Vec: —</span>
-        <span id="god-badge" class="god-badge" title="God-Mode">God: off</span>
+        <span id="god-badge" class="god-badge" title="God-Mode — click to toggle" role="button" tabindex="0">God: off</span>
+        <span id="cold-badge" class="cold-badge" title="COLD archives — click to browse" role="button" tabindex="0">Cold: —</span>
         <span id="stage-badge" class="stage-badge" title="Pipeline stage">idle</span>
         <button type="button" id="btn-help" class="btn-help" data-tooltip-id="help" title="Help">
           Help
@@ -39,11 +40,17 @@
       <div id="box1" class="box box-arounder" data-tooltip-id="box1">
         <div class="box-header">Arounder</div>
         <div id="box1-content" class="box-body">
-          <p class="box1-placeholder">Hover a card or control for help.</p>
+          <p class="box1-placeholder">Hover a card or control for help. Click Cold badge to browse archives.</p>
           <div id="box1-tooltip" class="box1-tooltip" hidden>
             <h2 id="tip-title" class="tip-title"></h2>
             <p id="tip-how" class="tip-how"></p>
             <p id="tip-example" class="tip-example"></p>
+          </div>
+          <div id="cold-browser" class="cold-browser" hidden>
+            <h2 class="tip-title">COLD archives</h2>
+            <ul id="cold-list" class="cold-list"></ul>
+            <pre id="cold-detail" class="cold-detail"></pre>
+            <button type="button" id="btn-cold-close" class="btn-cold-close">Close</button>
           </div>
           <div id="clarify" class="clarify" hidden>
             <p id="clarify-question" class="clarify-question"></p>

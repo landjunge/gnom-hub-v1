@@ -19,6 +19,8 @@ echo "▸ pytest"
 pytest tests/ -q --tb=short
 echo "▸ smoke e2e"
 python scripts/smoke_e2e.py
+echo "▸ smoke live (optional — skips without key)"
+python scripts/smoke_live.py || true
 
 echo ""
 echo "✅ quality_check OK"

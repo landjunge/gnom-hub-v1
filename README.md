@@ -16,6 +16,7 @@ Local-first multi-agent system.
 | 2.0 | WARM + workspace + Telegram | done |
 | **3.0** | COLD, vector, God-Mode, computer-use, plugins/MCP | **done** |
 | **3.1** | Vector recall in pipeline, Archive UI, safe God-Mode shell | **done** |
+| **3.2** | UI God toggle, COLD browser, optional live smoke | **done** |
 
 Docs: [`docs/PRE_PLAN.md`](docs/PRE_PLAN.md) · [`docs/V1_SCOPE.md`](docs/V1_SCOPE.md) · [`docs/ROADMAP.md`](docs/ROADMAP.md)
 
@@ -104,13 +105,22 @@ plugins/echo/          # demo plugin (echo tool)
 ```
 
 ### God-Mode
-Off by default. Enable via `POST /api/god-mode {"enabled":true,"reason":"..."}`.  
-UI shows **God: on/off**. Clicks need God-Mode; shell only allowlisted binaries  
+Off by default. **Click the God badge** in the UI (confirm dialog) or  
+`POST /api/god-mode {"enabled":true,"reason":"..."}`.  
+Clicks need God-Mode; shell only allowlisted binaries  
 (`ls pwd date uname whoami echo cat head tail wc df du`) — no pipes/metacharacters.
 
-### Reset / Archive
-**Archive** button → COLD snapshot of current HOT.  
-**Reset** auto-archives non-empty HOT to COLD, then clears HOT (WARM kept).
+### Reset / Archive / COLD browser
+**Archive** → COLD snapshot of current HOT.  
+**Reset** → auto-archives non-empty HOT, then clears HOT (WARM kept).  
+**Click Cold badge** → browse archives in Box 1 (list + fact preview).
+
+### Live smoke (optional)
+```bash
+python scripts/smoke_live.py          # skips if no DEEPSEEK_API_KEY
+GNOM_LIVE_SMOKE=1 python scripts/smoke_live.py   # fail if no key
+```
+CI runs live smoke only when secret `DEEPSEEK_API_KEY` is configured (non-blocking).
 
 ### Vector lite
 No heavy deps — bag-of-words + cosine. Pipeline requirements/worker outputs are auto-indexed.

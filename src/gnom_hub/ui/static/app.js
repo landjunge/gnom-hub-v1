@@ -139,7 +139,12 @@
     memBadge: document.getElementById("mem-badge"),
     vecBadge: document.getElementById("vec-badge"),
     godBadge: document.getElementById("god-badge"),
+    coldBadge: document.getElementById("cold-badge"),
     btnArchive: document.getElementById("btn-archive"),
+    coldBrowser: document.getElementById("cold-browser"),
+    coldList: document.getElementById("cold-list"),
+    coldDetail: document.getElementById("cold-detail"),
+    btnColdClose: document.getElementById("btn-cold-close"),
   };
 
   let activeStage = "idle";
@@ -319,6 +324,9 @@
       const on = !!(snap.god_mode && snap.god_mode.enabled);
       els.godBadge.textContent = on ? "God: ON" : "God: off";
       els.godBadge.classList.toggle("on", on);
+    }
+    if (els.coldBadge && snap.cold) {
+      els.coldBadge.textContent = "Cold: " + (snap.cold.count || 0);
     }
 
     if (snap.last_error) {
@@ -575,6 +583,105 @@
     }
   }
 
+  async function toggleGodMode() {
+    const on = els.godBadge && els.godBadge.classList.contains("on");
+    const next = !on;
+    if (next) {
+      if (
+        !window.confirm(
+          "Enable God-Mode? Elevated actions (clicks/allowlisted shell) become available."
+        )
+      ) {
+        return;
+      }
+    }
+    try {
+      const data = await api("POST", "/api/god-mode", {
+        enabled: next,
+        reason: "ui-toggle",
+      });
+      if (els.godBadge) {
+        els.godBadge.textContent = data.enabled ? "God: ON" : "God: off";
+        els.godBadge.classList.toggle("on", !!data.enabled);
+      }
+      toast(data.enabled ? "God-Mode ON" : "God-Mode OFF", data.enabled ? "info" : "ok");
+    } catch (err) {
+      toast("God-Mode failed: " + err.message, "error");
+    }
+  }
+
+  function showColdBrowser() {
+    if (els.placeholder) els.placeholder.hidden = true;
+    if (els.tipRoot) els.tipRoot.hidden = true;
+    if (els.coldBrowser) els.coldBrowser.hidden = false;
+  }
+
+  function hideColdBrowser() {
+    if (els.coldBrowser) els.coldBrowser.hidden = true;
+    if (els.coldDetail) els.coldDetail.textContent = "";
+  }
+
+  async function openColdBrowser() {
+    showColdBrowser();
+    try {
+      const data = await api("GET", "/api/cold");
+      const list = data.archives || [];
+      if (!els.coldList) return;
+      els.coldList.innerHTML = "";
+      if (!list.length) {
+        els.coldList.innerHTML = "<li>(no archives yet — use Archive or Reset)</li>";
+        return;
+      }
+      list.forEach(function (a) {
+        const li = document.createElement("li");
+        li.textContent =
+          (a.id || "?") +
+          " · " +
+          (a.label || "") +
+          " · msg=" +
+          (a.messages != null ? a.messages : "?");
+        li.dataset.id = a.id;
+        li.addEventListener("click", function () {
+          Array.prototype.forEach.call(els.coldList.querySelectorAll("li"), function (n) {
+            n.classList.remove("active");
+          });
+          li.classList.add("active");
+          loadColdDetail(a.id);
+        });
+        els.coldList.appendChild(li);
+      });
+    } catch (err) {
+      toast("COLD list failed: " + err.message, "error");
+    }
+  }
+
+  async function loadColdDetail(id) {
+    try {
+      const data = await api("GET", "/api/cold/" + encodeURIComponent(id));
+      const meta = data.meta || {};
+      const sess = data.session || {};
+      const facts = sess.facts || [];
+      const msgs = sess.messages || [];
+      const lines = [
+        "id: " + (meta.id || id),
+        "label: " + (meta.label || ""),
+        "created: " + (meta.created_at || ""),
+        "messages: " + msgs.length + " · facts: " + facts.length,
+        "",
+        "Facts:",
+      ];
+      facts.slice(0, 8).forEach(function (f) {
+        lines.push("• " + f);
+      });
+      if (data.canvas) {
+        lines.push("", "Canvas (head):", String(data.canvas).slice(0, 300));
+      }
+      if (els.coldDetail) els.coldDetail.textContent = lines.join("\n");
+    } catch (err) {
+      toast("COLD load failed: " + err.message, "error");
+    }
+  }
+
   async function onClarify(answer) {
     const cb = w.GnomHub.onClarify;
     if (typeof cb === "function") cb(answer);
@@ -645,6 +752,30 @@
     if (els.btnHelp) els.btnHelp.addEventListener("click", onHelp);
     if (els.btnReset) els.btnReset.addEventListener("click", onReset);
     if (els.btnArchive) els.btnArchive.addEventListener("click", onArchive);
+    if (els.godBadge) {
+      els.godBadge.addEventListener("click", toggleGodMode);
+      els.godBadge.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          toggleGodMode();
+        }
+      });
+    }
+    if (els.coldBadge) {
+      els.coldBadge.addEventListener("click", openColdBrowser);
+      els.coldBadge.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          openColdBrowser();
+        }
+      });
+    }
+    if (els.btnColdClose) {
+      els.btnColdClose.addEventListener("click", function () {
+        hideColdBrowser();
+        showTooltip("box1");
+      });
+    }
 
     document.querySelectorAll(".btn-clarify").forEach(function (btn) {
       btn.addEventListener("click", function () {
