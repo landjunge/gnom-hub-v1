@@ -142,15 +142,24 @@ class HotMemory:
                 out.append({"role": role, "content": _short_label(content, 120)})
         return out
 
-    def pipeline_context(self, *, max_chars: int = 900) -> str:
+    def pipeline_context(
+        self,
+        *,
+        max_chars: int = 900,
+        warm_facts: list[str] | None = None,
+    ) -> str:
         """
-        Compact HOT context for LLM/stub stages (Memory always on).
-        Facts first, then last messages, then canvas labels.
+        Compact context for LLM/stub stages (Memory always on).
+        Optional warm_facts (durable) first, then HOT facts, messages, canvas.
         """
         chunks: list[str] = []
+        if warm_facts:
+            chunks.append("WARM facts (durable):")
+            for f in warm_facts[:8]:
+                chunks.append(f"- {_short_label(f, 100)}")
         facts = self.recent_facts(6)
         if facts:
-            chunks.append("Known facts:")
+            chunks.append("HOT facts (session):")
             for f in facts:
                 chunks.append(f"- {_short_label(f, 100)}")
         msgs = self.recent_messages(3)

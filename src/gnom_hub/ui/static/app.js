@@ -336,23 +336,39 @@
     if (strip && stripBody) {
       const mem = snap.memory || {};
       const facts = mem.facts || [];
+      const warm = mem.warm_facts || [];
       const ctx = mem.context || p.memory_context || "";
-      if (facts.length || ctx) {
+      if (facts.length || warm.length || ctx) {
         strip.hidden = false;
         const lines = [];
-        if (facts.length) {
-          lines.push("Facts:");
-          facts.slice(-6).forEach(function (f) {
+        if (warm.length) {
+          lines.push("WARM (durable):");
+          warm.slice(-4).forEach(function (f) {
             lines.push("• " + f);
           });
         }
-        if (ctx && !facts.length) {
+        if (facts.length) {
+          lines.push("HOT (session):");
+          facts.slice(-4).forEach(function (f) {
+            lines.push("• " + f);
+          });
+        }
+        if (!facts.length && !warm.length && ctx) {
           lines.push(ctx);
         }
         stripBody.textContent = lines.join("\n");
       } else {
         strip.hidden = true;
         stripBody.textContent = "";
+      }
+    }
+
+    if (snap.telegram && els.llmBadge) {
+      // append telegram hint into mem badge title
+      if (els.memBadge && snap.telegram.configured) {
+        const run = snap.telegram.running ? "on" : "off";
+        els.memBadge.title =
+          (els.memBadge.title || "") + " | Telegram configured (" + run + ")";
       }
     }
 

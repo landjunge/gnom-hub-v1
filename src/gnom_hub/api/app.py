@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -32,12 +32,33 @@ class AgentLlmBody(BaseModel):
     api_key: str | None = None
 
 
+class WarmFactBody(BaseModel):
+    text: str = Field(min_length=1)
+
+
+class WorkspaceWriteBody(BaseModel):
+    zone: str = "temp"
+    name: str = Field(min_length=1)
+    content: str = ""
+
+
+class TelegramInBody(BaseModel):
+    text: str = Field(min_length=1)
+    chat_id: int | None = None
+
+
 def create_app() -> FastAPI:
-    app = FastAPI(title="Gnom-Hub v1", version="0.1.0")
+    app = FastAPI(title="Gnom-Hub v1", version="0.2.0")
 
     @app.get("/api/health")
-    def health() -> dict[str, str]:
-        return {"status": "ok", "service": "gnom-hub-v1"}
+    def health() -> dict[str, Any]:
+        hub = get_hub()
+        return {
+            "status": "ok",
+            "service": "gnom-hub-v1",
+            "telegram": hub.telegram.enabled,
+            "telegram_running": hub.telegram.running,
+        }
 
     @app.get("/api/state")
     def state() -> dict[str, Any]:
@@ -85,8 +106,8 @@ def create_app() -> FastAPI:
         return get_hub().save()
 
     @app.post("/api/reset")
-    def reset() -> dict[str, Any]:
-        return get_hub().reset_session(keep_agents=True)
+    def reset(clear_warm: bool = Query(False)) -> dict[str, Any]:
+        return get_hub().reset_session(keep_agents=True, clear_warm=clear_warm)
 
     @app.get("/api/help")
     def help_() -> dict[str, Any]:
@@ -99,6 +120,44 @@ def create_app() -> FastAPI:
     @app.get("/api/memory")
     def memory() -> dict[str, Any]:
         return get_hub().memory_dict()
+
+    @app.post("/api/memory/warm")
+    def warm_add(body: WarmFactBody) -> dict[str, Any]:
+        ok = get_hub().warm.add_fact(body.text.strip())
+        return {"ok": ok, "warm_facts": get_hub().warm.recent_facts(12)}
+
+    @app.get("/api/workspace")
+    def workspace() -> dict[str, Any]:
+        return get_hub().workspace.snapshot()
+
+    @app.post("/api/workspace/write")
+    def workspace_write(body: WorkspaceWriteBody) -> dict[str, Any]:
+        try:
+            path = get_hub().workspace.write_text(body.zone, body.name, body.content)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        return {"ok": True, "path": str(path), "workspace": get_hub().workspace.snapshot()}
+
+    @app.post("/api/workspace/promote/{name}")
+    def workspace_promote(name: str) -> dict[str, Any]:
+        try:
+            path = get_hub().workspace.promote(name)
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        return {"ok": True, "path": str(path), "workspace": get_hub().workspace.snapshot()}
+
+    @app.post("/api/telegram/start")
+    def telegram_start() -> dict[str, Any]:
+        return get_hub().telegram_start()
+
+    @app.post("/api/telegram/stop")
+    def telegram_stop() -> dict[str, Any]:
+        return get_hub().telegram_stop()
+
+    @app.post("/api/telegram/inbound")
+    def telegram_inbound(body: TelegramInBody) -> dict[str, Any]:
+        """Test hook / webhook-style without Telegram servers."""
+        return get_hub().telegram_inbound(body.text, body.chat_id)
 
     @app.get("/api/tooltips")
     def tooltips(lang: str = "en") -> dict[str, Any]:

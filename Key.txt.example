@@ -6,3 +6,6 @@ DEEPSEEK_API_KEY=sk-your-deepseek-key-here
 
 # Optional aliases also work:
 # deepseek=sk-your-deepseek-key-here
+
+# Optional Telegram bot (set GNOM_TELEGRAM_POLL=1 to auto long-poll)
+# TELEGRAM_BOT_TOKEN=123456:ABC-DEF...

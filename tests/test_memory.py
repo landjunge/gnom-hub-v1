@@ -114,4 +114,4 @@ def test_pipeline_context_includes_facts(tmp_path: Path):
     mem.add_message("user", "build a site")
     ctx = mem.pipeline_context()
     assert "Prefer dark theme" in ctx
-    assert "Known facts:" in ctx
+    assert "HOT facts" in ctx

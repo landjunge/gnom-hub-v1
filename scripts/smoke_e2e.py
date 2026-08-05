@@ -59,13 +59,29 @@ def main() -> int:
         r = client.get("/api/help")
         assert r.status_code == 200
 
+        r = client.post("/api/memory/warm", json={"text": "Smoke warm durable fact"})
+        assert r.status_code == 200
+
+        r = client.post(
+            "/api/workspace/write",
+            json={"zone": "temp", "name": "smoke.txt", "content": "ok"},
+        )
+        assert r.status_code == 200
+
+        r = client.post("/api/telegram/inbound", json={"text": "/status"})
+        assert r.status_code == 200
+        assert "stage=" in r.json()["reply"]
+
         r = client.post("/api/reset")
         assert r.status_code == 200
         assert r.json()["pipeline"]["stage"] == "idle"
+        # WARM survives HOT reset
+        mem = client.get("/api/memory").json()
+        assert "Smoke warm durable fact" in mem.get("warm_facts", [])
 
     print("SMOKE E2E OK")
     print(f"  root={smoke_root}")
-    print("  health, UI, chat, save, memory, help, reset")
+    print("  health, UI, chat, warm, workspace, telegram, save, reset")
     return 0
 
 

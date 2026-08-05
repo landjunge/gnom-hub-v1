@@ -19,5 +19,6 @@
 | 1.5 | Memory → pipeline context (HOT facts feed all stages) | **done** |
 | CI | Install `.[dev]` so httpx is present for TestClient | **done** |
 | 1.6 | Quality: smoke_e2e, quality_check.sh, empty hints, CI smoke | **done** |
+| 2.0 | WARM lite (durable facts) + dual workspace + optional Telegram | **done** |
 
-Out of scope: see V1_SCOPE.md “draußen”.
+Out of scope still: full COLD archive, vector DB, Computer-Use, God-Mode, MCP plugins.

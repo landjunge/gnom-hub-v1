@@ -130,5 +130,35 @@ def test_memory_endpoint_after_chat(client: TestClient):
     assert r.status_code == 200
     data = r.json()
     assert "facts" in data
+    assert "warm_facts" in data
     assert "context" in data
     assert data["summary"].startswith("HOT:")
+
+
+def test_warm_survives_reset(client: TestClient):
+    client.post("/api/memory/warm", json={"text": "Always use HTTPS"})
+    client.post("/api/chat", json={"text": "build a form"})
+    r = client.post("/api/reset")
+    assert r.status_code == 200
+    mem = client.get("/api/memory").json()
+    assert "Always use HTTPS" in mem["warm_facts"]
+    # HOT cleared
+    assert mem["facts"] == [] or client.get("/api/state").json()["pipeline"]["stage"] == "idle"
+
+
+def test_workspace_api(client: TestClient):
+    r = client.post(
+        "/api/workspace/write",
+        json={"zone": "temp", "name": "a.txt", "content": "x"},
+    )
+    assert r.status_code == 200
+    r2 = client.post("/api/workspace/promote/a.txt")
+    assert r2.status_code == 200
+    snap = client.get("/api/workspace").json()
+    assert any(f["name"] == "a.txt" for f in snap["perm"])
+
+
+def test_telegram_inbound_help(client: TestClient):
+    r = client.post("/api/telegram/inbound", json={"text": "/help"})
+    assert r.status_code == 200
+    assert "status" in r.json()["reply"].lower() or "Telegram" in r.json()["reply"]

@@ -35,7 +35,12 @@ def run_smoke() -> None:
         print(f"[Pipeline] after clarify stage={stage}")
     assert stage == "done", f"expected done, got {stage}"
     print(f"[Pipeline] workers={len(out['pipeline']['worker_results'])}")
-    print("Gnom-Hub v1 - Step 1.6 OK (smoke)")
+    print(f"[WARM] facts={len(hub.warm.all_facts())}")
+    print(
+        f"[Workspace] temp={len(hub.workspace.list_files('temp'))} perm={len(hub.workspace.list_files('perm'))}"
+    )
+    print(f"[Telegram] configured={hub.telegram.enabled}")
+    print("Gnom-Hub v1 - Step 2.x OK (smoke)")
 
 
 def run_server(host: str, port: int) -> None:
