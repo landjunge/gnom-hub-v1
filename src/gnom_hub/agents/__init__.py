@@ -1,5 +1,6 @@
 """Agents: Brainstorm, Memory, Flex, Coordinator, Workers."""
 
+from gnom_hub.agents.base import BaseAgent
 from gnom_hub.agents.manager import STATUS_EVENT, AgentManager
 from gnom_hub.agents.models import (
     COLORS,
@@ -7,6 +8,13 @@ from gnom_hub.agents.models import (
     FLEX_PRESETS,
     AgentId,
     AgentState,
+)
+from gnom_hub.agents.roles import (
+    BrainstormAgent,
+    CoordinatorAgent,
+    FlexAgent,
+    MemoryAgent,
+    WorkerAgent,
 )
 
 __all__ = [
@@ -17,4 +25,10 @@ __all__ = [
     "AgentId",
     "AgentManager",
     "AgentState",
+    "BaseAgent",
+    "BrainstormAgent",
+    "CoordinatorAgent",
+    "FlexAgent",
+    "MemoryAgent",
+    "WorkerAgent",
 ]

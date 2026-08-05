@@ -160,9 +160,15 @@
       const card = document.createElement("div");
       const isActive =
         activeStage === agent.id ||
-        (activeStage === "work" && (agent.id === "worker1" || agent.id === "worker2")) ||
+        (activeStage === "memory" && agent.id === "memory") ||
+        (activeStage === "brainstorm" && agent.id === "brainstorm") ||
+        (activeStage === "distill" && agent.id === "coordinator") ||
+        (activeStage === "clarify" && agent.id === "coordinator") ||
+        (activeStage === "flex" && agent.id === "flex") ||
         (activeStage === "coordinate" && agent.id === "coordinator") ||
-        (activeStage === "distill" && agent.id === "coordinator");
+        (activeStage === "work" &&
+          (agent.id === "worker1" || agent.id === "worker2")) ||
+        (activeStage === "done" && agent.id === "memory");
       card.className =
         "agent-card color-" + agent.color + (isActive ? " is-active" : "");
       card.dataset.agentId = agent.id;

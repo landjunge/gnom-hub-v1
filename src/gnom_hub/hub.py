@@ -21,7 +21,7 @@ from gnom_hub.memory.hot import HotMemory
 from gnom_hub.memory.vector_store import VectorStore
 from gnom_hub.memory.warm import WarmMemory
 from gnom_hub.memory.workspace import WorkspaceStore
-from gnom_hub.pipeline.pipeline import Pipeline
+from gnom_hub.pipeline.orchestrator import Orchestrator as Pipeline
 from gnom_hub.plugins.loader import PluginLoader
 from gnom_hub.plugins.registry import ToolRegistry, ToolSpec
 from gnom_hub.security.god_mode import god_mode_from_env
@@ -168,7 +168,20 @@ class Hub:
             else:
                 self.last_error = str(data)
 
+        def on_memory_curated(data: Any) -> None:
+            """LLM-extracted durable facts from Memory agent."""
+            if not isinstance(data, dict):
+                return
+            for fact in data.get("facts") or []:
+                text = str(fact).strip()
+                if 8 <= len(text) <= 200:
+                    self.hot.add_fact(text)
+                    self.warm.add_fact(text)
+                    self.vectors.add(text, meta={"source": "memory_agent"})
+            self.hot.save()
+
         self.bus.on("pipeline.memory_hint", on_memory_hint)
+        self.bus.on("pipeline.memory_curated", on_memory_curated)
         self.bus.on("pipeline.error", on_error)
 
     def _telegram_command(self, cmd: str, arg: str, meta: dict[str, Any]) -> str:
