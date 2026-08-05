@@ -1063,16 +1063,21 @@ body.worker-fs-open {
   font-weight: 500;
 }
 
-/* —— Always-visible 4 square frames per box (no icons/arrows by default) —— */
+/* —— 4 square slots: quiet when idle, clear when usable —— */
 .box-action-bar {
   flex: 0 0 auto;
   display: flex;
   flex-direction: row;
   gap: 3px;
   padding: 4px 6px 5px;
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  border-top: 1px solid transparent;
   background: transparent;
   min-height: 38px;
+}
+
+/* Bar slightly more present when any slot is live */
+.box-action-bar:has(.box-action-btn:not(:disabled)) {
+  border-top-color: rgba(255, 255, 255, 0.06);
 }
 
 .box-action-btn {
@@ -1082,11 +1087,10 @@ body.worker-fs-open {
   min-width: 0;
   padding: 0;
   margin: 0;
-  /* 1px frame — barely visible, always on */
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid transparent;
   border-radius: 3px;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text);
   font-size: 10px;
   font-weight: 500;
   line-height: 1.1;
@@ -1094,34 +1098,39 @@ body.worker-fs-open {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
+  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease,
+    opacity 0.12s ease;
 }
 
-/* Empty slots: only the light frame, no glyphs */
+/* Idle / empty: almost invisible (layout reserved, no chrome) */
 .box-action-btn:disabled {
   color: transparent;
   background: transparent;
-  border-color: rgba(255, 255, 255, 0.08);
+  border-color: transparent;
+  opacity: 0;
   pointer-events: none;
-  text-indent: -9999px; /* hide any residual text/icon */
+  text-indent: -9999px;
 }
 
+/* Usable: light 1px frame + label clearly visible */
 .box-action-btn:not(:disabled) {
   cursor: pointer;
   text-indent: 0;
-  border-color: rgba(255, 255, 255, 0.14);
-  background: transparent;
-}
-
-.box-action-btn:not(:disabled):hover {
+  opacity: 1;
   border-color: rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text);
 }
 
+.box-action-btn:not(:disabled):hover {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
 .box-action-btn.is-active:not(:disabled) {
-  border-color: rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(116, 192, 252, 0.5);
+  background: rgba(116, 192, 252, 0.1);
 }
 
 /* —— Chat: full width, fixed band at bottom of viewport —— */
