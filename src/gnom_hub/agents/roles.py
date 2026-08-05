@@ -20,10 +20,12 @@ class BrainstormAgent(BaseAgent):
                 try:
                     return self.ask(
                         system=(
-                            "You are the Brainstorm agent in Gnom-Hub. "
+                            "You are the Brainstorm agent. "
+                            "Brainstorm about the USER TASK only. "
                             "Language: match the user (DE/EN). "
-                            "Output 5–8 concrete, useful bullet ideas. "
-                            "No preamble, no 'as an AI'."
+                            "Output 5–8 concrete, useful bullet ideas for THAT task. "
+                            "Do not describe or redesign Gnom-Hub itself. "
+                            "No preamble."
                         ),
                         user=_with_memory(user_text, memory_ctx),
                         max_tokens=550,
@@ -111,8 +113,9 @@ class CoordinatorAgent(BaseAgent):
                 try:
                     raw = self.ask(
                         system=(
-                            "You are the Coordinator distilling a request into requirements. "
-                            "Output ONLY 4–7 requirement lines. No intro. Match user language."
+                            "You are the Coordinator distilling the USER TASK into requirements. "
+                            "Output ONLY 4–7 requirement lines for that task. No intro. "
+                            "Do not redefine Gnom-Hub. Match user language."
                         ),
                         user=_with_memory(
                             f"{user_text}\n\nBrainstorm:\n{brainstorm[:1500]}",
@@ -222,7 +225,8 @@ class WorkerAgent(BaseAgent):
                     return self.ask(
                         system=(
                             "You are a Worker agent. Deliver a concrete useful result "
-                            "(plan, structure, checklist, draft). "
+                            "for the assigned task (plan, structure, checklist, draft). "
+                            "Work on the USER task only. Do not redefine Gnom-Hub. "
                             "No meta fluff. Match user language. Max ~250 words."
                         ),
                         user=_with_memory(body, memory_ctx),
@@ -354,6 +358,7 @@ class MemoryAgent(BaseAgent):
                             continue
                         if len(s) > 8:
                             facts.append(s[:200])
+                    facts = [f for f in facts if not _is_garbage_fact(f)]
                     if facts:
                         self.bus.emit(
                             "pipeline.memory_curated",
@@ -369,10 +374,63 @@ class MemoryAgent(BaseAgent):
 
 
 def _with_memory(text: str, memory_ctx: str) -> str:
-    ctx = (memory_ctx or "").strip()
+    ctx = _sanitize_memory_ctx(memory_ctx)
     if not ctx:
-        return text
-    return f"{text}\n\nBekannter Kontext (nicht widersprechen):\n{ctx[:700]}"
+        return f"USER TASK (only this matters):\n{text}"
+    return (
+        f"USER TASK (only this matters):\n{text}\n\n"
+        f"Optional background facts (ignore if unrelated or nonsense):\n{ctx[:600]}"
+    )
+
+
+def _sanitize_memory_ctx(memory_ctx: str) -> str:
+    """Drop hallucinated 'Gnom-Hub is a notes/localStorage app' facts."""
+    if not memory_ctx:
+        return ""
+    bad = (
+        "localstorage",
+        "notiz-speicher",
+        "notizspeicher",
+        "notes app",
+        "ohne backend, der notizen",
+        "json-array in localstorage",
+        "json in localstorage",
+        "responsive liste",
+        "mini-notiz",
+        "note storage",
+        "notebook",
+    )
+    kept: list[str] = []
+    for ln in memory_ctx.splitlines():
+        low = ln.lower()
+        if any(b in low for b in bad):
+            continue
+        # also drop lines that claim what gnom-hub "is" as a product definition
+        if "gnom-hub" in low and ("ist ein" in low or "is a" in low or "is an" in low):
+            continue
+        kept.append(ln)
+    return "\n".join(kept).strip()
+
+
+def _is_garbage_fact(text: str) -> bool:
+    """True for product-identity hallucinations (notes/localStorage toy, not multi-agent hub)."""
+    low = text.lower()
+    markers = (
+        "localstorage",
+        "notiz-speicher",
+        "notizspeicher",
+        "ohne backend",
+        "json-array",
+        "json in localstorage",
+        "responsive liste",
+        "notes app",
+        "note storage",
+        "mini-notiz",
+        "notiztext",
+    )
+    return any(b in low for b in markers) or (
+        "gnom-hub" in low and ("ist ein" in low or "is a" in low or "is an" in low)
+    )
 
 
 def _lines(raw: str) -> list[str]:

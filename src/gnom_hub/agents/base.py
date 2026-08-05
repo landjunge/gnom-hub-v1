@@ -7,6 +7,16 @@ from typing import Any
 from gnom_hub.agents.models import AgentState
 from gnom_hub.core.event_bus import EventBus
 
+# Injected into every agent system prompt — kills product-identity hallucination loops
+HUB_IDENTITY = (
+    "CONTEXT: You are one agent *inside* Gnom-Hub v1, a local multi-agent control hub "
+    "(chat → brainstorm → distill → flex → coordinator → workers → memory). "
+    "Gnom-Hub is NOT a notes app, NOT a localStorage toy, NOT a single-page notebook. "
+    "Never redefine what Gnom-Hub is. "
+    "Work ONLY on the user's current task/request. "
+    "Do not invent product specs for Gnom-Hub itself unless the user explicitly asks."
+)
+
 
 class BaseAgent:
     def __init__(
@@ -58,9 +68,10 @@ class BaseAgent:
             kwargs["model"] = self.state.model
         if self.state.api_key:
             kwargs["api_key"] = self.state.api_key
+        sys_full = f"{HUB_IDENTITY}\n\n{system}".strip()
         result = self.llm.chat(
             [
-                LLMMessage(role="system", content=system),
+                LLMMessage(role="system", content=sys_full),
                 LLMMessage(role="user", content=user),
             ],
             **kwargs,

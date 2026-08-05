@@ -234,3 +234,29 @@ def test_memory_context_injected_into_stub_brainstorm():
     # stubs always produce useful notes; memory is carried in state for LLM path
     assert state.brainstorm_notes
     assert state.distilled_requirements
+
+
+def test_garbage_product_identity_facts_filtered():
+    """Notes/localStorage toy identity must never re-enter memory or agent context."""
+    from gnom_hub.agents.roles import _is_garbage_fact, _sanitize_memory_ctx
+
+    dump_lines = [
+        "Gnom-Hub v1 ist ein lokal laufender Notiz-Speicher ohne Backend, "
+        "der Notizen als JSON in localStorage ablegt",
+        "XSS-Risiko: bösartiger Notiztext kann Skripte ausführen und "
+        "localStorage-Daten stehlen",
+        "Datenverlust bei Browser-Cache-Leerung – localStorage ist nicht persistent",
+        "responsive Liste mit minimalem CSS darstellt",
+        "Prefer dark theme for the landing page hero",
+        "User wants 3 feature cards and a contact form",
+    ]
+    assert all(_is_garbage_fact(x) for x in dump_lines[:4])
+    assert not _is_garbage_fact(dump_lines[4])
+    assert not _is_garbage_fact(dump_lines[5])
+
+    cleaned = _sanitize_memory_ctx("\n".join(dump_lines))
+    assert "localStorage" not in cleaned
+    assert "Notiz-Speicher" not in cleaned
+    assert "responsive Liste" not in cleaned
+    assert "Prefer dark theme" in cleaned
+    assert "contact form" in cleaned

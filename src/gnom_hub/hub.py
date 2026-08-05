@@ -142,24 +142,31 @@ class Hub:
             flex = str(data.get("flex_notes") or "")
             if flex:
                 self.hot.add_message("flex", flex)
-            # HOT: keep a few clean requirements only (not flex essays)
+            from gnom_hub.agents.roles import _is_garbage_fact
+
+            # HOT: clean requirements only — never store product-hallucinations
             for req in (data.get("requirements") or [])[:5]:
                 text = str(req).strip()
-                if 8 <= len(text) <= 160 and not text.startswith("Flex/"):
+                if (
+                    8 <= len(text) <= 160
+                    and not text.startswith("Flex/")
+                    and not _is_garbage_fact(text)
+                ):
                     self.hot.add_fact(text)
                     self.vectors.add(text, meta={"source": "requirement"})
-            # WARM: only promote 1 crisp goal-like line
             for req in data.get("requirements") or []:
                 text = str(req).strip()
                 if text.lower().startswith("ziel:") or text.lower().startswith("goal:"):
-                    if 8 <= len(text) <= 160:
+                    if 8 <= len(text) <= 160 and not _is_garbage_fact(text):
                         self.warm.add_fact(text)
                     break
+            # Worker outputs: messages only, not auto-facts (stops echo loops)
             for res in (data.get("results") or [])[:2]:
                 snippet = str(res).strip()[:400]
-                if snippet:
+                if snippet and not _is_garbage_fact(snippet):
                     self.hot.add_message("worker", snippet)
-                    self.vectors.add(snippet[:280], meta={"source": "worker"})
+            if data.get("user_text"):
+                self.hot.add_message("user", str(data.get("user_text"))[:500])
             self.hot.save()
 
         def on_error(data: Any) -> None:
@@ -172,9 +179,11 @@ class Hub:
             """LLM-extracted durable facts from Memory agent."""
             if not isinstance(data, dict):
                 return
+            from gnom_hub.agents.roles import _is_garbage_fact
+
             for fact in data.get("facts") or []:
                 text = str(fact).strip()
-                if 8 <= len(text) <= 200:
+                if 8 <= len(text) <= 200 and not _is_garbage_fact(text):
                     self.hot.add_fact(text)
                     self.warm.add_fact(text)
                     self.vectors.add(text, meta={"source": "memory_agent"})
