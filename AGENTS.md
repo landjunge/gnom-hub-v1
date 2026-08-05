@@ -5,6 +5,7 @@
 1. **After every completed section/step: commit AND push to `origin/main`.**
    - Do not wait for an explicit “push” request.
    - Message style: `feat(0.x): …` / `fix: …` / `docs: …`
+   - **ALWAYS run `ruff format .` before committing.** CI runs `ruff format --check` and will fail if any file is unformatted. No exceptions.
 2. Stay inside **V1_SCOPE.md**. Pre-Plan features stay parked.
 3. **YAGNI + KISS** — no overengineering.
 4. UI: Basic English; Box-1 content multi-language ready.
