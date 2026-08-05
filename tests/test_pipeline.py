@@ -283,3 +283,30 @@ def test_garbage_product_identity_facts_filtered():
     assert "responsive Liste" not in cleaned
     assert "Prefer dark theme" in cleaned
     assert "contact form" in cleaned
+
+
+def test_cooperative_cancel_mid_execute():
+    """cancel_check aborts between stages before workers finish."""
+    from gnom_hub.pipeline.orchestrator import Pipeline
+
+    class FakeMem:
+        def recall(self, t):
+            return ""
+
+        def store(self, **kw):
+            pass
+
+    bus = EventBus()
+    pipe = Pipeline(bus, llm_manager=None, memory=FakeMem())
+    pipe.brainstorm_turn("Build a checklist app for cancel test")
+    n = {"c": 0}
+
+    def cancel_soon():
+        n["c"] += 1
+        return n["c"] >= 2
+
+    pipe.cancel_check = cancel_soon
+    st = pipe.execute()
+    # Should not complete full worker run when cancelled early
+    assert n["c"] >= 2
+    assert st.stage.value != "done" or not (st.worker_outputs or [])

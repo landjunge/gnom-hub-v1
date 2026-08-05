@@ -3319,6 +3319,10 @@
   }
 
   async function onClarify(answer) {
+    if (chatBusy) {
+      toast("Busy — wait for current job", "info");
+      return;
+    }
     const cb = w.GnomHub.onClarify;
     if (typeof cb === "function") cb(answer);
     appendChat("you", "[clarify] " + answer);
@@ -3329,8 +3333,19 @@
       if (start.job_id) {
         const job = await pollJob(start.job_id, 180000);
         snap = job.snapshot || (await api("GET", "/api/state"));
+        if (job.status === "error") {
+          appendChat("system", "Clarify error: " + (job.error || "?"));
+          toast(job.error || "Clarify failed", "error");
+          // Re-show clarify UI if still needed
+          applySnapshot(snap);
+          return;
+        }
       }
       applySnapshot(snap);
+      // Hide only after successful response (applySnapshot may keep it if still clarify)
+      if (!(snap.pipeline && snap.pipeline.stage === "clarify")) {
+        hideClarify();
+      }
       if (snap.pipeline && snap.pipeline.stage === "done") {
         appendChat("system", "Pipeline done.");
         toast("Pipeline done", "ok");
@@ -3338,6 +3353,8 @@
     } catch (err) {
       appendChat("system", "Clarify failed: " + err.message);
       toast("Clarify failed: " + err.message, "error");
+      // Restore buttons/state so user can retry
+      await resyncState();
     } finally {
       setChatBusy(false);
     }
@@ -4377,7 +4394,7 @@
     document.querySelectorAll(".btn-clarify").forEach(function (btn) {
       btn.addEventListener("click", function () {
         const answer = btn.getAttribute("data-answer");
-        hideClarify();
+        // Do NOT hideClarify here — only after successful onClarify
         onClarify(answer);
       });
     });

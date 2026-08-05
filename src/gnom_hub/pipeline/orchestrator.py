@@ -8,6 +8,7 @@ start() still runs full pipeline (tests / Telegram /do).
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from gnom_hub.agents.manager import AgentManager
@@ -21,6 +22,10 @@ from gnom_hub.agents.roles import (
 )
 from gnom_hub.core.event_bus import EventBus
 from gnom_hub.pipeline.models import PipelineStage, PipelineState
+
+
+class PipelineCancelled(Exception):
+    """Raised when cooperative soft-cancel aborts a pipeline mid-run."""
 
 
 class Orchestrator:
@@ -37,7 +42,16 @@ class Orchestrator:
         self.memory_store = memory
         self._state = PipelineState()
         self._clarified_once = False
+        # Optional: hub sets this to job.get("cancel") during async runs
+        self.cancel_check: Callable[[], bool] | None = None
         self._build_roles()
+
+    def _check_cancel(self) -> None:
+        """Abort between stages/workers if soft-cancel was requested."""
+        fn = self.cancel_check
+        if callable(fn) and fn():
+            self.bus.emit("pipeline.cancelled", {"stage": self._state.stage.value})
+            raise PipelineCancelled("cancelled by user")
 
     def _build_roles(self) -> None:
         get = self.agents.get
@@ -204,11 +218,13 @@ class Orchestrator:
             mem = self._state.memory_context or self.memory.recall(text)
             self._state.memory_context = mem
 
+            self._check_cancel()
             self._set_stage(PipelineStage.distill)
             reqs, question = self.coordinator.distill(text, notes, mem)
             self._state.distilled_requirements = reqs
             self.bus.emit("pipeline.distill", {"requirements": list(reqs)})
 
+            self._check_cancel()
             if question is not None and not self._clarified_once:
                 self._state.pending_question = question
                 self._set_stage(PipelineStage.clarify)
@@ -223,6 +239,9 @@ class Orchestrator:
                 return self._state
 
             self._run_flex_coord_workers()
+        except PipelineCancelled:
+            # Soft-cancel: leave partial state; hub marks job cancelled
+            return self._state
         except Exception as exc:  # noqa: BLE001
             self._fail(str(exc))
         return self._state
@@ -237,6 +256,8 @@ class Orchestrator:
         self._clarified_once = True
         try:
             self._run_flex_coord_workers()
+        except PipelineCancelled:
+            return self._state
         except Exception as exc:  # noqa: BLE001
             self._fail(str(exc))
         return self._state
@@ -335,6 +356,7 @@ class Orchestrator:
         mem = self._state.memory_context
         reqs = list(self._state.distilled_requirements)
 
+        self._check_cancel()
         if self.flex.enabled:
             self._set_stage(PipelineStage.flex)
             notes = self.flex.run(text, reqs, mem)
@@ -348,6 +370,7 @@ class Orchestrator:
                 preset = self.flex.state.preset or "security"
                 self._state.distilled_requirements.append(f"Flex/{preset}: {first}")
 
+        self._check_cancel()
         if not self.coordinator.enabled:
             self.bus.emit(
                 "pipeline.coordinate",
@@ -366,6 +389,7 @@ class Orchestrator:
             {"tasks": [{"worker": w, "task": t} for w, t in tasks]},
         )
 
+        self._check_cancel()
         self._set_stage(PipelineStage.work)
         results: list[str] = []
         outputs: list[dict] = []
@@ -375,6 +399,7 @@ class Orchestrator:
             mem = (mem or "").rstrip() + "\n\nWeb fetch (auto):\n" + web_ctx
             self.bus.emit("pipeline.web_fetch", {"chars": len(web_ctx)})
         for i, (wid, task) in enumerate(tasks, start=1):
+            self._check_cancel()
             worker = self._workers.get(wid)
             if worker is None or not worker.enabled:
                 continue
@@ -398,6 +423,7 @@ class Orchestrator:
                 "pipeline.worker",
                 {"worker": wid, "index": i, "result": result, "task": task},
             )
+        self._check_cancel()
         self._state.worker_results = results
         self._state.worker_outputs = outputs
         self._state.quality_notes = _quality_check(

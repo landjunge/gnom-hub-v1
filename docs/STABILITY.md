@@ -104,6 +104,8 @@ Reference: [`KEYS_AND_MODELS.md`](KEYS_AND_MODELS.md)
 | Concurrent jobs cross-update EventBus handlers | Handlers only while job owns lock + `_active_job_id` |
 | Sync chat/execute vs async race | All sync paths use `_pipeline_lock` |
 | Soft-cancel then `status=done` | `_finalize_job`: cancel always wins |
+| Soft-cancel waits for full LLM run | Cooperative `cancel_check` between stages/workers |
+| Clarify hide before API success | Hide only after success; resync on failure |
 | Key.txt edits ignored by stale `.env` | Hub keys from Key.txt always overwrite |
 | Empty DeepSeek content treated as success | Raise `LLMError` if still empty |
 | UI timeout leaves mid-stage + orphan job | Cancel + `/api/state` resync; longer poll |

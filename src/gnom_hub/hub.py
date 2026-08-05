@@ -1537,13 +1537,22 @@ class Hub:
                     self.bus.on("pipeline.flex", _on_flex)
                     self.bus.on("pipeline.worker", _on_worker)
                     handlers_on = True
-                    runner()
+                    # Cooperative soft-cancel between stages/workers
+                    self.pipeline.cancel_check = lambda: bool(job.get("cancel"))
+                    try:
+                        runner()
+                    finally:
+                        self.pipeline.cancel_check = None
                     _finalize_job(self.pipeline.state.stage.value)
                     if not job.get("stage"):
                         job["stage"] = self.pipeline.state.stage.value
                     job["snapshot"] = self.snapshot()
                 except Exception as exc:  # noqa: BLE001
-                    if job.get("cancel"):
+                    # PipelineCancelled is a subclass of Exception — treat as cancel
+                    from gnom_hub.pipeline.orchestrator import PipelineCancelled
+
+                    if job.get("cancel") or isinstance(exc, PipelineCancelled):
+                        job["cancel"] = True
                         _finalize_job("cancelled")
                     else:
                         job["status"] = "error"
@@ -1555,6 +1564,10 @@ class Hub:
                     except Exception:  # noqa: BLE001
                         pass
                 finally:
+                    try:
+                        self.pipeline.cancel_check = None
+                    except Exception:  # noqa: BLE001
+                        pass
                     if handlers_on:
                         _cleanup_handlers()
                     if getattr(self, "_active_job_id", None) == job_id:
