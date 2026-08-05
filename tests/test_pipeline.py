@@ -310,3 +310,31 @@ def test_cooperative_cancel_mid_execute():
     # Should not complete full worker run when cancelled early
     assert n["c"] >= 2
     assert st.stage.value != "done" or not (st.worker_outputs or [])
+
+
+def test_html_gates_and_dod():
+    from gnom_hub.pipeline.orchestrator import (
+        _definition_of_done,
+        _html_complete,
+        _validate_worker_draft,
+        _quality_check,
+    )
+
+    assert "DEFINITION OF DONE" in _definition_of_done("landing", ["complete HTML"])
+    assert _html_complete("<!DOCTYPE html><html><body>x</body></html>")
+    assert not _html_complete("<html><body>open")
+    bad = _validate_worker_draft("<html>partial", user_text="landing html page", task="html")
+    assert bad["ok"] is False
+    notes = _quality_check(
+        "landing html",
+        ["full doc"],
+        [
+            {
+                "name": "W1",
+                "result": "<!DOCTYPE html><html><body>ok</body></html>",
+                "task": "html",
+                "validation": {"ok": True, "issues": []},
+            }
+        ],
+    )
+    assert "Gates:" in notes

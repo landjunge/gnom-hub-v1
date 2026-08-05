@@ -398,30 +398,56 @@ class Orchestrator:
         if web_ctx:
             mem = (mem or "").rstrip() + "\n\nWeb fetch (auto):\n" + web_ctx
             self.bus.emit("pipeline.web_fetch", {"chars": len(web_ctx)})
+        dod = _definition_of_done(text, self._state.distilled_requirements)
         for i, (wid, task) in enumerate(tasks, start=1):
             self._check_cancel()
             worker = self._workers.get(wid)
             if worker is None or not worker.enabled:
                 continue
+            task_full = f"{task}\n\n{dod}".strip()
             result = worker.run(
-                task,
+                task_full,
                 text,
                 self._state.distilled_requirements,
                 mem,
             )
+            # One soft retry if HTML was expected but draft is incomplete/truncated
+            if _wants_html_artifact(text, task) and not _html_complete(result):
+                self.bus.emit(
+                    "pipeline.quality_retry",
+                    {"worker": wid, "reason": "incomplete_html"},
+                )
+                self._check_cancel()
+                result = worker.run(
+                    task_full
+                    + "\n\nRETRY (mandatory): Output ONE complete HTML file. "
+                    "Must start with <!DOCTYPE html> and end with </html>. "
+                    "No truncation, no markdown fences only — full document.",
+                    text,
+                    self._state.distilled_requirements,
+                    mem,
+                )
+            gate = _validate_worker_draft(result, user_text=text, task=task)
             results.append(result)
             outputs.append(
                 {
                     "worker": wid,
                     "name": worker.state.name,
                     "index": i,
-                    "task": task,
+                    "task": task_full,
                     "result": result,
+                    "validation": gate,
                 }
             )
             self.bus.emit(
                 "pipeline.worker",
-                {"worker": wid, "index": i, "result": result, "task": task},
+                {
+                    "worker": wid,
+                    "index": i,
+                    "result": result,
+                    "task": task,
+                    "validation": gate,
+                },
             )
         self._check_cancel()
         self._state.worker_results = results
@@ -507,44 +533,148 @@ def _prefetch_urls(blob: str, *, limit: int = 3) -> str:
     return "\n---\n".join(chunks)
 
 
+def _definition_of_done(user_text: str, requirements: list[str]) -> str:
+    """Binding DoD block appended to every worker task."""
+    reqs = [r for r in (requirements or []) if r and not str(r).startswith("Flex/")][:6]
+    lines = [
+        "=== DEFINITION OF DONE (mandatory) ===",
+        "Deliver a COMPLETE artifact for the user task — not a partial draft.",
+        "If HTML/page/landing/UI is required:",
+        "  - Single complete document: <!DOCTYPE html> … </html>",
+        "  - No mid-file truncation; close all opened tags",
+        "  - Prefer one self-contained file (inline CSS/JS ok)",
+        "If code is required: runnable/readable end-to-end, not stubs-only.",
+        "Mark incomplete work explicitly only if impossible within limits.",
+    ]
+    if reqs:
+        lines.append("Requirements to satisfy:")
+        lines.extend(f"  - {r}" for r in reqs)
+    if (user_text or "").strip():
+        lines.append(f"User task: {(user_text or '').strip()[:400]}")
+    lines.append("=== END DoD ===")
+    return "\n".join(lines)
+
+
+def _wants_html_artifact(user_text: str, task: str = "") -> bool:
+    blob = f"{user_text or ''} {task or ''}".lower()
+    keys = (
+        "html",
+        "landing",
+        "webpage",
+        "web page",
+        "css",
+        "frontend",
+        "seite",
+        "website",
+        "ui page",
+        "single file",
+    )
+    return any(k in blob for k in keys)
+
+
+def _html_complete(body: str) -> bool:
+    """Syntactic completeness gate for HTML drafts."""
+    import re
+
+    s = (body or "").strip()
+    if not s:
+        return False
+    if "```" in s:
+        m = re.search(r"```(?:html)?\s*([\s\S]*?)```", s, re.IGNORECASE)
+        if m:
+            s = m.group(1).strip()
+    low = s.lower()
+    if "<!doctype" not in low and "<html" not in low:
+        return False
+    if "</html>" not in low:
+        return False
+    if low.rstrip().endswith(("...", "…", "<!--", "<style", "<script", "{", "(")):
+        return False
+    open_tags = low.count("<")
+    close_tags = low.count(">")
+    return not (open_tags > 5 and close_tags < open_tags * 0.85)
+
+
+def _validate_worker_draft(body: str, *, user_text: str = "", task: str = "") -> dict:
+    """Per-draft validation gate (P0)."""
+    s = (body or "").strip()
+    issues: list[str] = []
+    ok = True
+    if len(s) < 40:
+        ok = False
+        issues.append("too_short")
+    if s.startswith("Stub") or "Stub —" in s:
+        ok = False
+        issues.append("stub")
+    if _wants_html_artifact(user_text, task):
+        if not _html_complete(s):
+            ok = False
+            issues.append("incomplete_html")
+        if "</html>" not in s.lower():
+            issues.append("missing_html_close")
+    if s.rstrip().endswith(("...", "…")) and len(s) > 80:
+        ok = False
+        issues.append("truncated_ellipsis")
+    return {
+        "ok": ok,
+        "issues": issues,
+        "chars": len(s),
+        "html_complete": (
+            _html_complete(s)
+            if ("<html" in s.lower() or "<!doctype" in s.lower())
+            else None
+        ),
+    }
+
+
 def _quality_check(
     user_text: str,
     requirements: list[str],
     outputs: list[dict],
 ) -> str:
-    """Light automatic quality check of worker results (plan §8.3) — heuristic, no LLM."""
+    """Quality check of worker results — heuristic gates + DoD."""
     if not outputs:
         return "Quality: no worker outputs."
-    lines: list[str] = ["Quality check:"]
+    lines: list[str] = ["Quality check (gates + DoD):"]
     task_low = (user_text or "").lower()
+    fail_n = 0
     for out in outputs:
         name = str(out.get("name") or out.get("worker") or "worker")
         body = str(out.get("result") or "").strip()
+        gate = out.get("validation") or _validate_worker_draft(
+            body, user_text=user_text, task=str(out.get("task") or "")
+        )
         score = 0
-        notes: list[str] = []
+        notes: list[str] = list(gate.get("issues") or [])
         if len(body) >= 120:
             score += 2
         elif len(body) >= 40:
             score += 1
-            notes.append("short")
+            if "short" not in notes:
+                notes.append("short")
         else:
-            notes.append("too short")
+            if "too_short" not in notes:
+                notes.append("too short")
         if body.startswith("Stub") or "Stub —" in body:
-            notes.append("stub output")
+            if "stub" not in notes:
+                notes.append("stub output")
         else:
             score += 1
         low = body.lower()
         if "<!doctype" in low or "<html" in low:
             score += 1
             notes.append("html doc")
-        # loose keyword overlap with task
+            if _html_complete(body):
+                score += 1
+                notes.append("html complete")
+            else:
+                notes.append("html incomplete")
         tokens = [w for w in task_low.replace(",", " ").split() if len(w) > 4][:8]
         hits = sum(1 for w in tokens if w in low)
         if hits >= 2:
             score += 1
         elif tokens:
             notes.append("weak task match")
-        # requirements coverage
         req_hits = 0
         for r in requirements[:5]:
             words = [w for w in r.lower().split() if len(w) > 5][:3]
@@ -552,9 +682,20 @@ def _quality_check(
                 req_hits += 1
         if req_hits:
             score += 1
-        grade = "ok" if score >= 4 else ("weak" if score >= 2 else "poor")
+        if not gate.get("ok", True):
+            fail_n += 1
+            grade = "fail" if score < 4 else "weak"
+        else:
+            grade = "ok" if score >= 4 else ("weak" if score >= 2 else "poor")
         extra = f" ({', '.join(notes)})" if notes else ""
-        lines.append(f"• {name}: {grade} score={score}/6{extra}")
+        lines.append(f"• {name}: {grade} score={score}/7{extra}")
+    if fail_n:
+        lines.append(
+            f"Gates: {fail_n}/{len(outputs)} draft(s) failed validation "
+            "(incomplete HTML, truncation, or stub)."
+        )
+    else:
+        lines.append("Gates: all drafts passed basic validation.")
     return "\n".join(lines)
 
 

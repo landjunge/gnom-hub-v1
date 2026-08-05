@@ -29,6 +29,8 @@ class CoordinatorAgent(BaseAgent):
                             "You are the Coordinator distilling the USER TASK into requirements. "
                             "Use the brainstorm dialogue as input. "
                             "Output ONLY 4–7 requirement lines for that task. No intro. "
+                            "Prefer testable Definition-of-Done lines (observable behavior or "
+                            "complete deliverable, e.g. full HTML with </html>). "
                             "Do not redefine Gnom-Hub. Match user language."
                         ),
                         user=_with_memory(
