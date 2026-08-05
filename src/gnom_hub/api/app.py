@@ -105,7 +105,7 @@ class ShellBody(BaseModel):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Gnom-Hub v1", version="1.2.0")
+    app = FastAPI(title="Gnom-Hub v1", version="1.3.0")
 
     @app.get("/api/health")
     def health() -> dict[str, Any]:
@@ -113,7 +113,7 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "service": "gnom-hub-v1",
-            "version": "1.2.0",
+            "version": "1.3.0",
             "telegram": hub.telegram.enabled,
             "telegram_running": hub.telegram.running,
             "llm": {
@@ -247,6 +247,10 @@ def create_app() -> FastAPI:
     def backup() -> dict[str, Any]:
         return get_hub().create_backup()
 
+    @app.get("/api/backups")
+    def backups_list() -> dict[str, Any]:
+        return {"backups": get_hub().list_backups()}
+
     @app.get("/api/worker-presets")
     def worker_presets_list() -> dict[str, Any]:
         return {"presets": get_hub().list_worker_presets()}
@@ -264,6 +268,10 @@ def create_app() -> FastAPI:
             return get_hub().apply_worker_preset(body.name, body.agent_id)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
+
+    @app.post("/api/worker-presets/delete")
+    def worker_presets_delete(body: WorkerPresetBody) -> dict[str, Any]:
+        return get_hub().delete_worker_preset(body.name)
 
     @app.post("/api/chat")
     def chat(
@@ -290,6 +298,13 @@ def create_app() -> FastAPI:
         if not job:
             raise HTTPException(status_code=404, detail="unknown job")
         return job
+
+    @app.post("/api/jobs/{job_id}/cancel")
+    def job_cancel(job_id: str) -> dict[str, Any]:
+        try:
+            return get_hub().cancel_job(job_id)
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
 
     @app.post("/api/clarify")
     def clarify(body: ClarifyBody, sync: bool = Query(False)) -> dict[str, Any]:

@@ -1,10 +1,10 @@
-# Gnom-Hub v1.2.0
+# Gnom-Hub v1.3.0
 
 Local multi-agent control hub: **brainstorm first**, then **Execute** workers.
 
-Desktop-only · USB-friendly · **DeepSeek** and/or **Ollama** · auto **URL fetch** · **Export** Markdown · CI green.
+Desktop-only · USB-friendly · **DeepSeek** / **Ollama** · auto **URL fetch** · **Export** · **Cancel job** · chat log persists in browser.
 
-> **Repo convention:** every meaningful change is **pushed to `main`** and this **README is updated** in the same commit.
+> **Convention:** every meaningful change is **pushed to `main`** and this **README is updated** in the same commit.
 
 ---
 
@@ -13,11 +13,11 @@ Desktop-only · USB-friendly · **DeepSeek** and/or **Ollama** · auto **URL fet
 ```
 Chat (Send)  →  Brainstorm dialogue (Box 2)
                       │
-                 Execute
+                 Execute  (Cancel while running)
                       ▼
     Distill → Flex → Coordinator → Workers 1–4 → Quality → Memory
                       │
-           Box 3 HTML preview · Workspace temp · optional URL fetch
+           Box 3 · Workspace temp · optional public URL fetch
 ```
 
 ---
@@ -28,20 +28,13 @@ Chat (Send)  →  Brainstorm dialogue (Box 2)
 cd gnom-hub-v1
 ./scripts/install.sh
 source .venv/bin/activate
-
-# Key.txt (copied from example on install):
-#   DEEPSEEK_API_KEY=sk-...
-
+# Key.txt: DEEPSEEK_API_KEY=sk-...
 ./scripts/start.sh                 # http://127.0.0.1:8080/
-./scripts/quality_check.sh         # ruff (pinned) + pytest + smoke_e2e
+./scripts/quality_check.sh
 ```
 
-| Env | Default |
-|-----|---------|
-| `GNOM_HUB_HOST` | `127.0.0.1` (use `0.0.0.0` for LAN) |
-| `GNOM_HUB_PORT` | `8080` |
-
-Hard-reload UI after updates: **http://127.0.0.1:8080/?v=53**
+LAN: `GNOM_HUB_HOST=0.0.0.0 ./scripts/start.sh`  
+UI reload: **http://127.0.0.1:8080/?v=54**
 
 ---
 
@@ -49,114 +42,72 @@ Hard-reload UI after updates: **http://127.0.0.1:8080/?v=53**
 
 | Control | Action |
 |---------|--------|
-| **Send** | One brainstorm turn only |
-| **Execute** | Distill + Flex + workers |
-| **Mic** | Browser speech-to-text |
-| **Export** | Download last run as `gnom-hub-export.md` |
-| **Card click** | Tuning (system prompt + 5 sliders + model/key) |
-| **Card double-click** | Toggle on/off (Memory always on) |
+| **Send** | Brainstorm turn |
+| **Execute** | Distill + workers |
+| **Cancel** | Soft-cancel running async job |
+| **Mic** | Speech-to-text |
+| **Export** | Download last run as Markdown |
+| **Card click** | Tuning (prompt + 5 sliders) |
+| **Double-click** | Toggle agent (Memory locked) |
 | **Flex dropdown** | security / neutral / researcher |
-| **Worker 3/4** | Default off — double-click to enable (up to 4 workers) |
-| **Workspace** | Temp files after Execute → promote / clear / delete |
-| **Trace** | Light pipeline event log |
-| **System** | Budget, free-only, UI lang DE/EN, Ollama model list, checkpoint, **backup zip**, **clean state** |
-| **TTS** | Per-card checkbox — browser reads agent output |
-
-Box borders follow the active agent color. Box 3 renders HTML with Preview / Source.
+| **Worker 3/4** | Off by default — enable via double-click |
+| **Workspace** | Temp → promote / clear |
+| **Trace** | Pipeline event log |
+| **System** | Budget, lang DE/EN, Ollama models, checkpoint, backup list, **worker presets apply/delete**, clean |
+| **TTS** | Per-card read-aloud |
+| Chat log | Restored from `sessionStorage` in this browser |
 
 ---
 
-## Keys & environment
+## Keys & env
 
 | Variable | Role |
 |----------|------|
-| `DEEPSEEK_API_KEY` | Cloud LLM (via `Key.txt` → private `.env`) |
-| `OLLAMA_HOST` | Default `http://127.0.0.1:11434` |
-| `OLLAMA_MODEL` | Default `llama3.2` |
-| Agent model field | e.g. `ollama/llama3.2` forces local Ollama |
-| `GNOM_WEB_ALLOW_LOCAL=1` | Allow `web_fetch` to private/localhost |
-| `TELEGRAM_BOT_TOKEN` | Optional bot |
-| `GNOM_TELEGRAM_POLL=1` | Long-poll Telegram |
+| `DEEPSEEK_API_KEY` | Cloud LLM |
+| `OLLAMA_HOST` / `OLLAMA_MODEL` | Local LLM (`ollama/…` in agent model) |
+| `GNOM_WEB_ALLOW_LOCAL=1` | Allow web_fetch to private hosts |
+| `TELEGRAM_BOT_TOKEN` / `GNOM_TELEGRAM_POLL=1` | Optional bot |
 | `GNOM_FREE_ONLY` / `GNOM_MAX_BUDGET_USD` | LLM policy |
-| `GNOM_UI_LANG` | `en` or `de` |
-| `GNOM_PHASE3=0` | Hide God / Cold / Vec chrome |
-| `GNOM_GOD_MODE_AUTO=1` | Start elevated (discouraged) |
-
-**Ollama (optional):** `ollama serve` · `ollama pull llama3.2` · System shows installed models.
+| `GNOM_UI_LANG` | `en` \| `de` |
+| `GNOM_PHASE3=0` | Hide God/Cold/Vec chrome |
 
 ---
 
-## API (core)
+## API (highlights)
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| GET | `/api/health` | Liveness + version + LLM flags |
-| GET | `/api/state` | Full snapshot |
-| POST | `/api/chat` | Brainstorm turn (`?full=1` = one-shot full pipeline) |
-| POST | `/api/execute` | Distill → workers (async job by default) |
-| POST | `/api/clarify` | Distillation Yes/No/… |
-| GET | `/api/jobs/{id}` | Poll async job |
-| POST | `/api/save` | HOT + WARM + agents |
-| POST | `/api/reset` | Clear HOT (archives first) |
-| POST | `/api/clean` | HOT + temp workspace + pipeline; WARM kept |
-| POST | `/api/backup` | Zip → `data/backups/` |
-| POST | `/api/checkpoint/save` · `/load` | Resume pipeline state |
-| GET | `/api/trace` | Light event log |
-| GET | `/api/export/last` | Markdown export payload |
-| GET | `/api/ollama/models` | Installed Ollama tags |
-| POST | `/api/agents/{id}/tune` | Per-agent knobs |
-| POST | `/api/agents/enable-all` | Enable core agents |
-| GET/POST | `/api/system` | Global LLM + UI lang |
-| * | `/api/workspace/*` | Temp/perm files |
-| * | `/api/worker-presets*` | Save/apply worker presets |
-| POST | `/api/tools/call` | Tools incl. `web_fetch`, `hub_status`, … |
-
----
-
-## Layout
-
-```
-src/gnom_hub/
-  hub.py  main.py  api/  agents/  pipeline/  llm/  ui/  tools/
-  memory/   hot · warm · cold · vector · canvas · workspace · facade
-  telegram/ computer_use/ plugins/ security/
-plugins/echo/
-scripts/  install.sh · start.sh · quality_check.sh · smoke_*.py
-docs/     PRE_PLAN · V1_SCOPE · PLAN_VS_CODE · ROADMAP
-```
+| POST | `/api/chat` | Brainstorm (`?full=1` full pipeline) |
+| POST | `/api/execute` | Workers pipeline |
+| POST | `/api/jobs/{id}/cancel` | Soft-cancel job |
+| GET | `/api/export/last` | Markdown export |
+| GET | `/api/ollama/models` | Local models |
+| GET | `/api/backups` | List backup zips |
+| POST | `/api/backup` | Create backup |
+| POST | `/api/worker-presets` · `/apply` · `/delete` | Worker presets |
+| POST | `/api/clean` · `/checkpoint/*` · `/trace` | Ops |
 
 ---
 
 ## Releases
 
-| Version | Highlights |
-|---------|------------|
-| **1.0.0** | Pre-plan core complete (brainstorm→execute, UI, memory, CI) |
-| **1.1.0** | Ollama provider + safe `web_fetch` tool |
-| **1.2.0** | Ollama model list UI, auto URL prefetch on Execute, Export button |
-
-Tags: `v1.0.0` · `v1.1.0` · `v1.2.0`
+| Tag | Highlights |
+|-----|------------|
+| **1.0.0** | Pre-plan core complete |
+| **1.1.0** | Ollama + web_fetch tool |
+| **1.2.0** | Ollama list, auto URL fetch, Export |
+| **1.3.0** | Cancel job, chat persist, presets UI, backups list |
 
 ---
 
-## Dev / CI
+## Dev
 
 ```bash
-./scripts/quality_check.sh
-# ruff==0.16.1 · pytest · smoke_e2e (chat→execute)
+./scripts/quality_check.sh   # ruff==0.16.1 · pytest · smoke_e2e
 ```
 
-GitHub Actions on `main`: lint + test matrix 3.10–3.12 + smoke.
-
----
-
-## Scope notes
-
-**In product:** multi-agent pipeline, local data dirs, DeepSeek/Ollama, workspace, trace/quality/checkpoint/clean/backup, DE/EN tooltips.
-
-**Parked / lite:** full skill marketplace, unrestricted web agent, real kernel God-Mode, auto-update, true embeddings, mobile UI.
-
-Details: [`docs/PLAN_VS_CODE.md`](docs/PLAN_VS_CODE.md) · [`docs/PRE_PLAN.md`](docs/PRE_PLAN.md) · [`docs/V1_SCOPE.md`](docs/V1_SCOPE.md) · [`docs/ROADMAP.md`](docs/ROADMAP.md)
+Parked: skill marketplace, auto-update, true embeddings, mobile UI.  
+Docs: [`docs/ROADMAP.md`](docs/ROADMAP.md) · [`docs/PLAN_VS_CODE.md`](docs/PLAN_VS_CODE.md)
 
 ## License
 

@@ -151,6 +151,26 @@ html, body {
   background: #495057;
 }
 
+.btn-cancel {
+  flex: 0 0 72px;
+  height: 28px;
+  border: 1px solid #e03131;
+  border-radius: 4px;
+  background: #862e2e;
+  color: #ffa8a8;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.btn-cancel:hover {
+  background: #a61e4d;
+  color: #fff;
+}
+
+.btn-cancel[hidden] {
+  display: none !important;
+}
+
 .system-row-actions {
   flex-direction: row !important;
   flex-wrap: wrap;

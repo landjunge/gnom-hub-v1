@@ -108,6 +108,8 @@
   let recognition = null;
   let listening = false;
   let lastSpokenKey = "";
+  let currentJobId = null;
+  const CHAT_STORAGE_KEY = "gnom-hub-chat-log-v1";
 
   function statusLabel(agent) {
     if (agent.parked) return agent.enabled ? "on · later" : "off / parked";
@@ -731,10 +733,96 @@
           ? "Checkpoint: available (Load to resume)"
           : "Checkpoint: none yet";
       }
+      // Worker presets
+      try {
+        const pl = await api("GET", "/api/worker-presets");
+        const sel = document.getElementById("sys-preset-select");
+        if (sel) {
+          const cur = sel.value;
+          sel.innerHTML = '<option value="">— select preset —</option>';
+          (pl.presets || []).forEach(function (p) {
+            const opt = document.createElement("option");
+            opt.value = p.name || "";
+            opt.textContent =
+              (p.name || "?") + " (" + (p.source_agent || "") + ")";
+            sel.appendChild(opt);
+          });
+          if (cur) sel.value = cur;
+        }
+      } catch (_e2) {
+        /* ignore */
+      }
+      // Backups list
+      try {
+        const bl = await api("GET", "/api/backups");
+        const ul = document.getElementById("sys-backup-list");
+        if (ul) {
+          ul.innerHTML = "";
+          const items = bl.backups || s.backups || [];
+          if (!items.length) {
+            const li = document.createElement("li");
+            li.className = "muted";
+            li.textContent = "(no backups yet)";
+            ul.appendChild(li);
+          } else {
+            items.slice(0, 8).forEach(function (b) {
+              const li = document.createElement("li");
+              li.textContent =
+                (b.name || "") +
+                " · " +
+                (b.bytes != null ? Math.round(b.bytes / 1024) + " KB" : "");
+              li.title = b.path || "";
+              ul.appendChild(li);
+            });
+          }
+        }
+      } catch (_e3) {
+        /* ignore */
+      }
     } catch (err) {
       toast("System load failed: " + err.message, "error");
     }
     els.systemModal.hidden = false;
+  }
+
+  async function applySelectedPreset() {
+    const sel = document.getElementById("sys-preset-select");
+    const agent = document.getElementById("sys-preset-agent");
+    const name = sel && sel.value;
+    if (!name) {
+      toast("Select a preset", "info");
+      return;
+    }
+    try {
+      const data = await api("POST", "/api/worker-presets/apply", {
+        name: name,
+        agent_id: (agent && agent.value) || "worker1",
+      });
+      applyAgentsFromServer([data]);
+      toast("Preset applied to " + ((agent && agent.value) || "worker1"), "ok");
+    } catch (err) {
+      toast("Apply failed: " + err.message, "error");
+    }
+  }
+
+  async function deleteSelectedPreset() {
+    const sel = document.getElementById("sys-preset-select");
+    const name = sel && sel.value;
+    if (!name) {
+      toast("Select a preset", "info");
+      return;
+    }
+    if (!confirm('Delete preset "' + name + '"?')) return;
+    try {
+      await api("POST", "/api/worker-presets/delete", {
+        name: name,
+        agent_id: "worker1",
+      });
+      toast("Preset deleted", "ok");
+      openSystemModal();
+    } catch (err) {
+      toast("Delete failed: " + err.message, "error");
+    }
   }
 
   function closeSystemModal() {
@@ -1190,12 +1278,54 @@
       // re-evaluated in applySnapshot; only hard-disable while busy
       if (chatBusy) els.btnExecute.disabled = true;
     }
+    const btnCancel = document.getElementById("btn-cancel");
+    if (btnCancel) {
+      btnCancel.hidden = !chatBusy;
+      btnCancel.disabled = !chatBusy;
+    }
     if (els.btnMic) els.btnMic.disabled = chatBusy;
     if (els.chatInput) els.chatInput.disabled = chatBusy;
     if (els.stageBadge && chatBusy) els.stageBadge.textContent = "running…";
   }
 
+  function persistChatLog() {
+    if (!els.chatLog) return;
+    try {
+      const lines = [];
+      els.chatLog.querySelectorAll(".chat-line").forEach(function (el) {
+        lines.push(el.textContent || "");
+      });
+      sessionStorage.setItem(
+        CHAT_STORAGE_KEY,
+        JSON.stringify(lines.slice(-80))
+      );
+    } catch (_e) {
+      /* quota / private mode */
+    }
+  }
+
+  function restoreChatLog() {
+    if (!els.chatLog) return;
+    try {
+      const raw = sessionStorage.getItem(CHAT_STORAGE_KEY);
+      if (!raw) return;
+      const lines = JSON.parse(raw);
+      if (!Array.isArray(lines) || !lines.length) return;
+      els.chatLog.innerHTML = "";
+      lines.forEach(function (t) {
+        const line = document.createElement("p");
+        line.className = "chat-line";
+        line.textContent = t;
+        els.chatLog.appendChild(line);
+      });
+      els.chatLog.scrollTop = els.chatLog.scrollHeight;
+    } catch (_e) {
+      /* ignore */
+    }
+  }
+
   async function pollJob(jobId, maxMs) {
+    currentJobId = jobId;
     const deadline = Date.now() + (maxMs || 120000);
     let lastStage = "";
     while (Date.now() < deadline) {
@@ -1208,14 +1338,30 @@
       }
       if (job.snapshot) applySnapshot(job.snapshot);
       const st = job.status;
-      if (st === "done" || st === "error" || st === "clarify") {
+      if (st === "done" || st === "error" || st === "clarify" || st === "cancelled") {
+        currentJobId = null;
         return job;
       }
       await new Promise(function (r) {
         setTimeout(r, 450);
       });
     }
+    currentJobId = null;
     throw new Error("Pipeline timeout");
+  }
+
+  async function cancelCurrentJob() {
+    if (!currentJobId) {
+      toast("No running job", "info");
+      return;
+    }
+    try {
+      await api("POST", "/api/jobs/" + encodeURIComponent(currentJobId) + "/cancel");
+      toast("Cancel requested", "info");
+      appendChat("system", "Cancel requested for job " + currentJobId);
+    } catch (err) {
+      toast("Cancel failed: " + err.message, "error");
+    }
   }
 
   async function sendChat() {
@@ -1252,7 +1398,10 @@
       applySnapshot(snap);
       const stage =
         (snap.pipeline && snap.pipeline.stage) || start.stage || "";
-      if (stage === "brainstorm") {
+      if (start.job_id && snap && snap.pipeline && snap.pipeline.stage === "cancelled") {
+        appendChat("system", "Job cancelled.");
+        toast("Cancelled", "info");
+      } else if (stage === "brainstorm") {
         appendChat(
           "system",
           "Brainstorm ready — keep chatting, or press Execute for workers."
@@ -1264,12 +1413,16 @@
       } else if (stage === "clarify") {
         appendChat("system", "Need a clarify answer in Box 1.");
         toast("Clarify needed in Box 1", "info");
+      } else if (stage === "cancelled") {
+        appendChat("system", "Job cancelled.");
+        toast("Cancelled", "info");
       }
     } catch (err) {
       appendChat("system", "Chat failed: " + err.message);
       toast("Chat failed: " + err.message, "error");
     } finally {
       setChatBusy(false);
+      currentJobId = null;
     }
   }
 
@@ -1309,12 +1462,16 @@
       } else if (stage === "clarify") {
         appendChat("system", "Clarify needed in Box 1 before workers finish.");
         toast("Clarify needed", "info");
+      } else if (stage === "cancelled") {
+        appendChat("system", "Execute cancelled.");
+        toast("Cancelled", "info");
       }
     } catch (err) {
       appendChat("system", "Execute failed: " + err.message);
       toast("Execute failed: " + err.message, "error");
     } finally {
       setChatBusy(false);
+      currentJobId = null;
     }
   }
 
@@ -1324,6 +1481,7 @@
     line.textContent = who + ": " + text;
     els.chatLog.appendChild(line);
     els.chatLog.scrollTop = els.chatLog.scrollHeight;
+    persistChatLog();
   }
 
   async function onSave() {
@@ -1725,6 +1883,7 @@
   }
 
   async function bootstrap() {
+    restoreChatLog();
     try {
       // Ensure all pipeline agents are ON (Worker 1+2 included)
       try {
@@ -1759,7 +1918,13 @@
 
     els.btnSend.addEventListener("click", sendChat);
     if (els.btnExecute) els.btnExecute.addEventListener("click", runExecute);
+    const btnCancel = document.getElementById("btn-cancel");
+    if (btnCancel) btnCancel.addEventListener("click", cancelCurrentJob);
     if (els.btnMic) els.btnMic.addEventListener("click", toggleMic);
+    const presetApply = document.getElementById("sys-preset-apply");
+    const presetDel = document.getElementById("sys-preset-delete");
+    if (presetApply) presetApply.addEventListener("click", applySelectedPreset);
+    if (presetDel) presetDel.addEventListener("click", deleteSelectedPreset);
     els.chatInput.addEventListener("keydown", function (ev) {
       if (ev.key === "Enter") {
         ev.preventDefault();

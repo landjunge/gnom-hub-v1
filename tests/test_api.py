@@ -28,6 +28,33 @@ def test_health(client: TestClient):
     assert "version" in r.json()
 
 
+def test_cancel_backups_presets_delete(client: TestClient):
+    r = client.post("/api/chat", json={"text": "async cancel test"})
+    assert r.status_code == 200
+    jid = r.json().get("job_id")
+    assert jid
+    c = client.post(f"/api/jobs/{jid}/cancel")
+    assert c.status_code == 200
+    assert c.json()["status"] == "cancelled"
+
+    client.post(
+        "/api/worker-presets",
+        json={"name": "tmp-preset", "agent_id": "worker1"},
+    )
+    d = client.post(
+        "/api/worker-presets/delete",
+        json={"name": "tmp-preset", "agent_id": "worker1"},
+    )
+    assert d.status_code == 200
+    names = [p.get("name") for p in d.json().get("presets") or []]
+    assert "tmp-preset" not in names
+
+    client.post("/api/backup")
+    bl = client.get("/api/backups")
+    assert bl.status_code == 200
+    assert isinstance(bl.json().get("backups"), list)
+
+
 def test_export_and_ollama_models(client: TestClient):
     client.post("/api/chat?sync=1", json={"text": "Export me a plan"})
     client.post("/api/execute?sync=1")

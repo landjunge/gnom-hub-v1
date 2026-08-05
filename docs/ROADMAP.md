@@ -25,7 +25,16 @@
 | Auto web_fetch when tasks contain URLs | **done** |
 | Export last results (Markdown download) | **done** |
 
-## Post-V1.2 (optional)
+## V1.3.0
+
+| Item | Status |
+|------|--------|
+| Soft job cancel | **done** |
+| Chat log sessionStorage | **done** |
+| Worker presets apply/delete in System | **done** |
+| Backups list API + System UI | **done** |
+
+## Post-V1.3 (optional)
 
 | Item | Notes |
 |------|--------|

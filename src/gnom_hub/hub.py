@@ -535,7 +535,7 @@ class Hub:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "1.2.0",
+            "version": "1.3.0",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -654,19 +654,32 @@ class Hub:
             # Serialize pipeline jobs — shared orchestrator state
             with self._pipeline_lock:
                 try:
+                    if job.get("cancel"):
+                        job["status"] = "cancelled"
+                        job["stage"] = "cancelled"
+                        job["snapshot"] = self.snapshot()
+                        return
                     runner()
-                    if self.pipeline.state.error:
+                    if job.get("cancel"):
+                        job["status"] = "cancelled"
+                        job["error"] = job.get("error") or "cancelled by user"
+                        job["stage"] = "cancelled"
+                    elif self.pipeline.state.error:
                         self.last_error = self.pipeline.state.error
                         job["status"] = "error"
                         job["error"] = self.pipeline.state.error
+                        job["stage"] = self.pipeline.state.stage.value
                     elif self.pipeline.state.stage.value == "clarify":
                         job["status"] = "clarify"
+                        job["stage"] = self.pipeline.state.stage.value
                     else:
                         job["status"] = "done"
+                        job["stage"] = self.pipeline.state.stage.value
                         # Plan: agent outputs land in temp workspace first
                         if name in ("execute", "pipeline"):
                             self._capture_workspace_outputs()
-                    job["stage"] = self.pipeline.state.stage.value
+                    if not job.get("stage"):
+                        job["stage"] = self.pipeline.state.stage.value
                     job["snapshot"] = self.snapshot()
                 except Exception as exc:  # noqa: BLE001
                     job["status"] = "error"
@@ -747,6 +760,25 @@ class Hub:
         else:
             out["snapshot"] = self.snapshot()
         return out
+
+    def cancel_job(self, job_id: str) -> dict[str, Any]:
+        """Soft-cancel: mark job cancelled (running thread may still finish)."""
+        jobs = getattr(self, "_jobs", {})
+        job = jobs.get(job_id)
+        if not job:
+            raise FileNotFoundError("unknown job")
+        if job.get("status") == "running":
+            job["cancel"] = True
+            job["status"] = "cancelled"
+            job["error"] = "cancelled by user"
+            job["stage"] = "cancelled"
+            self._append_trace("job.cancel", {"id": job_id})
+        return {
+            "id": job["id"],
+            "status": job["status"],
+            "stage": job.get("stage"),
+            "error": job.get("error"),
+        }
 
     def clarify(self, option: str) -> dict[str, Any]:
         """Synchronous clarify (also used after async reaches clarify)."""
@@ -882,8 +914,9 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "1.2.0",
+            "version": "1.3.0",
             "providers": self.llm.providers_snapshot(),
+            "backups": self.list_backups()[:8],
         }
 
     def save_checkpoint(self) -> dict[str, Any]:
@@ -1062,6 +1095,33 @@ class Hub:
                         zf.write(f, arcname=str(f.relative_to(self.root / "data")))
         self._append_trace("backup.create", {"path": str(path)})
         return {"ok": True, "path": str(path), "bytes": path.stat().st_size}
+
+    def list_backups(self) -> list[dict[str, Any]]:
+        backup_dir = self.root / "data" / "backups"
+        if not backup_dir.is_dir():
+            return []
+        out: list[dict[str, Any]] = []
+        for p in sorted(backup_dir.glob("gnom-hub-backup-*.zip"), reverse=True):
+            try:
+                out.append(
+                    {
+                        "name": p.name,
+                        "path": str(p),
+                        "bytes": p.stat().st_size,
+                    }
+                )
+            except OSError:
+                continue
+        return out[:30]
+
+    def delete_worker_preset(self, name: str) -> dict[str, Any]:
+        presets = [p for p in self.list_worker_presets() if p.get("name") != name]
+        self._presets_path.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_text(
+            self._presets_path,
+            json.dumps({"presets": presets}, ensure_ascii=False, indent=2) + "\n",
+        )
+        return {"ok": True, "presets": presets}
 
     def list_worker_presets(self) -> list[dict[str, Any]]:
         path = self._presets_path

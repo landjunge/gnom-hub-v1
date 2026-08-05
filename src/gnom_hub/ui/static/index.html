@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=53" />
+  <link rel="stylesheet" href="/static/app.css?v=54" />
 </head>
 <body>
   <div id="app">
@@ -120,6 +120,9 @@
         <button type="button" id="btn-send" class="btn-send">Send</button>
         <button type="button" id="btn-execute" class="btn-execute" title="Run distill + workers from brainstorm" disabled>
           Execute
+        </button>
+        <button type="button" id="btn-cancel" class="btn-cancel" title="Cancel running job" hidden>
+          Cancel
         </button>
       </div>
     </section>
@@ -242,7 +245,27 @@
           <button type="button" id="sys-clean" class="btn-ws-sm">Clean state</button>
         </div>
         <p id="system-ckpt" class="system-line muted">Checkpoint: —</p>
-        <p class="system-hint muted">Keys: put DEEPSEEK_API_KEY in Key.txt on Desktop or project root → private .env. Worker 3/4: double-click cards to enable.</p>
+        <div class="system-row">
+          <span>Worker presets</span>
+          <div class="system-row-actions">
+            <select id="sys-preset-select" class="tune-input" style="max-width:180px">
+              <option value="">— select preset —</option>
+            </select>
+            <select id="sys-preset-agent" class="tune-input" style="max-width:110px">
+              <option value="worker1">Worker 1</option>
+              <option value="worker2">Worker 2</option>
+              <option value="worker3">Worker 3</option>
+              <option value="worker4">Worker 4</option>
+            </select>
+            <button type="button" id="sys-preset-apply" class="btn-ws-sm">Apply</button>
+            <button type="button" id="sys-preset-delete" class="btn-ws-sm">Delete</button>
+          </div>
+        </div>
+        <div class="system-row">
+          <span>Backups</span>
+          <ul id="sys-backup-list" class="ws-list" style="max-height:100px"></ul>
+        </div>
+        <p class="system-hint muted">Keys: Key.txt → DEEPSEEK_API_KEY. Model ollama/…. Worker 3/4: double-click to enable. Chat log persists in this browser.</p>
       </div>
       <div class="modal-actions">
         <button type="button" id="system-save" class="btn-save">Apply</button>
@@ -263,6 +286,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=53"></script>
+  <script src="/static/app.js?v=54"></script>
 </body>
 </html>
