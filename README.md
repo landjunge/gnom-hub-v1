@@ -1,8 +1,8 @@
-# Gnom-Hub v1.0.0
+# Gnom-Hub v1.1.0
 
 Local multi-agent control hub: **free brainstorm first**, then **Execute** workers.
 
-Desktop-only · USB-friendly · DeepSeek LLM · no mandatory cloud backend for the app process.
+Desktop-only · USB-friendly · **DeepSeek** and/or **Ollama** · optional safe **web_fetch** tool.
 
 ## Flow
 
@@ -54,7 +54,10 @@ Hard-reload after updates: `http://127.0.0.1:8080/?v=51` (or higher).
 
 | Variable | Role |
 |----------|------|
-| `DEEPSEEK_API_KEY` | Live LLM (Key.txt → private `.env`) |
+| `DEEPSEEK_API_KEY` | Cloud LLM (Key.txt → private `.env`) |
+| `OLLAMA_HOST` | Default `http://127.0.0.1:11434` |
+| `OLLAMA_MODEL` | Default `llama3.2` — use model `ollama/llama3.2` in tuning |
+| `GNOM_WEB_ALLOW_LOCAL=1` | Allow web_fetch to localhost (off by default) |
 | `TELEGRAM_BOT_TOKEN` | Optional bot |
 | `GNOM_TELEGRAM_POLL=1` | Long-poll Telegram |
 | `GNOM_FREE_ONLY` / `GNOM_MAX_BUDGET_USD` | LLM policy |

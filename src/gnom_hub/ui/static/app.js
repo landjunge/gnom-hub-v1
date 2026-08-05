@@ -346,16 +346,20 @@
     }
 
     if (els.llmBadge && snap.llm) {
-      const ok = !!snap.llm.deepseek;
+      const ds = !!snap.llm.deepseek;
+      const ol = !!snap.llm.ollama;
+      const ok = ds || ol;
       const tok =
         (snap.llm.prompt_tokens || 0) + (snap.llm.completion_tokens || 0);
       const spent =
         typeof snap.llm.spent_usd === "number"
           ? " · $" + snap.llm.spent_usd.toFixed(4)
           : "";
-      els.llmBadge.textContent = ok
-        ? "LLM: DeepSeek · " + tok + " tok" + spent
-        : "LLM: stub (no key)";
+      let label = "LLM: stub";
+      if (ds && ol) label = "LLM: DeepSeek+Ollama";
+      else if (ds) label = "LLM: DeepSeek";
+      else if (ol) label = "LLM: Ollama";
+      els.llmBadge.textContent = ok ? label + " · " + tok + " tok" + spent : label;
       els.llmBadge.classList.toggle("has-key", ok);
       els.llmBadge.title =
         "prompt=" +
@@ -684,9 +688,11 @@
     if (!els.systemModal) return;
     try {
       const s = await api("GET", "/api/system");
-      document.getElementById("system-llm").textContent = s.deepseek
-        ? "DeepSeek: connected"
-        : "DeepSeek: no key (stub mode)";
+      const parts = [];
+      parts.push(s.deepseek ? "DeepSeek: on" : "DeepSeek: off");
+      parts.push(s.ollama ? "Ollama: on" : "Ollama: off");
+      if (s.version) parts.push("v" + s.version);
+      document.getElementById("system-llm").textContent = parts.join(" · ");
       document.getElementById("sys-free-only").checked = !!s.free_only;
       document.getElementById("sys-budget").value =
         s.max_budget_usd != null ? s.max_budget_usd : "";

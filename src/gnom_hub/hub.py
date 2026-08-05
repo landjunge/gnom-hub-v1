@@ -119,7 +119,7 @@ class Hub:
         self.tools.register(
             ToolSpec(
                 name="pipeline_do",
-                description="Run chat pipeline with a task",
+                description="Run full pipeline (brainstorm+execute) with a task",
                 handler=lambda text: {
                     "stage": self.chat(str(text), full=True)["pipeline"]["stage"],
                     "results": list(self.pipeline.state.worker_results[:3]),
@@ -128,6 +128,27 @@ class Hub:
                     "type": "object",
                     "properties": {"text": {"type": "string"}},
                     "required": ["text"],
+                },
+                plugin="core",
+            )
+        )
+        from gnom_hub.tools.web_fetch import web_fetch
+
+        self.tools.register(
+            ToolSpec(
+                name="web_fetch",
+                description=(
+                    "Fetch public http(s) URL as plain text. "
+                    "Blocks private IPs unless GNOM_WEB_ALLOW_LOCAL=1."
+                ),
+                handler=lambda url, max_chars=8000: web_fetch(str(url), max_chars=int(max_chars)),
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "url": {"type": "string"},
+                        "max_chars": {"type": "integer"},
+                    },
+                    "required": ["url"],
                 },
                 plugin="core",
             )
@@ -407,7 +428,10 @@ class Hub:
     def _agent_dict(self, a: AgentState) -> dict[str, Any]:
         usage = self.llm.usage_snapshot()["by_agent"].get(a.id.value, {})
         tokens = int(usage.get("prompt_tokens", 0)) + int(usage.get("completion_tokens", 0))
-        online = a.enabled and (bool(a.api_key) or self.llm.has_provider("deepseek"))
+        has_llm = (
+            bool(a.api_key) or self.llm.has_provider("deepseek") or self.llm.has_provider("ollama")
+        )
+        online = a.enabled and has_llm
         return {
             "id": a.id.value,
             "name": a.name,
@@ -417,7 +441,7 @@ class Hub:
             "toggleable": a.toggleable,
             "preset": a.preset,
             "model": a.model or self.llm.default_model,
-            "has_key": bool(a.api_key) or self.llm.has_provider("deepseek"),
+            "has_key": has_llm,
             "online": online,
             "tts": bool(a.tts),
             "system_prompt": a.system_prompt or "",
@@ -502,13 +526,16 @@ class Hub:
             },
             "llm": {
                 "deepseek": self.llm.has_provider("deepseek"),
+                "ollama": self.llm.has_provider("ollama"),
                 "free_only": self.llm.free_only,
                 "max_budget_usd": self.llm.max_budget_usd,
                 "spent_usd": usage["spent_usd"],
                 "prompt_tokens": usage["prompt_tokens"],
                 "completion_tokens": usage["completion_tokens"],
                 "default_model": self.llm.default_model,
+                "providers": self.llm.providers_snapshot(),
             },
+            "version": "1.1.0",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -845,6 +872,7 @@ class Hub:
         usage = self.llm.usage_snapshot()
         return {
             "deepseek": self.llm.has_provider("deepseek"),
+            "ollama": self.llm.has_provider("ollama"),
             "free_only": self.llm.free_only,
             "max_budget_usd": self.llm.max_budget_usd,
             "spent_usd": usage["spent_usd"],
@@ -854,6 +882,8 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
+            "version": "1.1.0",
+            "providers": self.llm.providers_snapshot(),
         }
 
     def save_checkpoint(self) -> dict[str, Any]:

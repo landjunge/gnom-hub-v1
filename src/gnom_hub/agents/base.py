@@ -97,5 +97,10 @@ class BaseAgent:
             return False
         has = getattr(self.llm, "has_provider", None)
         if callable(has):
-            return bool(has("deepseek")) or bool(self.state.api_key)
+            return (
+                bool(has("deepseek"))
+                or bool(has("ollama"))
+                or bool(has("any"))
+                or bool(self.state.api_key)
+            )
         return False

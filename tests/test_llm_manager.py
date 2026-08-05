@@ -49,8 +49,26 @@ def test_chat_accepts_dict_messages():
 
 def test_missing_key():
     mgr = LLMManager(keys={})
+    mgr._ollama_ok = False  # no local fallback in unit test
     with pytest.raises(MissingKeyError):
         mgr.chat([LLMMessage(role="user", content="x")])
+
+
+def test_ollama_model_prefix_routes(monkeypatch):
+    mgr = LLMManager(keys={})
+    mgr._ollama_ok = True
+    called: dict = {}
+
+    def fake_chat(messages, **kwargs):
+        called.update(kwargs)
+        from gnom_hub.llm.types import LLMResult
+
+        return LLMResult(content="local", model=kwargs.get("model", "x"))
+
+    mgr._ollama.chat = fake_chat  # type: ignore[method-assign]
+    result = mgr.chat([LLMMessage(role="user", content="hi")], model="ollama/llama3.2")
+    assert result.content == "local"
+    assert called.get("model") == "llama3.2"
 
 
 def test_free_only_blocks_paid_model():

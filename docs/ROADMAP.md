@@ -10,14 +10,19 @@
 | 4.x | Brainstorm→Execute, tuning, TTS/STT, trace, quality, checkpoint | **done** |
 | 5.x | Workers 3/4, clean, backup, presets, compress, docs 1.0 | **done** |
 
-## Post-V1 (optional, not blocking)
+## V1.1.0
+
+| Item | Status |
+|------|--------|
+| Ollama local provider | **done** |
+| web_fetch tool (SSRF-safe) | **done** |
+
+## Post-V1.1 (optional)
 
 | Item | Notes |
 |------|--------|
-| Local LLM (Ollama) | Second provider behind LLMManager |
 | True embeddings | Replace lexical vector |
 | Skill marketplace | Agent tool install |
-| Web browse agent | Allowlisted fetch |
 | Auto-update | Channel + checksum |
 | Mobile / remote UI | Explicitly out of V1 |
 
