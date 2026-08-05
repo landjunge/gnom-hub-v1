@@ -155,6 +155,7 @@ class Hub:
             "flex_notes": st.flex_notes,
             "pending_question": q,
             "worker_results": list(st.worker_results),
+            "warnings": list(st.warnings),
             "error": st.error,
         }
 
@@ -233,6 +234,34 @@ class Hub:
             "agents_path": str(agents_path),
             "summary": self.memory.get_context_summary(),
             "canvas_nodes": len(self.memory.canvas.nodes),
+        }
+
+    def reset_session(self, *, keep_agents: bool = True) -> dict[str, Any]:
+        """Clear HOT memory/canvas and pipeline state. Agent toggles kept by default."""
+        self.memory.clear(save=True)
+        self.pipeline = Pipeline(self.bus, llm_manager=self.llm, agent_manager=self.agents)
+        self.last_error = None
+        if not keep_agents:
+            # rebuild defaults
+            self.agents = AgentManager(self.bus)
+            self.pipeline = Pipeline(self.bus, llm_manager=self.llm, agent_manager=self.agents)
+            self.agents.on_start()
+        return self.snapshot()
+
+    def help_text(self) -> dict[str, Any]:
+        return {
+            "title": "Gnom-Hub help",
+            "how_to": (
+                "1) Type a task in Chat and Send. "
+                "2) Double-click cards to toggle agents (Memory always on). "
+                "3) Shift+double-click Flex to cycle preset. "
+                "4) Answer Box 1 if asked. "
+                "5) One Save stores HOT memory + agent state. "
+                "6) Reset clears the session."
+            ),
+            "example": "Chat: 'Plan a small landing page' → see Box 2 ideas and Box 3 results.",
+            "pipeline": "Chat → Brainstorm → Distill → [Clarify] → Flex → Coordinator → Workers → Memory",
+            "keys": "Put DEEPSEEK_API_KEY in Key.txt (see Key.txt.example). Without key, stubs run.",
         }
 
     def canvas(self) -> dict[str, Any]:

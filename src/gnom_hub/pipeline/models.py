@@ -34,4 +34,5 @@ class PipelineState:
     flex_notes: str = ""
     pending_question: DistillQuestion | None = None
     worker_results: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
     error: str | None = None

@@ -84,6 +84,14 @@ def create_app() -> FastAPI:
     def save() -> dict[str, Any]:
         return get_hub().save()
 
+    @app.post("/api/reset")
+    def reset() -> dict[str, Any]:
+        return get_hub().reset_session(keep_agents=True)
+
+    @app.get("/api/help")
+    def help_() -> dict[str, Any]:
+        return get_hub().help_text()
+
     @app.get("/api/canvas")
     def canvas() -> dict[str, Any]:
         return get_hub().canvas()

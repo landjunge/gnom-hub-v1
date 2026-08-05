@@ -80,13 +80,19 @@ class Pipeline:
 
         if self._agent_enabled("brainstorm"):
             self._set_stage(PipelineStage.brainstorm)
-            notes = self._stub_brainstorm(text) if self._use_stubs() else self._llm_brainstorm(text)
+            notes = self._safe_stage(
+                "brainstorm",
+                lambda: self._llm_brainstorm(text),
+                lambda: self._stub_brainstorm(text),
+            )
             self._state.brainstorm_notes = notes
             self._bus.emit("pipeline.brainstorm", {"notes": notes})
 
         self._set_stage(PipelineStage.distill)
-        requirements, question = (
-            self._stub_distill(text) if self._use_stubs() else self._llm_distill(text)
+        requirements, question = self._safe_stage(
+            "distill",
+            lambda: self._llm_distill(text),
+            lambda: self._stub_distill(text),
         )
         self._state.distilled_requirements = requirements
         self._bus.emit("pipeline.distill", {"requirements": list(requirements)})
@@ -109,7 +115,11 @@ class Pipeline:
     def _run_flex_then_work(self) -> None:
         if self._agent_enabled("flex"):
             self._set_stage(PipelineStage.flex)
-            notes = self._stub_flex() if self._use_stubs() else self._llm_flex()
+            notes = self._safe_stage(
+                "flex",
+                self._llm_flex,
+                self._stub_flex,
+            )
             self._state.flex_notes = notes
             self._bus.emit(
                 "pipeline.flex",
@@ -141,10 +151,12 @@ class Pipeline:
         self._set_stage(PipelineStage.work)
         results: list[str] = []
         for i, (worker_id, task) in enumerate(tasks, start=1):
-            if self._use_stubs():
-                result = self._stub_worker(i, task)
-            else:
-                result = self._llm_worker(worker_id, task)
+            wid, t = worker_id, task
+            result = self._safe_stage(
+                wid,
+                lambda w=wid, tt=t: self._llm_worker(w, tt),
+                lambda n=i, tt=t: self._stub_worker(n, tt),
+            )
             results.append(result)
             self._bus.emit(
                 "pipeline.worker",
@@ -247,10 +259,11 @@ class Pipeline:
             [
                 LLMMessage(
                     role="system",
-                    content="Brainstorm freely. Short bullet ideas only.",
+                    content="Brainstorm freely. Max 6 short bullet ideas only.",
                 ),
                 LLMMessage(role="user", content=text),
             ],
+            max_tokens=400,
             **self._agent_llm_kwargs("brainstorm"),
         )
         return result.content
@@ -267,11 +280,12 @@ class Pipeline:
                     role="system",
                     content=(
                         "Distill the user request into clear requirements. "
-                        "Reply with one requirement per line, plain text."
+                        "Reply with one requirement per line, plain text. Max 8 lines."
                     ),
                 ),
                 LLMMessage(role="user", content=context),
             ],
+            max_tokens=400,
             **self._agent_llm_kwargs("coordinator"),
         )
         lines = [ln.strip("-• \t") for ln in result.content.splitlines() if ln.strip()]
@@ -295,6 +309,7 @@ class Pipeline:
                 LLMMessage(role="system", content=system),
                 LLMMessage(role="user", content=body),
             ],
+            max_tokens=300,
             **self._agent_llm_kwargs("flex"),
         )
         return result.content
@@ -310,11 +325,24 @@ class Pipeline:
                 ),
                 LLMMessage(role="user", content=task),
             ],
+            max_tokens=500,
             **self._agent_llm_kwargs(worker_id),
         )
         return result.content
 
     # ── helpers ──────────────────────────────────────────────────────
+
+    def _safe_stage(self, name: str, llm_fn, stub_fn):
+        """Run LLM stage when keyed; on failure fall back to stub and warn."""
+        if self._use_stubs():
+            return stub_fn()
+        try:
+            return llm_fn()
+        except Exception as exc:  # noqa: BLE001 — soft-fail live stages
+            msg = f"{name}: LLM failed ({exc}); used stub"
+            self._state.warnings.append(msg)
+            self._bus.emit("pipeline.warning", {"stage": name, "error": str(exc)})
+            return stub_fn()
 
     def _flex_preset(self) -> str:
         if self._agents is None:

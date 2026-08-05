@@ -23,6 +23,7 @@ Local-first multi-agent system.
 | 1.1 | Flex in pipeline, UI status, install.sh | done |
 | 1.2 | Tokens on cards + error/ok toasts | done |
 | 1.3 | Agent state save, canvas API, live DeepSeek | done |
+| 1.4 | LLM fallback, Help/Reset, faster live caps | done |
 
 Full plan: [`docs/PRE_PLAN.md`](docs/PRE_PLAN.md) · V1 scope: [`docs/V1_SCOPE.md`](docs/V1_SCOPE.md) · Roadmap: [`docs/ROADMAP.md`](docs/ROADMAP.md)
 

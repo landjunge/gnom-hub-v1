@@ -61,7 +61,9 @@ html, body {
   letter-spacing: 0.02em;
 }
 
-.btn-save {
+.btn-save,
+.btn-help,
+.btn-reset {
   width: 72px;
   height: 28px;
   border: 1px solid var(--border);
@@ -72,8 +74,15 @@ html, body {
   cursor: pointer;
 }
 
-.btn-save:hover {
+.btn-save:hover,
+.btn-help:hover,
+.btn-reset:hover {
   background: #495057;
+}
+
+.btn-reset {
+  border-color: #862e2e;
+  color: #ffa8a8;
 }
 
 .top-meta {

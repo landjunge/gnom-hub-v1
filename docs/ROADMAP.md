@@ -15,5 +15,6 @@
 | 1.1 | Hardening: Flex stage, coordinator skip, UI status, install | **done** |
 | 1.2 | UX: tokens on cards, toasts, LLM usage in snapshot | **done** |
 | 1.3 | Phase 2+: agent state persist, canvas API, live DeepSeek verified | **done** |
+| 1.4 | LLM soft-fallback, max_tokens, Help/Reset, session clear | **done** |
 
 Out of scope: see V1_SCOPE.md “draußen”.

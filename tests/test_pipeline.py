@@ -193,5 +193,27 @@ def test_pipeline_state_defaults():
     assert s.worker_results == []
     assert s.distilled_requirements == []
     assert s.flex_notes == ""
+    assert s.warnings == []
     q = DistillQuestion(id="x", text="?")
     assert q.options == ["Yes", "No", "Whatever", "Later"]
+
+
+class _FailLLM:
+    def has_provider(self, name: str = "deepseek") -> bool:
+        return name == "deepseek"
+
+    def chat(self, *args, **kwargs):
+        raise RuntimeError("boom")
+
+
+def test_llm_failure_falls_back_to_stub():
+    bus = EventBus()
+    events = _collect(bus)
+    bus.on("pipeline.warning", lambda d: events.append(("pipeline.warning", d)))
+    pipe = Pipeline(bus, llm_manager=_FailLLM())
+    state = pipe.start("Build something solid")
+    assert state.stage == PipelineStage.done
+    assert state.warnings
+    assert any("stub" in w.lower() or "failed" in w.lower() for w in state.warnings)
+    assert "Ideas for:" in state.brainstorm_notes
+    assert any(n == "pipeline.warning" for n, _ in events)

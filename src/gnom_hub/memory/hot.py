@@ -96,6 +96,13 @@ class HotMemory:
     def recall(self, node_id: str) -> str:
         return recall(node_id, self.offload_dir)
 
+    def clear(self, *, save: bool = True) -> None:
+        """Wipe HOT session + canvas (offload files left for safety)."""
+        self.session = self._empty_session()
+        self.canvas.clear()
+        if save:
+            self.save()
+
     def get_context_summary(self) -> str:
         """Short string for the pipeline (not full session dump)."""
         msgs = self.session.get("messages") or []

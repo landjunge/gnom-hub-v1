@@ -107,3 +107,18 @@ def test_save_persists_agents(client: TestClient, tmp_path):
     assert r.json()["ok"] is True
     agents_path = tmp_path / "data" / "hot" / "agents.json"
     assert agents_path.is_file()
+
+
+def test_help(client: TestClient):
+    r = client.get("/api/help")
+    assert r.status_code == 200
+    assert "pipeline" in r.json()
+
+
+def test_reset_clears_pipeline(client: TestClient):
+    client.post("/api/chat", json={"text": "remember this"})
+    r = client.post("/api/reset")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["pipeline"]["stage"] == "idle"
+    assert data["pipeline"]["user_text"] == ""

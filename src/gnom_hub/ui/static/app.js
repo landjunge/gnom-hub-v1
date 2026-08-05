@@ -85,8 +85,18 @@
     },
     save: {
       title: "Save",
-      how_to: "One global Save. Persists HOT session + mermaid canvas.",
+      how_to: "One global Save. Persists HOT session + mermaid canvas + agent toggles.",
       example: "Click Save after a good brainstorm so work is not lost.",
+    },
+    help: {
+      title: "Help",
+      how_to: "Shows a short how-to in Box 1 (Arounder).",
+      example: "Click Help when you forget the pipeline order.",
+    },
+    reset: {
+      title: "Reset",
+      how_to: "Clears HOT session, canvas, and pipeline state. Agent on/off stays.",
+      example: "Reset before a new project so old facts do not leak in.",
     },
     clarify: {
       title: "Clarify",
@@ -122,6 +132,8 @@
     chatLog: document.getElementById("chat-log"),
     btnSend: document.getElementById("btn-send"),
     btnSave: document.getElementById("btn-save"),
+    btnHelp: document.getElementById("btn-help"),
+    btnReset: document.getElementById("btn-reset"),
     stageBadge: document.getElementById("stage-badge"),
     llmBadge: document.getElementById("llm-badge"),
     memBadge: document.getElementById("mem-badge"),
@@ -299,6 +311,11 @@
     if (snap.last_error) {
       toast(snap.last_error, "error");
     }
+    if (p.warnings && p.warnings.length) {
+      p.warnings.forEach(function (w) {
+        toast(String(w), "info");
+      });
+    }
 
     // Mermaid canvas preview under Box 3 when nodes exist
     if (snap.canvas && snap.canvas.mermaid && snap.canvas.nodes > 0) {
@@ -454,6 +471,39 @@
     }
   }
 
+  async function onHelp() {
+    try {
+      const h = await api("GET", "/api/help");
+      showTooltip("help");
+      if (els.placeholder) els.placeholder.hidden = true;
+      els.tipRoot.hidden = false;
+      els.tipTitle.textContent = h.title || "Help";
+      els.tipHow.textContent = h.how_to || "";
+      els.tipExample.textContent =
+        (h.pipeline ? h.pipeline + "\n\n" : "") + (h.example || "");
+    } catch (err) {
+      showTooltip("help");
+      toast("Help offline: " + err.message, "error");
+    }
+  }
+
+  async function onReset() {
+    if (!window.confirm("Reset HOT session and pipeline? Agent toggles stay.")) {
+      return;
+    }
+    try {
+      const snap = await api("POST", "/api/reset");
+      applySnapshot(snap);
+      setBox2("Brainstorm thoughts appear here.");
+      setBox3("Worker results appear here.");
+      hideClarify();
+      appendChat("system", "Session reset.");
+      toast("Session reset", "ok");
+    } catch (err) {
+      appendChat("system", "Reset failed: " + err.message);
+    }
+  }
+
   async function onClarify(answer) {
     const cb = w.GnomHub.onClarify;
     if (typeof cb === "function") cb(answer);
@@ -521,6 +571,8 @@
       }
     });
     els.btnSave.addEventListener("click", onSave);
+    if (els.btnHelp) els.btnHelp.addEventListener("click", onHelp);
+    if (els.btnReset) els.btnReset.addEventListener("click", onReset);
 
     document.querySelectorAll(".btn-clarify").forEach(function (btn) {
       btn.addEventListener("click", function () {
