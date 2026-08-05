@@ -54,20 +54,38 @@ class BrainstormAgent(BaseAgent):
                         "- Match the user language (DE/EN).\n"
                         "- Use the full prior dialogue; never restart from zero if history exists.\n"
                         "- React to THIS message; build on earlier ideas.\n"
-                        "- Offer 3–6 concrete ideas, angles, or questions — not a finished plan.\n"
+                        "- For creative tasks: 3–6 concrete ideas/angles — not a finished plan.\n"
+                        "- For diagnosis/analysis of Gnom-Hub or 'wo hakt es': give a DIRECT "
+                        "numbered list of real failure modes (UI freeze, keys, Execute, workers, "
+                        "thinking/empty output, job lock/cancel, prompt override). "
+                        "Do NOT invent unrelated apps (todo/kanban/CSS drafts). "
+                        "Do NOT only ask the user where they think it breaks — state findings.\n"
                         "- Ask at most ONE short follow-up if something is unclear.\n"
-                        "- Do NOT start implementing, writing full code, or running the pipeline.\n"
-                        "- Do NOT invent an unrelated product (todo app, kanban, etc.).\n"
-                        "- If the user asks about THIS hub (Gnom-Hub bugs/UX), answer on that topic.\n"
+                        "- Do NOT start implementing full code or running the pipeline.\n"
                         "- No corporate fluff. Be direct and useful.\n"
                         "- If the user only refines (e.g. 'more on X'), go deeper on that."
+                    )
+                    # Diagnosis questions need lower temperature / less invention
+                    ut_low = (user_text or "").lower()
+                    is_diag = any(
+                        k in ut_low
+                        for k in (
+                            "analy",
+                            "hakt",
+                            "bug",
+                            "fehler",
+                            "debug",
+                            "wo es",
+                            "kaputt",
+                            "diagnos",
+                        )
                     )
                     return self.ask(
                         system=system,
                         user=_with_memory(f"USER MESSAGE:\n{user_text}", memory_ctx),
-                        prior=prior,
-                        max_tokens=700,
-                        temperature=0.9,
+                        prior=prior if not is_diag else prior[-4:],
+                        max_tokens=900 if is_diag else 700,
+                        temperature=0.35 if is_diag else 0.9,
                     )
                 except Exception as exc:  # noqa: BLE001
                     self.bus.emit(
