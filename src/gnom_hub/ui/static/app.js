@@ -1891,8 +1891,8 @@
   }
 
   /**
-   * 4 always-visible square slots per box.
-   * actions: [{ label, value, title? }] length 0–4
+   * 4 square slots per box — frame only when usable, no button labels.
+   * actions: [{ value, title? }] length 0–4 (title = tooltip / a11y only)
    */
   function setBoxActions(boxId, actions, opts) {
     const bar = document.querySelector(
@@ -1905,19 +1905,17 @@
     bar.querySelectorAll(".box-action-btn").forEach(function (btn, i) {
       const act = list[i];
       btn.classList.remove("is-active");
+      btn.textContent = ""; // never put labels/arrows on the tile
       if (!act || act.value == null || act.value === "") {
         btn.disabled = true;
-        btn.textContent = "";
         btn.removeAttribute("data-value");
         btn.removeAttribute("title");
         btn.setAttribute("aria-label", "Action " + (i + 1));
         return;
       }
-      const label = String(act.label != null ? act.label : act.value).slice(0, 12);
       const value = String(act.value);
-      const title = String(act.title || act.label || value);
+      const title = String(act.title || value);
       btn.disabled = false;
-      btn.textContent = label;
       btn.dataset.value = value;
       btn.title = title;
       btn.setAttribute("aria-label", title);
@@ -1931,7 +1929,10 @@
   function showClarify(question, options) {
     if (els.clarify) els.clarify.hidden = false;
     if (els.clarifyQ) {
-      els.clarifyQ.textContent = question || "Please choose:";
+      // Full wording lives in the question line, not on the tiles
+      const opts = options && options.length ? options : ["Yes", "No", "Whatever", "Later"];
+      const q = question || "Please choose:";
+      els.clarifyQ.textContent = q + "  ·  " + opts.slice(0, 4).join(" / ");
     }
     if (els.clarify) els.clarify.dataset.tooltipId = "clarify";
     const opts = options && options.length ? options : ["Yes", "No", "Whatever", "Later"];
@@ -1939,7 +1940,7 @@
       "box1",
       opts.slice(0, 4).map(function (o) {
         const s = String(o);
-        return { label: s.slice(0, 10), value: s, title: s };
+        return { value: s, title: s };
       }),
       { mode: "clarify" }
     );

@@ -1112,20 +1112,20 @@ body.worker-fs-open {
   text-indent: -9999px;
 }
 
-/* Usable: light 1px frame + label clearly visible */
+/* Usable: light 1px frame only — no label/icon on the tile */
 .box-action-btn:not(:disabled) {
   cursor: pointer;
   text-indent: 0;
   opacity: 1;
-  border-color: rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.28);
+  background: transparent;
+  color: transparent;
 }
 
 .box-action-btn:not(:disabled):hover {
-  border-color: rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.05);
+  color: transparent;
 }
 
 .box-action-btn.is-active:not(:disabled) {
