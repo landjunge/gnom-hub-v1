@@ -258,9 +258,7 @@ def test_b3_ui_unfreeze(res: Results) -> None:
             if stage == "running…" or stage == "running…":
                 res.find("stage badge stuck on running… after busy cleared")
             if ex_dis:
-                res.find(
-                    "Execute still disabled after brainstorm — lastCanExecute regression?"
-                )
+                res.find("Execute still disabled after brainstorm — lastCanExecute regression?")
             if len(box2) < 20:
                 res.find(f"Box2 almost empty ({len(box2)} chars)")
             # Execute should be enabled after successful brainstorm

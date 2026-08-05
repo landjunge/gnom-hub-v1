@@ -100,7 +100,7 @@ class DeepSeekClient:
             "yes",
             "on",
         )
-        if model.startswith("deepseek-v4"):
+        if "deepseek-v4" in model.lower():
             payload["thinking"] = {"type": "enabled" if thinking_on else "disabled"}
 
         body = json.dumps(payload).encode("utf-8")
@@ -133,6 +133,11 @@ class DeepSeekClient:
                 content = str(content)
         except (KeyError, IndexError, TypeError) as e:
             raise LLMError(f"DeepSeek unexpected response shape: {data!r}") from e
+
+        if not str(content).strip():
+            raise LLMError(
+                "DeepSeek empty content (enable DEEPSEEK_THINKING=0 or raise max_tokens)"
+            )
 
         usage = data.get("usage") or {}
         prompt_tokens = int(usage.get("prompt_tokens") or 0)

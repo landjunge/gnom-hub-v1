@@ -2128,6 +2128,10 @@
   }
 
   async function reexecFromHistory() {
+    if (chatBusy) {
+      toast("Busy — wait for current job", "info");
+      return;
+    }
     const re = document.getElementById("btn-reexec");
     const id = re && re.dataset.historyId;
     const sel = document.getElementById("result-history");
@@ -2820,30 +2824,64 @@
     toast("Chat log cleared", "ok");
   }
 
+  async function resyncState() {
+    try {
+      const snap = await api("GET", "/api/state");
+      applySnapshot(snap);
+      return snap;
+    } catch (_e) {
+      return null;
+    }
+  }
+
   async function pollJob(jobId, maxMs) {
     currentJobId = jobId;
-    const deadline = Date.now() + (maxMs || 120000);
+    const deadline = Date.now() + (maxMs || 180000);
     let lastStage = "";
-    while (Date.now() < deadline) {
-      const job = await api("GET", "/api/jobs/" + encodeURIComponent(jobId));
-      const stage = job.stage || (job.snapshot && job.snapshot.pipeline && job.snapshot.pipeline.stage) || "";
-      if (stage && stage !== lastStage) {
-        lastStage = stage;
-        if (els.stageBadge) els.stageBadge.textContent = stage;
-        appendChat("system", "Stage: " + stage);
+    try {
+      while (Date.now() < deadline) {
+        let job;
+        try {
+          job = await api("GET", "/api/jobs/" + encodeURIComponent(jobId));
+        } catch (_pollErr) {
+          // transient — retry until deadline
+          await new Promise(function (r) {
+            setTimeout(r, 600);
+          });
+          continue;
+        }
+        const stage =
+          job.stage ||
+          (job.snapshot && job.snapshot.pipeline && job.snapshot.pipeline.stage) ||
+          "";
+        if (stage && stage !== lastStage) {
+          lastStage = stage;
+          if (els.stageBadge) els.stageBadge.textContent = stage;
+          appendChat("system", "Stage: " + stage);
+        }
+        if (job.snapshot) applySnapshot(job.snapshot);
+        const st = job.status;
+        if (st === "done" || st === "error" || st === "clarify" || st === "cancelled") {
+          // Always resync so can_execute / stage match server after soft-cancel
+          await resyncState();
+          return job;
+        }
+        await new Promise(function (r) {
+          setTimeout(r, 450);
+        });
       }
-      if (job.snapshot) applySnapshot(job.snapshot);
-      const st = job.status;
-      if (st === "done" || st === "error" || st === "clarify" || st === "cancelled") {
-        currentJobId = null;
-        return job;
+      // Timeout: cancel orphan + resync so UI is not left mid-pipeline
+      try {
+        await api("POST", "/api/jobs/" + encodeURIComponent(jobId) + "/cancel");
+        appendChat("system", "Job timed out — cancel requested.");
+      } catch (_c) {
+        /* ignore */
       }
-      await new Promise(function (r) {
-        setTimeout(r, 450);
-      });
+      await resyncState();
+      throw new Error("Pipeline timeout");
+    } finally {
+      if (currentJobId === jobId) currentJobId = null;
     }
-    currentJobId = null;
-    throw new Error("Pipeline timeout");
   }
 
   async function cancelCurrentJob() {
@@ -2851,10 +2889,12 @@
       toast("No running job", "info");
       return;
     }
+    const jid = currentJobId;
     try {
-      await api("POST", "/api/jobs/" + encodeURIComponent(currentJobId) + "/cancel");
+      await api("POST", "/api/jobs/" + encodeURIComponent(jid) + "/cancel");
       toast("Cancel requested", "info");
-      appendChat("system", "Cancel requested for job " + currentJobId);
+      appendChat("system", "Cancel requested for job " + jid);
+      await resyncState();
     } catch (err) {
       toast("Cancel failed: " + err.message, "error");
     }
@@ -2869,21 +2909,16 @@
     if (typeof cb === "function") cb(text);
 
     setChatBusy(true);
-    const live =
-      els.llmBadge && els.llmBadge.classList.contains("has-key");
-    appendChat(
-      "system",
-      live
-        ? "Brainstorm turn (Live LLM)…"
-        : "Brainstorm turn (stub)…"
-    );
-    toast(live ? "Brainstorming…" : "Brainstorming…", "info");
+    // Prefer long poll always for async jobs (badge may lag bootstrap)
+    const pollMs = 180000;
+    appendChat("system", "Brainstorm turn…");
+    toast("Brainstorming…", "info");
 
     try {
       const start = await api("POST", "/api/chat", { text: text });
       let snap = start;
       if (start.job_id) {
-        const job = await pollJob(start.job_id, live ? 180000 : 30000);
+        const job = await pollJob(start.job_id, pollMs);
         snap = job.snapshot || (await api("GET", "/api/state"));
         if (job.status === "error") {
           appendChat("system", "Brainstorm error: " + (job.error || "?"));
@@ -2933,20 +2968,13 @@
       return;
     }
     setChatBusy(true);
-    const live =
-      els.llmBadge && els.llmBadge.classList.contains("has-key");
-    appendChat(
-      "system",
-      live
-        ? "Execute started (distill → flex → workers)…"
-        : "Execute started (stub)…"
-    );
+    appendChat("system", "Execute started (distill → flex → workers)…");
     toast("Executing…", "info");
     try {
       const start = await api("POST", "/api/execute");
       let snap = start;
       if (start.job_id) {
-        const job = await pollJob(start.job_id, live ? 180000 : 30000);
+        const job = await pollJob(start.job_id, 300000);
         snap = job.snapshot || (await api("GET", "/api/state"));
         if (job.status === "error") {
           appendChat("system", "Execute error: " + (job.error || "?"));

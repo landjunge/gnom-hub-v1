@@ -108,10 +108,19 @@ def ensure_env_from_key_txt(
     if not from_key:
         return env_path if env_path.is_file() else None
 
+    # Hub keys always win from Key.txt so edits take effect without force=
+    HUB_OWNED = {
+        "DEEPSEEK_API_KEY",
+        "WORKER_API_KEY",
+        "DEEPSEEK_MODEL",
+        "TELEGRAM_BOT_TOKEN",
+    }
     if env_path.is_file() and not force:
         existing = parse_key_file(env_path.read_text(encoding="utf-8"))
-        # Fill missing keys from Key.txt; do not overwrite existing values
-        merged = {**from_key, **existing}
+        merged = dict(existing)
+        for k, v in from_key.items():
+            if k in HUB_OWNED or k not in merged:
+                merged[k] = v
         if merged != existing:
             atomic_write_text(env_path, env_text_from_keys(merged))
         return env_path

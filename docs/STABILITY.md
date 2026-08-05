@@ -95,3 +95,16 @@ Reference: [`KEYS_AND_MODELS.md`](KEYS_AND_MODELS.md)
 |------|---------|----------|-------|
 | 2026-08-05 | 119 pass | PASS (4 workers, quality poor) | thinking-on burned tokens |
 | 2026-08-05 | 119 pass + live pong | **PASS** 4 HTML iframes, quality 5–6/6, export ~27k | thinking default **disabled** |
+| 2026-08-05 | 119 pass + B1–B3 | **PASS** (workers max 6k) | debug race, cancel race, Key.txt wins, poll timeout recover |
+
+### Debug-team fixes (2026-08-05)
+
+| Bug | Fix |
+|-----|-----|
+| Concurrent jobs cross-update EventBus handlers | Handlers only while job owns lock + `_active_job_id` |
+| Sync chat/execute vs async race | All sync paths use `_pipeline_lock` |
+| Soft-cancel then `status=done` | `_finalize_job`: cancel always wins |
+| Key.txt edits ignored by stale `.env` | Hub keys from Key.txt always overwrite |
+| Empty DeepSeek content treated as success | Raise `LLMError` if still empty |
+| UI timeout leaves mid-stage + orphan job | Cancel + `/api/state` resync; longer poll |
+| Re-Exec while busy | Guard `chatBusy` |

@@ -33,13 +33,14 @@ def test_ensure_env_from_key_txt(tmp_path: Path):
     assert "sk-test-1" in env_path.read_text(encoding="utf-8")
 
 
-def test_ensure_env_does_not_overwrite_existing(tmp_path: Path):
+def test_ensure_env_key_txt_wins_for_hub_keys(tmp_path: Path):
+    """Key.txt is source of truth for DEEPSEEK_* / WORKER_* (operator edits)."""
     (tmp_path / "Key.txt").write_text("DEEPSEEK_API_KEY=from-key\n", encoding="utf-8")
     (tmp_path / ".env").write_text("DEEPSEEK_API_KEY=from-env\n", encoding="utf-8")
     ensure_env_from_key_txt(tmp_path)
     text = (tmp_path / ".env").read_text(encoding="utf-8")
-    assert "from-env" in text
-    assert "from-key" not in text
+    assert "from-key" in text
+    assert "from-env" not in text
 
 
 def test_ensure_env_merges_missing_keys(tmp_path: Path):
@@ -49,7 +50,8 @@ def test_ensure_env_merges_missing_keys(tmp_path: Path):
     (tmp_path / ".env").write_text("DEEPSEEK_API_KEY=keep-me\n", encoding="utf-8")
     ensure_env_from_key_txt(tmp_path)
     loaded = load_keys(tmp_path, apply_environ=False)
-    assert loaded["DEEPSEEK_API_KEY"] == "keep-me"
+    # Hub-owned keys from Key.txt win
+    assert loaded["DEEPSEEK_API_KEY"] == "sk-ds"
     assert loaded["OTHER_API_KEY"] == "sk-other"
 
 
