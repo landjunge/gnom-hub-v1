@@ -90,3 +90,20 @@ def test_tooltips(client: TestClient):
     r = client.get("/api/tooltips")
     assert r.status_code == 200
     assert "brainstorm" in r.json()
+
+
+def test_canvas_endpoint(client: TestClient):
+    r = client.get("/api/canvas")
+    assert r.status_code == 200
+    data = r.json()
+    assert "mermaid" in data
+    assert "nodes" in data
+
+
+def test_save_persists_agents(client: TestClient, tmp_path):
+    client.post("/api/agents/brainstorm/toggle")
+    r = client.post("/api/save")
+    assert r.status_code == 200
+    assert r.json()["ok"] is True
+    agents_path = tmp_path / "data" / "hot" / "agents.json"
+    assert agents_path.is_file()

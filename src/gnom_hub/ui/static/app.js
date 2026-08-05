@@ -99,14 +99,14 @@
 
   /** 8 slots – Worker3/4 parked for v1 (local only until API has them) */
   const AGENTS = [
-    { id: "brainstorm", label: "Brainstorm", color: "brainstorm", enabled: true, toggleable: true, parked: false, model: "—", preset: null },
-    { id: "memory", label: "Memory", color: "memory", enabled: true, toggleable: false, parked: false, model: "—", preset: null },
-    { id: "flex", label: "Flex", color: "flex", enabled: true, toggleable: true, parked: false, model: "—", preset: "security" },
-    { id: "coordinator", label: "Coordinator", color: "coordinator", enabled: true, toggleable: true, parked: false, model: "—", preset: null },
-    { id: "worker1", label: "Worker 1", color: "worker1", enabled: true, toggleable: true, parked: false, model: "—", preset: null },
-    { id: "worker2", label: "Worker 2", color: "worker2", enabled: true, toggleable: true, parked: false, model: "—", preset: null },
-    { id: "worker3", label: "Worker 3", color: "worker3", enabled: false, toggleable: true, parked: true, model: "—", preset: null },
-    { id: "worker4", label: "Worker 4", color: "worker4", enabled: false, toggleable: true, parked: true, model: "—", preset: null },
+    { id: "brainstorm", label: "Brainstorm", color: "brainstorm", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0 },
+    { id: "memory", label: "Memory", color: "memory", enabled: true, toggleable: false, parked: false, model: "—", preset: null, tokens: 0 },
+    { id: "flex", label: "Flex", color: "flex", enabled: true, toggleable: true, parked: false, model: "—", preset: "security", tokens: 0 },
+    { id: "coordinator", label: "Coordinator", color: "coordinator", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0 },
+    { id: "worker1", label: "Worker 1", color: "worker1", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0 },
+    { id: "worker2", label: "Worker 2", color: "worker2", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0 },
+    { id: "worker3", label: "Worker 3", color: "worker3", enabled: false, toggleable: true, parked: true, model: "—", preset: null, tokens: 0 },
+    { id: "worker4", label: "Worker 4", color: "worker4", enabled: false, toggleable: true, parked: true, model: "—", preset: null, tokens: 0 },
   ];
 
   const els = {
@@ -162,12 +162,16 @@
         agent.id === "flex" && agent.preset
           ? '<div class="card-preset">preset: ' + agent.preset + "</div>"
           : "";
+      const tok = agent.tokens || 0;
       card.innerHTML =
         '<div class="card-name">' +
         agent.label +
         "</div>" +
         '<div class="card-meta">LLM: ' +
         (agent.model || "—") +
+        "</div>" +
+        '<div class="card-tokens">tok: ' +
+        tok +
         "</div>" +
         presetLine +
         '<div class="card-status">' +
@@ -197,16 +201,44 @@
     return null;
   }
 
+  function toast(message, kind) {
+    const host = document.getElementById("toast-host");
+    if (!host) {
+      console.log("[toast]", kind || "info", message);
+      return;
+    }
+    const el = document.createElement("div");
+    el.className = "toast toast-" + (kind || "info");
+    el.textContent = message;
+    host.appendChild(el);
+    requestAnimationFrame(function () {
+      el.classList.add("show");
+    });
+    setTimeout(function () {
+      el.classList.remove("show");
+      setTimeout(function () {
+        if (el.parentNode) el.parentNode.removeChild(el);
+      }, 220);
+    }, 4200);
+  }
+
   async function api(method, path, body) {
     const opts = { method: method, headers: { "Content-Type": "application/json" } };
     if (body !== undefined) opts.body = JSON.stringify(body);
-    const res = await fetch(API + path, opts);
+    let res;
+    try {
+      res = await fetch(API + path, opts);
+    } catch (netErr) {
+      toast("Network error: " + netErr.message, "error");
+      throw netErr;
+    }
     if (!res.ok) {
       let detail = res.statusText;
       try {
         const j = await res.json();
         detail = j.detail || JSON.stringify(j);
       } catch (e) { /* ignore */ }
+      toast(String(detail), "error");
       throw new Error(detail);
     }
     return res.json();
@@ -222,6 +254,7 @@
       if (s.model) a.model = s.model;
       else if (s.role) a.model = "default";
       if (s.preset) a.preset = s.preset;
+      a.tokens = s.tokens || 0;
       a.parked = false;
     });
     renderCards();
@@ -237,15 +270,48 @@
 
     if (els.llmBadge && snap.llm) {
       const ok = !!snap.llm.deepseek;
+      const tok =
+        (snap.llm.prompt_tokens || 0) + (snap.llm.completion_tokens || 0);
+      const spent =
+        typeof snap.llm.spent_usd === "number"
+          ? " · $" + snap.llm.spent_usd.toFixed(4)
+          : "";
       els.llmBadge.textContent = ok
-        ? "LLM: DeepSeek"
+        ? "LLM: DeepSeek · " + tok + " tok" + spent
         : "LLM: stub (no key)";
       els.llmBadge.classList.toggle("has-key", ok);
+      els.llmBadge.title =
+        "prompt=" +
+        (snap.llm.prompt_tokens || 0) +
+        " completion=" +
+        (snap.llm.completion_tokens || 0);
     }
     if (els.memBadge && snap.memory_summary) {
       const short = String(snap.memory_summary).replace(/^HOT:\s*/i, "");
-      els.memBadge.textContent = "Mem: " + short;
+      const nodes =
+        snap.canvas && snap.canvas.nodes != null
+          ? " · canvas " + snap.canvas.nodes
+          : "";
+      els.memBadge.textContent = "Mem: " + short + nodes;
       els.memBadge.title = snap.memory_summary;
+    }
+
+    if (snap.last_error) {
+      toast(snap.last_error, "error");
+    }
+
+    // Mermaid canvas preview under Box 3 when nodes exist
+    if (snap.canvas && snap.canvas.mermaid && snap.canvas.nodes > 0) {
+      const box3 = document.getElementById("box3-content");
+      if (box3) {
+        let prev = box3.querySelector(".canvas-preview");
+        if (!prev) {
+          prev = document.createElement("pre");
+          prev.className = "canvas-preview";
+          box3.appendChild(prev);
+        }
+        prev.textContent = snap.canvas.mermaid;
+      }
     }
 
     const box2 = [];
@@ -358,8 +424,10 @@
       applySnapshot(snap);
       if (snap.pipeline && snap.pipeline.stage === "done") {
         appendChat("system", "Pipeline done.");
+        toast("Pipeline done", "ok");
       } else if (snap.pipeline && snap.pipeline.stage === "clarify") {
         appendChat("system", "Need a clarify answer in Box 1.");
+        toast("Clarify needed in Box 1", "info");
       }
     } catch (err) {
       appendChat("system", "Chat failed: " + err.message);
@@ -380,6 +448,7 @@
     try {
       const data = await api("POST", "/api/save");
       appendChat("system", "Saved. " + (data.summary || ""));
+      toast("Saved HOT memory + agent state", "ok");
     } catch (err) {
       appendChat("system", "Save failed: " + err.message);
     }

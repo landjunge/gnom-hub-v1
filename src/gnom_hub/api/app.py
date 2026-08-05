@@ -84,6 +84,10 @@ def create_app() -> FastAPI:
     def save() -> dict[str, Any]:
         return get_hub().save()
 
+    @app.get("/api/canvas")
+    def canvas() -> dict[str, Any]:
+        return get_hub().canvas()
+
     @app.get("/api/tooltips")
     def tooltips(lang: str = "en") -> dict[str, Any]:
         return get_hub().tooltips(lang)

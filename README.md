@@ -21,6 +21,8 @@ Local-first multi-agent system.
 | 0.9 | Per-agent model/key + Flex API | done |
 | 1.0 | Runbook / start script | done |
 | 1.1 | Flex in pipeline, UI status, install.sh | done |
+| 1.2 | Tokens on cards + error/ok toasts | done |
+| 1.3 | Agent state save, canvas API, live DeepSeek | done |
 
 Full plan: [`docs/PRE_PLAN.md`](docs/PRE_PLAN.md) · V1 scope: [`docs/V1_SCOPE.md`](docs/V1_SCOPE.md) · Roadmap: [`docs/ROADMAP.md`](docs/ROADMAP.md)
 

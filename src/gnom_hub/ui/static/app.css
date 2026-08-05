@@ -367,3 +367,66 @@ html, body {
 .btn-send:hover {
   background: #1c7ed6;
 }
+
+/* —— Toasts —— */
+.toast-host {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 360px;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #2c2e33;
+  color: var(--text);
+  font-size: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast.toast-error {
+  border-color: #e03131;
+  background: #3b1f1f;
+}
+
+.toast.toast-ok {
+  border-color: #2f9e44;
+  background: #1b2e22;
+}
+
+.toast.toast-info {
+  border-color: #1864ab;
+}
+
+.card-tokens {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.canvas-preview {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  white-space: pre-wrap;
+  color: var(--text-muted);
+  max-height: 120px;
+  overflow: auto;
+}

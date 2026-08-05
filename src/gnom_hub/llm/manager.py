@@ -48,11 +48,31 @@ class LLMManager:
         self.max_budget_usd = max_budget_usd
         self.default_model = default_model
         self._spent_usd = 0.0
+        self._prompt_tokens = 0
+        self._completion_tokens = 0
+        # per-agent usage: {agent_id: {prompt, completion, cost_usd, calls}}
+        self._by_agent: dict[str, dict[str, float | int]] = {}
         self._client_factory = client_factory or (lambda key: DeepSeekClient(key))
 
     @property
     def spent_usd(self) -> float:
         return self._spent_usd
+
+    @property
+    def prompt_tokens(self) -> int:
+        return self._prompt_tokens
+
+    @property
+    def completion_tokens(self) -> int:
+        return self._completion_tokens
+
+    def usage_snapshot(self) -> dict:
+        return {
+            "spent_usd": self._spent_usd,
+            "prompt_tokens": self._prompt_tokens,
+            "completion_tokens": self._completion_tokens,
+            "by_agent": {k: dict(v) for k, v in self._by_agent.items()},
+        }
 
     def deepseek_key(self, override: str | None = None) -> str:
         if override and override.strip():
@@ -102,9 +122,17 @@ class LLMManager:
         result = client.chat(msgs, model=model_name, temperature=temperature, max_tokens=max_tokens)
 
         self._spent_usd += result.cost_usd
-        if self.max_budget_usd is not None and self._spent_usd > self.max_budget_usd:
-            # Call already happened; record spend and flag next call
-            pass
+        self._prompt_tokens += result.prompt_tokens
+        self._completion_tokens += result.completion_tokens
+        agent_key = (agent or "system").strip() or "system"
+        bucket = self._by_agent.setdefault(
+            agent_key,
+            {"prompt_tokens": 0, "completion_tokens": 0, "cost_usd": 0.0, "calls": 0},
+        )
+        bucket["prompt_tokens"] = int(bucket["prompt_tokens"]) + result.prompt_tokens
+        bucket["completion_tokens"] = int(bucket["completion_tokens"]) + result.completion_tokens
+        bucket["cost_usd"] = float(bucket["cost_usd"]) + result.cost_usd
+        bucket["calls"] = int(bucket["calls"]) + 1
 
         return result
 

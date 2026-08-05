@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 
 from gnom_hub.agents.manager import AgentManager
@@ -10,6 +12,7 @@ from gnom_hub.config.keys import ensure_env_from_key_txt, load_keys
 from gnom_hub.config.paths import project_root
 from gnom_hub.core.event_bus import EventBus
 from gnom_hub.llm.manager import LLMManager
+from gnom_hub.memory.atomic import atomic_write_text
 from gnom_hub.memory.hot import HotMemory
 from gnom_hub.pipeline.pipeline import Pipeline
 from gnom_hub.ui.tooltips import TOOLTIPS
@@ -27,6 +30,9 @@ class Hub:
         self.llm = LLMManager(keys=self.keys)
         self.memory = HotMemory(self.root)
         self.pipeline = Pipeline(self.bus, llm_manager=self.llm, agent_manager=self.agents)
+        self.last_error: str | None = None
+        self._agent_state_path = self.root / "data" / "hot" / "agents.json"
+        self._load_agent_state()
         self._wire_memory()
         self.agents.on_start()
 
@@ -49,12 +55,71 @@ class Hub:
                 self.memory.add_message("worker", str(res))
             self.memory.save()
 
+        def on_error(data: Any) -> None:
+            if isinstance(data, dict):
+                self.last_error = str(data.get("error") or "pipeline error")
+            else:
+                self.last_error = str(data)
+
         self.bus.on("pipeline.memory_hint", on_memory_hint)
+        self.bus.on("pipeline.error", on_error)
+
+    # ── agent persistence ───────────────────────────────────────────
+
+    def _load_agent_state(self) -> None:
+        path = self._agent_state_path
+        if not path.is_file():
+            return
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return
+        agents = data.get("agents") if isinstance(data, dict) else None
+        if not isinstance(agents, list):
+            return
+        for item in agents:
+            if not isinstance(item, dict):
+                continue
+            aid = item.get("id")
+            if not aid:
+                continue
+            try:
+                agent = self.agents.get(aid)
+            except ValueError:
+                continue
+            if agent.toggleable and "enabled" in item:
+                agent.enabled = bool(item["enabled"])
+            if agent.id == AgentId.FLEX and item.get("preset"):
+                try:
+                    self.agents.set_flex_preset(str(item["preset"]))
+                except ValueError:
+                    pass
+            if item.get("model"):
+                agent.model = str(item["model"])
+            # never restore raw api keys from disk for safety in v1
+
+    def _save_agent_state(self) -> Path:
+        payload = {
+            "agents": [
+                {
+                    "id": a.id.value,
+                    "enabled": a.enabled,
+                    "preset": a.preset,
+                    "model": a.model,
+                }
+                for a in self.agents.list_agents()
+            ]
+        }
+        path = self._agent_state_path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_text(path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+        return path
 
     # ── serialization ───────────────────────────────────────────────
 
-    @staticmethod
-    def _agent_dict(a: AgentState) -> dict[str, Any]:
+    def _agent_dict(self, a: AgentState) -> dict[str, Any]:
+        usage = self.llm.usage_snapshot()["by_agent"].get(a.id.value, {})
+        tokens = int(usage.get("prompt_tokens", 0)) + int(usage.get("completion_tokens", 0))
         d: dict[str, Any] = {
             "id": a.id.value,
             "name": a.name,
@@ -63,8 +128,13 @@ class Hub:
             "enabled": a.enabled,
             "toggleable": a.toggleable,
             "preset": a.preset,
-            "model": a.model,
-            "has_key": bool(a.api_key),
+            "model": a.model or self.llm.default_model,
+            "has_key": bool(a.api_key) or self.llm.has_provider("deepseek"),
+            "tokens": tokens,
+            "prompt_tokens": int(usage.get("prompt_tokens", 0)),
+            "completion_tokens": int(usage.get("completion_tokens", 0)),
+            "cost_usd": float(usage.get("cost_usd", 0.0)),
+            "calls": int(usage.get("calls", 0)),
         }
         return d
 
@@ -89,28 +159,42 @@ class Hub:
         }
 
     def snapshot(self) -> dict[str, Any]:
+        usage = self.llm.usage_snapshot()
         return {
             "agents": [self._agent_dict(a) for a in self.agents.list_agents()],
             "pipeline": self.pipeline_dict(),
             "memory_summary": self.memory.get_context_summary(),
+            "canvas": {
+                "mermaid": self.memory.canvas.to_mermaid(),
+                "nodes": len(self.memory.canvas.nodes),
+            },
             "llm": {
                 "deepseek": self.llm.has_provider("deepseek"),
                 "free_only": self.llm.free_only,
                 "max_budget_usd": self.llm.max_budget_usd,
-                "spent_usd": self.llm.spent_usd,
+                "spent_usd": usage["spent_usd"],
+                "prompt_tokens": usage["prompt_tokens"],
+                "completion_tokens": usage["completion_tokens"],
                 "default_model": self.llm.default_model,
             },
             "flex_presets": list(FLEX_PRESETS),
+            "last_error": self.last_error,
         }
 
     # ── commands ────────────────────────────────────────────────────
 
     def chat(self, text: str) -> dict[str, Any]:
+        self.last_error = None
         self.pipeline.start(text)
+        if self.pipeline.state.error:
+            self.last_error = self.pipeline.state.error
         return self.snapshot()
 
     def clarify(self, option: str) -> dict[str, Any]:
+        self.last_error = None
         self.pipeline.answer_clarify(option)
+        if self.pipeline.state.error:
+            self.last_error = self.pipeline.state.error
         return self.snapshot()
 
     def toggle_agent(self, agent_id: str) -> dict[str, Any]:
@@ -142,10 +226,20 @@ class Hub:
 
     def save(self) -> dict[str, Any]:
         self.memory.save()
+        agents_path = self._save_agent_state()
         return {
             "ok": True,
             "path": str(self.memory.session_path),
+            "agents_path": str(agents_path),
             "summary": self.memory.get_context_summary(),
+            "canvas_nodes": len(self.memory.canvas.nodes),
+        }
+
+    def canvas(self) -> dict[str, Any]:
+        return {
+            "mermaid": self.memory.canvas.to_mermaid(),
+            "nodes": list(self.memory.canvas.nodes),
+            "path": str(self.memory.canvas_path),
         }
 
     def tooltips(self, lang: str = "en") -> dict[str, Any]:

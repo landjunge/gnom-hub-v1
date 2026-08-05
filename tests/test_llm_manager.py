@@ -85,3 +85,14 @@ def test_deepseek_http_error():
 def test_has_provider():
     assert LLMManager(keys={"DEEPSEEK_API_KEY": "sk"}).has_provider("deepseek")
     assert not LLMManager(keys={}).has_provider("deepseek")
+
+
+def test_usage_by_agent():
+    mgr = LLMManager(
+        keys={"DEEPSEEK_API_KEY": "sk-test"},
+        client_factory=lambda key: DeepSeekClient(key, http_post=_fake_http_ok),
+    )
+    mgr.chat([LLMMessage(role="user", content="a")], agent="brainstorm")
+    snap = mgr.usage_snapshot()
+    assert snap["prompt_tokens"] == 10
+    assert snap["by_agent"]["brainstorm"]["calls"] == 1
