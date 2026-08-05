@@ -141,6 +141,22 @@ class WorkerAgent(BaseAgent):
                     body = f"Aufgabe: {task}\nOriginal: {user_text}\nAnforderungen:\n" + "\n".join(
                         f"- {r}" for r in requirements[:5]
                     )
+                    blob = f"{task}\n{user_text}".lower()
+                    wants_html = any(
+                        k in blob
+                        for k in (
+                            "html",
+                            "landing",
+                            "webpage",
+                            "web page",
+                            "css",
+                            "seite",
+                            "website",
+                            "frontend",
+                        )
+                    )
+                    # Reserve headroom so models can close </html> (token budget)
+                    max_tok = 3200 if wants_html else 1800
                     return self.ask(
                         system=(
                             "You are a Worker agent. Deliver a concrete useful result "
@@ -153,6 +169,8 @@ class WorkerAgent(BaseAgent):
                             "  4) CSS/styling LAST (max ~30% of effort; minimal layout first)\n"
                             "Budget: ~70% functions+structure, ~30% styling. If near limit, "
                             "CUT CSS — never omit </html> or core interactions.\n"
+                            "Reserve the last ~15% of capacity to CLOSE the document "
+                            "(</html>), not more styling.\n"
                             "If HTML/landing/page/UI:\n"
                             "  - ONE complete file: <!DOCTYPE html> … </html>\n"
                             "  - At least one real interaction "
@@ -167,7 +185,7 @@ class WorkerAgent(BaseAgent):
                             "No meta fluff. Match user language."
                         ),
                         user=_with_memory(body, memory_ctx),
-                        max_tokens=2200,
+                        max_tokens=max_tok,
                         temperature=0.45,
                     )
                 except Exception as exc:  # noqa: BLE001

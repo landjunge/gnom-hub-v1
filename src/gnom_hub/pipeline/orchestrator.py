@@ -411,28 +411,47 @@ class Orchestrator:
                 self._state.distilled_requirements,
                 mem,
             )
-            # Soft retry: incomplete HTML or interactive task without handlers
-            gate0 = _validate_worker_draft(result, user_text=text, task=task)
-            need_retry = False
-            retry_why = ""
-            if _wants_html_artifact(text, task) and not _html_complete(result):
-                need_retry, retry_why = True, "incomplete_html"
-            elif "missing_required_interaction" in (gate0.get("issues") or []):
-                need_retry, retry_why = True, "missing_interaction"
-            if need_retry:
+            # Soft retries: incomplete HTML / missing interaction / still failing gates
+            retries = 0
+            max_retries = 2
+            while retries < max_retries:
+                gate0 = _validate_worker_draft(result, user_text=text, task=task)
+                need_retry = False
+                retry_why = ""
+                if _wants_html_artifact(text, task) and not _html_complete(result):
+                    need_retry, retry_why = True, "incomplete_html"
+                elif "missing_required_interaction" in (gate0.get("issues") or []):
+                    need_retry, retry_why = True, "missing_interaction"
+                elif not gate0.get("ok", True) and _wants_html_artifact(text, task):
+                    need_retry, retry_why = True, "gate_fail"
+                if not need_retry:
+                    break
+                retries += 1
                 self.bus.emit(
                     "pipeline.quality_retry",
-                    {"worker": wid, "reason": retry_why},
+                    {"worker": wid, "reason": retry_why, "attempt": retries},
                 )
                 self._check_cancel()
-                hint = (
-                    "RETRY (mandatory): ONE complete HTML file "
-                    "<!DOCTYPE html>…</html>. "
-                    "PRIORITY: structure + working JS interactions FIRST, "
-                    "minimal CSS only. Empty/error states only after functions. "
-                    "Must include at least one onclick= or addEventListener. "
-                    "Never truncate mid-CSS. Finish with </html>."
-                )
+                if retries == 1:
+                    hint = (
+                        "RETRY (mandatory): ONE complete HTML file "
+                        "<!DOCTYPE html>…</html>. "
+                        "PRIORITY: structure + working JS interactions FIRST, "
+                        "minimal CSS only. Empty/error states only after functions. "
+                        "Must include at least one onclick= or addEventListener. "
+                        "Never truncate mid-CSS. Finish with </html>."
+                    )
+                else:
+                    # Scope reduction — finish a smaller but COMPLETE file
+                    hint = (
+                        "RETRY 2 — SCOPE REDUCTION (mandatory):\n"
+                        "Deliver a SMALLER but COMPLETE HTML page.\n"
+                        "- Drop decorative CSS (only tiny layout)\n"
+                        "- Keep: shell + 1–3 core interactions + empty state\n"
+                        "- MUST end with </html>; no open tags\n"
+                        "- No long style blocks; functions first\n"
+                        f"Previous gate issues: {', '.join(gate0.get('issues') or [])}"
+                    )
                 result = worker.run(
                     task_full + "\n\n" + hint,
                     text,
@@ -440,6 +459,9 @@ class Orchestrator:
                     mem,
                 )
             gate = _validate_worker_draft(result, user_text=text, task=task)
+            if retries:
+                gate = dict(gate)
+                gate["retries"] = retries
             results.append(result)
             outputs.append(
                 {
