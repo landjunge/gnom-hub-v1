@@ -9,16 +9,22 @@ from typing import Any
 
 from gnom_hub.agents.manager import AgentManager
 from gnom_hub.agents.models import FLEX_PRESETS, AgentId, AgentState
+from gnom_hub.computer_use.workflow import ComputerUseKit
 from gnom_hub.config.keys import ensure_env_from_key_txt, load_keys
 from gnom_hub.config.paths import project_root
 from gnom_hub.core.event_bus import EventBus
 from gnom_hub.llm.manager import LLMManager
 from gnom_hub.memory.atomic import atomic_write_text
+from gnom_hub.memory.cold import ColdArchive
 from gnom_hub.memory.facade import MemoryFacade
 from gnom_hub.memory.hot import HotMemory
+from gnom_hub.memory.vector_store import VectorStore
 from gnom_hub.memory.warm import WarmMemory
 from gnom_hub.memory.workspace import WorkspaceStore
 from gnom_hub.pipeline.pipeline import Pipeline
+from gnom_hub.plugins.loader import PluginLoader
+from gnom_hub.plugins.registry import ToolRegistry, ToolSpec
+from gnom_hub.security.god_mode import god_mode_from_env
 from gnom_hub.telegram.bot import TelegramBridge
 from gnom_hub.ui.tooltips import TOOLTIPS
 
@@ -37,6 +43,14 @@ class Hub:
         self.warm = WarmMemory(self.root)
         self.memory = MemoryFacade(self.hot, self.warm)
         self.workspace = WorkspaceStore(self.root)
+        self.cold = ColdArchive(self.root)
+        self.vectors = VectorStore(self.root)
+        self.god_mode = god_mode_from_env()
+        self.computer = ComputerUseKit(self.root, god_mode=self.god_mode.enabled)
+        self.tools = ToolRegistry()
+        self.plugins = PluginLoader(self.root / "plugins", self.tools)
+        self._register_core_tools()
+        self.plugin_list = self.plugins.discover_and_load()
         self.pipeline = self._new_pipeline()
         self.last_error: str | None = None
         self._agent_state_path = self.root / "data" / "hot" / "agents.json"
@@ -62,6 +76,58 @@ class Hub:
         ).strip()
         return TelegramBridge(self.bus, token, on_command=self._telegram_command)
 
+    def _register_core_tools(self) -> None:
+        self.tools.register(
+            ToolSpec(
+                name="hub_status",
+                description="Return compact hub status string",
+                handler=self._status_text,
+                plugin="core",
+            )
+        )
+        self.tools.register(
+            ToolSpec(
+                name="memory_search",
+                description="Lexical vector search over stored docs",
+                handler=lambda query, limit=5: self.vectors.search(str(query), limit=int(limit)),
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string"},
+                        "limit": {"type": "integer"},
+                    },
+                    "required": ["query"],
+                },
+                plugin="core",
+            )
+        )
+        self.tools.register(
+            ToolSpec(
+                name="pipeline_do",
+                description="Run chat pipeline with a task",
+                handler=lambda text: {
+                    "stage": self.chat(str(text))["pipeline"]["stage"],
+                    "results": list(self.pipeline.state.worker_results[:3]),
+                },
+                input_schema={
+                    "type": "object",
+                    "properties": {"text": {"type": "string"}},
+                    "required": ["text"],
+                },
+                plugin="core",
+            )
+        )
+
+    def _status_text(self) -> str:
+        st = self.pipeline.state
+        return (
+            f"stage={st.stage.value} "
+            f"deepseek={'yes' if self.llm.has_provider('deepseek') else 'no'} "
+            f"god={self.god_mode.enabled} "
+            f"vectors={self.vectors.count()} "
+            f"plugins={len(self.plugin_list)}"
+        )
+
     def _wire_memory(self) -> None:
         def on_memory_hint(data: Any) -> None:
             if not isinstance(data, dict):
@@ -81,8 +147,10 @@ class Hub:
                 # Promote short requirements to WARM (durable)
                 if 8 <= len(text) <= 240:
                     self.warm.add_fact(text)
+                self.vectors.add(text, meta={"source": "requirement"})
             for res in data.get("results") or []:
                 self.hot.add_message("worker", str(res))
+                self.vectors.add(str(res)[:500], meta={"source": "worker"})
             self.hot.save()
 
         def on_error(data: Any) -> None:
@@ -271,6 +339,12 @@ class Hub:
                 "configured": self.telegram.enabled,
                 "running": self.telegram.running,
             },
+            "god_mode": self.god_mode.snapshot(),
+            "vectors": {"count": self.vectors.count()},
+            "cold": {"count": len(self.cold.list_archives(200))},
+            "plugins": self.plugin_list,
+            "tools": self.tools.list_tools(),
+            "computer_use": self.computer.snapshot(),
             "canvas": {
                 "mermaid": self.hot.canvas.to_mermaid(),
                 "nodes": len(self.hot.canvas.nodes),
@@ -287,6 +361,22 @@ class Hub:
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
         }
+
+    def archive_cold(self, label: str = "") -> dict[str, Any]:
+        meta = self.cold.archive_hot(
+            session=dict(self.hot.session),
+            canvas_mmd=self.hot.canvas.to_mermaid(),
+            label=label,
+        )
+        return {"ok": True, "archive": meta}
+
+    def set_god_mode(self, enabled: bool, reason: str = "api") -> dict[str, Any]:
+        if enabled:
+            self.god_mode.enable(reason)
+        else:
+            self.god_mode.disable(reason)
+        self.computer.set_god_mode(self.god_mode.enabled)
+        return self.god_mode.snapshot()
 
     # ── commands ────────────────────────────────────────────────────
 

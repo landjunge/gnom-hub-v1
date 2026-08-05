@@ -20,5 +20,6 @@
 | CI | Install `.[dev]` so httpx is present for TestClient | **done** |
 | 1.6 | Quality: smoke_e2e, quality_check.sh, empty hints, CI smoke | **done** |
 | 2.0 | WARM lite (durable facts) + dual workspace + optional Telegram | **done** |
+| 3.0 | COLD archive, vector lite, God-Mode, Computer-Use kit, plugins/MCP-lite | **done** |
 
-Out of scope still: full COLD archive, vector DB, Computer-Use, God-Mode, MCP plugins.
+Heavy optional still (real OCR/pyautogui/embeddings models): install extras yourself if needed.

@@ -1,0 +1,21 @@
+{
+  "id": "echo",
+  "name": "Echo Plugin",
+  "version": "0.1.0",
+  "enabled": true,
+  "tools": [
+    {
+      "name": "echo",
+      "description": "Echo text back (demo plugin tool)",
+      "module": "main.py",
+      "handler": "run",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "text": { "type": "string" }
+        },
+        "required": ["text"]
+      }
+    }
+  ]
+}

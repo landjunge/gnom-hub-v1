@@ -72,6 +72,26 @@ def main() -> int:
         assert r.status_code == 200
         assert "stage=" in r.json()["reply"]
 
+        r = client.post("/api/cold/archive", json={"label": "smoke"})
+        assert r.status_code == 200 and r.json().get("ok")
+
+        r = client.post("/api/vector/search", json={"query": "checklist", "limit": 3})
+        assert r.status_code == 200
+
+        r = client.post("/api/god-mode", json={"enabled": True, "reason": "smoke"})
+        assert r.json().get("enabled") is True
+        r = client.post("/api/god-mode", json={"enabled": False})
+        assert r.json().get("enabled") is False
+
+        r = client.post("/api/computer-use/inspect")
+        assert r.status_code == 200
+
+        r = client.get("/api/mcp/tools")
+        assert r.status_code == 200 and "tools" in r.json()
+
+        r = client.post("/api/tools/call", json={"name": "hub_status", "arguments": {}})
+        assert r.status_code == 200
+
         r = client.post("/api/reset")
         assert r.status_code == 200
         assert r.json()["pipeline"]["stage"] == "idle"
@@ -81,7 +101,7 @@ def main() -> int:
 
     print("SMOKE E2E OK")
     print(f"  root={smoke_root}")
-    print("  health, UI, chat, warm, workspace, telegram, save, reset")
+    print("  health…warm…cold…vector…god…computer…mcp…reset")
     return 0
 
 

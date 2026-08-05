@@ -47,8 +47,37 @@ class TelegramInBody(BaseModel):
     chat_id: int | None = None
 
 
+class GodModeBody(BaseModel):
+    enabled: bool
+    reason: str = "api"
+
+
+class VectorAddBody(BaseModel):
+    text: str = Field(min_length=1)
+    meta: dict[str, Any] | None = None
+
+
+class VectorSearchBody(BaseModel):
+    query: str = Field(min_length=1)
+    limit: int = 5
+
+
+class ToolCallBody(BaseModel):
+    name: str = Field(min_length=1)
+    arguments: dict[str, Any] | None = None
+
+
+class ColdLabelBody(BaseModel):
+    label: str = ""
+
+
+class ActionClickBody(BaseModel):
+    x: int
+    y: int
+
+
 def create_app() -> FastAPI:
-    app = FastAPI(title="Gnom-Hub v1", version="0.2.0")
+    app = FastAPI(title="Gnom-Hub v1", version="0.3.0")
 
     @app.get("/api/health")
     def health() -> dict[str, Any]:
@@ -158,6 +187,70 @@ def create_app() -> FastAPI:
     def telegram_inbound(body: TelegramInBody) -> dict[str, Any]:
         """Test hook / webhook-style without Telegram servers."""
         return get_hub().telegram_inbound(body.text, body.chat_id)
+
+    # ── COLD / Vector / God-Mode / Computer-Use / Plugins ──
+
+    @app.post("/api/cold/archive")
+    def cold_archive(body: ColdLabelBody | None = None) -> dict[str, Any]:
+        label = body.label if body else ""
+        return get_hub().archive_cold(label=label or "")
+
+    @app.get("/api/cold")
+    def cold_list() -> dict[str, Any]:
+        return {"archives": get_hub().cold.list_archives()}
+
+    @app.get("/api/cold/{archive_id}")
+    def cold_get(archive_id: str) -> dict[str, Any]:
+        data = get_hub().cold.get(archive_id)
+        if not data:
+            raise HTTPException(status_code=404, detail="archive not found")
+        return data
+
+    @app.post("/api/vector/add")
+    def vector_add(body: VectorAddBody) -> dict[str, Any]:
+        doc_id = get_hub().vectors.add(body.text, meta=body.meta)
+        return {"ok": True, "id": doc_id, "count": get_hub().vectors.count()}
+
+    @app.post("/api/vector/search")
+    def vector_search(body: VectorSearchBody) -> dict[str, Any]:
+        hits = get_hub().vectors.search(body.query, limit=body.limit)
+        return {"hits": hits}
+
+    @app.post("/api/god-mode")
+    def god_mode(body: GodModeBody) -> dict[str, Any]:
+        return get_hub().set_god_mode(body.enabled, reason=body.reason)
+
+    @app.get("/api/god-mode")
+    def god_mode_get() -> dict[str, Any]:
+        return get_hub().god_mode.snapshot()
+
+    @app.post("/api/computer-use/inspect")
+    def computer_inspect() -> dict[str, Any]:
+        return get_hub().computer.inspect_screen()
+
+    @app.post("/api/computer-use/click")
+    def computer_click(body: ActionClickBody) -> dict[str, Any]:
+        r = get_hub().computer.action.click(body.x, body.y)
+        return {"ok": r.ok, "dry_run": r.dry_run, "detail": r.detail}
+
+    @app.get("/api/plugins")
+    def plugins() -> dict[str, Any]:
+        hub = get_hub()
+        return {"plugins": hub.plugin_list, "tools": hub.tools.list_tools()}
+
+    @app.get("/api/mcp/tools")
+    def mcp_tools() -> dict[str, Any]:
+        return get_hub().tools.mcp_manifest()
+
+    @app.post("/api/tools/call")
+    def tools_call(body: ToolCallBody) -> dict[str, Any]:
+        try:
+            result = get_hub().tools.call(body.name, body.arguments)
+        except KeyError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        return {"ok": True, "result": result}
 
     @app.get("/api/tooltips")
     def tooltips(lang: str = "en") -> dict[str, Any]:
