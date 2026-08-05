@@ -220,6 +220,18 @@ def test_export_and_ollama_models(client: TestClient):
     assert body["ok"] is True
     assert "Brainstorm" in body["content"]
     assert body["chars"] > 10
+    assert body.get("source") in ("live", "pinned")
+
+    # After reset, export must still return the pinned successful Execute
+    marker = "Export me a plan"
+    client.post("/api/reset")
+    r2 = client.get("/api/export/last")
+    assert r2.status_code == 200
+    body2 = r2.json()
+    assert body2["ok"] is True
+    assert body2.get("source") == "pinned"
+    assert marker in body2["content"]
+    assert body2["chars"] > 10
 
     om = client.get("/api/ollama/models")
     assert om.status_code == 200

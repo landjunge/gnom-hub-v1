@@ -3387,21 +3387,40 @@
     body.appendChild(pre);
   }
 
-  /** Extract fenced ```html … ``` or raw HTML document from worker text. */
+  /**
+   * Extract real HTML documents for Preview iframes.
+   * Strict on purpose: QA/a11y notes often mention tags (e.g. </html>) and must
+   * stay as plain text — not empty/broken preview frames.
+   */
   function extractHtml(raw) {
     const s = String(raw || "");
-    const fence = s.match(/```(?:html|HTML)?\s*([\s\S]*?)```/);
-    if (fence && fence[1] && /<\w+/i.test(fence[1])) {
-      return fence[1].trim();
+    // Explicit ```html fence with a real document or substantial markup
+    const fenceHtml = s.match(/```html\s*([\s\S]*?)```/i);
+    if (fenceHtml && fenceHtml[1]) {
+      const body = fenceHtml[1].trim();
+      if (/<!DOCTYPE\s+html|<html[\s>]/i.test(body)) return body;
+      if (body.startsWith("<") && (body.match(/<\w+/g) || []).length >= 4) return body;
     }
-    const doctype = s.match(/(<!DOCTYPE\s+html[\s\S]*)$/i);
-    if (doctype) return doctype[1].trim();
-    const htmlTag = s.match(/(<html[\s\S]*<\/html>)/i);
+    // Full document with doctype + closing html (preferred)
+    const fullDoc = s.match(/(<!DOCTYPE\s+html[\s\S]*?<\/html>)/i);
+    if (fullDoc) return fullDoc[1].trim();
+    // Open doctype document (truncated mid-file still previewable)
+    const doctypeOpen = s.match(/(<!DOCTYPE\s+html[\s\S]{120,})$/i);
+    if (doctypeOpen && /<(html|head|body)[\s>]/i.test(doctypeOpen[1])) {
+      return doctypeOpen[1].trim();
+    }
+    const htmlTag = s.match(/(<html[\s\S]*?<\/html>)/i);
     if (htmlTag) return htmlTag[1].trim();
-    // fragment with enough tags
-    if (/<\w+[\s>][\s\S]*<\/\w+>/i.test(s) && (s.match(/<\w+/g) || []).length >= 2) {
-      const trimmed = s.trim();
-      if (trimmed.startsWith("<")) return trimmed;
+    // Markup-first fragment only: must start with tag, enough structure, high density
+    const trimmed = s.trim();
+    if (
+      trimmed.startsWith("<") &&
+      /<\/(div|section|body|main|header|footer|article|html)>/i.test(trimmed)
+    ) {
+      const tags = (trimmed.match(/<\w+/g) || []).length;
+      const prose = trimmed.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      // Prefer markup over prose (avoids checklists that quote a few tags)
+      if (tags >= 6 && prose.length < trimmed.length * 0.55) return trimmed;
     }
     return null;
   }

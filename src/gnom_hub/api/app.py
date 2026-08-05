@@ -168,39 +168,8 @@ def create_app() -> FastAPI:
 
     @app.get("/api/export/last")
     def export_last() -> dict[str, Any]:
-        """Export last brainstorm + worker outputs for download."""
-        hub = get_hub()
-        st = hub.pipeline.state
-        parts = [
-            "# Gnom-Hub export",
-            f"stage={st.stage.value}",
-            f"user={st.user_text}",
-            "",
-            "## Brainstorm",
-            st.brainstorm_notes or "(none)",
-            "",
-            "## Requirements",
-            "\n".join(f"- {r}" for r in st.distilled_requirements) or "(none)",
-            "",
-            "## Flex",
-            st.flex_notes or "(none)",
-            "",
-            "## Quality",
-            st.quality_notes or "(none)",
-            "",
-        ]
-        for out in st.worker_outputs or []:
-            parts.append(f"## {out.get('name') or out.get('worker')}")
-            parts.append(f"Task: {out.get('task') or ''}")
-            parts.append(str(out.get("result") or ""))
-            parts.append("")
-        text = "\n".join(parts)
-        return {
-            "ok": True,
-            "filename": "gnom-hub-export.md",
-            "content": text,
-            "chars": len(text),
-        }
+        """Export last Execute (live pipeline, or pinned if reset/new chat)."""
+        return get_hub().build_export_last()
 
     @app.get("/api/state")
     def state() -> dict[str, Any]:

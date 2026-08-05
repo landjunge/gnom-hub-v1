@@ -54,6 +54,8 @@ class Hub:
         self.pipeline = self._new_pipeline()
         self._jobs: dict[str, dict[str, Any]] = {}
         self.last_error: str | None = None
+        # Last successful Execute snapshot for /api/export/last (survives reset)
+        self._last_execute_export: dict[str, Any] | None = None
         self._agent_state_path = self.root / "data" / "hot" / "agents.json"
         self._checkpoint_path = self.root / "data" / "hot" / "checkpoint.json"
         # Light tracing (plan §8.2) — ring buffer of pipeline events
@@ -1434,6 +1436,7 @@ class Hub:
                 self.last_error = self.pipeline.state.error
             elif full and self.pipeline.state.stage.value == "done":
                 self._capture_workspace_outputs()
+                self._remember_execute_export()
             return self.snapshot()
 
     def execute_sync(self) -> dict[str, Any]:
@@ -1445,6 +1448,7 @@ class Hub:
                 self.last_error = self.pipeline.state.error
             elif self.pipeline.state.stage.value == "done":
                 self._capture_workspace_outputs()
+                self._remember_execute_export()
                 self.maybe_auto_pack()
             return self.snapshot()
 
@@ -1497,6 +1501,8 @@ class Hub:
                 job["stage"] = sv
                 if name in ("execute", "pipeline", "worker_rerun"):
                     self._capture_workspace_outputs()
+                    if name in ("execute", "pipeline"):
+                        self._remember_execute_export()
                     if name == "execute":
                         self.maybe_auto_pack()
 
@@ -1592,6 +1598,96 @@ class Hub:
             "status": "running",
             "stage": "queued",
             "message": f"{name} started — poll /api/jobs/{{id}}",
+        }
+
+    def _remember_execute_export(self) -> None:
+        """Pin last successful Execute so export survives reset / new chat."""
+        from datetime import datetime, timezone
+
+        st = self.pipeline.state
+        if st.stage.value != "done":
+            return
+        if not (st.worker_outputs or st.brainstorm_notes):
+            return
+        self._last_execute_export = {
+            "stage": st.stage.value,
+            "user_text": st.user_text or "",
+            "brainstorm_notes": st.brainstorm_notes or "",
+            "distilled_requirements": list(st.distilled_requirements or []),
+            "flex_notes": st.flex_notes or "",
+            "quality_notes": st.quality_notes or "",
+            "worker_outputs": list(st.worker_outputs or []),
+            "saved_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+        }
+
+    def build_export_last(self) -> dict[str, Any]:
+        """Markdown export: live pipeline if it has workers, else pinned Execute."""
+        st = self.pipeline.state
+        pinned = getattr(self, "_last_execute_export", None)
+        use_live = bool(st.worker_outputs) or (
+            st.stage.value == "done" and (st.brainstorm_notes or "").strip()
+        )
+        if use_live:
+            src = {
+                "stage": st.stage.value,
+                "user_text": st.user_text or "",
+                "brainstorm_notes": st.brainstorm_notes or "",
+                "distilled_requirements": list(st.distilled_requirements or []),
+                "flex_notes": st.flex_notes or "",
+                "quality_notes": st.quality_notes or "",
+                "worker_outputs": list(st.worker_outputs or []),
+                "source": "live",
+            }
+        elif isinstance(pinned, dict) and (
+            pinned.get("worker_outputs") or pinned.get("brainstorm_notes")
+        ):
+            src = dict(pinned)
+            src["source"] = "pinned"
+        else:
+            src = {
+                "stage": st.stage.value,
+                "user_text": st.user_text or "",
+                "brainstorm_notes": st.brainstorm_notes or "",
+                "distilled_requirements": list(st.distilled_requirements or []),
+                "flex_notes": st.flex_notes or "",
+                "quality_notes": st.quality_notes or "",
+                "worker_outputs": list(st.worker_outputs or []),
+                "source": "empty",
+            }
+        parts = [
+            "# Gnom-Hub export",
+            f"stage={src.get('stage')}",
+            f"user={src.get('user_text')}",
+            f"source={src.get('source')}",
+            "",
+            "## Brainstorm",
+            str(src.get("brainstorm_notes") or "(none)"),
+            "",
+            "## Requirements",
+            "\n".join(f"- {r}" for r in (src.get("distilled_requirements") or [])) or "(none)",
+            "",
+            "## Flex",
+            str(src.get("flex_notes") or "(none)"),
+            "",
+            "## Quality",
+            str(src.get("quality_notes") or "(none)"),
+            "",
+        ]
+        for out in src.get("worker_outputs") or []:
+            if not isinstance(out, dict):
+                continue
+            parts.append(f"## {out.get('name') or out.get('worker')}")
+            parts.append(f"Task: {out.get('task') or ''}")
+            parts.append(str(out.get("result") or ""))
+            parts.append("")
+        text = "\n".join(parts)
+        return {
+            "ok": True,
+            "filename": "gnom-hub-export.md",
+            "content": text,
+            "chars": len(text),
+            "source": src.get("source"),
+            "saved_at": src.get("saved_at"),
         }
 
     def _capture_workspace_outputs(self) -> None:
@@ -2104,6 +2200,8 @@ class Hub:
                 except OSError:
                     pass
             snap = self.snapshot()
+        # Clean is a hard wipe — drop pinned export too
+        self._last_execute_export = None
         snap["clean"] = {
             "ok": True,
             "temp_removed": removed,
