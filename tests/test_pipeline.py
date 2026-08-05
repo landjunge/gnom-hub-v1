@@ -341,9 +341,13 @@ def test_html_gates_and_dod():
 
 
 def test_coordinator_html_plan_prefers_full_page():
-    """Stub coordinator must not split landing pages into section fragments."""
+    """HTML/landing tasks always get deterministic full-page plan (no section splits)."""
     from gnom_hub.agents.models import COLORS, AgentId, AgentState
-    from gnom_hub.agents.roles_ext import CoordinatorAgent
+    from gnom_hub.agents.roles_ext import (
+        CoordinatorAgent,
+        _html_full_page_plan,
+        _wants_one_html_page,
+    )
     from gnom_hub.core.event_bus import EventBus
 
     st = AgentState(
@@ -363,4 +367,10 @@ def test_coordinator_html_plan_prefers_full_page():
     assert len(tasks) == 3
     assert "ONE complete single-file HTML" in tasks[0][1]
     assert "VARIANT" in tasks[1][1]
+    assert "ALL requested sections" in tasks[0][1]
     assert "hero section only" not in tasks[0][1].lower()
+    assert _wants_one_html_page("landing page HTML")
+    assert not _wants_one_html_page("write a business plan")
+    forced = _html_full_page_plan("Landing HTML", ["worker1", "worker2"], ["DoD line"])
+    assert "DoD:" in forced[0][1]
+    assert forced[0][0] == "worker1"
