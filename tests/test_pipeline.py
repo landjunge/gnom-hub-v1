@@ -247,8 +247,7 @@ def test_garbage_product_identity_facts_filtered():
     dump_lines = [
         "Gnom-Hub v1 ist ein lokal laufender Notiz-Speicher ohne Backend, "
         "der Notizen als JSON in localStorage ablegt",
-        "XSS-Risiko: bösartiger Notiztext kann Skripte ausführen und "
-        "localStorage-Daten stehlen",
+        "XSS-Risiko: bösartiger Notiztext kann Skripte ausführen und localStorage-Daten stehlen",
         "Datenverlust bei Browser-Cache-Leerung – localStorage ist nicht persistent",
         "responsive Liste mit minimalem CSS darstellt",
         "Prefer dark theme for the landing page hero",

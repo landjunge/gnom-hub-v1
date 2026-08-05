@@ -321,9 +321,7 @@ class MemoryAgent(BaseAgent):
     ) -> None:
         self.emit_active(True)
         try:
-            clean_reqs = [
-                r for r in requirements if not r.startswith("Flex/") and len(r) < 160
-            ][:5]
+            clean_reqs = [r for r in requirements if not r.startswith("Flex/") and len(r) < 160][:5]
             self.bus.emit(
                 "pipeline.memory_hint",
                 {
