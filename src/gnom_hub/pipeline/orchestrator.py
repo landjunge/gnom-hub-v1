@@ -194,6 +194,12 @@ class Orchestrator:
             self._state.brainstorm_notes = notes
             self._state.mode = "execute"
             self._clarified_once = False
+            # Clear sticky error / stale worker output from a previous failed run
+            self._state.error = None
+            self._state.worker_results = []
+            self._state.worker_outputs = []
+            self._state.quality_notes = ""
+            self._state.pending_question = None
 
             mem = self._state.memory_context or self.memory.recall(text)
             self._state.memory_context = mem
@@ -324,6 +330,7 @@ class Orchestrator:
             flex_notes=self._state.flex_notes,
             results=list(self._state.worker_results),
         )
+        self._state.error = None  # success must not keep a prior sticky error
         self._set_stage(PipelineStage.done)
         self.bus.emit(
             "pipeline.done",

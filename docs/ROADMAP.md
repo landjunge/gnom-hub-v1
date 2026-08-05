@@ -79,6 +79,16 @@
 | Job duration timer in Box 3 header | **done** |
 | Save worker result to permanent workspace (↑) | **done** |
 
+## V1.8.1 (bugfix)
+
+| Item | Status |
+|------|--------|
+| Clear sticky `pipeline.error` on re-execute | **done** |
+| Job status by stage (not sticky error) | **done** |
+| `web_fetch` re-validate redirect hops (SSRF) | **done** |
+| Chat: log pipeline error only once / stage=error | **done** |
+| UI: handle job.status cancelled | **done** |
+
 ## Post-V1.8 (optional)
 
 | Item | Notes |

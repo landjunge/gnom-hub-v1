@@ -1,8 +1,10 @@
-# Gnom-Hub v1.8.0
+# Gnom-Hub v1.8.1
 
 Local multi-agent control hub: **brainstorm first**, then **Execute** workers.
 
 Desktop · USB-friendly · DeepSeek / Ollama · **Copy all** · **Diff W1/W2** · **Job timer** · **↑ permanent workspace** · Box 3 full toolbar · timestamps · auto-save.
+
+**1.8.1 fixes:** sticky pipeline error after re-execute · redirect SSRF in `web_fetch` · error chat spam · cancel job status in UI.
 
 > **Convention:** every meaningful change is **pushed to `main`** and this **README is updated** in the same commit.
 
@@ -32,7 +34,7 @@ cd gnom-hub-v1
 ./scripts/quality_check.sh
 ```
 
-**http://127.0.0.1:8080/?v=59**
+**http://127.0.0.1:8080/?v=60**
 
 ---
 
@@ -82,7 +84,8 @@ No new endpoints in 1.8. Workspace write already supports `zone: "perm"`.
 | 1.5 | Send+Exec, Copy, auto-save |
 | 1.6 | DL, fullscreen, Ctrl+S, focus Box 3 |
 | 1.7 | Tab, WS temp, chat timestamps |
-| **1.8** | Copy all, Diff W1/W2, job timer, ↑ perm |
+| 1.8 | Copy all, Diff W1/W2, job timer, ↑ perm |
+| **1.8.1** | Sticky-error fix, redirect SSRF block, cancel UI |
 
 ---
 

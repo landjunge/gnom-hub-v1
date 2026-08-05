@@ -60,6 +60,45 @@ def test_ui_static_has_v16_v18_features(client: TestClient):
     assert "job-timer" in html.text
 
 
+def test_reexecute_after_error_job_done(client: TestClient, monkeypatch):
+    """Sticky pipeline.error must not mark a successful re-execute as error."""
+    from gnom_hub import hub as hub_mod
+
+    hub = hub_mod.get_hub()
+    client.post("/api/chat?sync=1", json={"text": "retry after fail"})
+    # Inject sticky error as if previous execute failed
+    hub.pipeline.state.error = "simulated LLM outage"
+    from gnom_hub.pipeline.models import PipelineStage
+
+    hub.pipeline.state.stage = PipelineStage.error
+
+    r = client.post("/api/execute?sync=1")
+    assert r.status_code == 200
+    body = r.json()
+    pipe = body.get("pipeline") or {}
+    assert pipe.get("stage") == "done"
+    assert not pipe.get("error")
+
+    # Async path classification
+    hub.pipeline.state.error = "stale"
+    hub.pipeline.state.stage = PipelineStage.error
+    client.post("/api/chat?sync=1", json={"text": "another try"})
+    start = client.post("/api/execute")
+    jid = start.json().get("job_id")
+    assert jid
+    import time
+
+    status = None
+    for _ in range(50):
+        time.sleep(0.05)
+        j = client.get(f"/api/jobs/{jid}").json()
+        if j.get("status") in ("done", "error", "clarify", "cancelled"):
+            status = j.get("status")
+            break
+    assert status == "done", status
+    assert not (j.get("snapshot") or {}).get("pipeline", {}).get("error")
+
+
 def test_workspace_write_temp_and_perm(client: TestClient):
     r = client.post(
         "/api/workspace/write",

@@ -30,6 +30,22 @@ def _collect(bus: EventBus) -> list[tuple[str, object]]:
     return events
 
 
+def test_reexecute_clears_sticky_error():
+    """After a failed execute, a successful re-execute must clear error."""
+    bus = EventBus()
+    pipe = Pipeline(bus)
+    pipe.brainstorm_turn("Build a small dashboard")
+    # Simulate prior failure left sticky on state
+    pipe.state.error = "simulated LLM outage"
+    pipe.state.stage = PipelineStage.error
+
+    state = pipe.execute()
+    assert state.stage == PipelineStage.done
+    assert state.error is None
+    assert state.worker_results
+    assert len(state.worker_outputs) >= 1
+
+
 def test_stub_full_run_no_llm():
     bus = EventBus()
     events = _collect(bus)

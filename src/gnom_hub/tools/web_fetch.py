@@ -81,24 +81,53 @@ def web_fetch(
     if not allow_local and _is_private_host(host):
         return {"ok": False, "error": "private/local hosts blocked (set GNOM_WEB_ALLOW_LOCAL=1)"}
 
+    class _SafeRedirect(urllib.request.HTTPRedirectHandler):
+        """Re-check every redirect hop so public→private SSRF is blocked."""
+
+        def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[no-untyped-def]
+            parsed_new = urlparse(newurl)
+            new_host = parsed_new.hostname or ""
+            if not re.match(r"^https?://", newurl, flags=re.IGNORECASE):
+                raise urllib.error.HTTPError(newurl, 403, "redirect scheme blocked", headers, fp)
+            if not allow_local and new_host and _is_private_host(new_host):
+                raise urllib.error.HTTPError(
+                    newurl, 403, "redirect to private/local host blocked", headers, fp
+                )
+            return urllib.request.HTTPRedirectHandler.redirect_request(
+                self, req, fp, code, msg, headers, newurl
+            )
+
     req = urllib.request.Request(
         raw,
         headers={
-            "User-Agent": "Gnom-Hub/1.1 web_fetch",
+            "User-Agent": "Gnom-Hub/1.8 web_fetch",
             "Accept": "text/html,application/xhtml+xml,text/plain,*/*;q=0.8",
         },
         method="GET",
     )
+    opener = urllib.request.build_opener(_SafeRedirect())
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with opener.open(req, timeout=timeout) as resp:
             ctype = (resp.headers.get("Content-Type") or "").lower()
             data = resp.read(600_000)
             final_url = resp.geturl()
             status = resp.getcode()
     except urllib.error.HTTPError as e:
-        return {"ok": False, "error": f"HTTP {e.code}", "url": raw}
+        err = str(e.reason) if e.reason else f"HTTP {e.code}"
+        if e.code == 403 and "private" in err.lower():
+            return {"ok": False, "error": err, "url": raw}
+        return {"ok": False, "error": f"HTTP {e.code}" + (f" ({err})" if err else ""), "url": raw}
     except Exception as exc:  # noqa: BLE001
         return {"ok": False, "error": str(exc), "url": raw}
+
+    # Defense in depth: re-validate final URL after redirects
+    final_host = urlparse(final_url).hostname or ""
+    if not allow_local and final_host and _is_private_host(final_host):
+        return {
+            "ok": False,
+            "error": "final URL resolved to private/local host (blocked)",
+            "url": final_url,
+        }
 
     try:
         text = data.decode("utf-8", errors="replace")

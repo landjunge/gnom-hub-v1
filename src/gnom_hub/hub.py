@@ -535,7 +535,7 @@ class Hub:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "1.8.0",
+            "version": "1.8.1",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -660,21 +660,23 @@ class Hub:
                         job["snapshot"] = self.snapshot()
                         return
                     runner()
+                    stage_val = self.pipeline.state.stage.value
                     if job.get("cancel"):
                         job["status"] = "cancelled"
                         job["error"] = job.get("error") or "cancelled by user"
                         job["stage"] = "cancelled"
-                    elif self.pipeline.state.error:
+                    # Classify by stage first — sticky error alone must not fail a done run
+                    elif stage_val == "error":
                         self.last_error = self.pipeline.state.error
                         job["status"] = "error"
-                        job["error"] = self.pipeline.state.error
-                        job["stage"] = self.pipeline.state.stage.value
-                    elif self.pipeline.state.stage.value == "clarify":
+                        job["error"] = self.pipeline.state.error or "error"
+                        job["stage"] = stage_val
+                    elif stage_val == "clarify":
                         job["status"] = "clarify"
-                        job["stage"] = self.pipeline.state.stage.value
+                        job["stage"] = stage_val
                     else:
                         job["status"] = "done"
-                        job["stage"] = self.pipeline.state.stage.value
+                        job["stage"] = stage_val
                         # Plan: agent outputs land in temp workspace first
                         if name in ("execute", "pipeline"):
                             self._capture_workspace_outputs()
@@ -914,7 +916,7 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "1.8.0",
+            "version": "1.8.1",
             "providers": self.llm.providers_snapshot(),
             "backups": self.list_backups()[:8],
         }

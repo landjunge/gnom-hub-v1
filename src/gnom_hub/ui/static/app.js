@@ -113,6 +113,7 @@
   let jobTimerStart = null;
   let jobTimerInterval = null;
   let lastJobElapsedSec = 0;
+  let lastReportedPipelineError = null;
   const CHAT_STORAGE_KEY = "gnom-hub-chat-log-v1";
 
   function statusLabel(agent) {
@@ -532,7 +533,15 @@
       hideClarify();
     }
 
-    if (p.error) appendChat("system", "Error: " + p.error);
+    // Only log pipeline errors once, and only while stage is error
+    if (p.error && p.stage === "error") {
+      if (p.error !== lastReportedPipelineError) {
+        lastReportedPipelineError = p.error;
+        appendChat("system", "Error: " + p.error);
+      }
+    } else if (p.stage === "done" || p.stage === "brainstorm" || !p.error) {
+      lastReportedPipelineError = null;
+    }
 
     if (p.stage === "done") {
       maybeSpeakPipeline(p);
@@ -1530,16 +1539,20 @@
         if (job.status === "error") {
           appendChat("system", "Brainstorm error: " + (job.error || "?"));
           toast(job.error || "Brainstorm error", "error");
+          applySnapshot(snap);
+          return;
+        }
+        if (job.status === "cancelled") {
+          appendChat("system", "Job cancelled.");
+          toast("Cancelled", "info");
+          applySnapshot(snap);
           return;
         }
       }
       applySnapshot(snap);
       const stage =
         (snap.pipeline && snap.pipeline.stage) || start.stage || "";
-      if (start.job_id && snap && snap.pipeline && snap.pipeline.stage === "cancelled") {
-        appendChat("system", "Job cancelled.");
-        toast("Cancelled", "info");
-      } else if (stage === "brainstorm") {
+      if (stage === "brainstorm") {
         appendChat(
           "system",
           "Brainstorm ready — keep chatting, or press Execute for workers."
@@ -1589,6 +1602,13 @@
         if (job.status === "error") {
           appendChat("system", "Execute error: " + (job.error || "?"));
           toast(job.error || "Execute error", "error");
+          applySnapshot(snap);
+          return;
+        }
+        if (job.status === "cancelled") {
+          appendChat("system", "Execute cancelled.");
+          toast("Cancelled", "info");
+          applySnapshot(snap);
           return;
         }
       }
@@ -1613,9 +1633,6 @@
       } else if (stage === "clarify") {
         appendChat("system", "Clarify needed in Box 1 before workers finish.");
         toast("Clarify needed", "info");
-      } else if (stage === "cancelled") {
-        appendChat("system", "Execute cancelled.");
-        toast("Cancelled", "info");
       }
     } catch (err) {
       appendChat("system", "Execute failed: " + err.message);
