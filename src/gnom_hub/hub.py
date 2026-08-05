@@ -57,6 +57,8 @@ class Hub:
         self._agent_state_path = self.root / "data" / "hot" / "agents.json"
         self.telegram = self._init_telegram()
         self._load_agent_state()
+        # User expectation: all agents (incl. both workers) start ON
+        self.agents.enable_all()
         self._wire_memory()
         self.agents.on_start()
         # Auto-start telegram poll if GNOM_TELEGRAM_POLL=1
@@ -344,6 +346,7 @@ class Hub:
             "flex_notes": st.flex_notes,
             "pending_question": q,
             "worker_results": list(st.worker_results),
+            "worker_outputs": list(st.worker_outputs or []),
             "warnings": list(st.warnings),
             "error": st.error,
         }

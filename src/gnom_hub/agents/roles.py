@@ -225,12 +225,15 @@ class WorkerAgent(BaseAgent):
                     return self.ask(
                         system=(
                             "You are a Worker agent. Deliver a concrete useful result "
-                            "for the assigned task (plan, structure, checklist, draft). "
+                            "for the assigned task (plan, structure, checklist, draft, "
+                            "or full HTML when the task is a page/UI). "
+                            "If the task is HTML/landing/page: output ONE complete HTML "
+                            "document starting with <!DOCTYPE html> (inline CSS/JS ok). "
                             "Work on the USER task only. Do not redefine Gnom-Hub. "
-                            "No meta fluff. Match user language. Max ~250 words."
+                            "No meta fluff. Match user language."
                         ),
                         user=_with_memory(body, memory_ctx),
-                        max_tokens=700,
+                        max_tokens=1800,
                         temperature=0.5,
                     )
                 except Exception as exc:  # noqa: BLE001

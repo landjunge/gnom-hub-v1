@@ -47,6 +47,10 @@ def test_stub_full_run_no_llm():
     assert len(state.worker_results) == 2
     assert "Worker 1" in state.worker_results[0]
     assert "Worker 2" in state.worker_results[1]
+    assert len(state.worker_outputs) == 2
+    assert state.worker_outputs[0]["worker"] == "worker1"
+    assert state.worker_outputs[1]["worker"] == "worker2"
+    assert state.worker_outputs[0]["result"] == state.worker_results[0]
 
     names = [n for n, _ in events]
     assert "pipeline.brainstorm" in names

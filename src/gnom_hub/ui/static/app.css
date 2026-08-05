@@ -342,6 +342,120 @@ html, body {
   margin: 0;
 }
 
+/* —— Box 3: dynamic Worker 1 / Worker 2 panels + HTML preview —— */
+.box3-dynamic {
+  white-space: normal;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.worker-panel {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #1e1f23;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.worker-panel[data-worker="worker1"] {
+  border-left: 3px solid var(--c-worker1);
+}
+.worker-panel[data-worker="worker2"] {
+  border-left: 3px solid var(--c-worker2);
+}
+
+.worker-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 8px;
+  background: #2c2e33;
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+
+.worker-panel-title {
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--text);
+}
+
+.worker-panel-modes {
+  display: flex;
+  gap: 4px;
+}
+
+.worker-mode-btn {
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: #343a40;
+  color: var(--text-muted);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.worker-mode-btn.is-active {
+  background: #495057;
+  color: var(--text);
+  border-color: #868e96;
+}
+
+.worker-mode-btn:hover {
+  color: var(--text);
+}
+
+.worker-panel-task {
+  padding: 4px 8px;
+  font-size: 10px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.worker-panel-body {
+  flex: 1 1 auto;
+  min-height: 80px;
+  max-height: 220px;
+  overflow: auto;
+  position: relative;
+}
+
+.worker-panel-body .worker-source {
+  margin: 0;
+  padding: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.worker-preview-frame {
+  display: block;
+  width: 100%;
+  height: 200px;
+  border: 0;
+  background: #fff;
+}
+
+.canvas-preview {
+  margin: 4px 0 0;
+  padding: 6px;
+  font-size: 10px;
+  color: var(--text-muted);
+  max-height: 60px;
+  overflow: auto;
+  border-top: 1px dashed var(--border);
+}
+
 .muted,
 .box1-placeholder {
   color: var(--text-muted);

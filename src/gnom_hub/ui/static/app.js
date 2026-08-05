@@ -75,8 +75,9 @@
     },
     box3: {
       title: "Worker results (Box 3)",
-      how_to: "Live output from active workers driven by the Coordinator.",
-      example: "Drafts and task results appear here.",
+      how_to:
+        "Dynamic panels for Worker 1 and Worker 2. HTML pages get a live Preview + Source. Toggle Preview/Source per worker.",
+      example: "Landing-page HTML renders in a sandboxed preview; code stays readable under Source.",
     },
     chat: {
       title: "Chat",
@@ -107,7 +108,7 @@
 
   const FLEX_PRESETS = ["security", "neutral", "researcher"];
 
-  /** 8 slots – Worker3/4 parked for v1 (local only until API has them) */
+  /** 8 slots – Worker3/4 UI-reserved (shown on; pipeline uses Worker 1+2) */
   const AGENTS = [
     { id: "brainstorm", label: "Brainstorm", color: "brainstorm", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0 },
     { id: "memory", label: "Memory", color: "memory", enabled: true, toggleable: false, parked: false, model: "—", preset: null, tokens: 0 },
@@ -115,8 +116,8 @@
     { id: "coordinator", label: "Coordinator", color: "coordinator", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0 },
     { id: "worker1", label: "Worker 1", color: "worker1", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0 },
     { id: "worker2", label: "Worker 2", color: "worker2", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0 },
-    { id: "worker3", label: "Worker 3", color: "worker3", enabled: false, toggleable: true, parked: true, model: "—", preset: null, tokens: 0 },
-    { id: "worker4", label: "Worker 4", color: "worker4", enabled: false, toggleable: true, parked: true, model: "—", preset: null, tokens: 0 },
+    { id: "worker3", label: "Worker 3", color: "worker3", enabled: true, toggleable: false, parked: true, model: "—", preset: null, tokens: 0 },
+    { id: "worker4", label: "Worker 4", color: "worker4", enabled: true, toggleable: false, parked: true, model: "—", preset: null, tokens: 0 },
   ];
 
   const els = {
@@ -150,7 +151,7 @@
   let activeStage = "idle";
 
   function statusLabel(agent) {
-    if (agent.parked && !agent.enabled) return "off / parked";
+    if (agent.parked) return agent.enabled ? "on · later" : "off / parked";
     return agent.enabled ? "on" : "off";
   }
 
@@ -167,7 +168,12 @@
         (activeStage === "flex" && agent.id === "flex") ||
         (activeStage === "coordinate" && agent.id === "coordinator") ||
         (activeStage === "work" &&
-          (agent.id === "worker1" || agent.id === "worker2")) ||
+          (agent.id === "worker1" ||
+            agent.id === "worker2" ||
+            agent.id === "worker3" ||
+            agent.id === "worker4")) ||
+        (activeStage === "worker1" && agent.id === "worker1") ||
+        (activeStage === "worker2" && agent.id === "worker2") ||
         (activeStage === "done" && agent.id === "memory");
       card.className =
         "agent-card color-" + agent.color + (isActive ? " is-active" : "");
@@ -424,19 +430,7 @@
       setBox2("Brainstorm thoughts appear here.\n\n(Type a message below and press Send.)");
     }
 
-    if (p.worker_results && p.worker_results.length) {
-      const lines = ["=== Worker results ==="];
-      p.worker_results.forEach(function (r, i) {
-        lines.push("");
-        lines.push("--- Worker " + (i + 1) + " ---");
-        lines.push(r);
-      });
-      setBox3(lines.join("\n"));
-    } else if (p.stage === "done") {
-      setBox3("(no worker output — coordinator or workers off)");
-    } else if (p.stage === "idle") {
-      setBox3("Worker results appear here after Send.");
-    }
+    renderBox3Workers(p);
 
     if (p.pending_question && p.pending_question.text) {
       showClarify(p.pending_question.text);
@@ -820,26 +814,214 @@
     pre.textContent = htmlOrText || "";
     body.appendChild(pre);
   }
-  function setBox3(htmlOrText) {
+
+  /** Extract fenced ```html … ``` or raw HTML document from worker text. */
+  function extractHtml(raw) {
+    const s = String(raw || "");
+    const fence = s.match(/```(?:html|HTML)?\s*([\s\S]*?)```/);
+    if (fence && fence[1] && /<\w+/i.test(fence[1])) {
+      return fence[1].trim();
+    }
+    const doctype = s.match(/(<!DOCTYPE\s+html[\s\S]*)$/i);
+    if (doctype) return doctype[1].trim();
+    const htmlTag = s.match(/(<html[\s\S]*<\/html>)/i);
+    if (htmlTag) return htmlTag[1].trim();
+    // fragment with enough tags
+    if (/<\w+[\s>][\s\S]*<\/\w+>/i.test(s) && (s.match(/<\w+/g) || []).length >= 2) {
+      const trimmed = s.trim();
+      if (trimmed.startsWith("<")) return trimmed;
+    }
+    return null;
+  }
+
+  /**
+   * Box 3: dynamic Worker 1 / Worker 2 panels.
+   * HTML → sandboxed Preview + Source; plain text → readable pre.
+   */
+  function renderBox3Workers(pipeline) {
     const body = document.getElementById("box3-content");
     if (!body) return;
-    // keep optional canvas-preview if present
     const canvas = body.querySelector(".canvas-preview");
     body.innerHTML = "";
-    const pre = document.createElement("pre");
-    pre.className = "result-block";
-    pre.textContent = htmlOrText || "";
-    body.appendChild(pre);
+    body.classList.add("box3-dynamic");
+
+    const outputs = normalizeWorkerOutputs(pipeline);
+    if (!outputs.length) {
+      const empty = document.createElement("p");
+      empty.className = "muted empty-hint";
+      if (pipeline && pipeline.stage === "done") {
+        empty.textContent =
+          "(no worker output — enable Coordinator + Worker 1/2, then Send)";
+      } else if (pipeline && pipeline.stage === "work") {
+        empty.textContent = "Workers running…";
+      } else {
+        empty.textContent =
+          "Worker 1 & 2 results appear here (text, plans, full HTML preview).";
+      }
+      body.appendChild(empty);
+      if (canvas) body.appendChild(canvas);
+      return;
+    }
+
+    outputs.forEach(function (out, idx) {
+      body.appendChild(buildWorkerPanel(out, idx));
+    });
     if (canvas) body.appendChild(canvas);
+  }
+
+  function normalizeWorkerOutputs(pipeline) {
+    const p = pipeline || {};
+    if (p.worker_outputs && p.worker_outputs.length) {
+      return p.worker_outputs.map(function (o, i) {
+        return {
+          worker: o.worker || "worker" + (i + 1),
+          name: o.name || "Worker " + (i + 1),
+          task: o.task || "",
+          result: o.result != null ? String(o.result) : "",
+          index: o.index != null ? o.index : i + 1,
+        };
+      });
+    }
+    if (p.worker_results && p.worker_results.length) {
+      return p.worker_results.map(function (r, i) {
+        return {
+          worker: "worker" + (i + 1),
+          name: "Worker " + (i + 1),
+          task: "",
+          result: String(r),
+          index: i + 1,
+        };
+      });
+    }
+    return [];
+  }
+
+  function buildWorkerPanel(out, idx) {
+    const panel = document.createElement("div");
+    panel.className = "worker-panel worker-panel-" + (out.worker || idx);
+    panel.dataset.worker = out.worker || "";
+
+    const head = document.createElement("div");
+    head.className = "worker-panel-head";
+    const title = document.createElement("span");
+    title.className = "worker-panel-title";
+    title.textContent = out.name || "Worker " + (idx + 1);
+    head.appendChild(title);
+
+    const raw = out.result || "";
+    const html = extractHtml(raw);
+    const isHtml = !!html;
+
+    const mode = document.createElement("div");
+    mode.className = "worker-panel-modes";
+    if (isHtml) {
+      const btnPrev = document.createElement("button");
+      btnPrev.type = "button";
+      btnPrev.className = "worker-mode-btn is-active";
+      btnPrev.textContent = "Preview";
+      btnPrev.dataset.mode = "preview";
+      const btnSrc = document.createElement("button");
+      btnSrc.type = "button";
+      btnSrc.className = "worker-mode-btn";
+      btnSrc.textContent = "Source";
+      btnSrc.dataset.mode = "source";
+      mode.appendChild(btnPrev);
+      mode.appendChild(btnSrc);
+      head.appendChild(mode);
+    }
+    panel.appendChild(head);
+
+    if (out.task) {
+      const taskEl = document.createElement("div");
+      taskEl.className = "worker-panel-task";
+      taskEl.textContent = "Task: " + String(out.task).split("\n")[0].slice(0, 160);
+      panel.appendChild(taskEl);
+    }
+
+    const content = document.createElement("div");
+    content.className = "worker-panel-body";
+
+    const sourcePre = document.createElement("pre");
+    sourcePre.className = "result-block worker-source";
+    sourcePre.textContent = raw;
+
+    if (isHtml) {
+      const frame = document.createElement("iframe");
+      frame.className = "worker-preview-frame";
+      frame.setAttribute(
+        "sandbox",
+        "allow-same-origin allow-forms allow-popups allow-modals"
+      );
+      frame.setAttribute("title", (out.name || "Worker") + " preview");
+      // Prefer full document; wrap fragments
+      let doc = html;
+      if (!/<!DOCTYPE/i.test(doc) && !/<html/i.test(doc)) {
+        doc =
+          "<!DOCTYPE html><html><head><meta charset=\"utf-8\">" +
+          "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
+          "<style>body{font-family:system-ui,sans-serif;margin:12px;}</style>" +
+          "</head><body>" +
+          doc +
+          "</body></html>";
+      }
+      frame.srcdoc = doc;
+      content.appendChild(frame);
+      sourcePre.hidden = true;
+      content.appendChild(sourcePre);
+
+      mode.querySelectorAll(".worker-mode-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          mode.querySelectorAll(".worker-mode-btn").forEach(function (b) {
+            b.classList.remove("is-active");
+          });
+          btn.classList.add("is-active");
+          const m = btn.dataset.mode;
+          if (m === "preview") {
+            frame.hidden = false;
+            sourcePre.hidden = true;
+          } else {
+            frame.hidden = true;
+            sourcePre.hidden = false;
+          }
+        });
+      });
+    } else {
+      content.appendChild(sourcePre);
+    }
+    panel.appendChild(content);
+    return panel;
+  }
+
+  function setBox3(htmlOrText) {
+    // Legacy plain-text path (tests / external hooks)
+    renderBox3Workers({
+      stage: "done",
+      worker_results: htmlOrText ? [String(htmlOrText)] : [],
+    });
   }
 
   async function bootstrap() {
     try {
+      // Ensure all pipeline agents are ON (Worker 1+2 included)
+      try {
+        const allOn = await api("POST", "/api/agents/enable-all");
+        if (allOn.agents) applyAgentsFromServer(allOn.agents);
+      } catch (_e) {
+        /* older server without endpoint */
+      }
       const snap = await api("GET", "/api/state");
       applySnapshot(snap);
+      // Force UI cards on for active slots
+      AGENTS.forEach(function (a) {
+        if (a.id === "worker3" || a.id === "worker4") {
+          a.enabled = true;
+        } else {
+          a.enabled = true;
+        }
+      });
       const defaultModel = (snap.llm && snap.llm.default_model) || "deepseek-chat";
       AGENTS.forEach(function (a) {
-        if (!a.parked && (!a.model || a.model === "—")) a.model = defaultModel;
+        if (!a.model || a.model === "—") a.model = defaultModel;
       });
       renderCards();
     } catch (err) {

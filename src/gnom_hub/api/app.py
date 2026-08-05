@@ -109,6 +109,15 @@ def create_app() -> FastAPI:
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
 
+    @app.post("/api/agents/enable-all")
+    def enable_all_agents() -> dict[str, Any]:
+        hub = get_hub()
+        hub.agents.enable_all()
+        return {
+            "ok": True,
+            "agents": [hub._agent_dict(a) for a in hub.agents.list_agents()],
+        }
+
     @app.post("/api/agents/flex/preset")
     def flex_preset(body: FlexBody) -> dict[str, Any]:
         try:

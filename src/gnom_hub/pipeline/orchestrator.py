@@ -148,6 +148,7 @@ class Orchestrator:
                 {"tasks": [], "skipped": True, "reason": "coordinator disabled"},
             )
             self._state.worker_results = []
+            self._state.worker_outputs = []
             self._finish()
             return
 
@@ -161,6 +162,7 @@ class Orchestrator:
 
         self._set_stage(PipelineStage.work)
         results: list[str] = []
+        outputs: list[dict] = []
         for i, (wid, task) in enumerate(tasks, start=1):
             worker = self._workers.get(wid)
             if worker is None or not worker.enabled:
@@ -172,11 +174,21 @@ class Orchestrator:
                 mem,
             )
             results.append(result)
+            outputs.append(
+                {
+                    "worker": wid,
+                    "name": worker.state.name,
+                    "index": i,
+                    "task": task,
+                    "result": result,
+                }
+            )
             self.bus.emit(
                 "pipeline.worker",
                 {"worker": wid, "index": i, "result": result, "task": task},
             )
         self._state.worker_results = results
+        self._state.worker_outputs = outputs
         self._finish()
 
     def _finish(self) -> None:

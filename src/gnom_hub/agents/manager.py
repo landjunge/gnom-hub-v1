@@ -98,6 +98,14 @@ class AgentManager:
         """Enabled workers only (max 2 in v1)."""
         return [self._agents[aid] for aid in _WORKER_IDS if self._agents[aid].enabled]
 
+    def enable_all(self) -> list[AgentState]:
+        """Turn every agent on (Memory already locked on). Emits status for flips."""
+        for agent in self._agents.values():
+            if not agent.enabled:
+                agent.enabled = True
+                self._emit_status(agent)
+        return self.list_agents()
+
     def emit_status(self, agent_id: AgentId | str) -> None:
         """Re-broadcast one agent's status (e.g. after LLM override change)."""
         self._emit_status(self._agents[self._resolve_id(agent_id)])

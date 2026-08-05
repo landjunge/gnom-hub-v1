@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=41" />
+  <link rel="stylesheet" href="/static/app.css?v=42" />
 </head>
 <body>
   <div id="app">
@@ -77,10 +77,10 @@
       </div>
 
       <div id="box3" class="box box-worker" data-tooltip-id="box3">
-        <div class="box-header">Worker results</div>
-        <div id="box3-content" class="box-body">
-          <p class="muted">Worker results appear here.</p>
-          <p class="muted empty-hint">(Empty — workers fill this after the pipeline.)</p>
+        <div class="box-header">Worker results · W1 / W2</div>
+        <div id="box3-content" class="box-body box3-dynamic">
+          <p class="muted">Worker 1 &amp; 2 results appear here (text + HTML preview).</p>
+          <p class="muted empty-hint">(Empty — send a chat to fill both worker panels.)</p>
         </div>
       </div>
     </section>
@@ -103,6 +103,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=41"></script>
+  <script src="/static/app.js?v=42"></script>
 </body>
 </html>

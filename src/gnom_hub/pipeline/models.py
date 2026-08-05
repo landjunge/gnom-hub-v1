@@ -34,6 +34,8 @@ class PipelineState:
     distilled_requirements: list[str] = field(default_factory=list)
     flex_notes: str = ""
     pending_question: DistillQuestion | None = None
+    # Flat strings (compat) + structured slots for UI (Worker 1 / Worker 2 / …)
     worker_results: list[str] = field(default_factory=list)
+    worker_outputs: list[dict] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     error: str | None = None

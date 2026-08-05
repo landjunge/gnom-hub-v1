@@ -73,6 +73,18 @@ def test_memory_locked():
     assert events == []  # no status emit on no-op
 
 
+def test_enable_all_turns_workers_on():
+    _, mgr, _ = _manager()
+    mgr.toggle(AgentId.WORKER1)
+    mgr.toggle(AgentId.WORKER2)
+    mgr.toggle(AgentId.BRAINSTORM)
+    assert mgr.get(AgentId.WORKER1).enabled is False
+    assert mgr.get(AgentId.WORKER2).enabled is False
+    mgr.enable_all()
+    for a in mgr.list_agents():
+        assert a.enabled is True
+
+
 def test_flex_preset():
     _, mgr, events = _manager()
     mgr.set_flex_preset("researcher")
