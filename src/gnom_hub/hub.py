@@ -52,6 +52,7 @@ class Hub:
         self._register_core_tools()
         self.plugin_list = self.plugins.discover_and_load()
         self.pipeline = self._new_pipeline()
+        self._jobs: dict[str, dict[str, Any]] = {}
         self.last_error: str | None = None
         self._agent_state_path = self.root / "data" / "hot" / "agents.json"
         self.telegram = self._init_telegram()
@@ -141,16 +142,24 @@ class Hub:
             flex = str(data.get("flex_notes") or "")
             if flex:
                 self.hot.add_message("flex", flex)
+            # HOT: keep a few clean requirements only (not flex essays)
+            for req in (data.get("requirements") or [])[:5]:
+                text = str(req).strip()
+                if 8 <= len(text) <= 160 and not text.startswith("Flex/"):
+                    self.hot.add_fact(text)
+                    self.vectors.add(text, meta={"source": "requirement"})
+            # WARM: only promote 1 crisp goal-like line
             for req in data.get("requirements") or []:
-                text = str(req)
-                self.hot.add_fact(text)
-                # Promote short requirements to WARM (durable)
-                if 8 <= len(text) <= 240:
-                    self.warm.add_fact(text)
-                self.vectors.add(text, meta={"source": "requirement"})
-            for res in data.get("results") or []:
-                self.hot.add_message("worker", str(res))
-                self.vectors.add(str(res)[:500], meta={"source": "worker"})
+                text = str(req).strip()
+                if text.lower().startswith("ziel:") or text.lower().startswith("goal:"):
+                    if 8 <= len(text) <= 160:
+                        self.warm.add_fact(text)
+                    break
+            for res in (data.get("results") or [])[:2]:
+                snippet = str(res).strip()[:400]
+                if snippet:
+                    self.hot.add_message("worker", snippet)
+                    self.vectors.add(snippet[:280], meta={"source": "worker"})
             self.hot.save()
 
         def on_error(data: Any) -> None:
@@ -381,6 +390,10 @@ class Hub:
     # ── commands ────────────────────────────────────────────────────
 
     def chat(self, text: str) -> dict[str, Any]:
+        """Synchronous pipeline (tests / scripts)."""
+        return self.chat_sync(text)
+
+    def chat_sync(self, text: str) -> dict[str, Any]:
         self.last_error = None
         self.memory.set_query_hint(text)
         self.pipeline.start(text)
@@ -388,12 +401,130 @@ class Hub:
             self.last_error = self.pipeline.state.error
         return self.snapshot()
 
+    def chat_async(self, text: str) -> dict[str, Any]:
+        """Start pipeline in background; poll GET /api/jobs/{id}."""
+        import threading
+        import uuid
+
+        if not hasattr(self, "_jobs"):
+            self._jobs: dict[str, dict[str, Any]] = {}
+
+        job_id = uuid.uuid4().hex[:12]
+        job: dict[str, Any] = {
+            "id": job_id,
+            "status": "running",
+            "stage": "idle",
+            "error": None,
+            "snapshot": None,
+        }
+        self._jobs[job_id] = job
+        self.last_error = None
+        self.memory.set_query_hint(text)
+
+        def _run() -> None:
+            try:
+                self.pipeline.start(text)
+                if self.pipeline.state.error:
+                    self.last_error = self.pipeline.state.error
+                    job["status"] = "error"
+                    job["error"] = self.pipeline.state.error
+                elif self.pipeline.state.stage.value == "clarify":
+                    job["status"] = "clarify"
+                else:
+                    job["status"] = "done"
+                job["stage"] = self.pipeline.state.stage.value
+                job["snapshot"] = self.snapshot()
+            except Exception as exc:  # noqa: BLE001
+                job["status"] = "error"
+                job["error"] = str(exc)
+                job["stage"] = "error"
+                self.last_error = str(exc)
+                job["snapshot"] = self.snapshot()
+
+        # Live stage updates into job while running
+        def _on_stage(data: Any) -> None:
+            if isinstance(data, dict) and data.get("stage"):
+                job["stage"] = str(data["stage"])
+                # light snapshot for UI progress (may be mid-flight)
+                try:
+                    job["snapshot"] = self.snapshot()
+                except Exception as exc:  # noqa: BLE001
+                    job["snapshot_error"] = str(exc)
+
+        self.bus.on("pipeline.stage", _on_stage)
+        self.bus.on("pipeline.brainstorm", lambda _d: _on_stage({"stage": "brainstorm"}))
+        self.bus.on("pipeline.distill", lambda _d: _on_stage({"stage": "distill"}))
+        self.bus.on("pipeline.flex", lambda _d: _on_stage({"stage": "flex"}))
+        self.bus.on("pipeline.worker", lambda _d: _on_stage({"stage": "work"}))
+
+        t = threading.Thread(target=_run, name=f"pipeline-{job_id}", daemon=True)
+        t.start()
+        return {
+            "job_id": job_id,
+            "status": "running",
+            "stage": "idle",
+            "message": "Pipeline started — poll /api/jobs/{id}",
+        }
+
+    def get_job(self, job_id: str) -> dict[str, Any] | None:
+        jobs = getattr(self, "_jobs", {})
+        job = jobs.get(job_id)
+        if not job:
+            return None
+        out = {
+            "id": job["id"],
+            "status": job["status"],
+            "stage": job.get("stage"),
+            "error": job.get("error"),
+        }
+        if job.get("snapshot"):
+            out["snapshot"] = job["snapshot"]
+        else:
+            out["snapshot"] = self.snapshot()
+        return out
+
     def clarify(self, option: str) -> dict[str, Any]:
+        """Synchronous clarify (also used after async reaches clarify)."""
         self.last_error = None
         self.pipeline.answer_clarify(option)
         if self.pipeline.state.error:
             self.last_error = self.pipeline.state.error
         return self.snapshot()
+
+    def clarify_async(self, option: str) -> dict[str, Any]:
+        import threading
+        import uuid
+
+        if not hasattr(self, "_jobs"):
+            self._jobs = {}
+        job_id = uuid.uuid4().hex[:12]
+        job: dict[str, Any] = {
+            "id": job_id,
+            "status": "running",
+            "stage": "clarify",
+            "error": None,
+            "snapshot": None,
+        }
+        self._jobs[job_id] = job
+
+        def _run() -> None:
+            try:
+                self.pipeline.answer_clarify(option)
+                if self.pipeline.state.error:
+                    job["status"] = "error"
+                    job["error"] = self.pipeline.state.error
+                else:
+                    job["status"] = "done"
+                job["stage"] = self.pipeline.state.stage.value
+                job["snapshot"] = self.snapshot()
+            except Exception as exc:  # noqa: BLE001
+                job["status"] = "error"
+                job["error"] = str(exc)
+                job["stage"] = "error"
+                job["snapshot"] = self.snapshot()
+
+        threading.Thread(target=_run, name=f"clarify-{job_id}", daemon=True).start()
+        return {"job_id": job_id, "status": "running", "stage": "work"}
 
     def toggle_agent(self, agent_id: str) -> dict[str, Any]:
         enabled = self.agents.toggle(agent_id)

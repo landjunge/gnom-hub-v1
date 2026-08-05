@@ -96,7 +96,7 @@ def test_api_phase5(tmp_path, monkeypatch):
     # PluginLoader uses hub.root which is tmp - no plugins. register via API tools from core only.
     app = create_app()
     with TestClient(app) as c:
-        r = c.post("/api/chat", json={"text": "archive me later"})
+        r = c.post("/api/chat?sync=1", json={"text": "archive me later"})
         assert r.status_code == 200
         r = c.post("/api/cold/archive", json={"label": "api-test"})
         assert r.status_code == 200

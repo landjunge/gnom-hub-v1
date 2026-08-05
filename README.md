@@ -17,6 +17,7 @@ Local-first multi-agent system.
 | **3.0** | COLD, vector, God-Mode, computer-use, plugins/MCP | **done** |
 | **3.1** | Vector recall in pipeline, Archive UI, safe God-Mode shell | **done** |
 | **3.2** | UI God toggle, COLD browser, optional live smoke | **done** |
+| **3.3** | Async chat jobs + better pipeline quality | **done** |
 
 Docs: [`docs/PRE_PLAN.md`](docs/PRE_PLAN.md) · [`docs/V1_SCOPE.md`](docs/V1_SCOPE.md) · [`docs/ROADMAP.md`](docs/ROADMAP.md)
 

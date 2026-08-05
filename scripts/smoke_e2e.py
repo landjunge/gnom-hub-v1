@@ -35,7 +35,7 @@ def main() -> int:
         assert r.status_code == 200
         assert "Gnom-Hub" in r.text
 
-        r = client.post("/api/chat", json={"text": "Smoke plan a tiny checklist app"})
+        r = client.post("/api/chat?sync=1", json={"text": "Smoke plan a tiny checklist app"})
         assert r.status_code == 200, r.text
         snap = r.json()
         stage = snap["pipeline"]["stage"]
@@ -44,7 +44,7 @@ def main() -> int:
         assert "memory" in snap
 
         if stage == "clarify":
-            r = client.post("/api/clarify", json={"option": "Yes"})
+            r = client.post("/api/clarify?sync=1", json={"option": "Yes"})
             assert r.status_code == 200, r.text
             assert r.json()["pipeline"]["stage"] == "done"
 

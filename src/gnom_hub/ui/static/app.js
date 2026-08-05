@@ -519,6 +519,29 @@
     if (els.stageBadge && chatBusy) els.stageBadge.textContent = "running…";
   }
 
+  async function pollJob(jobId, maxMs) {
+    const deadline = Date.now() + (maxMs || 120000);
+    let lastStage = "";
+    while (Date.now() < deadline) {
+      const job = await api("GET", "/api/jobs/" + encodeURIComponent(jobId));
+      const stage = job.stage || (job.snapshot && job.snapshot.pipeline && job.snapshot.pipeline.stage) || "";
+      if (stage && stage !== lastStage) {
+        lastStage = stage;
+        if (els.stageBadge) els.stageBadge.textContent = stage;
+        appendChat("system", "Stage: " + stage);
+      }
+      if (job.snapshot) applySnapshot(job.snapshot);
+      const st = job.status;
+      if (st === "done" || st === "error" || st === "clarify") {
+        return job;
+      }
+      await new Promise(function (r) {
+        setTimeout(r, 450);
+      });
+    }
+    throw new Error("Pipeline timeout");
+  }
+
   async function sendChat() {
     const text = (els.chatInput.value || "").trim();
     if (!text || chatBusy) return;
@@ -533,23 +556,35 @@
     appendChat(
       "system",
       live
-        ? "Pipeline running (Live LLM, 10–40s)…"
-        : "Pipeline running (stub mode, fast)…"
+        ? "Pipeline started (Live LLM — stages update live)…"
+        : "Pipeline started (stub mode)…"
     );
-    toast(live ? "Pipeline running (live)…" : "Pipeline running…", "info");
+    toast(live ? "Running live…" : "Running…", "info");
 
     try {
-      const snap = await api("POST", "/api/chat", { text: text });
+      // async by default — UI stays responsive
+      const start = await api("POST", "/api/chat", { text: text });
+      let snap = start;
+      if (start.job_id) {
+        const job = await pollJob(start.job_id, live ? 180000 : 30000);
+        snap = job.snapshot || (await api("GET", "/api/state"));
+        if (job.status === "error") {
+          appendChat("system", "Pipeline error: " + (job.error || "?"));
+          toast(job.error || "Pipeline error", "error");
+          return;
+        }
+      }
       applySnapshot(snap);
-      if (snap.pipeline && snap.pipeline.stage === "done") {
+      const stage =
+        (snap.pipeline && snap.pipeline.stage) ||
+        (start.stage) ||
+        "";
+      if (stage === "done") {
         appendChat("system", "Pipeline done.");
         toast("Pipeline done", "ok");
-      } else if (snap.pipeline && snap.pipeline.stage === "clarify") {
+      } else if (stage === "clarify") {
         appendChat("system", "Need a clarify answer in Box 1.");
         toast("Clarify needed in Box 1", "info");
-      } else if (snap.pipeline && snap.pipeline.stage === "error") {
-        appendChat("system", "Pipeline error: " + (snap.pipeline.error || "?"));
-        toast(snap.pipeline.error || "Pipeline error", "error");
       }
     } catch (err) {
       appendChat("system", "Chat failed: " + err.message);
@@ -731,15 +766,25 @@
   async function onClarify(answer) {
     const cb = w.GnomHub.onClarify;
     if (typeof cb === "function") cb(answer);
+    appendChat("you", "[clarify] " + answer);
+    setChatBusy(true);
     try {
-      const snap = await api("POST", "/api/clarify", { option: answer });
+      const start = await api("POST", "/api/clarify", { option: answer });
+      let snap = start;
+      if (start.job_id) {
+        const job = await pollJob(start.job_id, 180000);
+        snap = job.snapshot || (await api("GET", "/api/state"));
+      }
       applySnapshot(snap);
-      appendChat("you", "[clarify] " + answer);
       if (snap.pipeline && snap.pipeline.stage === "done") {
         appendChat("system", "Pipeline done.");
+        toast("Pipeline done", "ok");
       }
     } catch (err) {
       appendChat("system", "Clarify failed: " + err.message);
+      toast("Clarify failed: " + err.message, "error");
+    } finally {
+      setChatBusy(false);
     }
   }
 

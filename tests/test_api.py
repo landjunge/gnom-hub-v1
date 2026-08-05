@@ -36,7 +36,7 @@ def test_state_and_agents(client: TestClient):
 
 
 def test_chat_pipeline_done(client: TestClient):
-    r = client.post("/api/chat", json={"text": "Build a simple landing page"})
+    r = client.post("/api/chat?sync=1", json={"text": "Build a simple landing page"})
     assert r.status_code == 200
     data = r.json()
     assert data["pipeline"]["stage"] == "done"
@@ -45,12 +45,12 @@ def test_chat_pipeline_done(client: TestClient):
 
 
 def test_chat_clarify_then_continue(client: TestClient):
-    r = client.post("/api/chat", json={"text": "maybe dark mode?"})
+    r = client.post("/api/chat?sync=1", json={"text": "maybe dark mode?"})
     assert r.status_code == 200
     assert r.json()["pipeline"]["stage"] == "clarify"
     assert r.json()["pipeline"]["pending_question"]
 
-    r2 = client.post("/api/clarify", json={"option": "Yes"})
+    r2 = client.post("/api/clarify?sync=1", json={"option": "Yes"})
     assert r2.status_code == 200
     assert r2.json()["pipeline"]["stage"] == "done"
 
@@ -74,7 +74,7 @@ def test_flex_preset(client: TestClient):
 
 
 def test_save(client: TestClient):
-    client.post("/api/chat", json={"text": "note this"})
+    client.post("/api/chat?sync=1", json={"text": "note this"})
     r = client.post("/api/save")
     assert r.status_code == 200
     assert r.json()["ok"] is True
@@ -116,7 +116,7 @@ def test_help(client: TestClient):
 
 
 def test_reset_clears_pipeline(client: TestClient):
-    client.post("/api/chat", json={"text": "remember this"})
+    client.post("/api/chat?sync=1", json={"text": "remember this"})
     r = client.post("/api/reset")
     assert r.status_code == 200
     data = r.json()
@@ -125,7 +125,7 @@ def test_reset_clears_pipeline(client: TestClient):
 
 
 def test_memory_endpoint_after_chat(client: TestClient):
-    client.post("/api/chat", json={"text": "Ship feature memory wire"})
+    client.post("/api/chat?sync=1", json={"text": "Ship feature memory wire"})
     r = client.get("/api/memory")
     assert r.status_code == 200
     data = r.json()
@@ -137,7 +137,7 @@ def test_memory_endpoint_after_chat(client: TestClient):
 
 def test_warm_survives_reset(client: TestClient):
     client.post("/api/memory/warm", json={"text": "Always use HTTPS"})
-    client.post("/api/chat", json={"text": "build a form"})
+    client.post("/api/chat?sync=1", json={"text": "build a form"})
     r = client.post("/api/reset")
     assert r.status_code == 200
     mem = client.get("/api/memory").json()

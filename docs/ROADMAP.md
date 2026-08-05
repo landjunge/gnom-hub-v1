@@ -23,5 +23,6 @@
 | 3.0 | COLD archive, vector lite, God-Mode, Computer-Use kit, plugins/MCP-lite | **done** |
 | 3.1 | Vector→pipeline, auto-COLD on reset, UI badges, allowlisted shell | **done** |
 | 3.2 | UI God toggle, COLD browser, optional live DeepSeek smoke | **done** |
+| 3.3 | Core quality: async jobs, better prompts, clean memory | **done** |
 
 Heavy optional still (real OCR/pyautogui/embeddings models): install extras yourself if needed.

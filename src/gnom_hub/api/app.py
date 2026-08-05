@@ -124,13 +124,26 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail=str(e)) from e
 
     @app.post("/api/chat")
-    def chat(body: ChatBody) -> dict[str, Any]:
-        return get_hub().chat(body.text.strip())
+    def chat(body: ChatBody, sync: bool = Query(False)) -> dict[str, Any]:
+        """Default: async job (poll /api/jobs/{id}). Use ?sync=1 for tests."""
+        text = body.text.strip()
+        if sync:
+            return get_hub().chat_sync(text)
+        return get_hub().chat_async(text)
+
+    @app.get("/api/jobs/{job_id}")
+    def job_status(job_id: str) -> dict[str, Any]:
+        job = get_hub().get_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="unknown job")
+        return job
 
     @app.post("/api/clarify")
-    def clarify(body: ClarifyBody) -> dict[str, Any]:
+    def clarify(body: ClarifyBody, sync: bool = Query(False)) -> dict[str, Any]:
         try:
-            return get_hub().clarify(body.option.strip())
+            if sync:
+                return get_hub().clarify(body.option.strip())
+            return get_hub().clarify_async(body.option.strip())
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
 
