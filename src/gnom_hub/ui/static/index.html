@@ -4,19 +4,21 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=60" />
+  <link rel="stylesheet" href="/static/app.css?v=61" />
 </head>
 <body>
   <div id="app">
     <header class="top-bar">
-      <h1 class="app-title">Gnom-Hub <span id="ver-badge" class="ver-badge">v1.8.1</span></h1>
+      <h1 class="app-title">Gnom-Hub <span id="ver-badge" class="ver-badge">v1.9</span></h1>
       <div class="top-meta">
         <span id="llm-badge" class="llm-badge" title="LLM key status">LLM: —</span>
+        <span id="cost-badge" class="cost-badge" title="Session spend / budget">$0.00</span>
         <span id="mem-badge" class="mem-badge" title="HOT memory">Mem: —</span>
         <span id="vec-badge" class="vec-badge" title="Vector store">Vec: —</span>
         <span id="god-badge" class="god-badge" title="God-Mode — click to toggle" role="button" tabindex="0">God: off</span>
         <span id="cold-badge" class="cold-badge" title="COLD archives — click to browse" role="button" tabindex="0">Cold: —</span>
         <span id="stage-badge" class="stage-badge" title="Pipeline stage">idle</span>
+        <button type="button" id="btn-compact" class="btn-compact" title="Toggle compact density">Compact</button>
         <label class="flex-preset-label" title="Flex preset" data-tooltip-id="flex">
           Flex
           <select id="flex-preset-select" class="flex-preset-select" aria-label="Flex preset">
@@ -104,6 +106,9 @@
           <span class="box3-header-title">Worker results · W1 / W2</span>
           <span class="box3-toolbar">
             <span id="job-timer" class="job-timer" hidden title="Job duration">0.0s</span>
+            <select id="result-history" class="result-history" title="Previous execute results" aria-label="Result history">
+              <option value="">History…</option>
+            </select>
             <button type="button" id="btn-copy-all" class="box3-tool-btn" title="Copy all worker results">
               Copy all
             </button>
@@ -142,7 +147,7 @@
           Cancel
         </button>
       </div>
-      <p class="kbd-hint">Enter = Send · Ctrl/⌘+Enter = Execute · Ctrl/⌘+S = Save · Esc = Cancel / close FS · Box3: Copy all / Diff · Auto-save</p>
+      <p class="kbd-hint">Enter = Send · Ctrl/⌘+Enter = Execute · Ctrl/⌘+S = Save · Esc = Cancel/close · Compact · History · Auto-save</p>
     </section>
   </div>
 
@@ -304,6 +309,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=60"></script>
+  <script src="/static/app.js?v=61"></script>
 </body>
 </html>

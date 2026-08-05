@@ -535,7 +535,7 @@ class Hub:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "1.8.1",
+            "version": "1.9.0",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -791,39 +791,13 @@ class Hub:
         return self.snapshot()
 
     def clarify_async(self, option: str) -> dict[str, Any]:
-        import threading
-        import uuid
+        """Async clarify under the same pipeline lock as chat/execute."""
+        opt = option
 
-        if not hasattr(self, "_jobs"):
-            self._jobs = {}
-        job_id = uuid.uuid4().hex[:12]
-        job: dict[str, Any] = {
-            "id": job_id,
-            "status": "running",
-            "stage": "clarify",
-            "error": None,
-            "snapshot": None,
-        }
-        self._jobs[job_id] = job
+        def _runner() -> None:
+            self.pipeline.answer_clarify(opt)
 
-        def _run() -> None:
-            try:
-                self.pipeline.answer_clarify(option)
-                if self.pipeline.state.error:
-                    job["status"] = "error"
-                    job["error"] = self.pipeline.state.error
-                else:
-                    job["status"] = "done"
-                job["stage"] = self.pipeline.state.stage.value
-                job["snapshot"] = self.snapshot()
-            except Exception as exc:  # noqa: BLE001
-                job["status"] = "error"
-                job["error"] = str(exc)
-                job["stage"] = "error"
-                job["snapshot"] = self.snapshot()
-
-        threading.Thread(target=_run, name=f"clarify-{job_id}", daemon=True).start()
-        return {"job_id": job_id, "status": "running", "stage": "work"}
+        return self._start_job("clarify", _runner)
 
     def toggle_agent(self, agent_id: str) -> dict[str, Any]:
         enabled = self.agents.toggle(agent_id)
@@ -916,7 +890,7 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "1.8.1",
+            "version": "1.9.0",
             "providers": self.llm.providers_snapshot(),
             "backups": self.list_backups()[:8],
         }
@@ -1205,11 +1179,11 @@ class Hub:
                 "3) Send+Execute = one shot after typing. "
                 "4) Ctrl/⌘+S = save HOT + agents. "
                 "5) Esc = close fullscreen or cancel job. "
-                "6) Box 3: Copy/DL/Tab/WS/↑perm/fullscreen; toolbar Copy all + Diff. "
-                "7) Job timer shows duration while busy. "
+                "6) Box 3: Copy/DL/Tab/WS/↑perm/fullscreen; toolbar Copy all + Diff + History. "
+                "7) Cost badge + Compact density; job timer while busy. "
                 "8) Auto-save + Box 3 focus after successful Execute."
             ),
-            "example": "Type idea → Send+Execute → Box 3 Diff/Copy all → ↑ perm → Export.",
+            "example": "Type idea → Send+Execute → History/Diff → ↑ perm → Export.",
             "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",
             "keys": (
                 "Keyboard: Enter send · Ctrl/⌘+Enter execute · Ctrl/⌘+S save · Esc cancel/close overlay. "

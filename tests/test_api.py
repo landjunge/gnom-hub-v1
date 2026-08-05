@@ -26,11 +26,11 @@ def test_health(client: TestClient):
     assert r.status_code == 200
     assert r.json()["status"] == "ok"
     assert "version" in r.json()
-    assert r.json()["version"].startswith("1.8")
+    assert r.json()["version"].startswith("1.9")
 
 
-def test_ui_static_has_v16_v18_features(client: TestClient):
-    """Smoke: app.js ships 1.6–1.8 UI helpers."""
+def test_ui_static_has_v16_v19_features(client: TestClient):
+    """Smoke: app.js ships 1.6–1.9 UI helpers."""
     js = client.get("/static/app.js")
     assert js.status_code == 200
     body = js.text
@@ -43,6 +43,9 @@ def test_ui_static_has_v16_v18_features(client: TestClient):
     assert "copyAllWorkerResults" in body
     assert "computeLineDiff" in body
     assert "startJobTimer" in body
+    assert "updateCostBadge" in body
+    assert "pushResultHistory" in body
+    assert "toggleCompactMode" in body
     assert 'ev.key === "s"' in body or "ev.key === 's'" in body
 
     css = client.get("/static/app.css")
@@ -52,12 +55,26 @@ def test_ui_static_has_v16_v18_features(client: TestClient):
     assert "chat-ts" in css.text
     assert "diff-overlay" in css.text
     assert "job-timer" in css.text
+    assert "cost-badge" in css.text
+    assert "body.compact" in css.text
 
     html = client.get("/")
     assert html.status_code == 200
     assert "btn-copy-all" in html.text
     assert "btn-diff" in html.text
     assert "job-timer" in html.text
+    assert "cost-badge" in html.text
+    assert "result-history" in html.text
+    assert "btn-compact" in html.text
+
+
+def test_state_exposes_cost_fields(client: TestClient):
+    r = client.get("/api/state")
+    assert r.status_code == 200
+    llm = r.json().get("llm") or {}
+    assert "spent_usd" in llm
+    assert "prompt_tokens" in llm
+    assert "max_budget_usd" in llm or "spent_usd" in llm
 
 
 def test_reexecute_after_error_job_done(client: TestClient, monkeypatch):

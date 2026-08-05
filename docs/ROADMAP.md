@@ -89,7 +89,17 @@
 | Chat: log pipeline error only once / stage=error | **done** |
 | UI: handle job.status cancelled | **done** |
 
-## Post-V1.8 (optional)
+## V1.9.0
+
+| Item | Status |
+|------|--------|
+| Live cost badge (spend / budget warn) | **done** |
+| Result history (session, restore Box 3) | **done** |
+| Compact density mode | **done** |
+| clarify_async under pipeline lock | **done** |
+| install.sh shows real version | **done** |
+
+## Post-V1.9 (optional)
 
 | Item | Notes |
 |------|--------|

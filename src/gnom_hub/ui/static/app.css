@@ -315,6 +315,7 @@ html, body {
 
 .stage-badge,
 .llm-badge,
+.cost-badge,
 .mem-badge,
 .vec-badge,
 .god-badge {
@@ -332,6 +333,97 @@ html, body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.cost-badge {
+  min-width: 72px;
+  font-variant-numeric: tabular-nums;
+  color: #69db7c;
+  border-color: #2f9e44;
+}
+
+.cost-badge.cost-warn {
+  color: #ffd43b;
+  border-color: #f59f00;
+}
+
+.cost-badge.cost-hot {
+  color: #ff8787;
+  border-color: #fa5252;
+  background: #3b1f1f;
+}
+
+.btn-compact {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-panel);
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.btn-compact:hover {
+  color: var(--text);
+}
+
+.btn-compact.is-active {
+  color: #74c0fc;
+  border-color: #4dabf7;
+}
+
+.result-history {
+  max-width: 140px;
+  height: 20px;
+  font-size: 10px;
+  background: #343a40;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0 2px;
+}
+
+/* Compact density */
+body.compact .top-bar {
+  padding: 4px 8px;
+}
+
+body.compact .agent-cards {
+  gap: 4px;
+  padding: 4px 8px;
+}
+
+body.compact .agent-card {
+  padding: 4px 6px;
+  min-height: 0;
+}
+
+body.compact .box-header {
+  padding: 3px 6px;
+  font-size: 11px;
+}
+
+body.compact .box-body {
+  padding: 4px 6px;
+  font-size: 11px;
+}
+
+body.compact .chat {
+  padding: 4px 8px;
+}
+
+body.compact .chat-log {
+  max-height: 120px;
+}
+
+body.compact .worker-panel-head {
+  padding: 2px 4px;
+}
+
+body.compact .kbd-hint {
+  font-size: 10px;
+  opacity: 0.7;
 }
 
 .god-badge.on {

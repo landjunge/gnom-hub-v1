@@ -84,6 +84,7 @@
     btnReset: document.getElementById("btn-reset"),
     stageBadge: document.getElementById("stage-badge"),
     llmBadge: document.getElementById("llm-badge"),
+    costBadge: document.getElementById("cost-badge"),
     memBadge: document.getElementById("mem-badge"),
     vecBadge: document.getElementById("vec-badge"),
     godBadge: document.getElementById("god-badge"),
@@ -115,6 +116,10 @@
   let lastJobElapsedSec = 0;
   let lastReportedPipelineError = null;
   const CHAT_STORAGE_KEY = "gnom-hub-chat-log-v1";
+  const HISTORY_KEY = "gnom-hub-result-history-v1";
+  const COMPACT_KEY = "gnom-hub-compact-v1";
+  const HISTORY_MAX = 12;
+  let resultHistory = [];
 
   function statusLabel(agent) {
     if (agent.parked) return agent.enabled ? "on · later" : "off / parked";
@@ -364,15 +369,11 @@
       const ok = ds || ol;
       const tok =
         (snap.llm.prompt_tokens || 0) + (snap.llm.completion_tokens || 0);
-      const spent =
-        typeof snap.llm.spent_usd === "number"
-          ? " · $" + snap.llm.spent_usd.toFixed(4)
-          : "";
       let label = "LLM: stub";
       if (ds && ol) label = "LLM: DeepSeek+Ollama";
       else if (ds) label = "LLM: DeepSeek";
       else if (ol) label = "LLM: Ollama";
-      els.llmBadge.textContent = ok ? label + " · " + tok + " tok" + spent : label;
+      els.llmBadge.textContent = ok ? label + " · " + tok + " tok" : label;
       els.llmBadge.classList.toggle("has-key", ok);
       els.llmBadge.title =
         "prompt=" +
@@ -380,6 +381,7 @@
         " completion=" +
         (snap.llm.completion_tokens || 0);
     }
+    updateCostBadge(snap.llm);
     if (els.memBadge && snap.memory_summary) {
       const short = String(snap.memory_summary).replace(/^HOT:\s*/i, "");
       const nodes =
@@ -1376,6 +1378,162 @@
     if (els.stageBadge && chatBusy) els.stageBadge.textContent = "running…";
   }
 
+  function updateCostBadge(llm) {
+    const el = els.costBadge || document.getElementById("cost-badge");
+    if (!el) return;
+    const spent = llm && typeof llm.spent_usd === "number" ? llm.spent_usd : 0;
+    const tok =
+      llm
+        ? (llm.prompt_tokens || 0) + (llm.completion_tokens || 0)
+        : 0;
+    const budget =
+      llm && llm.max_budget_usd != null && llm.max_budget_usd !== ""
+        ? Number(llm.max_budget_usd)
+        : null;
+    let text = "$" + spent.toFixed(4);
+    if (budget != null && !isNaN(budget) && budget > 0) {
+      text += " / $" + budget.toFixed(2);
+      const ratio = spent / budget;
+      el.classList.toggle("cost-warn", ratio >= 0.7 && ratio < 0.95);
+      el.classList.toggle("cost-hot", ratio >= 0.95);
+    } else {
+      el.classList.remove("cost-warn", "cost-hot");
+    }
+    el.textContent = text;
+    el.title =
+      "Session spend $" +
+      spent.toFixed(6) +
+      (budget != null && !isNaN(budget) ? " · budget $" + budget : " · no budget cap") +
+      " · " +
+      tok +
+      " tokens" +
+      (llm && llm.free_only ? " · free_only" : "");
+  }
+
+  function loadResultHistory() {
+    try {
+      const raw = sessionStorage.getItem(HISTORY_KEY);
+      if (!raw) {
+        resultHistory = [];
+        return;
+      }
+      const arr = JSON.parse(raw);
+      resultHistory = Array.isArray(arr) ? arr : [];
+    } catch (_e) {
+      resultHistory = [];
+    }
+  }
+
+  function saveResultHistory() {
+    try {
+      sessionStorage.setItem(
+        HISTORY_KEY,
+        JSON.stringify(resultHistory.slice(0, HISTORY_MAX))
+      );
+    } catch (_e) {
+      /* quota */
+    }
+  }
+
+  function pushResultHistory(pipeline, meta) {
+    const outputs = normalizeWorkerOutputs(pipeline);
+    if (!outputs.length) return;
+    const entry = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      ts: new Date().toISOString(),
+      label:
+        (meta && meta.label) ||
+        (pipeline && pipeline.user_text
+          ? String(pipeline.user_text).slice(0, 48)
+          : "Execute") +
+          " · " +
+          outputs.length +
+          "w",
+      outputs: outputs.map(function (o) {
+        return {
+          worker: o.worker,
+          name: o.name,
+          task: o.task,
+          result: o.result,
+          index: o.index,
+        };
+      }),
+    };
+    resultHistory.unshift(entry);
+    if (resultHistory.length > HISTORY_MAX) {
+      resultHistory = resultHistory.slice(0, HISTORY_MAX);
+    }
+    saveResultHistory();
+    renderHistorySelect();
+  }
+
+  function renderHistorySelect() {
+    const sel = document.getElementById("result-history");
+    if (!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = "";
+    const opt0 = document.createElement("option");
+    opt0.value = "";
+    opt0.textContent =
+      resultHistory.length
+        ? "History (" + resultHistory.length + ")…"
+        : "History…";
+    sel.appendChild(opt0);
+    resultHistory.forEach(function (e) {
+      const o = document.createElement("option");
+      o.value = e.id;
+      const t = e.ts
+        ? e.ts.slice(11, 19)
+        : "";
+      o.textContent = (t ? t + " · " : "") + (e.label || e.id);
+      sel.appendChild(o);
+    });
+    if (cur) sel.value = cur;
+  }
+
+  function restoreHistoryEntry(id) {
+    const entry = resultHistory.find(function (e) {
+      return e.id === id;
+    });
+    if (!entry) {
+      toast("History entry not found", "info");
+      return;
+    }
+    lastWorkerOutputs = entry.outputs || [];
+    renderBox3Workers({
+      stage: "done",
+      worker_outputs: lastWorkerOutputs,
+    });
+    focusBox3();
+    toast("Restored: " + (entry.label || id), "ok");
+  }
+
+  function applyCompactMode(on) {
+    document.body.classList.toggle("compact", !!on);
+    const btn = document.getElementById("btn-compact");
+    if (btn) {
+      btn.classList.toggle("is-active", !!on);
+      btn.textContent = on ? "Compact ✓" : "Compact";
+    }
+    try {
+      localStorage.setItem(COMPACT_KEY, on ? "1" : "0");
+    } catch (_e) {
+      /* ignore */
+    }
+  }
+
+  function toggleCompactMode() {
+    applyCompactMode(!document.body.classList.contains("compact"));
+  }
+
+  function loadCompactMode() {
+    try {
+      applyCompactMode(localStorage.getItem(COMPACT_KEY) === "1");
+    } catch (_e) {
+      applyCompactMode(false);
+    }
+  }
+
   function formatChatTime(d) {
     const dt = d || new Date();
     try {
@@ -1624,6 +1782,19 @@
         );
         toast("Execute done · " + formatDuration(dur), "ok");
         focusBox3();
+        try {
+          pushResultHistory(snap.pipeline || {}, {
+            label:
+              ((snap.pipeline && snap.pipeline.user_text) || "Execute").slice(
+                0,
+                40
+              ) +
+              " · " +
+              formatDuration(dur),
+          });
+        } catch (_h) {
+          /* non-fatal */
+        }
         try {
           await api("POST", "/api/save");
           appendChat("system", "Auto-saved HOT + agents.");
@@ -2587,6 +2758,17 @@
     if (btnCopyAll) btnCopyAll.addEventListener("click", copyAllWorkerResults);
     const btnDiff = document.getElementById("btn-diff");
     if (btnDiff) btnDiff.addEventListener("click", openWorkerDiff);
+    const hist = document.getElementById("result-history");
+    if (hist) {
+      hist.addEventListener("change", function () {
+        if (hist.value) restoreHistoryEntry(hist.value);
+      });
+    }
+    const btnCompact = document.getElementById("btn-compact");
+    if (btnCompact) btnCompact.addEventListener("click", toggleCompactMode);
+    loadResultHistory();
+    renderHistorySelect();
+    loadCompactMode();
     updateBox3Toolbar();
     const btnClearChat = document.getElementById("btn-clear-chat");
     if (btnClearChat) btnClearChat.addEventListener("click", clearChatLog);

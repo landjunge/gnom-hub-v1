@@ -74,7 +74,12 @@ fi
 mkdir -p data/hot data/warm data/cold data/workspace/temp data/workspace/perm data/backups
 
 echo ""
-echo "OK — Gnom-Hub v1.0.0 ready."
+# Version from pyproject if present
+GNOM_VER="1.9.0"
+if [ -f pyproject.toml ]; then
+  GNOM_VER="$(grep -E '^version\s*=' pyproject.toml | head -1 | sed -E 's/.*"([^"]+)".*/\1/' || echo "$GNOM_VER")"
+fi
+echo "OK — Gnom-Hub v${GNOM_VER} ready."
 echo "  source .venv/bin/activate"
 echo "  ./scripts/start.sh"
 echo "  → http://127.0.0.1:8080/"
