@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=98" />
+  <link rel="stylesheet" href="/static/app.css?v=99" />
 </head>
 <body>
   <div id="app">
@@ -385,7 +385,23 @@
         <input id="tools-fetch-url" class="tune-input" type="url" placeholder="https://…" style="flex:1;min-width:160px" />
         <button type="button" id="tools-fetch-btn" class="btn-ws-sm">Fetch</button>
       </div>
-      <pre id="tools-result" class="trace-body muted" style="max-height:200px">Select a tool and Run. web_fetch accepts a URL as plain text.</pre>
+      <p class="system-line muted" style="margin-top:10px">Computer use (screen / mouse / keyboard / shell)</p>
+      <p id="cu-god-line" class="system-line muted">God-Mode: off — click God badge in header to enable real control</p>
+      <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+        <button type="button" id="cu-inspect" class="btn-ws-sm" title="Screenshot + OCR">Inspect screen</button>
+        <button type="button" id="cu-click" class="btn-ws-sm" title="Click at x,y">Click</button>
+        <input id="cu-x" class="tune-input" type="number" placeholder="x" style="width:64px" value="100" />
+        <input id="cu-y" class="tune-input" type="number" placeholder="y" style="width:64px" value="100" />
+      </div>
+      <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+        <input id="cu-type" class="tune-input" type="text" placeholder="Type text…" style="flex:1;min-width:140px" />
+        <button type="button" id="cu-type-btn" class="btn-ws-sm">Type</button>
+      </div>
+      <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <input id="cu-shell" class="tune-input" type="text" placeholder="Shell (allowlist: ls pwd date …)" style="flex:1;min-width:140px" value="pwd" />
+        <button type="button" id="cu-shell-btn" class="btn-ws-sm">Shell</button>
+      </div>
+      <pre id="tools-result" class="trace-body muted" style="max-height:200px">Tools + Computer use. Without God-Mode actions are dry-run only. Real mouse/keyboard needs God on + pyautogui.</pre>
     </div>
   </div>
 
@@ -426,6 +442,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=98"></script>
+  <script src="/static/app.js?v=99"></script>
 </body>
 </html>

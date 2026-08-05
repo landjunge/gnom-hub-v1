@@ -1170,6 +1170,104 @@
     if (!els.toolsModal) return;
     els.toolsModal.hidden = false;
     await refreshToolsModal();
+    await refreshComputerUseLine();
+  }
+
+  async function refreshComputerUseLine() {
+    const line = document.getElementById("cu-god-line");
+    if (!line) return;
+    try {
+      const data = await api("GET", "/api/computer-use");
+      const god = !!(data.god_mode && data.god_mode.enabled);
+      const allow =
+        (data.computer &&
+          data.computer.action &&
+          data.computer.action.shell_allow) ||
+        [];
+      line.textContent =
+        "God-Mode: " +
+        (god ? "ON (real control)" : "off (dry-run only)") +
+        " · shell: " +
+        allow.slice(0, 6).join(" ") +
+        (allow.length > 6 ? "…" : "");
+    } catch (_e) {
+      line.textContent = "Computer use: status unavailable";
+    }
+  }
+
+  function showCuResult(obj) {
+    const pre = document.getElementById("tools-result");
+    if (!pre) return;
+    pre.textContent =
+      typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
+  }
+
+  async function cuInspect() {
+    try {
+      const data = await api("POST", "/api/computer-use/inspect");
+      showCuResult(data);
+      toast(
+        data.capture && data.capture.ok
+          ? "Screenshot saved"
+          : "Inspect done (maybe stub capture)",
+        "ok"
+      );
+    } catch (err) {
+      toast("Inspect failed: " + err.message, "error");
+    }
+  }
+
+  async function cuClick() {
+    const x = Number((document.getElementById("cu-x") || {}).value || 0);
+    const y = Number((document.getElementById("cu-y") || {}).value || 0);
+    try {
+      const data = await api("POST", "/api/computer-use/click", { x: x, y: y });
+      showCuResult(data);
+      toast(
+        data.dry_run
+          ? "Dry-run click — enable God badge first"
+          : "Clicked " + x + "," + y,
+        data.dry_run ? "info" : "ok"
+      );
+    } catch (err) {
+      toast("Click failed: " + err.message, "error");
+    }
+  }
+
+  async function cuType() {
+    const text = String((document.getElementById("cu-type") || {}).value || "");
+    if (!text.trim()) {
+      toast("Enter text to type", "info");
+      return;
+    }
+    try {
+      const data = await api("POST", "/api/computer-use/type", { text: text });
+      showCuResult(data);
+      toast(
+        data.dry_run ? "Dry-run type — enable God badge first" : "Typed",
+        data.dry_run ? "info" : "ok"
+      );
+    } catch (err) {
+      toast("Type failed: " + err.message, "error");
+    }
+  }
+
+  async function cuShell() {
+    const cmd = String((document.getElementById("cu-shell") || {}).value || "");
+    if (!cmd.trim()) {
+      toast("Enter shell command", "info");
+      return;
+    }
+    try {
+      const data = await api("POST", "/api/computer-use/shell", { cmd: cmd });
+      showCuResult(data);
+      toast(
+        data.dry_run ? "Dry-run shell — enable God badge first" : data.detail,
+        data.ok || data.dry_run ? "ok" : "error"
+      );
+    } catch (err) {
+      toast("Shell failed: " + err.message, "error");
+    }
   }
 
   async function refreshToolsModal() {
@@ -4322,6 +4420,14 @@
     if (els.btnSystem) els.btnSystem.addEventListener("click", openSystemModal);
     if (els.btnWorkspace) els.btnWorkspace.addEventListener("click", openWorkspaceModal);
     if (els.btnTools) els.btnTools.addEventListener("click", openToolsModal);
+    const cuInspectBtn = document.getElementById("cu-inspect");
+    const cuClickBtn = document.getElementById("cu-click");
+    const cuTypeBtn = document.getElementById("cu-type-btn");
+    const cuShellBtn = document.getElementById("cu-shell-btn");
+    if (cuInspectBtn) cuInspectBtn.addEventListener("click", cuInspect);
+    if (cuClickBtn) cuClickBtn.addEventListener("click", cuClick);
+    if (cuTypeBtn) cuTypeBtn.addEventListener("click", cuType);
+    if (cuShellBtn) cuShellBtn.addEventListener("click", cuShell);
     const toolsClose = document.getElementById("tools-close");
     if (toolsClose) toolsClose.addEventListener("click", closeToolsModal);
     if (els.toolsModal) {

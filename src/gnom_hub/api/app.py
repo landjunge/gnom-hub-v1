@@ -142,6 +142,10 @@ class ActionClickBody(BaseModel):
     y: int
 
 
+class ActionTypeBody(BaseModel):
+    text: str = Field(min_length=1, max_length=500)
+
+
 class ShellBody(BaseModel):
     cmd: str = Field(min_length=1, max_length=200)
 
@@ -812,6 +816,19 @@ def create_app() -> FastAPI:
     def computer_click(body: ActionClickBody) -> dict[str, Any]:
         r = get_hub().computer.action.click(body.x, body.y)
         return {"ok": r.ok, "dry_run": r.dry_run, "detail": r.detail}
+
+    @app.post("/api/computer-use/type")
+    def computer_type(body: ActionTypeBody) -> dict[str, Any]:
+        r = get_hub().computer.action.type_text(body.text)
+        return {"ok": r.ok, "dry_run": r.dry_run, "detail": r.detail}
+
+    @app.get("/api/computer-use")
+    def computer_status() -> dict[str, Any]:
+        hub = get_hub()
+        return {
+            "computer": hub.computer.snapshot(),
+            "god_mode": hub.god_mode.snapshot(),
+        }
 
     @app.post("/api/computer-use/shell")
     def computer_shell(body: ShellBody) -> dict[str, Any]:
