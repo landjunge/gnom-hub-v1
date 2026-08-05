@@ -4,12 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=54" />
+  <link rel="stylesheet" href="/static/app.css?v=55" />
 </head>
 <body>
   <div id="app">
     <header class="top-bar">
-      <h1 class="app-title">Gnom-Hub</h1>
+      <h1 class="app-title">Gnom-Hub <span id="ver-badge" class="ver-badge">v1.4</span></h1>
       <div class="top-meta">
         <span id="llm-badge" class="llm-badge" title="LLM key status">LLM: —</span>
         <span id="mem-badge" class="mem-badge" title="HOT memory">Mem: —</span>
@@ -33,6 +33,9 @@
         </button>
         <button type="button" id="btn-export" class="btn-export" title="Export last results as Markdown">
           Export
+        </button>
+        <button type="button" id="btn-clear-chat" class="btn-clear-chat" title="Clear chat log (this browser)">
+          Clear chat
         </button>
         <button type="button" id="btn-system" class="btn-system" data-tooltip-id="system" title="System settings">
           System
@@ -286,6 +289,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=54"></script>
+  <script src="/static/app.js?v=55"></script>
 </body>
 </html>

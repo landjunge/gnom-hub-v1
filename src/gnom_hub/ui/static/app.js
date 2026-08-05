@@ -347,6 +347,12 @@
       if (flex && flex.preset) els.flexSelect.value = flex.preset;
     }
 
+    if (snap.version) {
+      const vb = document.getElementById("ver-badge");
+      if (vb) vb.textContent = "v" + String(snap.version).replace(/^v/, "");
+      document.title = "Gnom-Hub v" + String(snap.version).replace(/^v/, "");
+    }
+
     if (els.llmBadge && snap.llm) {
       const ds = !!snap.llm.deepseek;
       const ol = !!snap.llm.ollama;
@@ -770,8 +776,13 @@
               li.textContent =
                 (b.name || "") +
                 " · " +
-                (b.bytes != null ? Math.round(b.bytes / 1024) + " KB" : "");
-              li.title = b.path || "";
+                (b.bytes != null ? Math.round(b.bytes / 1024) + " KB" : "") +
+                " · click to download";
+              li.title = (b.path || "") + " — click to download";
+              li.addEventListener("click", function () {
+                window.location.href =
+                  "/api/backups/" + encodeURIComponent(b.name) + "/download";
+              });
               ul.appendChild(li);
             });
           }
@@ -1322,6 +1333,16 @@
     } catch (_e) {
       /* ignore */
     }
+  }
+
+  function clearChatLog() {
+    if (els.chatLog) els.chatLog.innerHTML = "";
+    try {
+      sessionStorage.removeItem(CHAT_STORAGE_KEY);
+    } catch (_e) {
+      /* ignore */
+    }
+    toast("Chat log cleared", "ok");
   }
 
   async function pollJob(jobId, maxMs) {
@@ -1926,11 +1947,25 @@
     if (presetApply) presetApply.addEventListener("click", applySelectedPreset);
     if (presetDel) presetDel.addEventListener("click", deleteSelectedPreset);
     els.chatInput.addEventListener("keydown", function (ev) {
+      // Ctrl/Cmd+Enter = Execute; plain Enter = Send
+      if (ev.key === "Enter" && (ev.ctrlKey || ev.metaKey)) {
+        ev.preventDefault();
+        runExecute();
+        return;
+      }
       if (ev.key === "Enter") {
         ev.preventDefault();
         sendChat();
       }
     });
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape" && chatBusy) {
+        ev.preventDefault();
+        cancelCurrentJob();
+      }
+    });
+    const btnClearChat = document.getElementById("btn-clear-chat");
+    if (btnClearChat) btnClearChat.addEventListener("click", clearChatLog);
     els.btnSave.addEventListener("click", onSave);
     if (els.btnHelp) els.btnHelp.addEventListener("click", onHelp);
     if (els.btnSystem) els.btnSystem.addEventListener("click", openSystemModal);

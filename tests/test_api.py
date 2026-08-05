@@ -53,6 +53,11 @@ def test_cancel_backups_presets_delete(client: TestClient):
     bl = client.get("/api/backups")
     assert bl.status_code == 200
     assert isinstance(bl.json().get("backups"), list)
+    if bl.json()["backups"]:
+        name = bl.json()["backups"][0]["name"]
+        dl = client.get(f"/api/backups/{name}/download")
+        assert dl.status_code == 200
+        assert dl.headers.get("content-type", "").startswith("application/")
 
 
 def test_export_and_ollama_models(client: TestClient):

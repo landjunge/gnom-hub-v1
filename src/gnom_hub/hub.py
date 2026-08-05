@@ -535,7 +535,7 @@ class Hub:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "1.3.0",
+            "version": "1.4.0",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -914,7 +914,7 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "1.3.0",
+            "version": "1.4.0",
             "providers": self.llm.providers_snapshot(),
             "backups": self.list_backups()[:8],
         }
@@ -1113,6 +1113,17 @@ class Hub:
             except OSError:
                 continue
         return out[:30]
+
+    def backup_path(self, name: str) -> Path:
+        """Safe path under data/backups for download."""
+        safe = Path(name).name
+        if not safe.startswith("gnom-hub-backup-") or not safe.endswith(".zip"):
+            raise ValueError("invalid backup name")
+        path = (self.root / "data" / "backups" / safe).resolve()
+        base = (self.root / "data" / "backups").resolve()
+        if not str(path).startswith(str(base)) or not path.is_file():
+            raise FileNotFoundError(safe)
+        return path
 
     def delete_worker_preset(self, name: str) -> dict[str, Any]:
         presets = [p for p in self.list_worker_presets() if p.get("name") != name]

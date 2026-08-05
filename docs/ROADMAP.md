@@ -34,7 +34,16 @@
 | Worker presets apply/delete in System | **done** |
 | Backups list API + System UI | **done** |
 
-## Post-V1.3 (optional)
+## V1.4.0
+
+| Item | Status |
+|------|--------|
+| Backup zip download endpoint | **done** |
+| Keyboard: Enter send, Ctrl+Enter execute, Esc cancel | **done** |
+| Clear chat button | **done** |
+| Live version badge in header | **done** |
+
+## Post-V1.4 (optional)
 
 | Item | Notes |
 |------|--------|
