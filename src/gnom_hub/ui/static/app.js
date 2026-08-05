@@ -1619,6 +1619,8 @@
           " " +
           (p.name || "") +
           " " +
+          (p.notes || "") +
+          " " +
           (p.mtime || "") +
           " " +
           (p.exported_at || "")
@@ -1653,7 +1655,10 @@
       if (when.length > 16) when = when.slice(0, 16);
       lab.textContent =
         (p.label || p.name || "?") + (when ? " · " + when : "");
-      lab.title = (p.name || "") + (p.label ? " — " + p.label : "");
+      lab.title =
+        (p.name || "") +
+        (p.label ? " — " + p.label : "") +
+        (p.notes ? "\n" + p.notes : "");
       const loadBtn = document.createElement("button");
       loadBtn.type = "button";
       loadBtn.className = "btn-ws-sm";
@@ -1668,7 +1673,7 @@
       renBtn.textContent = "Ren";
       renBtn.title = "Rename label";
       renBtn.addEventListener("click", function () {
-        renameNamedPack(p.name, p.label || "");
+        renameNamedPack(p.name, p.label || "", p.notes || "");
       });
       const dlBtn = document.createElement("button");
       dlBtn.type = "button";
@@ -1713,7 +1718,7 @@
     }
   }
 
-  async function renameNamedPack(name, currentLabel) {
+  async function renameNamedPack(name, currentLabel, currentNotes) {
     if (!name) return;
     var next = window.prompt("Pack label (max 80 chars):", currentLabel || "");
     if (next === null) return;
@@ -1722,14 +1727,20 @@
       toast("Label required", "error");
       return;
     }
+    var notesNext = window.prompt(
+      "Pack notes (optional, max 200):",
+      currentNotes || ""
+    );
+    if (notesNext === null) notesNext = currentNotes || "";
+    notesNext = String(notesNext).trim().slice(0, 200);
     try {
       const data = await api(
         "PATCH",
         "/api/session/packs/" + encodeURIComponent(name),
-        { label: next }
+        { label: next, notes: notesNext }
       );
       await renderPackList(data.packs);
-      toast("Pack renamed", "ok");
+      toast("Pack updated", "ok");
     } catch (err) {
       toast("Pack rename failed: " + err.message, "error");
     }
@@ -1774,13 +1785,22 @@
   async function exportSessionPack() {
     try {
       var labelHint = window.prompt("Pack label (optional, Enter to skip):", "");
+      var notesHint = window.prompt("Pack notes (optional, Enter to skip):", "");
       var body = {
         persist: true,
+        include_workspace: true,
         ui_chat_log: collectChatLog().slice(-80),
         ui_result_history: resultHistory.slice(0, HISTORY_MAX),
+        ui_prefs: {
+          compact: document.body.classList.contains("compact"),
+          ui_lang: uiLang || "en",
+        },
       };
       if (labelHint !== null && String(labelHint).trim()) {
         body.label = String(labelHint).trim().slice(0, 80);
+      }
+      if (notesHint !== null && String(notesHint).trim()) {
+        body.notes = String(notesHint).trim().slice(0, 200);
       }
       const data = await api("POST", "/api/session/pack/export", body);
       const pack = data.pack || data;
@@ -1924,6 +1944,17 @@
       resultHistory = snap.ui_result_history.slice(0, HISTORY_MAX);
       saveResultHistory();
       renderHistorySelect();
+    }
+    if (snap.ui_prefs && typeof snap.ui_prefs === "object") {
+      if (typeof snap.ui_prefs.compact === "boolean") {
+        applyCompactMode(!!snap.ui_prefs.compact);
+      }
+      if (snap.ui_prefs.ui_lang === "en" || snap.ui_prefs.ui_lang === "de") {
+        uiLang = snap.ui_prefs.ui_lang;
+        loadTooltips(uiLang);
+        const langEl = document.getElementById("sys-lang");
+        if (langEl) langEl.value = uiLang;
+      }
     }
   }
 

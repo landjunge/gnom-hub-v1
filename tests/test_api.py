@@ -670,3 +670,38 @@ def test_pack_workspace_roundtrip(client: TestClient):
     perm_names = [f["name"] for f in ws.get("perm") or []]
     assert "scratch.txt" in temp_names
     assert "keep.md" in perm_names
+
+
+def test_pack_ui_prefs_and_notes(client: TestClient):
+    client.post("/api/system", json={"ui_lang": "de"})
+    exp = client.post(
+        "/api/session/pack/export",
+        json={
+            "persist": True,
+            "label": "prefs-pack",
+            "notes": "USB laptop B",
+            "ui_prefs": {"compact": True, "ui_lang": "de"},
+        },
+    )
+    assert exp.status_code == 200
+    pack = exp.json()["pack"]
+    assert pack["notes"] == "USB laptop B"
+    assert pack["ui_prefs"]["compact"] is True
+    assert pack["ui_prefs"]["ui_lang"] == "de"
+    name = exp.json()["filename"]
+    lst = client.get("/api/session/packs").json()["packs"]
+    hit = next(p for p in lst if p["name"] == name)
+    assert hit["notes"] == "USB laptop B"
+    ren = client.patch(
+        f"/api/session/packs/{name}",
+        json={"notes": "updated note"},
+    )
+    assert ren.status_code == 200
+    assert ren.json()["notes"] == "updated note"
+    client.post("/api/system", json={"ui_lang": "en"})
+    imp = client.post("/api/session/pack", json={"pack": pack})
+    assert imp.status_code == 200
+    snap = imp.json()
+    assert snap["ui_prefs"]["compact"] is True
+    assert snap["ui_lang"] == "de"
+    assert snap.get("pack_notes") == "USB laptop B"

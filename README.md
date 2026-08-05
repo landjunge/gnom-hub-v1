@@ -1,8 +1,8 @@
-# Gnom-Hub v2.5.0
+# Gnom-Hub v2.6.0
 
 Local multi-agent control hub: **brainstorm first**, then **Execute** workers.
 
-Desktop · USB-friendly · DeepSeek / Ollama · **Session packs** (chat · history · **workspace**) · filter · Re-Exec.
+Desktop · USB · Session packs (chat · history · workspace · **ui prefs · notes**) · filter · Re-Exec.
 
 > **Convention:** every meaningful change is **pushed to `main`** and this **README is updated** in the same commit.
 
@@ -13,10 +13,10 @@ Desktop · USB-friendly · DeepSeek / Ollama · **Session packs** (chat · histo
 ```
 Send / Enter              → Brainstorm (Box 2)
 Execute / Ctrl+Enter      → Distill → Flex → Workers → Quality → Memory
-Pack ↓ (System)           → HOT/WARM/agents/pipeline + chat + history + workspace
-Pack list filter/Load…    → Filter by label · Load · Ren · ↓ · Del
+Pack ↓                    → Full hop + compact/lang prefs + optional notes
+Pack list filter/Load…    → Filter (label/notes) · Load · Ren · ↓ · Del
 Pack ↑                    → Import JSON + store under data/packs/
-Auto-pack / Max packs     → Server auto-save + workspace files + prune
+Auto-pack / Max packs     → Server auto-save + prune
 History → Re-Exec         → Re-run workers from a prior brainstorm
 ```
 
@@ -32,7 +32,7 @@ cd gnom-hub-v1
 ./scripts/quality_check.sh
 ```
 
-**http://127.0.0.1:8080/?v=67**
+**http://127.0.0.1:8080/?v=68**
 
 ---
 
@@ -40,9 +40,9 @@ cd gnom-hub-v1
 
 | Control | Action |
 |---------|--------|
-| **Pack ↓ / Pack ↑** | Full USB hop: chat, history, temp+perm workspace |
-| **Filter packs…** | Client-side filter by label/name/date |
-| **Session packs list** | Load · Ren · ↓ · Del |
+| **Pack ↓ / Pack ↑** | USB hop: chat, history, workspace, compact, lang, notes |
+| **Filter packs…** | Label / notes / name / date |
+| **Ren** | Edit label + notes |
 | **Auto-pack / Max packs** | After Execute; prune oldest |
 
 ---
@@ -51,10 +51,10 @@ cd gnom-hub-v1
 
 | Tag | Highlights |
 |-----|------------|
-| 2.2 | List download, import→store, pack_max prune |
 | 2.3 | Rename label, mtime, label on export |
 | 2.4 | Chat log + result history in pack |
-| **2.5** | Workspace temp/perm in pack + pack filter |
+| 2.5 | Workspace temp/perm + pack filter |
+| **2.6** | ui_prefs (compact/lang) + pack notes |
 
 ---
 

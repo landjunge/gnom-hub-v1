@@ -105,15 +105,18 @@ class SessionPackBody(BaseModel):
 
 
 class PackRenameBody(BaseModel):
-    label: str = Field(min_length=1, max_length=80)
+    label: str | None = Field(default=None, max_length=80)
+    notes: str | None = Field(default=None, max_length=200)
 
 
 class PackExportBody(BaseModel):
     label: str | None = None
+    notes: str | None = None
     persist: bool = True
     include_workspace: bool = True
     ui_chat_log: list[dict[str, Any]] | None = None
     ui_result_history: list[dict[str, Any]] | None = None
+    ui_prefs: dict[str, Any] | None = None
 
 
 class ReexecuteBody(BaseModel):
@@ -132,7 +135,7 @@ class ShellBody(BaseModel):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Gnom-Hub v1", version="2.5.0")
+    app = FastAPI(title="Gnom-Hub v1", version="2.6.0")
 
     @app.get("/api/health")
     def health() -> dict[str, Any]:
@@ -140,7 +143,7 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "service": "gnom-hub-v1",
-            "version": "2.5.0",
+            "version": "2.6.0",
             "telegram": hub.telegram.enabled,
             "telegram_running": hub.telegram.running,
             "llm": {
@@ -291,6 +294,8 @@ def create_app() -> FastAPI:
             include_workspace=body.include_workspace,
             ui_chat_log=body.ui_chat_log,
             ui_result_history=body.ui_result_history,
+            ui_prefs=body.ui_prefs,
+            notes=body.notes,
         )
 
     @app.post("/api/session/pack")
@@ -353,7 +358,7 @@ def create_app() -> FastAPI:
     @app.patch("/api/session/packs/{name}")
     def session_pack_rename(name: str, body: PackRenameBody) -> dict[str, Any]:
         try:
-            return get_hub().rename_session_pack(name, body.label)
+            return get_hub().rename_session_pack(name, label=body.label, notes=body.notes)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
         except TypeError as e:

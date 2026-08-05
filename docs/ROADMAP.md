@@ -152,7 +152,16 @@
 | Pack list filter (label/name) | **done** |
 | Version / docs 2.5 | **done** |
 
-## Post-V2.5 (optional)
+## V2.6.0
+
+| Item | Status |
+|------|--------|
+| ui_prefs in pack (compact + ui_lang) | **done** |
+| Pack notes field (export / list / Ren) | **done** |
+| Import restores compact + lang | **done** |
+| Version / docs 2.6 | **done** |
+
+## Post-V2.6 (optional)
 
 | Item | Notes |
 |------|--------|

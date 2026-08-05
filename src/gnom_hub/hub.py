@@ -546,7 +546,7 @@ class Hub:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "2.5.0",
+            "version": "2.6.0",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -911,7 +911,7 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "2.5.0",
+            "version": "2.6.0",
             "providers": self.llm.providers_snapshot(),
             "backups": self.list_backups()[:8],
             "packs": self.list_session_packs()[:12],
@@ -1325,6 +1325,19 @@ class Hub:
                     continue
         return counts
 
+    @staticmethod
+    def _sanitize_ui_prefs(raw: Any) -> dict[str, Any]:
+        """compact + ui_lang only."""
+        if not isinstance(raw, dict):
+            return {}
+        out: dict[str, Any] = {}
+        if "compact" in raw:
+            out["compact"] = bool(raw.get("compact"))
+        lang = str(raw.get("ui_lang") or "").strip().lower()
+        if lang in ("en", "de"):
+            out["ui_lang"] = lang
+        return out
+
     def export_session_pack(
         self,
         label: str | None = None,
@@ -1333,6 +1346,8 @@ class Hub:
         ui_chat_log: list | None = None,
         ui_result_history: list | None = None,
         include_workspace: bool = True,
+        ui_prefs: dict | None = None,
+        notes: str | None = None,
     ) -> dict[str, Any]:
         """Portable JSON pack: HOT + WARM + agents + pipeline + workspace (+ UI)."""
         from datetime import datetime, timezone
@@ -1392,9 +1407,10 @@ class Hub:
         pack = {
             "format": "gnom-hub-session-pack",
             "format_version": 1,
-            "app_version": "2.5.0",
+            "app_version": "2.6.0",
             "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
             "label": pack_label,
+            "notes": (str(notes).strip()[:200] if notes else ""),
             "hot": dict(self.hot.session),
             "canvas_mmd": self.hot.canvas.to_mermaid(),
             "warm_facts": self.warm.all_facts(),
@@ -1407,6 +1423,11 @@ class Hub:
             pack["ui_result_history"] = self._sanitize_ui_result_history(ui_result_history)
         if include_workspace:
             pack["workspace"] = self._collect_workspace_for_pack()
+        # Always embed server ui_lang; merge client prefs when provided
+        prefs = {"ui_lang": self.ui_lang if self.ui_lang in ("en", "de") else "en"}
+        if ui_prefs is not None:
+            prefs.update(self._sanitize_ui_prefs(ui_prefs))
+        pack["ui_prefs"] = prefs
         filename = f"gnom-hub-session-{stamp}.json"
         saved_path: str | None = None
         pruned: list[str] = []
@@ -1492,12 +1513,14 @@ class Hub:
             try:
                 label = p.stem
                 exported_at = ""
+                notes = ""
                 try:
                     data = json.loads(p.read_text(encoding="utf-8"))
                     if isinstance(data, dict):
                         if data.get("label"):
                             label = str(data["label"])[:80]
                         exported_at = str(data.get("exported_at") or "")
+                        notes = str(data.get("notes") or "")[:200]
                 except (OSError, json.JSONDecodeError):
                     pass
                 st = p.stat()
@@ -1508,6 +1531,7 @@ class Hub:
                         "path": str(p),
                         "bytes": st.st_size,
                         "label": label,
+                        "notes": notes,
                         "exported_at": exported_at,
                         "mtime": mtime.replace(microsecond=0).isoformat(),
                     }
@@ -1549,27 +1573,42 @@ class Hub:
             include_agents=include_agents,
         )
 
-    def rename_session_pack(self, name: str, label: str) -> dict[str, Any]:
-        """Update the human label inside a stored pack (filename unchanged)."""
+    def rename_session_pack(
+        self,
+        name: str,
+        label: str | None = None,
+        notes: str | None = None,
+    ) -> dict[str, Any]:
+        """Update label and/or notes inside a stored pack (filename unchanged)."""
         path = self._pack_path(name)
         data = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(data, dict):
             raise TypeError("pack file is not an object")
         if data.get("format") != "gnom-hub-session-pack":
             raise ValueError("not a gnom-hub-session-pack")
-        new_label = (label or "").strip()[:80]
-        if not new_label:
-            raise ValueError("label required")
-        data["label"] = new_label
+        if label is None and notes is None:
+            raise ValueError("label or notes required")
+        if label is not None:
+            new_label = (label or "").strip()[:80]
+            if not new_label:
+                raise ValueError("label required")
+            data["label"] = new_label
+        if notes is not None:
+            data["notes"] = str(notes).strip()[:200]
         atomic_write_text(path, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
         self._append_trace(
             "session.pack.rename",
-            {"name": path.name, "label": new_label},
+            {
+                "name": path.name,
+                "label": data.get("label"),
+                "notes": bool(data.get("notes")),
+            },
         )
         return {
             "ok": True,
             "name": path.name,
-            "label": new_label,
+            "label": data.get("label"),
+            "notes": data.get("notes") or "",
             "packs": self.list_session_packs(),
         }
 
@@ -1701,6 +1740,11 @@ class Hub:
             "session.pack.import",
             {"label": pack.get("label"), "stage": stage.value},
         )
+        if isinstance(pack.get("ui_prefs"), dict):
+            prefs = self._sanitize_ui_prefs(pack.get("ui_prefs"))
+            lang = prefs.get("ui_lang")
+            if lang in ("en", "de"):
+                self.ui_lang = lang
         snap = self.snapshot()
         if "ui_chat_log" in pack:
             snap["ui_chat_log"] = self._sanitize_ui_chat_log(pack.get("ui_chat_log"))
@@ -1708,6 +1752,10 @@ class Hub:
             snap["ui_result_history"] = self._sanitize_ui_result_history(
                 pack.get("ui_result_history")
             )
+        if isinstance(pack.get("ui_prefs"), dict):
+            snap["ui_prefs"] = self._sanitize_ui_prefs(pack.get("ui_prefs"))
+        if pack.get("notes") is not None:
+            snap["pack_notes"] = str(pack.get("notes") or "")[:200]
         return snap
 
     def restore_for_reexecute(
@@ -1767,7 +1815,7 @@ class Hub:
                 "5) Esc = close fullscreen or cancel job. "
                 "6) Box 3: Copy/DL/Tab/WS/↑perm/fullscreen; toolbar Copy all + Diff + History. "
                 "7) Cost badge + Compact density; job timer while busy. "
-                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat+history+workspace, list filter/Load/Ren/↓/Del). 10) History Re-Exec. 11) Import from USB can store into data/packs/."
+                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat/history/workspace/ui_prefs/notes; list filter). 10) History Re-Exec. 11) Import from USB can store into data/packs/."
             ),
             "example": "Type idea → Execute → Pack ↓ (USB) → History Re-Exec → Diff.",
             "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",
