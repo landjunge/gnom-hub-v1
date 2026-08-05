@@ -3,7 +3,7 @@
 **Purpose:** Real user-position smoke — browser + keyboard, not API-only stubs.
 
 **Script:** `scripts/user_landing_e2e.py`  
-**Last live PASS:** `data/e2e-user/20260805T172841Z/` (v3.7.1, DeepSeek v4-flash; 4× worker HTML 7/7, export ~42k)
+**Last live PASS:** `data/e2e-user/20260805T204324Z/` (v3.7.1, DeepSeek v4-flash; full-page task, 4 panels, export ~55k)
 
 ---
 
