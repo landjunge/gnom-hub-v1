@@ -338,3 +338,29 @@ def test_html_gates_and_dod():
         ],
     )
     assert "Gates:" in notes
+
+
+def test_coordinator_html_plan_prefers_full_page():
+    """Stub coordinator must not split landing pages into section fragments."""
+    from gnom_hub.agents.models import COLORS, AgentId, AgentState
+    from gnom_hub.agents.roles_ext import CoordinatorAgent
+    from gnom_hub.core.event_bus import EventBus
+
+    st = AgentState(
+        id=AgentId.COORDINATOR,
+        name="Coordinator",
+        role="coordinator",
+        color=COLORS[AgentId.COORDINATOR],
+        enabled=True,
+        toggleable=True,
+    )
+    coord = CoordinatorAgent(st, EventBus(), llm=None)
+    tasks = coord.plan(
+        "Build a landing page with hero, features, footer. Full HTML.",
+        ["complete HTML"],
+        ["worker1", "worker2", "worker3"],
+    )
+    assert len(tasks) == 3
+    assert "ONE complete single-file HTML" in tasks[0][1]
+    assert "VARIANT" in tasks[1][1]
+    assert "hero section only" not in tasks[0][1].lower()

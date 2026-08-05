@@ -97,6 +97,7 @@ Reference: [`KEYS_AND_MODELS.md`](KEYS_AND_MODELS.md)
 | 2026-08-05 | 119 pass | PASS (4 workers, quality poor) | thinking-on burned tokens |
 | 2026-08-05 | 119 pass + live pong | **PASS** 4 HTML iframes, quality 5–6/6, export ~27k | thinking default **disabled** |
 | 2026-08-05 | 119 pass + B1–B3 | **PASS** (workers max 6k) | stage race, cancel race, Key.txt wins, poll timeout recover |
+| 2026-08-05 | **121** + B1–B3 + user E2E | **PASS** 4× HTML 7/7, 4 iframes, export ~42k, $0.006 | DoD + gates + 3200 HTML tokens + 2 retries; still section-split plan (coord fix next) |
 
 ### Debug-team fixes (2026-08-05)
 

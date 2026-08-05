@@ -73,13 +73,38 @@ class CoordinatorAgent(BaseAgent):
             return []
         self.emit_active(True)
         try:
+            blob = (user_text or "").lower()
+            wants_one_page = any(
+                k in blob
+                for k in (
+                    "html",
+                    "landing",
+                    "webpage",
+                    "web page",
+                    "website",
+                    "seite",
+                    "single file",
+                    "single-file",
+                )
+            )
             if self.has_llm():
                 try:
+                    page_rule = ""
+                    if wants_one_page:
+                        page_rule = (
+                            "CRITICAL for HTML/landing/page tasks: "
+                            "Primary worker must deliver ONE complete single-file page "
+                            "(<!DOCTYPE html>…</html>) with ALL requested sections "
+                            "(e.g. hero + features + footer) in that same file. "
+                            "Do NOT split hero/cards/footer into separate workers. "
+                            "Extra workers: full-page variant, a11y polish, or QA checklist — "
+                            "never incomplete section fragments.\n"
+                        )
                     raw = self.ask(
                         system=(
                             "You are the Coordinator assigning tasks. "
                             "Output exactly one line per worker: workerN | task. "
-                            "No other text."
+                            "No other text.\n" + page_rule
                         ),
                         user=(
                             f"User: {user_text}\n"
@@ -107,15 +132,34 @@ class CoordinatorAgent(BaseAgent):
                         {"stage": "coordinate", "error": str(exc)},
                     )
             clean = [r for r in requirements if not r.startswith("Flex/")]
-            templates = [
-                f"Umsetzungsplan (Schritte) für: {user_text}",
-                f"Konkretes Ergebnis-Artefakt für: {user_text}",
-                f"Checkliste / QA für: {user_text}",
-                f"Alternativen / Edge-Cases für: {user_text}",
-            ]
-            if clean:
+            if wants_one_page:
+                # Deterministic fallback: full page first, not section splits
+                topic = (user_text or "").strip().rstrip(".")
+                templates = [
+                    (
+                        f"ONE complete single-file HTML page for: {topic}. "
+                        "Include ALL sections in the same file "
+                        "(<!DOCTYPE html> … </html>). Functions first, minimal CSS."
+                    ),
+                    (
+                        f"Full-page HTML VARIANT (still one complete file) for: {topic}. "
+                        "Different layout/accent, same sections, must close </html>."
+                    ),
+                    f"QA checklist + interaction test plan for the landing page: {topic}",
+                    f"Accessibility / empty-state notes for: {topic}",
+                ]
+            else:
+                templates = [
+                    f"Umsetzungsplan (Schritte) für: {user_text}",
+                    f"Konkretes Ergebnis-Artefakt für: {user_text}",
+                    f"Checkliste / QA für: {user_text}",
+                    f"Alternativen / Edge-Cases für: {user_text}",
+                ]
+            if clean and not wants_one_page:
                 templates[0] += "\n" + "\n".join(f"- {r}" for r in clean[:4])
                 templates[1] += "\nFokus: " + clean[min(1, len(clean) - 1)]
+            elif clean and wants_one_page:
+                templates[0] += "\nDoD:\n" + "\n".join(f"- {r}" for r in clean[:4])
             out: list[tuple[str, str]] = []
             for i, wid in enumerate(worker_ids[:4]):
                 out.append((wid, templates[i % len(templates)]))
