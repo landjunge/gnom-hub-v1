@@ -12,6 +12,16 @@
 
 **Deutsch:** [README_DE.md](README_DE.md)
 
+### Screenshot
+
+![Gnom-Hub desktop UI](docs/assets/gnom-hub-ui.png)
+
+*Agent cards, three work boxes, chat — local at `http://127.0.0.1:8080/`*
+
+![Tools · Computer use](docs/assets/gnom-hub-tools.png)
+
+*Tools modal with computer-use controls (Inspect / Click / Type / Shell)*
+
 ---
 
 ## Why Gnom?
