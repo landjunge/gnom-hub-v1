@@ -58,6 +58,14 @@ class WorkerPresetBody(BaseModel):
     agent_id: str = "worker1"
 
 
+class TeamPresetBody(BaseModel):
+    name: str = Field(min_length=1)
+
+
+class PlanModeBody(BaseModel):
+    plan_mode: str = Field(min_length=1)
+
+
 class WarmFactBody(BaseModel):
     text: str = Field(min_length=1)
 
@@ -441,6 +449,37 @@ def create_app() -> FastAPI:
     @app.post("/api/worker-presets/delete")
     def worker_presets_delete(body: WorkerPresetBody) -> dict[str, Any]:
         return get_hub().delete_worker_preset(body.name)
+
+    @app.get("/api/team-presets")
+    def team_presets_list() -> dict[str, Any]:
+        hub = get_hub()
+        return {
+            "presets": hub.list_team_presets(),
+            "plan_mode": hub.plan_mode,
+            "plan_modes": list(hub.PLAN_MODES),
+        }
+
+    @app.post("/api/team-presets")
+    def team_presets_save(body: TeamPresetBody) -> dict[str, Any]:
+        return get_hub().save_team_preset(body.name)
+
+    @app.post("/api/team-presets/apply")
+    def team_presets_apply(body: TeamPresetBody) -> dict[str, Any]:
+        try:
+            return get_hub().apply_team_preset(body.name)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
+    @app.post("/api/team-presets/delete")
+    def team_presets_delete(body: TeamPresetBody) -> dict[str, Any]:
+        return get_hub().delete_team_preset(body.name)
+
+    @app.post("/api/plan-mode")
+    def plan_mode_set(body: PlanModeBody) -> dict[str, Any]:
+        try:
+            return get_hub().set_plan_mode(body.plan_mode)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
     @app.post("/api/chat")
     def chat(

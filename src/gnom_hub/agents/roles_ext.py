@@ -68,16 +68,41 @@ class CoordinatorAgent(BaseAgent):
         user_text: str,
         requirements: list[str],
         worker_ids: list[str],
+        plan_mode: str = "default",
     ) -> list[tuple[str, str]]:
         if not worker_ids:
             return []
         self.emit_active(True)
         try:
-            wants_one_page = _wants_one_html_page(user_text)
+            mode = (plan_mode or "default").strip().lower()
             clean = [r for r in requirements if not r.startswith("Flex/")]
-            # Single-file landing pages: never trust LLM section-splits — force full pages.
-            if wants_one_page:
+            # Explicit plan modes first; default still auto-detects HTML pages
+            if mode == "full_page_html" or (mode == "default" and _wants_one_html_page(user_text)):
                 return _html_full_page_plan(user_text, worker_ids, clean)
+            if mode == "plan_qa":
+                return _simple_task_plan(
+                    user_text,
+                    worker_ids,
+                    clean,
+                    (
+                        "QA checklist + acceptance criteria for",
+                        "Edge cases / failure modes for",
+                        "Test plan (happy path + empty/error) for",
+                        "Risks and open questions for",
+                    ),
+                )
+            if mode == "diagnosis":
+                return _simple_task_plan(
+                    user_text,
+                    worker_ids,
+                    clean,
+                    (
+                        "Root-cause hypotheses for",
+                        "Evidence checklist for",
+                        "Minimal fix plan for",
+                        "Regression risks for",
+                    ),
+                )
             if self.has_llm():
                 try:
                     raw = self.ask(
@@ -111,19 +136,17 @@ class CoordinatorAgent(BaseAgent):
                         "pipeline.warning",
                         {"stage": "coordinate", "error": str(exc)},
                     )
-            templates = [
-                f"Umsetzungsplan (Schritte) für: {user_text}",
-                f"Konkretes Ergebnis-Artefakt für: {user_text}",
-                f"Checkliste / QA für: {user_text}",
-                f"Alternativen / Edge-Cases für: {user_text}",
-            ]
-            if clean:
-                templates[0] += "\n" + "\n".join(f"- {r}" for r in clean[:4])
-                templates[1] += "\nFokus: " + clean[min(1, len(clean) - 1)]
-            out: list[tuple[str, str]] = []
-            for i, wid in enumerate(worker_ids[:4]):
-                out.append((wid, templates[i % len(templates)]))
-            return out
+            return _simple_task_plan(
+                user_text,
+                worker_ids,
+                clean,
+                (
+                    "Umsetzungsplan (Schritte) für",
+                    "Konkretes Ergebnis-Artefakt für",
+                    "Checkliste / QA für",
+                    "Alternativen / Edge-Cases für",
+                ),
+            )
         finally:
             self.emit_active(False)
 
@@ -170,10 +193,21 @@ def _html_full_page_plan(
     ]
     if clean:
         templates[0] += "\nDoD:\n" + "\n".join(f"- {r}" for r in clean[:4])
-    out: list[tuple[str, str]] = []
-    for i, wid in enumerate(worker_ids[:4]):
-        out.append((wid, templates[i % len(templates)]))
-    return out
+    return [(wid, templates[i % len(templates)]) for i, wid in enumerate(worker_ids[:4])]
+
+
+def _simple_task_plan(
+    user_text: str,
+    worker_ids: list[str],
+    clean: list[str],
+    prefixes: tuple[str, ...],
+) -> list[tuple[str, str]]:
+    """Deterministic non-HTML task lines (QA / diagnosis / stub default)."""
+    topic = (user_text or "").strip().rstrip(".")
+    templates = [f"{p}: {topic}" for p in prefixes]
+    if clean and templates:
+        templates[0] += "\n" + "\n".join(f"- {r}" for r in clean[:4])
+    return [(wid, templates[i % len(templates)]) for i, wid in enumerate(worker_ids[:4])]
 
 
 class WorkerAgent(BaseAgent):

@@ -412,3 +412,14 @@ def test_coordinator_html_plan_prefers_full_page():
     forced = _html_full_page_plan("Landing HTML", ["worker1", "worker2"], ["DoD line"])
     assert "DoD:" in forced[0][1]
     assert forced[0][0] == "worker1"
+    qa = coord.plan(
+        "Review the checkout flow", ["tests"], ["worker1", "worker2"], plan_mode="plan_qa"
+    )
+    assert "QA checklist" in qa[0][1]
+    html_forced = coord.plan(
+        "something without keywords",
+        [],
+        ["worker1"],
+        plan_mode="full_page_html",
+    )
+    assert "ONE complete single-file HTML" in html_forced[0][1]

@@ -334,6 +334,27 @@
           </div>
         </div>
         <div class="system-row">
+          <span>Team presets</span>
+          <div class="system-row-actions">
+            <select id="sys-team-select" class="tune-input" style="max-width:160px" title="Team = enables + flex + plan_mode + worker tunes">
+              <option value="">— select team —</option>
+            </select>
+            <button type="button" id="sys-team-apply" class="btn-ws-sm">Apply</button>
+            <button type="button" id="sys-team-save" class="btn-ws-sm" title="Save current team setup">Save</button>
+            <button type="button" id="sys-team-delete" class="btn-ws-sm">Delete</button>
+          </div>
+          <div class="system-row-actions" style="margin-top:4px">
+            <label class="muted" style="font-size:0.85em">plan_mode
+              <select id="sys-plan-mode" class="tune-input" style="max-width:140px">
+                <option value="default">default</option>
+                <option value="full_page_html">full_page_html</option>
+                <option value="plan_qa">plan_qa</option>
+                <option value="diagnosis">diagnosis</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="system-row">
           <span>Backups</span>
           <ul id="sys-backup-list" class="ws-list" style="max-height:100px"></ul>
         </div>

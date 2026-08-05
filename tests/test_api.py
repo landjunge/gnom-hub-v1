@@ -211,6 +211,41 @@ def test_cancel_backups_presets_delete(client: TestClient):
         assert gone.json().get("ok") is True
 
 
+def test_team_preset_and_plan_mode(client: TestClient):
+    # Save current team, flip workers, re-apply
+    r = client.post("/api/team-presets", json={"name": "t-landing"})
+    assert r.status_code == 200
+    assert r.json()["ok"] is True
+    assert r.json()["preset"]["name"] == "t-landing"
+
+    client.post("/api/agents/worker3/toggle")
+    client.post("/api/plan-mode", json={"plan_mode": "plan_qa"})
+    assert client.get("/api/state").json()["plan_mode"] == "plan_qa"
+
+    ap = client.post("/api/team-presets/apply", json={"name": "t-landing"})
+    assert ap.status_code == 200
+    body = ap.json()
+    assert body["ok"] is True
+    assert body["plan_mode"] in ("default", "full_page_html", "plan_qa", "diagnosis")
+
+    # plan_mode set + list
+    pm = client.post("/api/plan-mode", json={"plan_mode": "full_page_html"})
+    assert pm.status_code == 200
+    assert pm.json()["plan_mode"] == "full_page_html"
+    lst = client.get("/api/team-presets")
+    assert lst.status_code == 200
+    names = [p.get("name") for p in lst.json().get("presets") or []]
+    assert "t-landing" in names
+
+    d = client.post("/api/team-presets/delete", json={"name": "t-landing"})
+    assert d.status_code == 200
+    names2 = [p.get("name") for p in d.json().get("presets") or []]
+    assert "t-landing" not in names2
+
+    bad = client.post("/api/plan-mode", json={"plan_mode": "nope"})
+    assert bad.status_code == 400
+
+
 def test_export_and_ollama_models(client: TestClient):
     client.post("/api/chat?sync=1", json={"text": "Export me a plan"})
     client.post("/api/execute?sync=1")

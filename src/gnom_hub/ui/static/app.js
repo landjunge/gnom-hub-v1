@@ -795,6 +795,28 @@
       } catch (_e2) {
         /* ignore */
       }
+      // Team presets + plan_mode
+      try {
+        const tp = await api("GET", "/api/team-presets");
+        const tsel = document.getElementById("sys-team-select");
+        if (tsel) {
+          const cur = tsel.value;
+          tsel.innerHTML = '<option value="">— select team —</option>';
+          (tp.presets || []).forEach(function (p) {
+            const opt = document.createElement("option");
+            opt.value = p.name || "";
+            opt.textContent =
+              (p.name || "?") +
+              (p.plan_mode ? " · " + p.plan_mode : "");
+            tsel.appendChild(opt);
+          });
+          if (cur) tsel.value = cur;
+        }
+        const pm = document.getElementById("sys-plan-mode");
+        if (pm && tp.plan_mode) pm.value = tp.plan_mode;
+      } catch (_te) {
+        /* ignore */
+      }
       const ap = document.getElementById("sys-auto-pack");
       if (ap) ap.checked = !!s.auto_pack_after_execute;
       const pm = document.getElementById("sys-pack-max");
@@ -920,6 +942,76 @@
       openSystemModal();
     } catch (err) {
       toast("Delete failed: " + err.message, "error");
+    }
+  }
+
+  async function applySelectedTeam() {
+    const sel = document.getElementById("sys-team-select");
+    const name = sel && sel.value;
+    if (!name) {
+      toast("Select a team preset", "info");
+      return;
+    }
+    try {
+      const data = await api("POST", "/api/team-presets/apply", { name: name });
+      if (data.agents) applyAgentsFromServer(data.agents);
+      else if (data.snapshot) applySnapshot(data.snapshot);
+      const pm = document.getElementById("sys-plan-mode");
+      if (pm && data.plan_mode) pm.value = data.plan_mode;
+      appendChat(
+        "system",
+        "Team preset → " + name + " · plan_mode=" + (data.plan_mode || "?")
+      );
+      toast("Team applied: " + name, "ok");
+      renderCards();
+    } catch (err) {
+      toast("Team apply failed: " + err.message, "error");
+    }
+  }
+
+  async function saveCurrentTeam() {
+    const name = prompt("Team preset name:", "my-team");
+    if (!name || !String(name).trim()) return;
+    try {
+      const data = await api("POST", "/api/team-presets", {
+        name: String(name).trim(),
+      });
+      toast(
+        "Team saved: " + ((data.preset && data.preset.name) || name),
+        "ok"
+      );
+      openSystemModal();
+    } catch (err) {
+      toast("Team save failed: " + err.message, "error");
+    }
+  }
+
+  async function deleteSelectedTeam() {
+    const sel = document.getElementById("sys-team-select");
+    const name = sel && sel.value;
+    if (!name) {
+      toast("Select a team preset", "info");
+      return;
+    }
+    if (!confirm('Delete team preset "' + name + '"?')) return;
+    try {
+      await api("POST", "/api/team-presets/delete", { name: name });
+      toast("Team deleted", "ok");
+      openSystemModal();
+    } catch (err) {
+      toast("Team delete failed: " + err.message, "error");
+    }
+  }
+
+  async function setPlanModeFromUi() {
+    const pm = document.getElementById("sys-plan-mode");
+    const mode = pm && pm.value;
+    if (!mode) return;
+    try {
+      const data = await api("POST", "/api/plan-mode", { plan_mode: mode });
+      toast("plan_mode → " + (data.plan_mode || mode), "ok");
+    } catch (err) {
+      toast("plan_mode failed: " + err.message, "error");
     }
   }
 
@@ -4069,6 +4161,14 @@
     const presetDel = document.getElementById("sys-preset-delete");
     if (presetApply) presetApply.addEventListener("click", applySelectedPreset);
     if (presetDel) presetDel.addEventListener("click", deleteSelectedPreset);
+    const teamApply = document.getElementById("sys-team-apply");
+    const teamSave = document.getElementById("sys-team-save");
+    const teamDel = document.getElementById("sys-team-delete");
+    const planMode = document.getElementById("sys-plan-mode");
+    if (teamApply) teamApply.addEventListener("click", applySelectedTeam);
+    if (teamSave) teamSave.addEventListener("click", saveCurrentTeam);
+    if (teamDel) teamDel.addEventListener("click", deleteSelectedTeam);
+    if (planMode) planMode.addEventListener("change", setPlanModeFromUi);
     els.chatInput.addEventListener("keydown", function (ev) {
       // Ctrl/Cmd+Enter = Execute; plain Enter = Send
       if (ev.key === "Enter" && (ev.ctrlKey || ev.metaKey)) {

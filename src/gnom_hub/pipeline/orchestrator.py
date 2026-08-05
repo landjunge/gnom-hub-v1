@@ -44,6 +44,8 @@ class Orchestrator:
         self._clarified_once = False
         # Optional: hub sets this to job.get("cancel") during async runs
         self.cancel_check: Callable[[], bool] | None = None
+        # Team/workflow plan strategy (default | full_page_html | plan_qa | diagnosis)
+        self.plan_mode: str = "default"
         self._build_roles()
 
     def _check_cancel(self) -> None:
@@ -387,7 +389,12 @@ class Orchestrator:
 
         self._set_stage(PipelineStage.coordinate)
         worker_ids = [wid for wid, w in self._workers.items() if w.enabled]
-        tasks = self.coordinator.plan(text, self._state.distilled_requirements, worker_ids)
+        tasks = self.coordinator.plan(
+            text,
+            self._state.distilled_requirements,
+            worker_ids,
+            plan_mode=getattr(self, "plan_mode", "default") or "default",
+        )
         self.bus.emit(
             "pipeline.coordinate",
             {"tasks": [{"worker": w, "task": t} for w, t in tasks]},
