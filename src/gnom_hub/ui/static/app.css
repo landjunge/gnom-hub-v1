@@ -121,6 +121,55 @@ html, body {
   background: #495057;
 }
 
+.btn-trace {
+  width: 64px;
+  height: 28px;
+  border: 1px solid #845ef7;
+  border-radius: 4px;
+  background: #343a40;
+  color: #d0bfff;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.btn-trace:hover {
+  background: #495057;
+}
+
+.system-row-actions {
+  flex-direction: row !important;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.trace-panel {
+  max-width: min(720px, 96vw);
+  max-height: min(80vh, 560px);
+}
+
+.trace-body {
+  margin: 0;
+  padding: 12px 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: auto;
+  flex: 1 1 auto;
+  color: var(--text);
+  min-height: 200px;
+}
+
+.quality-strip {
+  margin-top: 6px;
+  padding: 6px 8px;
+  border-top: 1px dashed var(--border);
+  font-size: 11px;
+  color: #ffd43b;
+  white-space: pre-wrap;
+}
+
 .flex-preset-label {
   display: flex;
   align-items: center;

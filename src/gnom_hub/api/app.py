@@ -48,6 +48,7 @@ class SystemBody(BaseModel):
     free_only: bool | None = None
     max_budget_usd: float | None = None
     default_model: str | None = None
+    ui_lang: str | None = None
 
 
 class WarmFactBody(BaseModel):
@@ -164,6 +165,22 @@ def create_app() -> FastAPI:
     @app.post("/api/system")
     def system_set(body: SystemBody) -> dict[str, Any]:
         return get_hub().set_system(body.model_dump(exclude_unset=True))
+
+    @app.get("/api/trace")
+    def trace(limit: int = Query(40, ge=1, le=100)) -> dict[str, Any]:
+        hub = get_hub()
+        return {"trace": list(hub.trace[-limit:]), "count": len(hub.trace)}
+
+    @app.post("/api/checkpoint/save")
+    def checkpoint_save() -> dict[str, Any]:
+        return get_hub().save_checkpoint()
+
+    @app.post("/api/checkpoint/load")
+    def checkpoint_load() -> dict[str, Any]:
+        try:
+            return get_hub().load_checkpoint()
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
 
     @app.post("/api/chat")
     def chat(

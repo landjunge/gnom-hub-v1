@@ -40,5 +40,7 @@ class PipelineState:
     pending_question: DistillQuestion | None = None
     worker_results: list[str] = field(default_factory=list)
     worker_outputs: list[dict] = field(default_factory=list)
+    # Light quality notes after workers (plan §8)
+    quality_notes: str = ""
     warnings: list[str] = field(default_factory=list)
     error: str | None = None

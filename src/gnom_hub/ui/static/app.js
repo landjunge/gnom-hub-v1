@@ -11,111 +11,9 @@
 
   const API = "";
 
-  const TOOLTIPS = {
-    brainstorm: {
-      title: "Brainstorm",
-      how_to:
-        "Free idea agent. Double-click the card to enable or disable. Ideas land in Box 2.",
-      example:
-        "You chat about a logo → Brainstorm lists colors, styles, and slogans in Box 2.",
-    },
-    memory: {
-      title: "Memory",
-      how_to:
-        "Always on. Keeps session facts and the Mermaid canvas. Cannot be toggled off.",
-      example:
-        "After a task, Memory stores key decisions so later chats stay consistent.",
-    },
-    flex: {
-      title: "Flex",
-      how_to:
-        "Role-switch agent (Security, Neutral, Researcher, …). Double-click to toggle.",
-      example:
-        "Set Flex to Security → it reviews plans for risks before workers run.",
-    },
-    coordinator: {
-      title: "Coordinator",
-      how_to: "Plans work and drives 1–2 workers. Double-click to toggle.",
-      example:
-        "After distillation, Coordinator splits tasks and fills Box 3 via workers.",
-    },
-    worker1: {
-      title: "Worker 1",
-      how_to:
-        "First execution slot. Double-click to toggle. Results show in Box 3.",
-      example:
-        "Coordinator assigns 'draft outline' → Worker 1 writes it into Box 3.",
-    },
-    worker2: {
-      title: "Worker 2",
-      how_to:
-        "Second execution slot. Double-click to toggle. Results show in Box 3.",
-      example: "Parallel research task runs on Worker 2 while Worker 1 drafts.",
-    },
-    worker3: {
-      title: "Worker 3 (parked)",
-      how_to: "Slot reserved for later. v1 uses at most two workers.",
-      example: "Shows as off/parked until more workers are enabled later.",
-    },
-    worker4: {
-      title: "Worker 4 (parked)",
-      how_to: "Slot reserved for later. v1 uses at most two workers.",
-      example: "Shows as off/parked until more workers are enabled later.",
-    },
-    box1: {
-      title: "Arounder (Box 1)",
-      how_to:
-        "Hover cards and controls for help. Clarify Yes/No/Whatever/Later when asked.",
-      example: "Hover Memory → this panel explains what Memory does.",
-    },
-    box2: {
-      title: "Brainstorm (Box 2)",
-      how_to: "Shows free thoughts from the Brainstorm agent.",
-      example: "Ideas stream here while you chat.",
-    },
-    box3: {
-      title: "Worker results (Box 3)",
-      how_to:
-        "Dynamic panels for Worker 1 and Worker 2. HTML pages get a live Preview + Source. Toggle Preview/Source per worker.",
-      example: "Landing-page HTML renders in a sandboxed preview; code stays readable under Source.",
-    },
-    chat: {
-      title: "Chat",
-      how_to: "Type a message and press Send. Starts the brainstorm pipeline.",
-      example: "Type: 'Help me plan a weekend trip' → Send.",
-    },
-    save: {
-      title: "Save",
-      how_to: "One global Save. Persists HOT session + mermaid canvas + agent toggles.",
-      example: "Click Save after a good brainstorm so work is not lost.",
-    },
-    help: {
-      title: "Help",
-      how_to: "Shows a short how-to in Box 1 (Arounder).",
-      example: "Click Help when you forget the pipeline order.",
-    },
-    reset: {
-      title: "Reset",
-      how_to: "Clears HOT session, canvas, and pipeline state. Agent on/off stays.",
-      example: "Reset before a new project so old facts do not leak in.",
-    },
-    clarify: {
-      title: "Clarify",
-      how_to: "Answer distillation questions with Yes, No, Whatever, or Later.",
-      example: "Question: 'Use dark theme?' → Yes / No / Whatever / Later.",
-    },
-    system: {
-      title: "System",
-      how_to: "Keys, free-only mode, budget, default model. Global LLM settings.",
-      example: "Turn free-only off, set max budget USD, check DeepSeek key.",
-    },
-    workspace: {
-      title: "Workspace",
-      how_to:
-        "Temp holds agent outputs after Execute. Preview files, Promote to permanent, or Clear temp.",
-      example: "Execute a landing page → worker1_done.html appears in Temp → Promote.",
-    },
-  };
+  /** Loaded from /api/tooltips?lang=… (en/de) */
+  let TOOLTIPS = {};
+  let uiLang = "en";
 
   const FLEX_PRESETS = ["security", "neutral", "researcher"];
 
@@ -199,7 +97,9 @@
     systemModal: document.getElementById("system-modal"),
     workspaceModal: document.getElementById("workspace-modal"),
     btnWorkspace: document.getElementById("btn-workspace"),
+    btnTrace: document.getElementById("btn-trace"),
     flexSelect: document.getElementById("flex-preset-select"),
+    traceModal: document.getElementById("trace-modal"),
   };
 
   let activeStage = "idle";
@@ -593,6 +493,23 @@
 
     renderBox3Workers(p);
 
+    // Quality strip under box 3
+    const box3 = document.getElementById("box3-content");
+    if (box3) {
+      let qel = box3.querySelector(".quality-strip");
+      if (p.quality_notes) {
+        if (!qel) {
+          qel = document.createElement("div");
+          qel.className = "quality-strip";
+          box3.appendChild(qel);
+        }
+        qel.textContent = p.quality_notes;
+        qel.hidden = false;
+      } else if (qel) {
+        qel.hidden = true;
+      }
+    }
+
     if (p.pending_question && p.pending_question.text) {
       showClarify(p.pending_question.text);
     } else if (p.stage !== "clarify") {
@@ -779,6 +696,14 @@
         (Number(s.spent_usd) || 0).toFixed(4) +
         " · tokens " +
         ((s.prompt_tokens || 0) + (s.completion_tokens || 0));
+      const langEl = document.getElementById("sys-lang");
+      if (langEl) langEl.value = s.ui_lang || uiLang || "en";
+      const ck = document.getElementById("system-ckpt");
+      if (ck) {
+        ck.textContent = s.checkpoint_exists
+          ? "Checkpoint: available (Load to resume)"
+          : "Checkpoint: none yet";
+      }
     } catch (err) {
       toast("System load failed: " + err.message, "error");
     }
@@ -791,19 +716,75 @@
 
   async function saveSystemModal() {
     const budgetRaw = document.getElementById("sys-budget").value.trim();
+    const langEl = document.getElementById("sys-lang");
     const body = {
       free_only: !!document.getElementById("sys-free-only").checked,
       default_model: document.getElementById("sys-model").value.trim() || "deepseek-chat",
       max_budget_usd: budgetRaw === "" ? null : Number(budgetRaw),
+      ui_lang: langEl ? langEl.value : "en",
     };
     try {
       await api("POST", "/api/system", body);
+      if (body.ui_lang) await loadTooltips(body.ui_lang);
       closeSystemModal();
       toast("System settings applied", "ok");
       const snap = await api("GET", "/api/state");
       applySnapshot(snap);
     } catch (err) {
       toast("System save failed: " + err.message, "error");
+    }
+  }
+
+  async function openTraceModal() {
+    if (!els.traceModal) return;
+    const body = document.getElementById("trace-body");
+    try {
+      const data = await api("GET", "/api/trace?limit=60");
+      const lines = (data.trace || []).map(function (e) {
+        const d = e.data;
+        let extra = "";
+        if (d && typeof d === "object") {
+          if (d.stage) extra = " stage=" + d.stage;
+          else if (d.worker) extra = " " + d.worker;
+          else if (d.notes) extra = " " + String(d.notes).slice(0, 80);
+          else if (d.error) extra = " " + d.error;
+        }
+        return (e.ts || "") + "  " + (e.event || "") + extra;
+      });
+      if (body) {
+        body.textContent = lines.length
+          ? lines.join("\n")
+          : "No events yet. Run Brainstorm / Execute.";
+      }
+    } catch (err) {
+      if (body) body.textContent = "Trace failed: " + err.message;
+    }
+    els.traceModal.hidden = false;
+  }
+
+  function closeTraceModal() {
+    if (els.traceModal) els.traceModal.hidden = true;
+  }
+
+  async function saveCheckpoint() {
+    try {
+      const data = await api("POST", "/api/checkpoint/save");
+      toast("Checkpoint saved", "ok");
+      const ck = document.getElementById("system-ckpt");
+      if (ck) ck.textContent = "Checkpoint: " + (data.path || "saved");
+    } catch (err) {
+      toast("Checkpoint save failed: " + err.message, "error");
+    }
+  }
+
+  async function loadCheckpoint() {
+    try {
+      const snap = await api("POST", "/api/checkpoint/load");
+      applySnapshot(snap);
+      toast("Checkpoint loaded", "ok");
+      closeSystemModal();
+    } catch (err) {
+      toast("Checkpoint load failed: " + err.message, "error");
     }
   }
 
@@ -1050,6 +1031,17 @@
       }
     } catch (err) {
       appendChat("system", "Toggle failed: " + err.message);
+    }
+  }
+
+  async function loadTooltips(lang) {
+    try {
+      const data = await api("GET", "/api/tooltips?lang=" + encodeURIComponent(lang || "en"));
+      // hub returns flat map id → {title, how_to, example}
+      TOOLTIPS = data.tooltips || data || {};
+      uiLang = lang || "en";
+    } catch (_e) {
+      /* keep previous */
     }
   }
 
@@ -1639,6 +1631,7 @@
         /* older server without endpoint */
       }
       const snap = await api("GET", "/api/state");
+      await loadTooltips((snap && snap.ui_lang) || "en");
       applySnapshot(snap);
       // Force UI cards on for active slots
       AGENTS.forEach(function (a) {
@@ -1676,7 +1669,19 @@
     if (els.btnHelp) els.btnHelp.addEventListener("click", onHelp);
     if (els.btnSystem) els.btnSystem.addEventListener("click", openSystemModal);
     if (els.btnWorkspace) els.btnWorkspace.addEventListener("click", openWorkspaceModal);
+    if (els.btnTrace) els.btnTrace.addEventListener("click", openTraceModal);
     if (els.flexSelect) els.flexSelect.addEventListener("change", onFlexSelectChange);
+    const trClose = document.getElementById("trace-close");
+    if (trClose) trClose.addEventListener("click", closeTraceModal);
+    if (els.traceModal) {
+      els.traceModal.addEventListener("click", function (ev) {
+        if (ev.target === els.traceModal) closeTraceModal();
+      });
+    }
+    const ckSave = document.getElementById("sys-ckpt-save");
+    const ckLoad = document.getElementById("sys-ckpt-load");
+    if (ckSave) ckSave.addEventListener("click", saveCheckpoint);
+    if (ckLoad) ckLoad.addEventListener("click", loadCheckpoint);
     if (els.btnReset) els.btnReset.addEventListener("click", onReset);
     const wsClose = document.getElementById("workspace-close");
     const wsClear = document.getElementById("ws-clear-temp");

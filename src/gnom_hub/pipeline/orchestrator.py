@@ -296,6 +296,15 @@ class Orchestrator:
             )
         self._state.worker_results = results
         self._state.worker_outputs = outputs
+        self._state.quality_notes = _quality_check(
+            self._state.user_text,
+            self._state.distilled_requirements,
+            outputs,
+        )
+        self.bus.emit(
+            "pipeline.quality",
+            {"notes": self._state.quality_notes, "workers": len(outputs)},
+        )
         self._finish()
 
     def _finish(self) -> None:
@@ -313,6 +322,7 @@ class Orchestrator:
                 "requirements": list(self._state.distilled_requirements),
                 "results": list(self._state.worker_results),
                 "flex_notes": self._state.flex_notes,
+                "quality_notes": self._state.quality_notes,
             },
         )
 
@@ -340,6 +350,57 @@ def _format_turns(turns: list[dict]) -> str:
             lines.append(f"Brainstorm:\n{text}")
         lines.append("")
     return "\n".join(lines).strip()
+
+
+def _quality_check(
+    user_text: str,
+    requirements: list[str],
+    outputs: list[dict],
+) -> str:
+    """Light automatic quality check of worker results (plan §8.3) — heuristic, no LLM."""
+    if not outputs:
+        return "Quality: no worker outputs."
+    lines: list[str] = ["Quality check:"]
+    task_low = (user_text or "").lower()
+    for out in outputs:
+        name = str(out.get("name") or out.get("worker") or "worker")
+        body = str(out.get("result") or "").strip()
+        score = 0
+        notes: list[str] = []
+        if len(body) >= 120:
+            score += 2
+        elif len(body) >= 40:
+            score += 1
+            notes.append("short")
+        else:
+            notes.append("too short")
+        if body.startswith("Stub") or "Stub —" in body:
+            notes.append("stub output")
+        else:
+            score += 1
+        low = body.lower()
+        if "<!doctype" in low or "<html" in low:
+            score += 1
+            notes.append("html doc")
+        # loose keyword overlap with task
+        tokens = [w for w in task_low.replace(",", " ").split() if len(w) > 4][:8]
+        hits = sum(1 for w in tokens if w in low)
+        if hits >= 2:
+            score += 1
+        elif tokens:
+            notes.append("weak task match")
+        # requirements coverage
+        req_hits = 0
+        for r in requirements[:5]:
+            words = [w for w in r.lower().split() if len(w) > 5][:3]
+            if any(w in low for w in words):
+                req_hits += 1
+        if req_hits:
+            score += 1
+        grade = "ok" if score >= 4 else ("weak" if score >= 2 else "poor")
+        extra = f" ({', '.join(notes)})" if notes else ""
+        lines.append(f"• {name}: {grade} score={score}/6{extra}")
+    return "\n".join(lines)
 
 
 Pipeline = Orchestrator

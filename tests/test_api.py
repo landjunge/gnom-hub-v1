@@ -138,6 +138,38 @@ def test_tooltips(client: TestClient):
     r = client.get("/api/tooltips")
     assert r.status_code == 200
     assert "brainstorm" in r.json()
+    r_de = client.get("/api/tooltips?lang=de")
+    assert r_de.status_code == 200
+    assert (
+        "Ideen" in r_de.json()["brainstorm"]["how_to"]
+        or "Brainstorm" in r_de.json()["brainstorm"]["title"]
+    )
+
+
+def test_trace_quality_checkpoint(client: TestClient):
+    client.post("/api/chat?sync=1", json={"text": "Landing page with hero"})
+    r = client.post("/api/execute?sync=1")
+    assert r.status_code == 200
+    p = r.json()["pipeline"]
+    assert p["stage"] == "done"
+    assert p.get("quality_notes")
+    assert "Quality" in p["quality_notes"]
+
+    tr = client.get("/api/trace")
+    assert tr.status_code == 200
+    assert tr.json()["count"] >= 1
+    assert any("pipeline" in (e.get("event") or "") for e in tr.json()["trace"])
+
+    ck = client.post("/api/checkpoint/save")
+    assert ck.status_code == 200
+    assert ck.json()["ok"] is True
+
+    # mutate then load
+    client.post("/api/chat?sync=1", json={"text": "other idea"})
+    loaded = client.post("/api/checkpoint/load")
+    assert loaded.status_code == 200
+    assert loaded.json()["pipeline"]["stage"] == "done"
+    assert loaded.json()["pipeline"].get("quality_notes")
 
 
 def test_canvas_endpoint(client: TestClient):

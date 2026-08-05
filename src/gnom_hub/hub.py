@@ -55,11 +55,16 @@ class Hub:
         self._jobs: dict[str, dict[str, Any]] = {}
         self.last_error: str | None = None
         self._agent_state_path = self.root / "data" / "hot" / "agents.json"
+        self._checkpoint_path = self.root / "data" / "hot" / "checkpoint.json"
+        # Light tracing (plan §8.2) — ring buffer of pipeline events
+        self.trace: list[dict[str, Any]] = []
+        self.ui_lang: str = os.getenv("GNOM_UI_LANG", "en").strip().lower() or "en"
         self.telegram = self._init_telegram()
         self._load_agent_state()
         # User expectation: all agents (incl. both workers) start ON
         self.agents.enable_all()
         self._wire_memory()
+        self._wire_trace()
         self.agents.on_start()
         # Auto-start telegram poll if GNOM_TELEGRAM_POLL=1
         if os.getenv("GNOM_TELEGRAM_POLL", "").strip() in ("1", "true", "yes"):
@@ -194,6 +199,54 @@ class Hub:
         self.bus.on("pipeline.memory_hint", on_memory_hint)
         self.bus.on("pipeline.memory_curated", on_memory_curated)
         self.bus.on("pipeline.error", on_error)
+
+    def _wire_trace(self) -> None:
+        """Subscribe to pipeline events for light tracing (no heavy spans)."""
+
+        def make_handler(event: str) -> Any:
+            def _h(data: Any) -> None:
+                self._append_trace(event, data)
+
+            return _h
+
+        for ev in (
+            "pipeline.stage",
+            "pipeline.brainstorm",
+            "pipeline.distill",
+            "pipeline.flex",
+            "pipeline.coordinate",
+            "pipeline.worker",
+            "pipeline.quality",
+            "pipeline.done",
+            "pipeline.error",
+            "pipeline.question",
+            "pipeline.warning",
+            "pipeline.brainstorm_ready",
+        ):
+            self.bus.on(ev, make_handler(ev))
+
+    def _append_trace(self, event: str, data: Any) -> None:
+        from datetime import datetime, timezone
+
+        summary: Any = data
+        if isinstance(data, dict):
+            summary = {}
+            for k, v in list(data.items())[:12]:
+                if isinstance(v, str) and len(v) > 160:
+                    summary[k] = v[:160] + "…"
+                elif isinstance(v, list) and len(v) > 6:
+                    summary[k] = f"[{len(v)} items]"
+                else:
+                    summary[k] = v
+        self.trace.append(
+            {
+                "ts": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+                "event": event,
+                "data": summary,
+            }
+        )
+        if len(self.trace) > 100:
+            self.trace = self.trace[-100:]
 
     def _telegram_command(self, cmd: str, arg: str, meta: dict[str, Any]) -> str:
         if cmd == "help":
@@ -395,6 +448,7 @@ class Hub:
             "pending_question": q,
             "worker_results": list(st.worker_results),
             "worker_outputs": list(st.worker_outputs or []),
+            "quality_notes": getattr(st, "quality_notes", "") or "",
             "warnings": list(st.warnings),
             "error": st.error,
         }
@@ -442,6 +496,12 @@ class Hub:
             },
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
+            "trace": list(self.trace[-40:]),
+            "ui_lang": self.ui_lang,
+            "checkpoint": {
+                "exists": self._checkpoint_path.is_file(),
+                "path": str(self._checkpoint_path),
+            },
         }
 
     def archive_cold(self, label: str = "") -> dict[str, Any]:
@@ -741,7 +801,7 @@ class Hub:
         return self._agent_dict(agent)
 
     def set_system(self, fields: dict[str, Any]) -> dict[str, Any]:
-        """Global free_only / budget (system panel)."""
+        """Global free_only / budget / UI lang (system panel)."""
         if "free_only" in fields and fields["free_only"] is not None:
             self.llm.free_only = bool(fields["free_only"])
         if "max_budget_usd" in fields:
@@ -752,6 +812,10 @@ class Hub:
                 self.llm.max_budget_usd = float(raw)
         if "default_model" in fields and fields["default_model"]:
             self.llm.default_model = str(fields["default_model"]).strip()
+        if "ui_lang" in fields and fields["ui_lang"]:
+            lang = str(fields["ui_lang"]).strip().lower()
+            if lang in ("en", "de"):
+                self.ui_lang = lang
         return self.system_dict()
 
     def system_dict(self) -> dict[str, Any]:
@@ -765,7 +829,85 @@ class Hub:
             "completion_tokens": usage["completion_tokens"],
             "default_model": self.llm.default_model,
             "god_mode": self.god_mode.enabled,
+            "ui_lang": self.ui_lang,
+            "checkpoint_exists": self._checkpoint_path.is_file(),
         }
+
+    def save_checkpoint(self) -> dict[str, Any]:
+        """Persist pipeline state for resume (plan §8.1 light checkpoint)."""
+        st = self.pipeline.state
+        payload = {
+            "version": 1,
+            "stage": st.stage.value,
+            "mode": st.mode,
+            "user_text": st.user_text,
+            "memory_context": st.memory_context,
+            "brainstorm_notes": st.brainstorm_notes,
+            "brainstorm_turns": list(st.brainstorm_turns or []),
+            "distilled_requirements": list(st.distilled_requirements),
+            "flex_notes": st.flex_notes,
+            "worker_results": list(st.worker_results),
+            "worker_outputs": list(st.worker_outputs or []),
+            "quality_notes": st.quality_notes,
+            "warnings": list(st.warnings),
+            "error": st.error,
+            "pending_question": (
+                {
+                    "id": st.pending_question.id,
+                    "text": st.pending_question.text,
+                    "options": list(st.pending_question.options),
+                }
+                if st.pending_question
+                else None
+            ),
+        }
+        self._checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_text(
+            self._checkpoint_path,
+            json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        )
+        self._append_trace("checkpoint.save", {"path": str(self._checkpoint_path)})
+        return {"ok": True, "path": str(self._checkpoint_path)}
+
+    def load_checkpoint(self) -> dict[str, Any]:
+        """Restore pipeline state from checkpoint file."""
+        from gnom_hub.pipeline.models import DistillQuestion, PipelineStage, PipelineState
+
+        path = self._checkpoint_path
+        if not path.is_file():
+            raise FileNotFoundError("no checkpoint")
+        data = json.loads(path.read_text(encoding="utf-8"))
+        q = None
+        pq = data.get("pending_question")
+        if isinstance(pq, dict) and pq.get("text"):
+            q = DistillQuestion(
+                id=str(pq.get("id") or "q1"),
+                text=str(pq["text"]),
+                options=list(pq.get("options") or ["Yes", "No", "Whatever", "Later"]),
+            )
+        stage_raw = str(data.get("stage") or "idle")
+        try:
+            stage = PipelineStage(stage_raw)
+        except ValueError:
+            stage = PipelineStage.idle
+        self.pipeline._state = PipelineState(
+            stage=stage,
+            user_text=str(data.get("user_text") or ""),
+            memory_context=str(data.get("memory_context") or ""),
+            brainstorm_notes=str(data.get("brainstorm_notes") or ""),
+            brainstorm_turns=list(data.get("brainstorm_turns") or []),
+            mode=str(data.get("mode") or "brainstorm"),
+            distilled_requirements=list(data.get("distilled_requirements") or []),
+            flex_notes=str(data.get("flex_notes") or ""),
+            pending_question=q,
+            worker_results=list(data.get("worker_results") or []),
+            worker_outputs=list(data.get("worker_outputs") or []),
+            quality_notes=str(data.get("quality_notes") or ""),
+            warnings=list(data.get("warnings") or []),
+            error=data.get("error"),
+        )
+        self._append_trace("checkpoint.load", {"stage": stage.value})
+        return self.snapshot()
 
     def save(self) -> dict[str, Any]:
         self.hot.save()
@@ -821,16 +963,16 @@ class Hub:
         return {
             "title": "Gnom-Hub help",
             "how_to": (
-                "1) Type a task in Chat and Send. "
-                "2) Double-click cards to toggle agents (Memory always on). "
-                "3) Shift+double-click Flex to cycle preset. "
-                "4) Answer Box 1 if asked. "
-                "5) Save stores HOT + WARM + agent state. "
-                "6) Reset clears HOT only (WARM facts stay). "
-                "7) Optional Telegram: TELEGRAM_BOT_TOKEN + GNOM_TELEGRAM_POLL=1."
+                "1) Send = free brainstorm dialogue. "
+                "2) Execute = distill + workers. "
+                "3) Click card = tune; double-click = toggle. "
+                "4) Workspace holds temp outputs; promote to keep. "
+                "5) System = keys/budget/lang; Trace = light pipeline log. "
+                "6) Checkpoint save/load resumes pipeline state. "
+                "7) Save = HOT/WARM/agents; Reset = clear HOT (WARM stays)."
             ),
-            "example": "Chat: 'Plan a small landing page' → Box 2 ideas, Box 3 results.",
-            "pipeline": "Chat → Brainstorm → Distill → [Clarify] → Flex → Coordinator → Workers → Memory",
+            "example": "Chat ideas → Execute → Box 3 + Workspace temp.",
+            "pipeline": "Brainstorm (turns) → Execute → Distill → [Clarify] → Flex → Workers → Quality → Memory",
             "keys": "DEEPSEEK_API_KEY in Key.txt. Optional TELEGRAM_BOT_TOKEN.",
         }
 

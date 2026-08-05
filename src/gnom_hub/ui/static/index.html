@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=49" />
+  <link rel="stylesheet" href="/static/app.css?v=50" />
 </head>
 <body>
   <div id="app">
@@ -27,6 +27,9 @@
         </label>
         <button type="button" id="btn-workspace" class="btn-workspace" data-tooltip-id="workspace" title="Temp / permanent workspace">
           Workspace
+        </button>
+        <button type="button" id="btn-trace" class="btn-trace" data-tooltip-id="trace" title="Light pipeline trace">
+          Trace
         </button>
         <button type="button" id="btn-system" class="btn-system" data-tooltip-id="system" title="System settings">
           System
@@ -219,6 +222,18 @@
           <input id="sys-model" class="tune-input" type="text" placeholder="deepseek-chat" />
         </label>
         <p id="system-spend" class="system-line muted">Spent: —</p>
+        <label class="system-row">
+          UI language
+          <select id="sys-lang" class="tune-input">
+            <option value="en">English</option>
+            <option value="de">Deutsch</option>
+          </select>
+        </label>
+        <div class="system-row system-row-actions">
+          <button type="button" id="sys-ckpt-save" class="btn-ws-sm">Save checkpoint</button>
+          <button type="button" id="sys-ckpt-load" class="btn-ws-sm">Load checkpoint</button>
+        </div>
+        <p id="system-ckpt" class="system-line muted">Checkpoint: —</p>
         <p class="system-hint muted">Keys: put DEEPSEEK_API_KEY in Key.txt on Desktop or project root → private .env</p>
       </div>
       <div class="modal-actions">
@@ -227,8 +242,19 @@
     </div>
   </div>
 
+  <!-- Light trace -->
+  <div id="trace-modal" class="modal" hidden>
+    <div class="modal-panel trace-panel">
+      <div class="modal-head">
+        <h2 class="modal-title">Light Trace</h2>
+        <button type="button" id="trace-close" class="modal-close" title="Close">×</button>
+      </div>
+      <pre id="trace-body" class="trace-body muted">No events yet. Run Brainstorm / Execute.</pre>
+    </div>
+  </div>
+
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=49"></script>
+  <script src="/static/app.js?v=50"></script>
 </body>
 </html>
