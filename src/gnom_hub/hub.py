@@ -1170,7 +1170,6 @@ class Hub:
             },
         )
 
-
     def export_session_pack(self) -> dict[str, Any]:
         """Portable JSON pack: HOT + WARM + agents + pipeline (USB / machine hop)."""
         from datetime import datetime, timezone
@@ -1256,7 +1255,7 @@ class Hub:
         from gnom_hub.pipeline.models import DistillQuestion, PipelineStage, PipelineState
 
         if not isinstance(pack, dict):
-            raise ValueError("pack must be an object")
+            raise TypeError("pack must be an object")
         if pack.get("format") != "gnom-hub-session-pack":
             raise ValueError("not a gnom-hub-session-pack")
         hot = pack.get("hot") if isinstance(pack.get("hot"), dict) else {}

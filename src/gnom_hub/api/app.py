@@ -272,7 +272,7 @@ def create_app() -> FastAPI:
                 include_warm=body.include_warm,
                 include_agents=body.include_agents,
             )
-        except ValueError as e:
+        except (ValueError, TypeError) as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
 
     @app.post("/api/reexecute")
@@ -289,7 +289,6 @@ def create_app() -> FastAPI:
         if sync:
             return get_hub().execute_sync()
         return get_hub().execute_async()
-
 
     @app.get("/api/backups")
     def backups_list() -> dict[str, Any]:
