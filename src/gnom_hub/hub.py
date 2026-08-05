@@ -1097,6 +1097,9 @@ class Hub:
                     pass
             if item.get("model"):
                 agent.model = str(item["model"])
+            if item.get("api_key") is not None:
+                k = str(item["api_key"]).strip()
+                agent.api_key = k or None
             if "tts" in item:
                 agent.tts = bool(item["tts"])
             if item.get("system_prompt") is not None:
@@ -1126,6 +1129,8 @@ class Hub:
                     "enabled": a.enabled,
                     "preset": a.preset,
                     "model": a.model,
+                    # Per-agent keys stay under data/ (gitignored) — never log them
+                    "api_key": a.api_key,
                     "tts": a.tts,
                     "system_prompt": a.system_prompt,
                     "temperature": a.temperature,
@@ -1725,6 +1730,7 @@ class Hub:
         if api_key is not None:
             agent.api_key = api_key.strip() or None
         self.agents.emit_status(agent_id)
+        self._save_agent_state()
         return self._agent_dict(agent)
 
     def set_agent_tune(self, agent_id: str, fields: dict[str, Any]) -> dict[str, Any]:
@@ -1757,6 +1763,7 @@ class Hub:
                 None if fields["presence_penalty"] is None else float(fields["presence_penalty"])
             )
         self.agents.emit_status(agent_id)
+        self._save_agent_state()
         return self._agent_dict(agent)
 
     def set_system(self, fields: dict[str, Any]) -> dict[str, Any]:
