@@ -42,6 +42,15 @@ class AgentState:
     # Optional per-agent LLM override (falls back to global DeepSeek key/model)
     model: str | None = None
     api_key: str | None = None
+    # Tuning (plan: agent card click → 5 sliders + prompt)
+    system_prompt: str | None = None
+    temperature: float | None = None
+    top_p: float | None = None
+    max_tokens: int | None = None
+    frequency_penalty: float | None = None
+    presence_penalty: float | None = None
+    # UI: read thoughts aloud (browser TTS)
+    tts: bool = False
 
     def status_payload(self) -> dict:
         """Payload for EventBus 'agent.status' events."""
@@ -50,6 +59,7 @@ class AgentState:
             "enabled": self.enabled,
             "role": self.role,
             "color": self.color,
+            "tts": self.tts,
         }
         if self.preset is not None:
             data["preset"] = self.preset

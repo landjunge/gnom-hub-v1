@@ -104,20 +104,60 @@
       how_to: "Answer distillation questions with Yes, No, Whatever, or Later.",
       example: "Question: 'Use dark theme?' → Yes / No / Whatever / Later.",
     },
+    system: {
+      title: "System",
+      how_to: "Keys, free-only mode, budget, default model. Global LLM settings.",
+      example: "Turn free-only off, set max budget USD, check DeepSeek key.",
+    },
   };
 
   const FLEX_PRESETS = ["security", "neutral", "researcher"];
 
+  const COLOR_HEX = {
+    brainstorm: "#e03131",
+    memory: "#1c7ed6",
+    flex: "#f59f00",
+    coordinator: "#2f9e44",
+    worker1: "#fd7e14",
+    worker2: "#9c36b5",
+    worker3: "#0ca678",
+    worker4: "#868e96",
+  };
+
+  const SLIDER_TIPS = {
+    temperature:
+      "Temperature: higher = more creative/random; lower = more focused and deterministic.",
+    top_p:
+      "Top-P (nucleus): samples from the smallest set of tokens whose probability mass ≥ p. Lower = safer.",
+    max_tokens:
+      "Max Tokens: hard cap on completion length. Higher allows longer HTML/docs; costs more.",
+    frequency:
+      "Frequency Penalty: reduces repeating the same tokens already used in the answer.",
+    presence:
+      "Presence Penalty: encourages talking about new topics; reduces staying on the same idea.",
+  };
+
+  const DEFAULT_PROMPTS = {
+    brainstorm: "You are the Brainstorm agent. Output 5–8 concrete bullet ideas for the USER TASK.",
+    memory: "You are the Memory agent. Select or curate durable facts relevant to the task.",
+    flex: "You are Flex. List 3–5 concrete risks/questions/trade-offs (by preset).",
+    coordinator: "You are the Coordinator. Distill requirements and assign worker tasks.",
+    worker1: "You are Worker 1. Deliver a concrete useful result for your assigned task.",
+    worker2: "You are Worker 2. Deliver a concrete useful result for your assigned task.",
+    worker3: "Reserved worker slot.",
+    worker4: "Reserved worker slot.",
+  };
+
   /** 8 slots – Worker3/4 UI-reserved (shown on; pipeline uses Worker 1+2) */
   const AGENTS = [
-    { id: "brainstorm", label: "Brainstorm", color: "brainstorm", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0 },
-    { id: "memory", label: "Memory", color: "memory", enabled: true, toggleable: false, parked: false, model: "—", preset: null, tokens: 0 },
-    { id: "flex", label: "Flex", color: "flex", enabled: true, toggleable: true, parked: false, model: "—", preset: "security", tokens: 0 },
-    { id: "coordinator", label: "Coordinator", color: "coordinator", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0 },
-    { id: "worker1", label: "Worker 1", color: "worker1", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0 },
-    { id: "worker2", label: "Worker 2", color: "worker2", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0 },
-    { id: "worker3", label: "Worker 3", color: "worker3", enabled: true, toggleable: false, parked: true, model: "—", preset: null, tokens: 0 },
-    { id: "worker4", label: "Worker 4", color: "worker4", enabled: true, toggleable: false, parked: true, model: "—", preset: null, tokens: 0 },
+    { id: "brainstorm", label: "Brainstorm", color: "brainstorm", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
+    { id: "memory", label: "Memory", color: "memory", enabled: true, toggleable: false, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
+    { id: "flex", label: "Flex", color: "flex", enabled: true, toggleable: true, parked: false, model: "—", preset: "security", tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
+    { id: "coordinator", label: "Coordinator", color: "coordinator", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
+    { id: "worker1", label: "Worker 1", color: "worker1", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
+    { id: "worker2", label: "Worker 2", color: "worker2", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
+    { id: "worker3", label: "Worker 3", color: "worker3", enabled: true, toggleable: false, parked: true, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
+    { id: "worker4", label: "Worker 4", color: "worker4", enabled: true, toggleable: false, parked: true, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
   ];
 
   const els = {
@@ -132,8 +172,10 @@
     chatInput: document.getElementById("chat-input"),
     chatLog: document.getElementById("chat-log"),
     btnSend: document.getElementById("btn-send"),
+    btnMic: document.getElementById("btn-mic"),
     btnSave: document.getElementById("btn-save"),
     btnHelp: document.getElementById("btn-help"),
+    btnSystem: document.getElementById("btn-system"),
     btnReset: document.getElementById("btn-reset"),
     stageBadge: document.getElementById("stage-badge"),
     llmBadge: document.getElementById("llm-badge"),
@@ -146,35 +188,73 @@
     coldList: document.getElementById("cold-list"),
     coldDetail: document.getElementById("cold-detail"),
     btnColdClose: document.getElementById("btn-cold-close"),
+    tuneModal: document.getElementById("tune-modal"),
+    systemModal: document.getElementById("system-modal"),
   };
 
   let activeStage = "idle";
+  let tuneAgentId = null;
+  let clickTimer = null;
+  let recognition = null;
+  let listening = false;
+  let lastSpokenKey = "";
 
   function statusLabel(agent) {
     if (agent.parked) return agent.enabled ? "on · later" : "off / parked";
     return agent.enabled ? "on" : "off";
   }
 
+  function agentIsActive(agent) {
+    return (
+      activeStage === agent.id ||
+      (activeStage === "memory" && agent.id === "memory") ||
+      (activeStage === "brainstorm" && agent.id === "brainstorm") ||
+      (activeStage === "distill" && agent.id === "coordinator") ||
+      (activeStage === "clarify" && agent.id === "coordinator") ||
+      (activeStage === "flex" && agent.id === "flex") ||
+      (activeStage === "coordinate" && agent.id === "coordinator") ||
+      (activeStage === "work" &&
+        (agent.id === "worker1" || agent.id === "worker2")) ||
+      (activeStage === "worker1" && agent.id === "worker1") ||
+      (activeStage === "worker2" && agent.id === "worker2") ||
+      (activeStage === "done" && agent.id === "memory")
+    );
+  }
+
+  function updateBoxBorders() {
+    const map = {
+      idle: { box1: null, box2: null, box3: null },
+      memory: { box1: "memory", box2: null, box3: null },
+      brainstorm: { box1: null, box2: "brainstorm", box3: null },
+      distill: { box1: "coordinator", box2: "coordinator", box3: null },
+      clarify: { box1: "coordinator", box2: null, box3: null },
+      flex: { box1: null, box2: "flex", box3: null },
+      coordinate: { box1: "coordinator", box2: null, box3: "coordinator" },
+      work: { box1: null, box2: null, box3: "worker1" },
+      done: { box1: "memory", box2: "brainstorm", box3: "worker2" },
+      error: { box1: null, box2: null, box3: null },
+    };
+    const m = map[activeStage] || map.idle;
+    [
+      ["box1", m.box1],
+      ["box2", m.box2],
+      ["box3", m.box3],
+    ].forEach(function (pair) {
+      const el = document.getElementById(pair[0]);
+      if (!el) return;
+      const aid = pair[1];
+      el.style.setProperty(
+        "--box-agent-color",
+        aid && COLOR_HEX[aid] ? COLOR_HEX[aid] : "var(--border)"
+      );
+    });
+  }
+
   function renderCards() {
     els.cards.innerHTML = "";
     AGENTS.forEach(function (agent) {
       const card = document.createElement("div");
-      const isActive =
-        activeStage === agent.id ||
-        (activeStage === "memory" && agent.id === "memory") ||
-        (activeStage === "brainstorm" && agent.id === "brainstorm") ||
-        (activeStage === "distill" && agent.id === "coordinator") ||
-        (activeStage === "clarify" && agent.id === "coordinator") ||
-        (activeStage === "flex" && agent.id === "flex") ||
-        (activeStage === "coordinate" && agent.id === "coordinator") ||
-        (activeStage === "work" &&
-          (agent.id === "worker1" ||
-            agent.id === "worker2" ||
-            agent.id === "worker3" ||
-            agent.id === "worker4")) ||
-        (activeStage === "worker1" && agent.id === "worker1") ||
-        (activeStage === "worker2" && agent.id === "worker2") ||
-        (activeStage === "done" && agent.id === "memory");
+      const isActive = agentIsActive(agent);
       card.className =
         "agent-card color-" + agent.color + (isActive ? " is-active" : "");
       card.dataset.agentId = agent.id;
@@ -183,13 +263,13 @@
       card.dataset.parked = agent.parked ? "true" : "false";
       card.dataset.tooltipId = agent.id;
       card.setAttribute("role", "button");
-      const tipExtra =
-        agent.id === "flex"
-          ? " Double-click toggle. Shift+double-click cycles preset."
-          : agent.toggleable
-            ? " (double-click to toggle)"
-            : " (always on)";
-      card.setAttribute("aria-label", agent.label + tipExtra);
+      card.setAttribute(
+        "aria-label",
+        agent.label +
+          " — click to tune, double-click to toggle" +
+          (agent.id === "flex" ? ", Shift+double-click cycles preset" : "")
+      );
+      const online = !!agent.online;
       const presetLine =
         agent.id === "flex" && agent.preset
           ? '<div class="card-preset">preset: ' + agent.preset + "</div>"
@@ -205,13 +285,50 @@
         '<div class="card-tokens">tok: ' +
         tok +
         "</div>" +
+        '<div class="card-online ' +
+        (online ? "on" : "off") +
+        '">' +
+        (online ? "online" : "offline") +
+        "</div>" +
+        '<label class="card-tts" data-stop="1">' +
+        '<input type="checkbox" ' +
+        (agent.tts ? "checked " : "") +
+        (agent.parked ? "disabled " : "") +
+        "/> TTS</label>" +
         presetLine +
         '<div class="card-status">' +
         statusLabel(agent) +
         "</div>";
 
+      const ttsInput = card.querySelector(".card-tts input");
+      if (ttsInput) {
+        ttsInput.addEventListener("click", function (ev) {
+          ev.stopPropagation();
+        });
+        ttsInput.addEventListener("change", function (ev) {
+          ev.stopPropagation();
+          setAgentTts(agent.id, !!ttsInput.checked);
+        });
+      }
+
+      card.addEventListener("click", function (ev) {
+        if (ev.target && ev.target.closest && ev.target.closest("[data-stop]")) {
+          return;
+        }
+        if (agent.parked) return;
+        if (clickTimer) clearTimeout(clickTimer);
+        clickTimer = setTimeout(function () {
+          clickTimer = null;
+          openTuneModal(agent.id);
+        }, 220);
+      });
+
       card.addEventListener("dblclick", function (ev) {
         ev.preventDefault();
+        if (clickTimer) {
+          clearTimeout(clickTimer);
+          clickTimer = null;
+        }
         if (agent.id === "flex" && ev.shiftKey) {
           cycleFlexPreset();
           return;
@@ -224,6 +341,7 @@
 
       els.cards.appendChild(card);
     });
+    updateBoxBorders();
   }
 
   function findAgent(id) {
@@ -287,7 +405,17 @@
       else if (s.role) a.model = "default";
       if (s.preset) a.preset = s.preset;
       a.tokens = s.tokens || 0;
-      a.parked = false;
+      a.online = !!s.online;
+      a.tts = !!s.tts;
+      a.system_prompt = s.system_prompt || "";
+      a.temperature = s.temperature != null ? s.temperature : null;
+      a.top_p = s.top_p != null ? s.top_p : null;
+      a.max_tokens = s.max_tokens != null ? s.max_tokens : null;
+      a.frequency_penalty =
+        s.frequency_penalty != null ? s.frequency_penalty : null;
+      a.presence_penalty =
+        s.presence_penalty != null ? s.presence_penalty : null;
+      if (!a.parked) a.parked = false;
     });
     renderCards();
   }
@@ -299,6 +427,7 @@
     activeStage = p.stage || "idle";
     if (els.stageBadge) els.stageBadge.textContent = activeStage;
     renderCards();
+    updateBoxBorders();
 
     if (els.llmBadge && snap.llm) {
       const ok = !!snap.llm.deepseek;
@@ -439,6 +568,261 @@
     }
 
     if (p.error) appendChat("system", "Error: " + p.error);
+
+    if (p.stage === "done") {
+      maybeSpeakPipeline(p);
+    }
+  }
+
+  function speakText(text) {
+    if (!text || !window.speechSynthesis) return;
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(String(text).slice(0, 600));
+      u.lang = /[äöüÄÖÜß]/.test(text) ? "de-DE" : "en-US";
+      window.speechSynthesis.speak(u);
+    } catch (_e) {
+      /* ignore */
+    }
+  }
+
+  function maybeSpeakPipeline(p) {
+    const key =
+      (p.brainstorm_notes || "").slice(0, 40) +
+      "|" +
+      ((p.worker_results && p.worker_results[0]) || "").slice(0, 40);
+    if (key === lastSpokenKey) return;
+    const chunks = [];
+    const b = findAgent("brainstorm");
+    if (b && b.tts && p.brainstorm_notes) {
+      chunks.push("Brainstorm: " + p.brainstorm_notes);
+    }
+    const f = findAgent("flex");
+    if (f && f.tts && p.flex_notes) {
+      chunks.push("Flex: " + p.flex_notes);
+    }
+    (p.worker_outputs || []).forEach(function (o, i) {
+      const a = findAgent(o.worker || "worker" + (i + 1));
+      if (a && a.tts && o.result) {
+        chunks.push((a.label || o.worker) + ": " + o.result);
+      }
+    });
+    if (!chunks.length && p.worker_results) {
+      p.worker_results.forEach(function (r, i) {
+        const a = findAgent("worker" + (i + 1));
+        if (a && a.tts && r) chunks.push(a.label + ": " + r);
+      });
+    }
+    if (chunks.length) {
+      lastSpokenKey = key;
+      speakText(chunks.join(". "));
+    }
+  }
+
+  async function setAgentTts(id, on) {
+    const a = findAgent(id);
+    if (!a || a.parked) return;
+    a.tts = on;
+    try {
+      const data = await api("POST", "/api/agents/" + encodeURIComponent(id) + "/tune", {
+        tts: on,
+      });
+      if (data) {
+        a.tts = !!data.tts;
+        a.online = !!data.online;
+      }
+      renderCards();
+    } catch (err) {
+      appendChat("system", "TTS save failed: " + err.message);
+    }
+  }
+
+  function openTuneModal(id) {
+    const a = findAgent(id);
+    if (!a || a.parked || !els.tuneModal) return;
+    tuneAgentId = id;
+    document.getElementById("tune-title").textContent = a.label + " — tuning";
+    document.getElementById("tune-prompt").value =
+      a.system_prompt || DEFAULT_PROMPTS[id] || "";
+    document.getElementById("tune-model").value = a.model || "deepseek-chat";
+    document.getElementById("tune-key").value = "";
+    const setRange = function (idEl, valEl, v, def, digits) {
+      const el = document.getElementById(idEl);
+      const num = v != null ? Number(v) : def;
+      el.value = String(num);
+      document.getElementById(valEl).textContent =
+        digits === 0 ? String(Math.round(num)) : Number(num).toFixed(digits);
+    };
+    setRange("tune-temp", "tune-temp-val", a.temperature, 0.5, 2);
+    setRange("tune-topp", "tune-topp-val", a.top_p, 1, 2);
+    setRange("tune-maxtok", "tune-maxtok-val", a.max_tokens, 800, 0);
+    setRange("tune-freq", "tune-freq-val", a.frequency_penalty, 0, 2);
+    setRange("tune-pres", "tune-pres-val", a.presence_penalty, 0, 2);
+    document.getElementById("tune-tts").checked = !!a.tts;
+    els.tuneModal.hidden = false;
+    showSliderTip("temperature");
+  }
+
+  function closeTuneModal() {
+    if (els.tuneModal) els.tuneModal.hidden = true;
+    tuneAgentId = null;
+  }
+
+  function showSliderTip(key) {
+    const tip = SLIDER_TIPS[key];
+    if (!tip) return;
+    if (els.placeholder) els.placeholder.hidden = true;
+    if (els.tipRoot) els.tipRoot.hidden = false;
+    if (els.tipTitle) els.tipTitle.textContent = "Slider: " + key;
+    if (els.tipHow) els.tipHow.textContent = tip;
+    if (els.tipExample) els.tipExample.textContent = "Change the slider — live explanation stays in Box 1.";
+  }
+
+  function bindTuneSliders() {
+    const pairs = [
+      ["tune-temp", "tune-temp-val", 2, "temperature"],
+      ["tune-topp", "tune-topp-val", 2, "top_p"],
+      ["tune-maxtok", "tune-maxtok-val", 0, "max_tokens"],
+      ["tune-freq", "tune-freq-val", 2, "frequency"],
+      ["tune-pres", "tune-pres-val", 2, "presence"],
+    ];
+    pairs.forEach(function (p) {
+      const el = document.getElementById(p[0]);
+      if (!el) return;
+      el.addEventListener("input", function () {
+        const n = Number(el.value);
+        document.getElementById(p[1]).textContent =
+          p[2] === 0 ? String(Math.round(n)) : n.toFixed(p[2]);
+        showSliderTip(p[3]);
+      });
+    });
+  }
+
+  async function saveTuneModal() {
+    if (!tuneAgentId) return;
+    const body = {
+      system_prompt: document.getElementById("tune-prompt").value,
+      model: document.getElementById("tune-model").value,
+      temperature: Number(document.getElementById("tune-temp").value),
+      top_p: Number(document.getElementById("tune-topp").value),
+      max_tokens: Number(document.getElementById("tune-maxtok").value),
+      frequency_penalty: Number(document.getElementById("tune-freq").value),
+      presence_penalty: Number(document.getElementById("tune-pres").value),
+      tts: !!document.getElementById("tune-tts").checked,
+    };
+    const key = document.getElementById("tune-key").value.trim();
+    if (key) body.api_key = key;
+    try {
+      const data = await api(
+        "POST",
+        "/api/agents/" + encodeURIComponent(tuneAgentId) + "/tune",
+        body
+      );
+      applyAgentsFromServer([data]);
+      closeTuneModal();
+      toast("Agent tuning saved", "ok");
+      try {
+        await api("POST", "/api/save");
+      } catch (_e) {
+        /* optional */
+      }
+    } catch (err) {
+      toast("Tune failed: " + err.message, "error");
+    }
+  }
+
+  async function openSystemModal() {
+    if (!els.systemModal) return;
+    try {
+      const s = await api("GET", "/api/system");
+      document.getElementById("system-llm").textContent = s.deepseek
+        ? "DeepSeek: connected"
+        : "DeepSeek: no key (stub mode)";
+      document.getElementById("sys-free-only").checked = !!s.free_only;
+      document.getElementById("sys-budget").value =
+        s.max_budget_usd != null ? s.max_budget_usd : "";
+      document.getElementById("sys-model").value = s.default_model || "deepseek-chat";
+      document.getElementById("system-spend").textContent =
+        "Spent: $" +
+        (Number(s.spent_usd) || 0).toFixed(4) +
+        " · tokens " +
+        ((s.prompt_tokens || 0) + (s.completion_tokens || 0));
+    } catch (err) {
+      toast("System load failed: " + err.message, "error");
+    }
+    els.systemModal.hidden = false;
+  }
+
+  function closeSystemModal() {
+    if (els.systemModal) els.systemModal.hidden = true;
+  }
+
+  async function saveSystemModal() {
+    const budgetRaw = document.getElementById("sys-budget").value.trim();
+    const body = {
+      free_only: !!document.getElementById("sys-free-only").checked,
+      default_model: document.getElementById("sys-model").value.trim() || "deepseek-chat",
+      max_budget_usd: budgetRaw === "" ? null : Number(budgetRaw),
+    };
+    try {
+      await api("POST", "/api/system", body);
+      closeSystemModal();
+      toast("System settings applied", "ok");
+      const snap = await api("GET", "/api/state");
+      applySnapshot(snap);
+    } catch (err) {
+      toast("System save failed: " + err.message, "error");
+    }
+  }
+
+  function toggleMic() {
+    const SR =
+      window.SpeechRecognition || window.webkitSpeechRecognition || null;
+    if (!SR) {
+      toast("Speech recognition not supported in this browser", "error");
+      return;
+    }
+    if (listening && recognition) {
+      try {
+        recognition.stop();
+      } catch (_e) {
+        /* */
+      }
+      listening = false;
+      if (els.btnMic) els.btnMic.classList.remove("listening");
+      return;
+    }
+    recognition = new SR();
+    recognition.lang = "de-DE";
+    recognition.interimResults = true;
+    recognition.continuous = false;
+    recognition.onstart = function () {
+      listening = true;
+      if (els.btnMic) els.btnMic.classList.add("listening");
+    };
+    recognition.onend = function () {
+      listening = false;
+      if (els.btnMic) els.btnMic.classList.remove("listening");
+    };
+    recognition.onerror = function (ev) {
+      listening = false;
+      if (els.btnMic) els.btnMic.classList.remove("listening");
+      toast("Mic error: " + (ev.error || "unknown"), "error");
+    };
+    recognition.onresult = function (ev) {
+      let text = "";
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        text += ev.results[i][0].transcript;
+      }
+      if (els.chatInput && text) {
+        els.chatInput.value = (els.chatInput.value + " " + text).trim();
+      }
+    };
+    try {
+      recognition.start();
+    } catch (err) {
+      toast("Mic start failed: " + err.message, "error");
+    }
   }
 
   async function cycleFlexPreset() {
@@ -1032,8 +1416,10 @@
   function init() {
     renderCards();
     bindTooltipHovers();
+    bindTuneSliders();
 
     els.btnSend.addEventListener("click", sendChat);
+    if (els.btnMic) els.btnMic.addEventListener("click", toggleMic);
     els.chatInput.addEventListener("keydown", function (ev) {
       if (ev.key === "Enter") {
         ev.preventDefault();
@@ -1042,8 +1428,27 @@
     });
     els.btnSave.addEventListener("click", onSave);
     if (els.btnHelp) els.btnHelp.addEventListener("click", onHelp);
+    if (els.btnSystem) els.btnSystem.addEventListener("click", openSystemModal);
     if (els.btnReset) els.btnReset.addEventListener("click", onReset);
     if (els.btnArchive) els.btnArchive.addEventListener("click", onArchive);
+    const tuneClose = document.getElementById("tune-close");
+    const tuneSave = document.getElementById("tune-save");
+    if (tuneClose) tuneClose.addEventListener("click", closeTuneModal);
+    if (tuneSave) tuneSave.addEventListener("click", saveTuneModal);
+    if (els.tuneModal) {
+      els.tuneModal.addEventListener("click", function (ev) {
+        if (ev.target === els.tuneModal) closeTuneModal();
+      });
+    }
+    const sysClose = document.getElementById("system-close");
+    const sysSave = document.getElementById("system-save");
+    if (sysClose) sysClose.addEventListener("click", closeSystemModal);
+    if (sysSave) sysSave.addEventListener("click", saveSystemModal);
+    if (els.systemModal) {
+      els.systemModal.addEventListener("click", function (ev) {
+        if (ev.target === els.systemModal) closeSystemModal();
+      });
+    }
     if (els.godBadge) {
       els.godBadge.addEventListener("click", toggleGodMode);
       els.godBadge.addEventListener("keydown", function (ev) {

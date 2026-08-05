@@ -288,6 +288,26 @@ class Hub:
                     pass
             if item.get("model"):
                 agent.model = str(item["model"])
+            if "tts" in item:
+                agent.tts = bool(item["tts"])
+            if item.get("system_prompt") is not None:
+                agent.system_prompt = str(item["system_prompt"]) or None
+            for key in (
+                "temperature",
+                "top_p",
+                "frequency_penalty",
+                "presence_penalty",
+            ):
+                if item.get(key) is not None:
+                    try:
+                        setattr(agent, key, float(item[key]))
+                    except (TypeError, ValueError):
+                        pass
+            if item.get("max_tokens") is not None:
+                try:
+                    agent.max_tokens = int(item["max_tokens"])
+                except (TypeError, ValueError):
+                    pass
 
     def _save_agent_state(self) -> Path:
         payload = {
@@ -297,6 +317,13 @@ class Hub:
                     "enabled": a.enabled,
                     "preset": a.preset,
                     "model": a.model,
+                    "tts": a.tts,
+                    "system_prompt": a.system_prompt,
+                    "temperature": a.temperature,
+                    "top_p": a.top_p,
+                    "max_tokens": a.max_tokens,
+                    "frequency_penalty": a.frequency_penalty,
+                    "presence_penalty": a.presence_penalty,
                 }
                 for a in self.agents.list_agents()
             ]
@@ -311,6 +338,7 @@ class Hub:
     def _agent_dict(self, a: AgentState) -> dict[str, Any]:
         usage = self.llm.usage_snapshot()["by_agent"].get(a.id.value, {})
         tokens = int(usage.get("prompt_tokens", 0)) + int(usage.get("completion_tokens", 0))
+        online = a.enabled and (bool(a.api_key) or self.llm.has_provider("deepseek"))
         return {
             "id": a.id.value,
             "name": a.name,
@@ -321,6 +349,14 @@ class Hub:
             "preset": a.preset,
             "model": a.model or self.llm.default_model,
             "has_key": bool(a.api_key) or self.llm.has_provider("deepseek"),
+            "online": online,
+            "tts": bool(a.tts),
+            "system_prompt": a.system_prompt or "",
+            "temperature": a.temperature,
+            "top_p": a.top_p,
+            "max_tokens": a.max_tokens,
+            "frequency_penalty": a.frequency_penalty,
+            "presence_penalty": a.presence_penalty,
             "tokens": tokens,
             "prompt_tokens": int(usage.get("prompt_tokens", 0)),
             "completion_tokens": int(usage.get("completion_tokens", 0)),
@@ -577,6 +613,65 @@ class Hub:
             agent.api_key = api_key.strip() or None
         self.agents.emit_status(agent_id)
         return self._agent_dict(agent)
+
+    def set_agent_tune(self, agent_id: str, fields: dict[str, Any]) -> dict[str, Any]:
+        """Update per-agent prompt, LLM knobs, and TTS flag (plan tuning panel)."""
+        agent = self.agents.get(agent_id)
+        if "model" in fields and fields["model"] is not None:
+            agent.model = str(fields["model"]).strip() or None
+        if "api_key" in fields and fields["api_key"] is not None:
+            key = str(fields["api_key"]).strip()
+            agent.api_key = key or None
+        if "system_prompt" in fields:
+            sp = fields["system_prompt"]
+            agent.system_prompt = (str(sp).strip() if sp is not None else "") or None
+        if "tts" in fields and fields["tts"] is not None:
+            agent.tts = bool(fields["tts"])
+        if "temperature" in fields:
+            agent.temperature = (
+                None if fields["temperature"] is None else float(fields["temperature"])
+            )
+        if "top_p" in fields:
+            agent.top_p = None if fields["top_p"] is None else float(fields["top_p"])
+        if "max_tokens" in fields:
+            agent.max_tokens = None if fields["max_tokens"] is None else int(fields["max_tokens"])
+        if "frequency_penalty" in fields:
+            agent.frequency_penalty = (
+                None if fields["frequency_penalty"] is None else float(fields["frequency_penalty"])
+            )
+        if "presence_penalty" in fields:
+            agent.presence_penalty = (
+                None if fields["presence_penalty"] is None else float(fields["presence_penalty"])
+            )
+        self.agents.emit_status(agent_id)
+        return self._agent_dict(agent)
+
+    def set_system(self, fields: dict[str, Any]) -> dict[str, Any]:
+        """Global free_only / budget (system panel)."""
+        if "free_only" in fields and fields["free_only"] is not None:
+            self.llm.free_only = bool(fields["free_only"])
+        if "max_budget_usd" in fields:
+            raw = fields["max_budget_usd"]
+            if raw is None or raw == "":
+                self.llm.max_budget_usd = None
+            else:
+                self.llm.max_budget_usd = float(raw)
+        if "default_model" in fields and fields["default_model"]:
+            self.llm.default_model = str(fields["default_model"]).strip()
+        return self.system_dict()
+
+    def system_dict(self) -> dict[str, Any]:
+        usage = self.llm.usage_snapshot()
+        return {
+            "deepseek": self.llm.has_provider("deepseek"),
+            "free_only": self.llm.free_only,
+            "max_budget_usd": self.llm.max_budget_usd,
+            "spent_usd": usage["spent_usd"],
+            "prompt_tokens": usage["prompt_tokens"],
+            "completion_tokens": usage["completion_tokens"],
+            "default_model": self.llm.default_model,
+            "god_mode": self.god_mode.enabled,
+        }
 
     def save(self) -> dict[str, Any]:
         self.hot.save()

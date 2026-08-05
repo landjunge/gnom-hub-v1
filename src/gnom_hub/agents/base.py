@@ -54,21 +54,35 @@ class BaseAgent:
         max_tokens: int = 500,
         temperature: float = 0.5,
     ) -> str:
-        """Call LLM with this agent's model/key override. Raises if no LLM."""
+        """Call LLM with this agent's model/key/tuning overrides. Raises if no LLM."""
         if self.llm is None:
             raise RuntimeError(f"{self.id}: no LLM manager")
         from gnom_hub.llm.types import LLMMessage
 
+        # Agent tuning wins when set (plan: per-agent sliders)
+        temp = (
+            float(self.state.temperature)
+            if self.state.temperature is not None
+            else float(temperature)
+        )
+        mt = int(self.state.max_tokens) if self.state.max_tokens is not None else int(max_tokens)
         kwargs: dict[str, Any] = {
             "agent": self.id,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
+            "max_tokens": mt,
+            "temperature": temp,
         }
+        if self.state.top_p is not None:
+            kwargs["top_p"] = float(self.state.top_p)
+        if self.state.frequency_penalty is not None:
+            kwargs["frequency_penalty"] = float(self.state.frequency_penalty)
+        if self.state.presence_penalty is not None:
+            kwargs["presence_penalty"] = float(self.state.presence_penalty)
         if self.state.model:
             kwargs["model"] = self.state.model
         if self.state.api_key:
             kwargs["api_key"] = self.state.api_key
-        sys_full = f"{HUB_IDENTITY}\n\n{system}".strip()
+        role_system = (self.state.system_prompt or "").strip() or system
+        sys_full = f"{HUB_IDENTITY}\n\n{role_system}".strip()
         result = self.llm.chat(
             [
                 LLMMessage(role="system", content=sys_full),

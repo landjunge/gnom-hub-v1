@@ -81,7 +81,8 @@ html, body {
 .btn-save,
 .btn-help,
 .btn-reset,
-.btn-archive {
+.btn-archive,
+.btn-system {
   width: 72px;
   height: 28px;
   border: 1px solid var(--border);
@@ -95,8 +96,14 @@ html, body {
 .btn-save:hover,
 .btn-help:hover,
 .btn-reset:hover,
-.btn-archive:hover {
+.btn-archive:hover,
+.btn-system:hover {
   background: #495057;
+}
+
+.btn-system {
+  border-color: #5c7cfa;
+  color: #a5b4fc;
 }
 
 .btn-archive {
@@ -333,11 +340,13 @@ html, body {
   min-height: 0;
   max-height: none;
   background: var(--bg-panel);
-  border: 1px solid var(--border);
+  /* Plan: 1px border; color = active agent using this box */
+  border: 1px solid var(--box-agent-color, var(--border));
   border-radius: 4px;
   display: flex;
   flex-direction: column;
   overflow: hidden; /* clip only — never scrollbars */
+  transition: border-color 0.2s ease;
 }
 
 .box-header {
@@ -632,6 +641,24 @@ html, body {
   outline-offset: 0;
 }
 
+.btn-mic {
+  flex: 0 0 48px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #343a40;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.btn-mic.listening {
+  background: #862e2e;
+  border-color: #e03131;
+  color: #ffa8a8;
+  animation: pulse-card 1s ease-in-out infinite;
+}
+
 .btn-send {
   flex: 0 0 64px;
   height: 28px;
@@ -641,6 +668,197 @@ html, body {
   color: #fff;
   font-size: 13px;
   cursor: pointer;
+}
+
+/* —— Modals (tuning + system) —— */
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modal[hidden] {
+  display: none !important;
+}
+
+.modal-panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  max-width: min(720px, 96vw);
+  max-height: min(90vh, 640px);
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tune-panel {
+  max-width: min(760px, 96vw);
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.modal-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 22px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  color: var(--text);
+}
+
+.tune-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 12px 14px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tune-prompt-col,
+.tune-sliders-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tune-prompt-col label,
+.tune-sliders-col label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.tune-prompt {
+  flex: 1 1 auto;
+  min-height: 180px;
+  max-height: 280px;
+  resize: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  padding: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  overflow: auto;
+}
+
+.tune-input {
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+.tune-slider {
+  margin-bottom: 4px;
+}
+
+.tune-slider input[type="range"] {
+  width: 100%;
+}
+
+.tune-tts-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  color: var(--text) !important;
+  font-size: 12px !important;
+}
+
+.modal-actions {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.system-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.system-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.system-line {
+  margin: 0;
+  font-size: 13px;
+}
+
+.system-hint {
+  font-size: 11px;
+  margin: 0;
+}
+
+.agent-card .card-online {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.agent-card .card-online.on {
+  color: #69db7c;
+}
+
+.agent-card .card-online.off {
+  color: #ffa8a8;
+}
+
+.agent-card .card-tts {
+  font-size: 10px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.agent-card .card-tts input {
+  margin: 0;
 }
 
 .btn-send:hover {

@@ -32,6 +32,24 @@ class AgentLlmBody(BaseModel):
     api_key: str | None = None
 
 
+class AgentTuneBody(BaseModel):
+    model: str | None = None
+    api_key: str | None = None
+    system_prompt: str | None = None
+    tts: bool | None = None
+    temperature: float | None = None
+    top_p: float | None = None
+    max_tokens: int | None = None
+    frequency_penalty: float | None = None
+    presence_penalty: float | None = None
+
+
+class SystemBody(BaseModel):
+    free_only: bool | None = None
+    max_budget_usd: float | None = None
+    default_model: str | None = None
+
+
 class WarmFactBody(BaseModel):
     text: str = Field(min_length=1)
 
@@ -131,6 +149,21 @@ def create_app() -> FastAPI:
             return get_hub().set_agent_llm(agent_id, model=body.model, api_key=body.api_key)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
+
+    @app.post("/api/agents/{agent_id}/tune")
+    def agent_tune(agent_id: str, body: AgentTuneBody) -> dict[str, Any]:
+        try:
+            return get_hub().set_agent_tune(agent_id, body.model_dump(exclude_unset=True))
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
+    @app.get("/api/system")
+    def system_get() -> dict[str, Any]:
+        return get_hub().system_dict()
+
+    @app.post("/api/system")
+    def system_set(body: SystemBody) -> dict[str, Any]:
+        return get_hub().set_system(body.model_dump(exclude_unset=True))
 
     @app.post("/api/chat")
     def chat(body: ChatBody, sync: bool = Query(False)) -> dict[str, Any]:

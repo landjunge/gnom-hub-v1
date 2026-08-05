@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=46" />
+  <link rel="stylesheet" href="/static/app.css?v=47" />
 </head>
 <body>
   <div id="app">
@@ -17,6 +17,9 @@
         <span id="god-badge" class="god-badge" title="God-Mode — click to toggle" role="button" tabindex="0">God: off</span>
         <span id="cold-badge" class="cold-badge" title="COLD archives — click to browse" role="button" tabindex="0">Cold: —</span>
         <span id="stage-badge" class="stage-badge" title="Pipeline stage">idle</span>
+        <button type="button" id="btn-system" class="btn-system" data-tooltip-id="system" title="System settings">
+          System
+        </button>
         <button type="button" id="btn-help" class="btn-help" data-tooltip-id="help" title="Help">
           Help
         </button>
@@ -85,15 +88,16 @@
       </div>
     </section>
 
-    <!-- Chat ~150 px -->
+    <!-- Chat: full width, STT mic -->
     <section id="chat" class="chat" data-tooltip-id="chat" aria-label="Chat">
       <div id="chat-log" class="chat-log"></div>
       <div class="chat-input-row">
+        <button type="button" id="btn-mic" class="btn-mic" title="Speech to text (browser)">Mic</button>
         <input
           type="text"
           id="chat-input"
           class="chat-input"
-          placeholder="Type a message…"
+          placeholder="Type a message… or use Mic"
           autocomplete="off"
         />
         <button type="button" id="btn-send" class="btn-send">Send</button>
@@ -101,8 +105,85 @@
     </section>
   </div>
 
+  <!-- Agent tuning (click card) -->
+  <div id="tune-modal" class="modal" hidden>
+    <div class="modal-panel tune-panel">
+      <div class="modal-head">
+        <h2 id="tune-title" class="modal-title">Agent tuning</h2>
+        <button type="button" id="tune-close" class="modal-close" title="Close">×</button>
+      </div>
+      <div class="tune-grid">
+        <div class="tune-prompt-col">
+          <label for="tune-prompt">System prompt</label>
+          <textarea id="tune-prompt" class="tune-prompt" rows="12" spellcheck="false"></textarea>
+          <label for="tune-model">Model</label>
+          <input id="tune-model" class="tune-input" type="text" placeholder="deepseek-chat" />
+          <label for="tune-key">API key override (optional)</label>
+          <input id="tune-key" class="tune-input" type="password" placeholder="leave empty = global key" />
+        </div>
+        <div class="tune-sliders-col">
+          <div class="tune-slider" data-tip="temperature">
+            <label>Temperature <span id="tune-temp-val">0.50</span></label>
+            <input id="tune-temp" type="range" min="0" max="2" step="0.05" value="0.5" />
+          </div>
+          <div class="tune-slider" data-tip="top_p">
+            <label>Top-P <span id="tune-topp-val">1.00</span></label>
+            <input id="tune-topp" type="range" min="0" max="1" step="0.01" value="1" />
+          </div>
+          <div class="tune-slider" data-tip="max_tokens">
+            <label>Max Tokens <span id="tune-maxtok-val">800</span></label>
+            <input id="tune-maxtok" type="range" min="64" max="4096" step="32" value="800" />
+          </div>
+          <div class="tune-slider" data-tip="frequency">
+            <label>Frequency Penalty <span id="tune-freq-val">0.00</span></label>
+            <input id="tune-freq" type="range" min="0" max="2" step="0.05" value="0" />
+          </div>
+          <div class="tune-slider" data-tip="presence">
+            <label>Presence Penalty <span id="tune-pres-val">0.00</span></label>
+            <input id="tune-pres" type="range" min="0" max="2" step="0.05" value="0" />
+          </div>
+          <label class="tune-tts-row">
+            <input id="tune-tts" type="checkbox" /> TTS — read this agent’s output aloud
+          </label>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="tune-save" class="btn-save">Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- System panel -->
+  <div id="system-modal" class="modal" hidden>
+    <div class="modal-panel system-panel">
+      <div class="modal-head">
+        <h2 class="modal-title">System</h2>
+        <button type="button" id="system-close" class="modal-close" title="Close">×</button>
+      </div>
+      <div class="system-body">
+        <p id="system-llm" class="system-line">DeepSeek: —</p>
+        <label class="system-row">
+          <input id="sys-free-only" type="checkbox" /> Free models only
+        </label>
+        <label class="system-row">
+          Max budget USD
+          <input id="sys-budget" class="tune-input" type="number" min="0" step="0.01" placeholder="unlimited" />
+        </label>
+        <label class="system-row">
+          Default model
+          <input id="sys-model" class="tune-input" type="text" placeholder="deepseek-chat" />
+        </label>
+        <p id="system-spend" class="system-line muted">Spent: —</p>
+        <p class="system-hint muted">Keys: put DEEPSEEK_API_KEY in Key.txt on Desktop or project root → private .env</p>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="system-save" class="btn-save">Apply</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=46"></script>
+  <script src="/static/app.js?v=47"></script>
 </body>
 </html>

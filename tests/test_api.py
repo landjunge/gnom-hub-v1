@@ -73,6 +73,35 @@ def test_flex_preset(client: TestClient):
     assert r.json()["preset"] == "researcher"
 
 
+def test_agent_tune_and_system(client: TestClient):
+    r = client.post(
+        "/api/agents/worker1/tune",
+        json={
+            "temperature": 0.2,
+            "top_p": 0.9,
+            "max_tokens": 512,
+            "tts": True,
+            "system_prompt": "You write short HTML.",
+        },
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["id"] == "worker1"
+    assert body["temperature"] == 0.2
+    assert body["tts"] is True
+    assert "HTML" in (body.get("system_prompt") or "")
+    assert "online" in body
+
+    s = client.get("/api/system")
+    assert s.status_code == 200
+    assert "free_only" in s.json()
+    assert "deepseek" in s.json()
+
+    s2 = client.post("/api/system", json={"free_only": False, "max_budget_usd": 1.5})
+    assert s2.status_code == 200
+    assert s2.json()["max_budget_usd"] == 1.5
+
+
 def test_save(client: TestClient):
     client.post("/api/chat?sync=1", json={"text": "note this"})
     r = client.post("/api/save")

@@ -147,6 +147,7 @@ def test_status_payload_fields():
         "enabled": True,
         "role": "flex",
         "color": "yellow",
+        "tts": False,
         "preset": "security",
     }
 

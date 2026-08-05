@@ -32,3 +32,9 @@ data/smoke-run/
 .vscode/
 *.swp
 *~
+
+# Local backups / secrets
+*.bak
+*.bak-*
+Key.txt*
+!.Key.txt.example

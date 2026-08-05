@@ -93,6 +93,9 @@ class LLMManager:
         agent: str | None = None,  # reserved for per-agent routing later
         temperature: float = 0.7,
         max_tokens: int | None = None,
+        top_p: float | None = None,
+        frequency_penalty: float | None = None,
+        presence_penalty: float | None = None,
         provider: str = "deepseek",
     ) -> LLMResult:
         _ = agent  # step 0.2: single provider; hook for later
@@ -119,7 +122,15 @@ class LLMManager:
 
         msgs = self._normalize_messages(messages)
         client = self._client_factory(key)
-        result = client.chat(msgs, model=model_name, temperature=temperature, max_tokens=max_tokens)
+        result = client.chat(
+            msgs,
+            model=model_name,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            top_p=top_p,
+            frequency_penalty=frequency_penalty,
+            presence_penalty=presence_penalty,
+        )
 
         self._spent_usd += result.cost_usd
         self._prompt_tokens += result.prompt_tokens

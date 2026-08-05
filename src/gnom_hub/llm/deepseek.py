@@ -63,6 +63,9 @@ class DeepSeekClient:
         model: str = DEFAULT_MODEL,
         temperature: float = 0.7,
         max_tokens: int | None = None,
+        top_p: float | None = None,
+        frequency_penalty: float | None = None,
+        presence_penalty: float | None = None,
     ) -> LLMResult:
         url = f"{self.base_url}/chat/completions"
         payload: dict[str, Any] = {
@@ -73,6 +76,12 @@ class DeepSeekClient:
         }
         if max_tokens is not None:
             payload["max_tokens"] = max_tokens
+        if top_p is not None:
+            payload["top_p"] = top_p
+        if frequency_penalty is not None:
+            payload["frequency_penalty"] = frequency_penalty
+        if presence_penalty is not None:
+            payload["presence_penalty"] = presence_penalty
 
         body = json.dumps(payload).encode("utf-8")
         headers = {
