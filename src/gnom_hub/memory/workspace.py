@@ -47,6 +47,24 @@ class WorkspaceStore:
         shutil.copy2(src, dst)
         return dst
 
+    def read_text(self, which: str, name: str, max_chars: int = 12000) -> str:
+        safe = Path(name).name
+        path = self._dir(which) / safe
+        if not path.is_file():
+            raise FileNotFoundError(safe)
+        text = path.read_text(encoding="utf-8", errors="replace")
+        if len(text) > max_chars:
+            return text[: max_chars - 1] + "…"
+        return text
+
+    def delete(self, which: str, name: str) -> bool:
+        safe = Path(name).name
+        path = self._dir(which) / safe
+        if path.is_file():
+            path.unlink()
+            return True
+        return False
+
     def clear_temp(self) -> int:
         n = 0
         for p in self.temp.iterdir():

@@ -109,6 +109,12 @@
       how_to: "Keys, free-only mode, budget, default model. Global LLM settings.",
       example: "Turn free-only off, set max budget USD, check DeepSeek key.",
     },
+    workspace: {
+      title: "Workspace",
+      how_to:
+        "Temp holds agent outputs after Execute. Preview files, Promote to permanent, or Clear temp.",
+      example: "Execute a landing page → worker1_done.html appears in Temp → Promote.",
+    },
   };
 
   const FLEX_PRESETS = ["security", "neutral", "researcher"];
@@ -191,6 +197,9 @@
     btnColdClose: document.getElementById("btn-cold-close"),
     tuneModal: document.getElementById("tune-modal"),
     systemModal: document.getElementById("system-modal"),
+    workspaceModal: document.getElementById("workspace-modal"),
+    btnWorkspace: document.getElementById("btn-workspace"),
+    flexSelect: document.getElementById("flex-preset-select"),
   };
 
   let activeStage = "idle";
@@ -429,6 +438,12 @@
     if (els.stageBadge) els.stageBadge.textContent = activeStage;
     renderCards();
     updateBoxBorders();
+    if (els.flexSelect && snap.agents) {
+      const flex = snap.agents.find(function (a) {
+        return a.id === "flex";
+      });
+      if (flex && flex.preset) els.flexSelect.value = flex.preset;
+    }
 
     if (els.llmBadge && snap.llm) {
       const ok = !!snap.llm.deepseek;
@@ -789,6 +804,166 @@
       applySnapshot(snap);
     } catch (err) {
       toast("System save failed: " + err.message, "error");
+    }
+  }
+
+  async function openWorkspaceModal() {
+    if (!els.workspaceModal) return;
+    els.workspaceModal.hidden = false;
+    await refreshWorkspace();
+  }
+
+  function closeWorkspaceModal() {
+    if (els.workspaceModal) els.workspaceModal.hidden = true;
+  }
+
+  async function refreshWorkspace() {
+    try {
+      const snap = await api("GET", "/api/workspace");
+      renderWorkspaceLists(snap);
+    } catch (err) {
+      toast("Workspace load failed: " + err.message, "error");
+    }
+  }
+
+  function renderWorkspaceLists(snap) {
+    const tempUl = document.getElementById("ws-temp-list");
+    const permUl = document.getElementById("ws-perm-list");
+    if (!tempUl || !permUl) return;
+    tempUl.innerHTML = "";
+    permUl.innerHTML = "";
+    (snap.temp || []).forEach(function (f) {
+      tempUl.appendChild(wsListItem(f, "temp"));
+    });
+    (snap.perm || []).forEach(function (f) {
+      permUl.appendChild(wsListItem(f, "perm"));
+    });
+    if (!(snap.temp || []).length) {
+      const li = document.createElement("li");
+      li.className = "muted";
+      li.textContent = "(empty — Execute fills temp)";
+      tempUl.appendChild(li);
+    }
+    if (!(snap.perm || []).length) {
+      const li = document.createElement("li");
+      li.className = "muted";
+      li.textContent = "(empty — promote from temp)";
+      permUl.appendChild(li);
+    }
+  }
+
+  function wsListItem(f, zone) {
+    const li = document.createElement("li");
+    const name = document.createElement("span");
+    name.className = "ws-name";
+    name.textContent = f.name;
+    name.title = f.name;
+    const bytes = document.createElement("span");
+    bytes.className = "ws-bytes";
+    bytes.textContent = f.bytes != null ? f.bytes + " B" : "";
+    li.appendChild(name);
+    li.appendChild(bytes);
+    if (zone === "temp") {
+      const promo = document.createElement("button");
+      promo.type = "button";
+      promo.className = "ws-action";
+      promo.textContent = "↑ perm";
+      promo.title = "Promote to permanent";
+      promo.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        promoteWs(f.name);
+      });
+      li.appendChild(promo);
+    }
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "ws-action";
+    del.textContent = "×";
+    del.title = "Delete";
+    del.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      deleteWs(zone, f.name);
+    });
+    li.appendChild(del);
+    li.addEventListener("click", function () {
+      previewWs(zone, f.name);
+      li.parentNode.querySelectorAll("li").forEach(function (x) {
+        x.classList.remove("active");
+      });
+      li.classList.add("active");
+    });
+    return li;
+  }
+
+  async function previewWs(zone, name) {
+    const title = document.getElementById("ws-preview-title");
+    const pre = document.getElementById("ws-preview");
+    if (title) title.textContent = zone + " / " + name;
+    try {
+      const data = await api(
+        "GET",
+        "/api/workspace/file?zone=" +
+          encodeURIComponent(zone) +
+          "&name=" +
+          encodeURIComponent(name)
+      );
+      if (pre) pre.textContent = data.content || "(empty)";
+    } catch (err) {
+      if (pre) pre.textContent = "Preview failed: " + err.message;
+    }
+  }
+
+  async function promoteWs(name) {
+    try {
+      const data = await api(
+        "POST",
+        "/api/workspace/promote/" + encodeURIComponent(name)
+      );
+      renderWorkspaceLists(data.workspace || (await api("GET", "/api/workspace")));
+      toast("Promoted " + name, "ok");
+    } catch (err) {
+      toast("Promote failed: " + err.message, "error");
+    }
+  }
+
+  async function deleteWs(zone, name) {
+    try {
+      const data = await api(
+        "POST",
+        "/api/workspace/delete?zone=" +
+          encodeURIComponent(zone) +
+          "&name=" +
+          encodeURIComponent(name)
+      );
+      renderWorkspaceLists(data.workspace || (await api("GET", "/api/workspace")));
+      toast("Deleted " + name, "ok");
+    } catch (err) {
+      toast("Delete failed: " + err.message, "error");
+    }
+  }
+
+  async function clearTempWs() {
+    if (!confirm("Clear all temp workspace files?")) return;
+    try {
+      const data = await api("POST", "/api/workspace/clear-temp");
+      renderWorkspaceLists(data.workspace || { temp: [], perm: [] });
+      toast("Temp cleared (" + (data.removed || 0) + ")", "ok");
+    } catch (err) {
+      toast("Clear failed: " + err.message, "error");
+    }
+  }
+
+  async function onFlexSelectChange() {
+    if (!els.flexSelect) return;
+    const next = els.flexSelect.value;
+    try {
+      const data = await api("POST", "/api/agents/flex/preset", { preset: next });
+      const flex = findAgent("flex");
+      if (flex) flex.preset = data.preset || next;
+      renderCards();
+      appendChat("system", "Flex preset → " + (data.preset || next));
+    } catch (err) {
+      toast("Flex preset failed: " + err.message, "error");
     }
   }
 
@@ -1500,7 +1675,18 @@
     els.btnSave.addEventListener("click", onSave);
     if (els.btnHelp) els.btnHelp.addEventListener("click", onHelp);
     if (els.btnSystem) els.btnSystem.addEventListener("click", openSystemModal);
+    if (els.btnWorkspace) els.btnWorkspace.addEventListener("click", openWorkspaceModal);
+    if (els.flexSelect) els.flexSelect.addEventListener("change", onFlexSelectChange);
     if (els.btnReset) els.btnReset.addEventListener("click", onReset);
+    const wsClose = document.getElementById("workspace-close");
+    const wsClear = document.getElementById("ws-clear-temp");
+    if (wsClose) wsClose.addEventListener("click", closeWorkspaceModal);
+    if (wsClear) wsClear.addEventListener("click", clearTempWs);
+    if (els.workspaceModal) {
+      els.workspaceModal.addEventListener("click", function (ev) {
+        if (ev.target === els.workspaceModal) closeWorkspaceModal();
+      });
+    }
     if (els.btnArchive) els.btnArchive.addEventListener("click", onArchive);
     const tuneClose = document.getElementById("tune-close");
     const tuneSave = document.getElementById("tune-save");

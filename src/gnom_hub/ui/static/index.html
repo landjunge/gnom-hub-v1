@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=48" />
+  <link rel="stylesheet" href="/static/app.css?v=49" />
 </head>
 <body>
   <div id="app">
@@ -17,6 +17,17 @@
         <span id="god-badge" class="god-badge" title="God-Mode — click to toggle" role="button" tabindex="0">God: off</span>
         <span id="cold-badge" class="cold-badge" title="COLD archives — click to browse" role="button" tabindex="0">Cold: —</span>
         <span id="stage-badge" class="stage-badge" title="Pipeline stage">idle</span>
+        <label class="flex-preset-label" title="Flex preset" data-tooltip-id="flex">
+          Flex
+          <select id="flex-preset-select" class="flex-preset-select" aria-label="Flex preset">
+            <option value="security">Security</option>
+            <option value="neutral">Neutral</option>
+            <option value="researcher">Researcher</option>
+          </select>
+        </label>
+        <button type="button" id="btn-workspace" class="btn-workspace" data-tooltip-id="workspace" title="Temp / permanent workspace">
+          Workspace
+        </button>
         <button type="button" id="btn-system" class="btn-system" data-tooltip-id="system" title="System settings">
           System
         </button>
@@ -156,6 +167,37 @@
     </div>
   </div>
 
+  <!-- Dual workspace (temp → promote → perm) -->
+  <div id="workspace-modal" class="modal" hidden>
+    <div class="modal-panel workspace-panel">
+      <div class="modal-head">
+        <h2 class="modal-title">Workspace</h2>
+        <button type="button" id="workspace-close" class="modal-close" title="Close">×</button>
+      </div>
+      <div class="workspace-grid">
+        <div class="workspace-col">
+          <div class="workspace-col-head">
+            <h3>Temp (scratch)</h3>
+            <button type="button" id="ws-clear-temp" class="btn-ws-sm">Clear temp</button>
+          </div>
+          <ul id="ws-temp-list" class="ws-list"></ul>
+        </div>
+        <div class="workspace-col">
+          <div class="workspace-col-head">
+            <h3>Permanent</h3>
+          </div>
+          <ul id="ws-perm-list" class="ws-list"></ul>
+        </div>
+      </div>
+      <div class="workspace-preview-wrap">
+        <div class="workspace-col-head">
+          <h3 id="ws-preview-title">Preview</h3>
+        </div>
+        <pre id="ws-preview" class="ws-preview muted">Select a file to preview.</pre>
+      </div>
+    </div>
+  </div>
+
   <!-- System panel -->
   <div id="system-modal" class="modal" hidden>
     <div class="modal-panel system-panel">
@@ -187,6 +229,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=48"></script>
+  <script src="/static/app.js?v=49"></script>
 </body>
 </html>

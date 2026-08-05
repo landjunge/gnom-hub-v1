@@ -248,6 +248,37 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=404, detail=str(e)) from e
         return {"ok": True, "path": str(path), "workspace": get_hub().workspace.snapshot()}
 
+    @app.get("/api/workspace/file")
+    def workspace_file(
+        zone: str = Query("temp"),
+        name: str = Query(..., min_length=1),
+    ) -> dict[str, Any]:
+        try:
+            content = get_hub().workspace.read_text(zone, name)
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        return {"ok": True, "zone": zone, "name": name, "content": content}
+
+    @app.post("/api/workspace/clear-temp")
+    def workspace_clear_temp() -> dict[str, Any]:
+        n = get_hub().workspace.clear_temp()
+        return {"ok": True, "removed": n, "workspace": get_hub().workspace.snapshot()}
+
+    @app.post("/api/workspace/delete")
+    def workspace_delete(
+        zone: str = Query("temp"),
+        name: str = Query(..., min_length=1),
+    ) -> dict[str, Any]:
+        try:
+            ok = get_hub().workspace.delete(zone, name)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        if not ok:
+            raise HTTPException(status_code=404, detail="not found")
+        return {"ok": True, "workspace": get_hub().workspace.snapshot()}
+
     @app.post("/api/telegram/start")
     def telegram_start() -> dict[str, Any]:
         return get_hub().telegram_start()

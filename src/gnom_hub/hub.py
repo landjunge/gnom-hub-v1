@@ -475,6 +475,8 @@ class Hub:
             self.pipeline.brainstorm_turn(text)
         if self.pipeline.state.error:
             self.last_error = self.pipeline.state.error
+        elif full and self.pipeline.state.stage.value == "done":
+            self._capture_workspace_outputs()
         return self.snapshot()
 
     def execute_sync(self) -> dict[str, Any]:
@@ -483,6 +485,8 @@ class Hub:
         self.pipeline.execute()
         if self.pipeline.state.error:
             self.last_error = self.pipeline.state.error
+        elif self.pipeline.state.stage.value == "done":
+            self._capture_workspace_outputs()
         return self.snapshot()
 
     def _start_job(self, name: str, runner: Any) -> dict[str, Any]:
@@ -491,6 +495,8 @@ class Hub:
 
         if not hasattr(self, "_jobs"):
             self._jobs: dict[str, dict[str, Any]] = {}
+        if not hasattr(self, "_pipeline_lock"):
+            self._pipeline_lock = threading.Lock()
 
         job_id = uuid.uuid4().hex[:12]
         job: dict[str, Any] = {
@@ -511,31 +517,58 @@ class Hub:
                 except Exception as exc:  # noqa: BLE001
                     job["snapshot_error"] = str(exc)
 
+        def _on_brainstorm(_d: Any) -> None:
+            _on_stage({"stage": "brainstorm"})
+
+        def _on_distill(_d: Any) -> None:
+            _on_stage({"stage": "distill"})
+
+        def _on_flex(_d: Any) -> None:
+            _on_stage({"stage": "flex"})
+
+        def _on_worker(_d: Any) -> None:
+            _on_stage({"stage": "work"})
+
+        # Named handlers so we can unsubscribe (no EventBus listener leak)
         self.bus.on("pipeline.stage", _on_stage)
-        self.bus.on("pipeline.brainstorm", lambda _d: _on_stage({"stage": "brainstorm"}))
-        self.bus.on("pipeline.distill", lambda _d: _on_stage({"stage": "distill"}))
-        self.bus.on("pipeline.flex", lambda _d: _on_stage({"stage": "flex"}))
-        self.bus.on("pipeline.worker", lambda _d: _on_stage({"stage": "work"}))
+        self.bus.on("pipeline.brainstorm", _on_brainstorm)
+        self.bus.on("pipeline.distill", _on_distill)
+        self.bus.on("pipeline.flex", _on_flex)
+        self.bus.on("pipeline.worker", _on_worker)
+
+        def _cleanup_handlers() -> None:
+            self.bus.off("pipeline.stage", _on_stage)
+            self.bus.off("pipeline.brainstorm", _on_brainstorm)
+            self.bus.off("pipeline.distill", _on_distill)
+            self.bus.off("pipeline.flex", _on_flex)
+            self.bus.off("pipeline.worker", _on_worker)
 
         def _run() -> None:
-            try:
-                runner()
-                if self.pipeline.state.error:
-                    self.last_error = self.pipeline.state.error
+            # Serialize pipeline jobs — shared orchestrator state
+            with self._pipeline_lock:
+                try:
+                    runner()
+                    if self.pipeline.state.error:
+                        self.last_error = self.pipeline.state.error
+                        job["status"] = "error"
+                        job["error"] = self.pipeline.state.error
+                    elif self.pipeline.state.stage.value == "clarify":
+                        job["status"] = "clarify"
+                    else:
+                        job["status"] = "done"
+                        # Plan: agent outputs land in temp workspace first
+                        if name in ("execute", "pipeline"):
+                            self._capture_workspace_outputs()
+                    job["stage"] = self.pipeline.state.stage.value
+                    job["snapshot"] = self.snapshot()
+                except Exception as exc:  # noqa: BLE001
                     job["status"] = "error"
-                    job["error"] = self.pipeline.state.error
-                elif self.pipeline.state.stage.value == "clarify":
-                    job["status"] = "clarify"
-                else:
-                    job["status"] = "done"
-                job["stage"] = self.pipeline.state.stage.value
-                job["snapshot"] = self.snapshot()
-            except Exception as exc:  # noqa: BLE001
-                job["status"] = "error"
-                job["error"] = str(exc)
-                job["stage"] = "error"
-                self.last_error = str(exc)
-                job["snapshot"] = self.snapshot()
+                    job["error"] = str(exc)
+                    job["stage"] = "error"
+                    self.last_error = str(exc)
+                    job["snapshot"] = self.snapshot()
+                finally:
+                    _cleanup_handlers()
 
         t = threading.Thread(target=_run, name=f"{name}-{job_id}", daemon=True)
         t.start()
@@ -545,6 +578,32 @@ class Hub:
             "stage": "idle",
             "message": f"{name} started — poll /api/jobs/{{id}}",
         }
+
+    def _capture_workspace_outputs(self) -> None:
+        """Write worker results into temp workspace (plan: dual workspace)."""
+        st = self.pipeline.state
+        for out in st.worker_outputs or []:
+            wid = str(out.get("worker") or "worker")
+            body = str(out.get("result") or "").strip()
+            if not body:
+                continue
+            # Prefer .html when content looks like HTML
+            low = body.lower()
+            ext = ".html" if ("<!doctype" in low or "<html" in low) else ".txt"
+            name = f"{wid}_{st.stage.value}{ext}"
+            try:
+                self.workspace.write_text("temp", name, body)
+            except Exception:  # noqa: BLE001
+                pass
+        if st.brainstorm_notes:
+            try:
+                self.workspace.write_text(
+                    "temp",
+                    "brainstorm_latest.txt",
+                    st.brainstorm_notes[:8000],
+                )
+            except Exception:  # noqa: BLE001
+                pass
 
     def chat_async(self, text: str, *, full: bool = False) -> dict[str, Any]:
         """Async: brainstorm turn by default; full=True runs entire pipeline."""

@@ -106,6 +106,40 @@ html, body {
   color: #a5b4fc;
 }
 
+.btn-workspace {
+  width: 88px;
+  height: 28px;
+  border: 1px solid #0ca678;
+  border-radius: 4px;
+  background: #343a40;
+  color: #63e6be;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.btn-workspace:hover {
+  background: #495057;
+}
+
+.flex-preset-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  height: 28px;
+}
+
+.flex-preset-select {
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 11px;
+  max-width: 110px;
+}
+
 .btn-archive {
   border-color: #364fc7;
   color: #91a7ff;
@@ -854,6 +888,137 @@ html, body {
 .system-hint {
   font-size: 11px;
   margin: 0;
+}
+
+/* —— Workspace modal —— */
+.workspace-panel {
+  max-width: min(900px, 96vw);
+  max-height: min(88vh, 700px);
+}
+
+.workspace-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 10px 14px 0;
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+.workspace-col {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #1e1f23;
+  display: flex;
+  flex-direction: column;
+  max-height: 220px;
+  overflow: hidden;
+}
+
+.workspace-col-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+
+.workspace-col-head h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.btn-ws-sm {
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: #343a40;
+  color: var(--text-muted);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.btn-ws-sm:hover {
+  color: var(--text);
+}
+
+.ws-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  overflow: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.ws-list li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  margin-bottom: 2px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.ws-list li:hover,
+.ws-list li.active {
+  border-color: #0ca678;
+  background: #0b2e24;
+}
+
+.ws-list .ws-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ws-list .ws-bytes {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.ws-list .ws-action {
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: #343a40;
+  color: var(--text);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.workspace-preview-wrap {
+  margin: 10px 14px 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #1e1f23;
+  display: flex;
+  flex-direction: column;
+  min-height: 140px;
+  max-height: 220px;
+  overflow: hidden;
+}
+
+.ws-preview {
+  margin: 0;
+  padding: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: auto;
+  flex: 1 1 auto;
+  color: var(--text);
 }
 
 .agent-card .card-online {
