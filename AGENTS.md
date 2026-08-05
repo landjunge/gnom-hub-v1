@@ -27,3 +27,13 @@
 ```
 Chat → Brainstorm → Distillation → [Execute] → Coordinator → Worker(s) → Box 3 + Memory
 ```
+
+## Basic user test (remember)
+
+Canonical real-user regression (keyboard chat → landing page):
+
+- **Doc:** [`docs/BASIC_USER_TEST.md`](docs/BASIC_USER_TEST.md)
+- **Script:** `python scripts/user_landing_e2e.py` (Playwright + live server + LLM key)
+- **Must pass criteria:** brainstorm Box 2 non-empty, Execute works after Send, ≥1 worker panel, no pipeline error
+- **Known pitfall fixed in 3.7.1:** after brainstorm, Execute must re-enable when `chatBusy` clears (`lastCanExecute`)
+- Re-run this script when touching chat busy, Execute button, pipeline stages, or Box 3

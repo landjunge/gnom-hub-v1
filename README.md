@@ -1,19 +1,10 @@
-# Gnom-Hub v3.7.0
+# Gnom-Hub v3.7.1
 
 Local multi-agent control hub: **brainstorm first**, then **Execute** workers.
 
-Desktop · USB · COLD · Vector · Trace · Backup · Jobs · Workspace · Tools · HOT facts · **↻ single-worker re-run** · **card cost** · **Hist↓**.
+Desktop · USB · COLD · Vector · Trace · Backup · Jobs · Workspace · Tools · HOT facts · **↻ re-run** · **card cost** · **Hist↓** · **Execute re-enable fix**.
 
 > **Convention:** every meaningful change is **pushed to `main`** and this **README is updated** in the same commit.
-
----
-
-## HOT vs WARM
-
-| Layer | Lifetime | System | Telegram |
-|-------|----------|--------|----------|
-| **HOT** | Session (reset clears) | Add / Del / Clear / →W promote | `/hot …` |
-| **WARM** | Durable across reset | Add / Del / Clear | `/warm …` |
 
 ---
 
@@ -26,26 +17,32 @@ cd gnom-hub-v1
 ./scripts/quality_check.sh
 ```
 
-**http://127.0.0.1:8080/?v=79**
+**http://127.0.0.1:8080/?v=80**
 
 ---
 
-## UI (3.7)
+## Basic user test (keyboard → landing page)
+
+Real browser + real keyboard (Playwright), live LLM:
+
+```bash
+python scripts/user_landing_e2e.py
+# optional: GNOM_E2E_HEADED=1 python scripts/user_landing_e2e.py
+```
+
+Doc: [`docs/BASIC_USER_TEST.md`](docs/BASIC_USER_TEST.md)
+
+---
+
+## UI (3.7.x)
 
 | Control | Action |
 |---------|--------|
-| **↻** (worker panel) | Re-run that worker only |
-| **Hist↓** | Export session result history as Markdown |
-| **Agent cards** | `tok · $cost` per agent |
-| **Re-Exec** | Full re-execute from history brainstorm (2.0+) |
-
----
-
-## API (new in 3.7)
-
-| Method | Path | Purpose |
-|--------|------|---------|
-| POST | `/api/workers/{worker1–4}/rerun` | Re-run one worker (`?sync=1` optional) |
+| **Send / Enter** | Brainstorm |
+| **Execute** | Workers (must enable after brainstorm — fixed in 3.7.1) |
+| **↻** | Re-run one worker |
+| **Hist↓** | Export result history |
+| **Cards** | `tok · $cost` |
 
 ---
 
@@ -53,10 +50,9 @@ cd gnom-hub-v1
 
 | Tag | Highlights |
 |-----|------------|
-| 3.4 | Workspace zip + /ws |
-| 3.5 | Tools browser + /tools /fetch |
-| 3.6 | HOT facts manager + promote to WARM |
-| **3.7** | Single-worker re-run, card cost, history export |
+| 3.6 | HOT facts + promote to WARM |
+| 3.7 | Single-worker re-run, card cost, Hist↓ |
+| **3.7.1** | Execute re-enable after brainstorm; basic user E2E |
 
 ---
 
@@ -64,9 +60,10 @@ cd gnom-hub-v1
 
 ```bash
 ./scripts/quality_check.sh
+python scripts/user_landing_e2e.py   # needs server + key + playwright
 ```
 
-Docs: [`docs/ROADMAP.md`](docs/ROADMAP.md)
+Docs: [`docs/ROADMAP.md`](docs/ROADMAP.md) · [`docs/BASIC_USER_TEST.md`](docs/BASIC_USER_TEST.md)
 
 ## License
 

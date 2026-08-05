@@ -119,6 +119,7 @@
   let jobTimerInterval = null;
   let lastJobElapsedSec = 0;
   let lastReportedPipelineError = null;
+  let lastCanExecute = false;
   const CHAT_STORAGE_KEY = "gnom-hub-chat-log-v1";
   const HISTORY_KEY = "gnom-hub-result-history-v1";
   const COMPACT_KEY = "gnom-hub-compact-v1";
@@ -521,8 +522,9 @@
       );
     }
 
+    lastCanExecute = !!p.can_execute;
     if (els.btnExecute) {
-      els.btnExecute.disabled = !p.can_execute || chatBusy;
+      els.btnExecute.disabled = !lastCanExecute || chatBusy;
     }
 
     renderBox3Workers(p);
@@ -1861,8 +1863,8 @@
       els.btnSend.textContent = chatBusy ? "…" : "Send";
     }
     if (els.btnExecute) {
-      // re-evaluated in applySnapshot; only hard-disable while busy
-      if (chatBusy) els.btnExecute.disabled = true;
+      // Must re-apply can_execute when busy ends — applySnapshot often ran while busy=true
+      els.btnExecute.disabled = !lastCanExecute || chatBusy;
     }
     const btnSendExec = document.getElementById("btn-send-exec");
     if (btnSendExec) btnSendExec.disabled = chatBusy;

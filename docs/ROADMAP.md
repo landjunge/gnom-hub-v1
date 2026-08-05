@@ -269,6 +269,14 @@
 | Export result history (Hist↓ Markdown) | **done** |
 | Version / docs 3.7 | **done** |
 
+## V3.7.1
+
+| Item | Status |
+|------|--------|
+| Fix Execute disabled after brainstorm (`lastCanExecute`) | **done** |
+| Basic user E2E script (keyboard → landing page) | **done** |
+| docs/BASIC_USER_TEST.md + AGENTS.md memory | **done** |
+
 ## Post-V3.7 (optional)
 
 | Item | Notes |
