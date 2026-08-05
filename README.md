@@ -1,70 +1,124 @@
 # Gnom-Hub v3.7.1
 
-Local multi-agent control hub: **brainstorm first**, then **Execute** workers.
-
-Desktop · USB · COLD · Vector · Trace · Backup · Jobs · Workspace · Tools · HOT facts · **↻ re-run** · **card cost** · **Hist↓** · **Execute re-enable fix**.
-
-> **Convention:** every meaningful change is **pushed to `main`** and this **README is updated** in the same commit.
+Local multi-agent hub: **brainstorm first**, then **Execute** workers.
 
 ---
 
-## Install & run
+## English
+
+### Install & run
 
 ```bash
 cd gnom-hub-v1
 ./scripts/install.sh && source .venv/bin/activate
 ./scripts/start.sh
+# http://127.0.0.1:8080/
 ./scripts/quality_check.sh
 ```
 
-**http://127.0.0.1:8080/?v=80**
+**Keys:** [`docs/KEYS_AND_MODELS.md`](docs/KEYS_AND_MODE.md) — `Key.txt` + model `deepseek-v4-flash`.
 
----
+### Chat buttons
 
-## Basic user test (keyboard → landing page)
+| Button | Meaning |
+|--------|---------|
+| **Send** | Brainstorm only (Box 2) |
+| **Execute** | Distill → workers → Box 3 |
+| **Send+Exec** | Both in one go |
+| **Mic** | Speech-to-text |
+| **Cancel** | Stop running job (when visible) |
 
-Real browser + real keyboard (Playwright), live LLM:
+### Boxes
 
-```bash
-python scripts/user_landing_e2e.py
-# optional: GNOM_E2E_HEADED=1 python scripts/user_landing_e2e.py
-```
+| Box | Content |
+|-----|---------|
+| **1 Arounder** | Help tooltips + Clarify (Yes/No/…) |
+| **2 Brainstorm** | Dialogue / notes (no HOT strip) |
+| **3 Workers** | One worker result (HTML preview or text) + Preview/Source/Copy |
 
-Doc: [`docs/BASIC_USER_TEST.md`](docs/BASIC_USER_TEST.md)
+### Computer use (mouse / keyboard / screen)
 
----
+Backend + **Tools** modal (not automatic from chat):
 
-## UI (3.7.x)
+1. Open **Tools**
+2. Section **Computer use**: Inspect / Click / Type / Shell  
+3. **God** badge **ON** for real control (else dry-run)  
+4. Optional stack: `pip install -e ".[computer]"` — see [`docs/TOOLS_PORTFOLIO.md`](docs/TOOLS_PORTFOLIO.md)
 
-| Control | Action |
-|---------|--------|
-| **Send / Enter** | Brainstorm |
-| **Execute** | Workers (must enable after brainstorm — fixed in 3.7.1) |
-| **↻** | Re-run one worker |
-| **Hist↓** | Export result history |
-| **Cards** | `tok · $cost` |
-
----
-
-## Releases
-
-| Tag | Highlights |
-|-----|------------|
-| 3.6 | HOT facts + promote to WARM |
-| 3.7 | Single-worker re-run, card cost, Hist↓ |
-| **3.7.1** | Execute re-enable after brainstorm; basic user E2E |
-
----
-
-## Dev
+### Tests
 
 ```bash
 ./scripts/quality_check.sh
-python scripts/user_landing_e2e.py   # needs server + key + playwright
+python scripts/basic_tests.py          # B1–B3, server on :8080
+python scripts/user_landing_e2e.py     # keyboard E2E + live LLM
 ```
 
-Docs: [`docs/ROADMAP.md`](docs/ROADMAP.md) · [`docs/BASIC_USER_TEST.md`](docs/BASIC_USER_TEST.md) · [`docs/KEYS_AND_MODELS.md`](docs/KEYS_AND_MODELS.md)
+### Docs
 
-## License
+| Doc | Topic |
+|-----|--------|
+| [`docs/BASIC_USER_TEST.md`](docs/BASIC_USER_TEST.md) | Landing-page E2E |
+| [`docs/KEYS_AND_MODELS.md`](docs/KEYS_AND_MODELS.md) | Keys / model |
+| [`docs/STABILITY.md`](docs/STABILITY.md) | Stability checklist |
+| [`docs/TOOLS_PORTFOLIO.md`](docs/TOOLS_PORTFOLIO.md) | Computer-use libs |
+| [`docs/WORKFLOWS_AND_PRESETS.md`](docs/WORKFLOWS_AND_PRESETS.md) | Team presets / plan_mode freeze |
+| [`AGENTS.md`](AGENTS.md) | Agent coding rules (gate before push) |
+
+### License
 
 Private use.
+
+---
+
+## Deutsch
+
+### Install & Start
+
+```bash
+cd gnom-hub-v1
+./scripts/install.sh && source .venv/bin/activate
+./scripts/start.sh
+# http://127.0.0.1:8080/
+./scripts/quality_check.sh
+```
+
+**Keys:** [`docs/KEYS_AND_MODELS.md`](docs/KEYS_AND_MODELS.md) — `Key.txt`, Modell `deepseek-v4-flash`.
+
+### Chat-Buttons
+
+| Button | Bedeutung |
+|--------|-----------|
+| **Send** | nur Brainstorm (Box 2) |
+| **Execute** | Distill → Worker → Box 3 |
+| **Send+Exec** | beides hintereinander |
+| **Mic** | Sprache → Text |
+| **Cancel** | laufenden Job abbrechen |
+
+### Boxen
+
+| Box | Inhalt |
+|-----|--------|
+| **1 Arounder** | Hilfe + Clarify (Yes/No/…) |
+| **2 Brainstorm** | Dialog / Notizen (kein HOT-Streifen) |
+| **3 Workers** | ein Worker-Ergebnis (HTML-Preview oder Text) |
+
+### Computer-Use (Maus / Tastatur / Screen)
+
+Im Backend + im **Tools**-Modal (nicht automatisch aus dem Chat):
+
+1. **Tools** öffnen  
+2. **Computer use**: Inspect / Click / Type / Shell  
+3. **God**-Badge **an** für echte Steuerung (sonst nur dry-run)  
+4. Optional: `pip install -e ".[computer]"` — Details: [`docs/TOOLS_PORTFOLIO.md`](docs/TOOLS_PORTFOLIO.md)
+
+### Tests
+
+```bash
+./scripts/quality_check.sh
+python scripts/basic_tests.py
+python scripts/user_landing_e2e.py
+```
+
+### Lizenz
+
+Private Nutzung.
