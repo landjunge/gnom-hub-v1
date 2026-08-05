@@ -26,6 +26,23 @@ def test_health(client: TestClient):
     assert r.status_code == 200
     assert r.json()["status"] == "ok"
     assert "version" in r.json()
+    assert r.json()["version"].startswith("1.6")
+
+
+def test_ui_static_has_v16_features(client: TestClient):
+    """Smoke: app.js ships download / fullscreen / Ctrl+S / focusBox3."""
+    js = client.get("/static/app.js")
+    assert js.status_code == 200
+    body = js.text
+    assert "downloadWorkerResult" in body
+    assert "openWorkerFullscreen" in body
+    assert "focusBox3" in body
+    assert 'ev.key === "s"' in body or "ev.key === 's'" in body
+
+    css = client.get("/static/app.css")
+    assert css.status_code == 200
+    assert "worker-fs-overlay" in css.text
+    assert "box3-flash" in css.text
 
 
 def test_cancel_backups_presets_delete(client: TestClient):

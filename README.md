@@ -1,8 +1,8 @@
-# Gnom-Hub v1.5.0
+# Gnom-Hub v1.6.0
 
 Local multi-agent control hub: **brainstorm first**, then **Execute** workers.
 
-Desktop · USB-friendly · DeepSeek / Ollama · URL fetch · Export · Cancel · **Send+Exec** · **Copy** results · **Auto-save** after Execute.
+Desktop · USB-friendly · DeepSeek / Ollama · URL fetch · Export · Cancel · **Send+Exec** · **Copy / Download / Fullscreen** worker results · **Ctrl+S** save · **Auto-save** after Execute · Box 3 focus flash.
 
 > **Convention:** every meaningful change is **pushed to `main`** and this **README is updated** in the same commit.
 
@@ -14,10 +14,11 @@ Desktop · USB-friendly · DeepSeek / Ollama · URL fetch · Export · Cancel ·
 Send / Enter              → Brainstorm (Box 2)
 Execute / Ctrl+Enter      → Distill → Flex → Workers → Quality → Memory
 Send+Exec                 → Brainstorm turn then Execute
-Esc                       → Cancel running job
+Ctrl/⌘+S                  → Save HOT + agents
+Esc                       → Close fullscreen, or cancel running job
 ```
 
-After a successful **Execute**, HOT + agents are **auto-saved**.
+After a successful **Execute**, HOT + agents are **auto-saved** and **Box 3** is focused (flash highlight).
 
 ---
 
@@ -31,7 +32,7 @@ cd gnom-hub-v1
 ./scripts/quality_check.sh
 ```
 
-**http://127.0.0.1:8080/?v=56**
+**http://127.0.0.1:8080/?v=57**
 
 ---
 
@@ -43,7 +44,10 @@ cd gnom-hub-v1
 | **Execute** / Ctrl+⌘+Enter | Workers pipeline |
 | **Send+Exec** | Send then Execute |
 | **Cancel** / Esc | Soft-cancel job |
+| **Ctrl/⌘+S** | Save HOT + agents |
 | **Copy** (Box 3) | Copy worker result to clipboard |
+| **DL** (Box 3) | Download result as `.html` or `.txt` |
+| **⛶** (Box 3) | Fullscreen preview (Esc to close) |
 | **Export** | Download last run as Markdown |
 | **Clear chat** | Wipe browser chat log |
 | **Mic** | Speech-to-text |
@@ -69,13 +73,9 @@ System → backups: **click name = download**, **× = delete**.
 
 ---
 
-## API (new in 1.5)
+## API
 
-| Method | Path | Purpose |
-|--------|------|---------|
-| DELETE | `/api/backups/{name}` | Delete backup zip |
-
-Plus prior: chat, execute, cancel, export, ollama models, backups list/download, presets, clean, checkpoint, trace, workspace, tools (`web_fetch`).
+No new endpoints in 1.6 (UI-only). Prior: chat, execute, cancel, export, ollama models, backups list/download/delete, presets, clean, checkpoint, trace, workspace, tools (`web_fetch`), save.
 
 ---
 
@@ -88,7 +88,8 @@ Plus prior: chat, execute, cancel, export, ollama models, backups list/download,
 | 1.2 | Model list, auto URL, Export |
 | 1.3 | Cancel, chat persist, presets UI |
 | 1.4 | Backup download, keyboard, clear chat |
-| **1.5** | Send+Exec, Copy, auto-save, delete backup, richer Help |
+| 1.5 | Send+Exec, Copy, auto-save, delete backup |
+| **1.6** | HTML download, fullscreen preview, Ctrl+S, focus Box 3 |
 
 ---
 

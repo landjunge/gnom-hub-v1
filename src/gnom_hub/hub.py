@@ -535,7 +535,7 @@ class Hub:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "1.5.0",
+            "version": "1.6.0",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -914,7 +914,7 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "1.5.0",
+            "version": "1.6.0",
             "providers": self.llm.providers_snapshot(),
             "backups": self.list_backups()[:8],
         }
@@ -1201,15 +1201,16 @@ class Hub:
                 "1) Send / Enter = brainstorm turn. "
                 "2) Execute / Ctrl+Enter = distill + workers. "
                 "3) Send+Execute = one shot after typing. "
-                "4) Esc = cancel running job. "
-                "5) Click card = tune; double-click = toggle (Memory locked). "
-                "6) Workspace temp after Execute; System = backup/presets/clean. "
-                "7) Auto-save runs after successful Execute."
+                "4) Ctrl/⌘+S = save HOT + agents. "
+                "5) Esc = close fullscreen or cancel job. "
+                "6) Box 3: Preview/Source, Copy, DL (html/txt), fullscreen. "
+                "7) Click card = tune; double-click = toggle (Memory locked). "
+                "8) Auto-save + Box 3 focus after successful Execute."
             ),
-            "example": "Type idea → Send+Execute → Box 3 → Export or Workspace promote.",
+            "example": "Type idea → Send+Execute → Box 3 → DL or fullscreen → Export.",
             "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",
             "keys": (
-                "Keyboard: Enter send · Ctrl/⌘+Enter execute · Esc cancel. "
+                "Keyboard: Enter send · Ctrl/⌘+Enter execute · Ctrl/⌘+S save · Esc cancel/close FS. "
                 "DEEPSEEK_API_KEY or Ollama. TELEGRAM optional."
             ),
         }

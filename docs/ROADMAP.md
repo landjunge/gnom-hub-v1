@@ -53,7 +53,16 @@
 | Delete backup (API + UI) | **done** |
 | Help shows keyboard shortcuts | **done** |
 
-## Post-V1.5 (optional)
+## V1.6.0
+
+| Item | Status |
+|------|--------|
+| Worker result download (HTML/txt) | **done** |
+| Fullscreen HTML/source preview | **done** |
+| Ctrl/⌘+S save shortcut | **done** |
+| Focus + flash Box 3 after Execute | **done** |
+
+## Post-V1.6 (optional)
 
 | Item | Notes |
 |------|--------|

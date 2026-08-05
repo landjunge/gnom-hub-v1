@@ -1494,6 +1494,7 @@
       if (stage === "done") {
         appendChat("system", "Execute done — see Box 3.");
         toast("Execute done", "ok");
+        focusBox3();
         try {
           await api("POST", "/api/save");
           appendChat("system", "Auto-saved HOT + agents.");
@@ -1569,7 +1570,7 @@
       els.tipHow.textContent =
         "Send = brainstorm. Execute = workers. Send+Exec = both. Card click = tune.";
       els.tipExample.textContent =
-        "Keyboard: Enter send · Ctrl/⌘+Enter execute · Esc cancel";
+        "Keyboard: Enter send · Ctrl/⌘+Enter execute · Ctrl/⌘+S save · Esc cancel/close FS";
       toast("Help offline: " + err.message, "error");
     }
   }
@@ -1905,6 +1906,31 @@
       }
     });
     mode.appendChild(btnCopy);
+
+    // Download (HTML file if detected, else .txt)
+    const btnDl = document.createElement("button");
+    btnDl.type = "button";
+    btnDl.className = "worker-mode-btn download-btn";
+    btnDl.textContent = "DL";
+    btnDl.title = isHtml ? "Download as HTML" : "Download as text";
+    btnDl.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      downloadWorkerResult(out, raw, html);
+    });
+    mode.appendChild(btnDl);
+
+    // Fullscreen preview (HTML) or source text
+    const btnFs = document.createElement("button");
+    btnFs.type = "button";
+    btnFs.className = "worker-mode-btn fullscreen-btn";
+    btnFs.textContent = "⛶";
+    btnFs.title = "Fullscreen preview";
+    btnFs.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      openWorkerFullscreen(out, raw, html);
+    });
+    mode.appendChild(btnFs);
+
     head.appendChild(mode);
     panel.appendChild(head);
 
@@ -1931,25 +1957,18 @@
       );
       frame.setAttribute("title", (out.name || "Worker") + " preview");
       // Prefer full document; wrap fragments
-      let doc = html;
-      if (!/<!DOCTYPE/i.test(doc) && !/<html/i.test(doc)) {
-        doc =
-          "<!DOCTYPE html><html><head><meta charset=\"utf-8\">" +
-          "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
-          "<style>body{font-family:system-ui,sans-serif;margin:12px;}</style>" +
-          "</head><body>" +
-          doc +
-          "</body></html>";
-      }
+      let doc = wrapHtmlDocument(html);
       frame.srcdoc = doc;
       content.appendChild(frame);
       sourcePre.hidden = true;
       content.appendChild(sourcePre);
 
       mode.querySelectorAll(".worker-mode-btn").forEach(function (btn) {
+        // Mode toggles only (Preview/Source), not action buttons
+        if (!btn.dataset.mode) return;
         btn.addEventListener("click", function () {
           mode.querySelectorAll(".worker-mode-btn").forEach(function (b) {
-            b.classList.remove("is-active");
+            if (b.dataset.mode) b.classList.remove("is-active");
           });
           btn.classList.add("is-active");
           const m = btn.dataset.mode;
@@ -1967,6 +1986,125 @@
     }
     panel.appendChild(content);
     return panel;
+  }
+
+  function wrapHtmlDocument(html) {
+    let doc = html || "";
+    if (!/<!DOCTYPE/i.test(doc) && !/<html/i.test(doc)) {
+      doc =
+        "<!DOCTYPE html><html><head><meta charset=\"utf-8\">" +
+        "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
+        "<style>body{font-family:system-ui,sans-serif;margin:12px;}</style>" +
+        "</head><body>" +
+        doc +
+        "</body></html>";
+    }
+    return doc;
+  }
+
+  function downloadWorkerResult(out, raw, html) {
+    const name = (out.name || out.worker || "worker")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    const isHtml = !!html;
+    const blob = new Blob([isHtml ? wrapHtmlDocument(html) : raw || ""], {
+      type: isHtml ? "text/html;charset=utf-8" : "text/plain;charset=utf-8",
+    });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = (name || "worker") + (isHtml ? ".html" : ".txt");
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () {
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }, 500);
+    toast("Downloaded " + a.download, "ok");
+  }
+
+  function closeWorkerFullscreen() {
+    const el = document.getElementById("worker-fs-overlay");
+    if (el) el.remove();
+    document.body.classList.remove("worker-fs-open");
+  }
+
+  function openWorkerFullscreen(out, raw, html) {
+    closeWorkerFullscreen();
+    const overlay = document.createElement("div");
+    overlay.id = "worker-fs-overlay";
+    overlay.className = "worker-fs-overlay";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-label", "Fullscreen preview");
+
+    const bar = document.createElement("div");
+    bar.className = "worker-fs-bar";
+    const title = document.createElement("span");
+    title.className = "worker-fs-title";
+    title.textContent = (out.name || "Worker") + " · fullscreen";
+    const actions = document.createElement("div");
+    actions.className = "worker-fs-actions";
+
+    const btnDl = document.createElement("button");
+    btnDl.type = "button";
+    btnDl.className = "worker-mode-btn";
+    btnDl.textContent = "Download";
+    btnDl.addEventListener("click", function () {
+      downloadWorkerResult(out, raw, html);
+    });
+
+    const btnClose = document.createElement("button");
+    btnClose.type = "button";
+    btnClose.className = "worker-mode-btn";
+    btnClose.textContent = "Close · Esc";
+    btnClose.addEventListener("click", closeWorkerFullscreen);
+
+    actions.appendChild(btnDl);
+    actions.appendChild(btnClose);
+    bar.appendChild(title);
+    bar.appendChild(actions);
+
+    const body = document.createElement("div");
+    body.className = "worker-fs-body";
+    if (html) {
+      const frame = document.createElement("iframe");
+      frame.className = "worker-fs-frame";
+      frame.setAttribute(
+        "sandbox",
+        "allow-same-origin allow-forms allow-popups allow-modals"
+      );
+      frame.setAttribute("title", (out.name || "Worker") + " fullscreen");
+      frame.srcdoc = wrapHtmlDocument(html);
+      body.appendChild(frame);
+    } else {
+      const pre = document.createElement("pre");
+      pre.className = "worker-fs-source";
+      pre.textContent = raw || "";
+      body.appendChild(pre);
+    }
+
+    overlay.appendChild(bar);
+    overlay.appendChild(body);
+    overlay.addEventListener("click", function (ev) {
+      if (ev.target === overlay) closeWorkerFullscreen();
+    });
+    document.body.appendChild(overlay);
+    document.body.classList.add("worker-fs-open");
+  }
+
+  /** Scroll Box 3 into view and flash highlight after Execute. */
+  function focusBox3() {
+    const box = document.getElementById("box3");
+    if (!box) return;
+    try {
+      box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    } catch (_e) {
+      box.scrollIntoView();
+    }
+    box.classList.add("box3-flash");
+    setTimeout(function () {
+      box.classList.remove("box3-flash");
+    }, 1200);
   }
 
   function setBox3(htmlOrText) {
@@ -2035,9 +2173,23 @@
       }
     });
     document.addEventListener("keydown", function (ev) {
-      if (ev.key === "Escape" && chatBusy) {
+      // Esc: close fullscreen first, else cancel running job
+      if (ev.key === "Escape") {
+        if (document.getElementById("worker-fs-overlay")) {
+          ev.preventDefault();
+          closeWorkerFullscreen();
+          return;
+        }
+        if (chatBusy) {
+          ev.preventDefault();
+          cancelCurrentJob();
+        }
+        return;
+      }
+      // Ctrl/Cmd+S = save HOT + agents (skip when typing in modal fields is fine — still save)
+      if ((ev.ctrlKey || ev.metaKey) && (ev.key === "s" || ev.key === "S")) {
         ev.preventDefault();
-        cancelCurrentJob();
+        onSave();
       }
     });
     const btnClearChat = document.getElementById("btn-clear-chat");
