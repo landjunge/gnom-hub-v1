@@ -50,6 +50,7 @@ class SystemBody(BaseModel):
     default_model: str | None = None
     ui_lang: str | None = None
     auto_pack_after_execute: bool | None = None
+    pack_max: int | None = None
 
 
 class WorkerPresetBody(BaseModel):
@@ -100,6 +101,7 @@ class SessionPackBody(BaseModel):
     pack: dict[str, Any]
     include_warm: bool = True
     include_agents: bool = True
+    store: bool = False
 
 
 class ReexecuteBody(BaseModel):
@@ -118,7 +120,7 @@ class ShellBody(BaseModel):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Gnom-Hub v1", version="2.1.0")
+    app = FastAPI(title="Gnom-Hub v1", version="2.2.0")
 
     @app.get("/api/health")
     def health() -> dict[str, Any]:
@@ -126,7 +128,7 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "service": "gnom-hub-v1",
-            "version": "2.1.0",
+            "version": "2.2.0",
             "telegram": hub.telegram.enabled,
             "telegram_running": hub.telegram.running,
             "llm": {
@@ -275,6 +277,7 @@ def create_app() -> FastAPI:
                 body.pack,
                 include_warm=body.include_warm,
                 include_agents=body.include_agents,
+                store=body.store,
             )
         except (ValueError, TypeError) as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
@@ -291,6 +294,21 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=400, detail=str(e)) from e
         except FileNotFoundError as e:
             raise HTTPException(status_code=404, detail=str(e)) from e
+
+    @app.get("/api/session/packs/{name}/download")
+    def session_pack_download(name: str) -> FileResponse:
+        """Download a stored pack file (USB copy)."""
+        try:
+            path = get_hub()._pack_path(name)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        return FileResponse(
+            path,
+            media_type="application/json",
+            filename=path.name,
+        )
 
     @app.post("/api/session/packs/{name}/import")
     def session_pack_import_named(

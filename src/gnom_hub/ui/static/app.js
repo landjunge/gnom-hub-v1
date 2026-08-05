@@ -775,6 +775,8 @@
       }
       const ap = document.getElementById("sys-auto-pack");
       if (ap) ap.checked = !!s.auto_pack_after_execute;
+      const pm = document.getElementById("sys-pack-max");
+      if (pm && s.pack_max != null) pm.value = String(s.pack_max);
       // Session packs list
       try {
         await renderPackList(s.packs);
@@ -885,6 +887,12 @@
       max_budget_usd: budgetRaw === "" ? null : Number(budgetRaw),
       ui_lang: langEl ? langEl.value : "en",
       auto_pack_after_execute: apEl ? !!apEl.checked : false,
+      pack_max: (function () {
+        const el = document.getElementById("sys-pack-max");
+        if (!el || el.value === "") return undefined;
+        const n = parseInt(el.value, 10);
+        return Number.isFinite(n) ? n : undefined;
+      })(),
     };
     try {
       await api("POST", "/api/system", body);
@@ -1627,6 +1635,14 @@
       loadBtn.addEventListener("click", function () {
         loadNamedPack(p.name);
       });
+      const dlBtn = document.createElement("button");
+      dlBtn.type = "button";
+      dlBtn.className = "btn-ws-sm";
+      dlBtn.textContent = "↓";
+      dlBtn.title = "Download pack JSON (USB)";
+      dlBtn.addEventListener("click", function () {
+        downloadNamedPack(p.name);
+      });
       const delBtn = document.createElement("button");
       delBtn.type = "button";
       delBtn.className = "btn-ws-sm";
@@ -1637,6 +1653,7 @@
       });
       li.appendChild(lab);
       li.appendChild(loadBtn);
+      li.appendChild(dlBtn);
       li.appendChild(delBtn);
       ul.appendChild(li);
     });
@@ -1657,6 +1674,28 @@
       toast("Pack loaded", "ok");
     } catch (err) {
       toast("Pack load failed: " + err.message, "error");
+    }
+  }
+
+  async function downloadNamedPack(name) {
+    if (!name) return;
+    try {
+      const data = await api(
+        "GET",
+        "/api/session/packs/" + encodeURIComponent(name)
+      );
+      const pack = data.pack || data;
+      const blob = new Blob([JSON.stringify(pack, null, 2)], {
+        type: "application/json",
+      });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast("Pack downloaded", "ok");
+    } catch (err) {
+      toast("Pack download failed: " + err.message, "error");
     }
   }
 
@@ -1711,10 +1750,12 @@
         pack: pack.pack || pack,
         include_warm: true,
         include_agents: true,
+        store: true,
       });
       applySnapshot(snap);
+      await renderPackList();
       appendChat("system", "Session pack imported: " + (pack.label || file.name));
-      toast("Session pack imported", "ok");
+      toast("Session pack imported + stored", "ok");
     } catch (err) {
       toast("Pack import failed: " + err.message, "error");
     } finally {

@@ -65,6 +65,11 @@ class Hub:
             "yes",
         )
         self._packs_dir = self.root / "data" / "packs"
+        try:
+            _pm = int(os.getenv("GNOM_PACK_MAX", "30").strip() or "30")
+        except ValueError:
+            _pm = 30
+        self.pack_max: int = max(5, min(100, _pm))
         # Feature flags (plan phase 3+ chrome can be dimmed)
         self.feature_phase3: bool = os.getenv("GNOM_PHASE3", "1").strip() not in (
             "0",
@@ -541,7 +546,7 @@ class Hub:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "2.1.0",
+            "version": "2.2.0",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -885,6 +890,11 @@ class Hub:
                 self.ui_lang = lang
         if "auto_pack_after_execute" in fields and fields["auto_pack_after_execute"] is not None:
             self.auto_pack_after_execute = bool(fields["auto_pack_after_execute"])
+        if "pack_max" in fields and fields["pack_max"] is not None:
+            try:
+                self.pack_max = max(5, min(100, int(fields["pack_max"])))
+            except (TypeError, ValueError):
+                pass
         return self.system_dict()
 
     def system_dict(self) -> dict[str, Any]:
@@ -901,11 +911,12 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "2.1.0",
+            "version": "2.2.0",
             "providers": self.llm.providers_snapshot(),
             "backups": self.list_backups()[:8],
             "packs": self.list_session_packs()[:12],
             "auto_pack_after_execute": self.auto_pack_after_execute,
+            "pack_max": self.pack_max,
         }
 
     def save_checkpoint(self) -> dict[str, Any]:
@@ -1247,7 +1258,7 @@ class Hub:
         pack = {
             "format": "gnom-hub-session-pack",
             "format_version": 1,
-            "app_version": "2.1.0",
+            "app_version": "2.2.0",
             "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
             "label": pack_label,
             "hot": dict(self.hot.session),
@@ -1258,14 +1269,16 @@ class Hub:
         }
         filename = f"gnom-hub-session-{stamp}.json"
         saved_path: str | None = None
+        pruned: list[str] = []
         if persist:
             self._packs_dir.mkdir(parents=True, exist_ok=True)
             path = self._packs_dir / filename
             atomic_write_text(path, json.dumps(pack, ensure_ascii=False, indent=2) + "\n")
             saved_path = str(path)
+            pruned = self.prune_session_packs()
         self._append_trace(
             "session.pack.export",
-            {"label": pack["label"], "path": saved_path or ""},
+            {"label": pack["label"], "path": saved_path or "", "pruned": len(pruned)},
         )
         return {
             "ok": True,
@@ -1273,6 +1286,58 @@ class Hub:
             "path": saved_path,
             "pack": pack,
             "chars": len(json.dumps(pack, ensure_ascii=False)),
+            "packs": self.list_session_packs()[:12],
+            "pruned": pruned,
+        }
+
+    def prune_session_packs(self, max_keep: int | None = None) -> list[str]:
+        """Delete oldest packs beyond max_keep (default: self.pack_max). Newest first by name."""
+        keep = self.pack_max if max_keep is None else int(max_keep)
+        keep = max(5, min(100, keep))
+        if not self._packs_dir.is_dir():
+            return []
+        files = sorted(self._packs_dir.glob("gnom-hub-session-*.json"), reverse=True)
+        deleted: list[str] = []
+        for p in files[keep:]:
+            try:
+                p.unlink()
+                deleted.append(p.name)
+            except OSError:
+                continue
+        if deleted:
+            self._append_trace(
+                "session.pack.prune",
+                {"deleted": len(deleted), "keep": keep},
+            )
+        return deleted
+
+    def store_session_pack(
+        self,
+        pack: dict[str, Any],
+        *,
+        filename: str | None = None,
+    ) -> dict[str, Any]:
+        """Write a pack JSON under data/packs/ (e.g. after USB import)."""
+        if not isinstance(pack, dict):
+            raise TypeError("pack must be an object")
+        if pack.get("format") != "gnom-hub-session-pack":
+            raise ValueError("not a gnom-hub-session-pack")
+        from datetime import datetime, timezone
+
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        name = Path(filename or f"gnom-hub-session-{stamp}.json").name
+        if not name.startswith("gnom-hub-session-") or not name.endswith(".json"):
+            name = f"gnom-hub-session-{stamp}.json"
+        self._packs_dir.mkdir(parents=True, exist_ok=True)
+        path = self._packs_dir / name
+        atomic_write_text(path, json.dumps(pack, ensure_ascii=False, indent=2) + "\n")
+        pruned = self.prune_session_packs()
+        self._append_trace("session.pack.store", {"name": path.name})
+        return {
+            "ok": True,
+            "name": path.name,
+            "path": str(path),
+            "pruned": pruned,
             "packs": self.list_session_packs()[:12],
         }
 
@@ -1357,6 +1422,7 @@ class Hub:
         *,
         include_warm: bool = True,
         include_agents: bool = True,
+        store: bool = False,
     ) -> dict[str, Any]:
         """Restore a portable session pack into this hub."""
         from gnom_hub.pipeline.models import DistillQuestion, PipelineStage, PipelineState
@@ -1365,6 +1431,8 @@ class Hub:
             raise TypeError("pack must be an object")
         if pack.get("format") != "gnom-hub-session-pack":
             raise ValueError("not a gnom-hub-session-pack")
+        if store:
+            self.store_session_pack(pack)
         hot = pack.get("hot") if isinstance(pack.get("hot"), dict) else {}
         self.hot.session = {
             "messages": list(hot.get("messages") or []),
@@ -1516,7 +1584,7 @@ class Hub:
                 "5) Esc = close fullscreen or cancel job. "
                 "6) Box 3: Copy/DL/Tab/WS/↑perm/fullscreen; toolbar Copy all + Diff + History. "
                 "7) Cost badge + Compact density; job timer while busy. "
-                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (System Pack ↓/↑ + list). 10) History Re-Exec. 11) Optional auto-pack after Execute."
+                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (Pack ↓/↑, list Load/↓/Del, auto-pack, prune max). 10) History Re-Exec. 11) Import from USB can store into data/packs/."
             ),
             "example": "Type idea → Execute → Pack ↓ (USB) → History Re-Exec → Diff.",
             "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",

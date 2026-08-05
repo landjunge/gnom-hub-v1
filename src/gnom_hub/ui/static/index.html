@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=63" />
+  <link rel="stylesheet" href="/static/app.css?v=64" />
 </head>
 <body>
   <div id="app">
@@ -276,6 +276,10 @@
         <label class="system-row">
           <input id="sys-auto-pack" type="checkbox" /> Auto-pack after Execute
         </label>
+        <label class="system-row">
+          Max packs kept
+          <input id="sys-pack-max" class="tune-input" type="number" min="5" max="100" step="1" title="Oldest packs pruned after save (5–100)" />
+        </label>
         <p id="system-ckpt" class="system-line muted">Checkpoint: —</p>
         <div class="system-row">
           <span>Session packs</span>
@@ -322,6 +326,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=63"></script>
+  <script src="/static/app.js?v=64"></script>
 </body>
 </html>

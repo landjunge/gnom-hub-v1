@@ -524,3 +524,41 @@ def test_auto_pack_after_execute(client: TestClient):
     client.post("/api/execute?sync=1")
     packs = client.get("/api/session/packs").json()["packs"]
     assert len(packs) >= 1
+
+
+def test_session_pack_download_and_store(client: TestClient):
+    client.post("/api/chat?sync=1", json={"text": "Download pack topic"})
+    client.post("/api/execute?sync=1")
+    exp = client.get("/api/session/pack?persist=1")
+    assert exp.status_code == 200
+    name = exp.json()["filename"]
+    dl = client.get(f"/api/session/packs/{name}/download")
+    assert dl.status_code == 200
+    assert "gnom-hub-session-pack" in dl.text
+    # import with store writes another file under data/packs/
+    pack = exp.json()["pack"]
+    before = {p["name"] for p in client.get("/api/session/packs").json()["packs"]}
+    imp = client.post(
+        "/api/session/pack",
+        json={
+            "pack": pack,
+            "include_warm": True,
+            "include_agents": True,
+            "store": True,
+        },
+    )
+    assert imp.status_code == 200
+    after = {p["name"] for p in client.get("/api/session/packs").json()["packs"]}
+    assert len(after) >= len(before)
+
+
+def test_pack_max_prune(client: TestClient):
+    client.post("/api/system", json={"pack_max": 5})
+    assert client.get("/api/system").json()["pack_max"] == 5
+    # create more than 5 packs
+    for i in range(7):
+        client.post("/api/chat?sync=1", json={"text": f"Prune pack {i}"})
+        r = client.get("/api/session/pack?persist=1&label=" + f"p{i}")
+        assert r.status_code == 200
+    packs = client.get("/api/session/packs").json()["packs"]
+    assert len(packs) <= 5

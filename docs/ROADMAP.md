@@ -116,7 +116,16 @@
 | Auto-pack after Execute (toggle + env) | **done** |
 | Version / docs 2.1 | **done** |
 
-## Post-V2.1 (optional)
+## V2.2.0
+
+| Item | Status |
+|------|--------|
+| Download named pack from list (↓) | **done** |
+| Import file stores under data/packs/ | **done** |
+| pack_max prune (env GNOM_PACK_MAX / System) | **done** |
+| Version / docs 2.2 | **done** |
+
+## Post-V2.2 (optional)
 
 | Item | Notes |
 |------|--------|
