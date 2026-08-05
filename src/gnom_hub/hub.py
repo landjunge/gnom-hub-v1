@@ -295,6 +295,77 @@ class Hub:
         if len(self.trace) > 100:
             self.trace = self.trace[-100:]
 
+    def clear_trace(self) -> dict[str, Any]:
+        n = len(self.trace)
+        self.trace = []
+        return {"ok": True, "cleared": n, "count": 0, "trace": []}
+
+    def export_trace(
+        self,
+        *,
+        limit: int = 100,
+        fmt: str = "json",
+    ) -> dict[str, Any]:
+        """Export light trace as JSON or Markdown (download helper)."""
+        from datetime import datetime, timezone
+
+        lim = max(1, min(100, int(limit)))
+        events = list(self.trace[-lim:])
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        fmt_l = (fmt or "json").strip().lower()
+        if fmt_l in ("md", "markdown"):
+            lines = [
+                "# Gnom-Hub light trace",
+                f"exported_at: {datetime.now(timezone.utc).replace(microsecond=0).isoformat()}",
+                f"events: {len(events)}",
+                "",
+            ]
+            for e in events:
+                d = e.get("data")
+                extra = ""
+                if isinstance(d, dict):
+                    bits = []
+                    for k in ("stage", "worker", "error", "label", "id", "name"):
+                        if d.get(k) is not None:
+                            bits.append(f"{k}={d.get(k)}")
+                    if not bits and d:
+                        bits.append(str(list(d.keys())[:6]))
+                    extra = " ".join(str(b) for b in bits)
+                elif d is not None:
+                    extra = str(d)[:120]
+                lines.append(f"- `{e.get('ts') or ''}` **{e.get('event') or ''}** {extra}".rstrip())
+            body = chr(10).join(lines) + chr(10)
+            filename = f"gnom-hub-trace-{stamp}.md"
+            return {
+                "ok": True,
+                "format": "markdown",
+                "filename": filename,
+                "content": body,
+                "count": len(events),
+            }
+        import json as _json
+
+        body = _json.dumps(
+            {
+                "format": "gnom-hub-trace",
+                "format_version": 1,
+                "app_version": "3.1.0",
+                "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+                "count": len(events),
+                "trace": events,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ) + chr(10)
+        filename = f"gnom-hub-trace-{stamp}.json"
+        return {
+            "ok": True,
+            "format": "json",
+            "filename": filename,
+            "content": body,
+            "count": len(events),
+        }
+
     def _telegram_command(self, cmd: str, arg: str, meta: dict[str, Any]) -> str:
         if cmd == "help":
             return (
@@ -368,6 +439,8 @@ class Hub:
             return self._telegram_cold(arg.strip())
         if cmd in ("vec", "vector", "search"):
             return self._telegram_vec(arg.strip())
+        if cmd == "trace":
+            return self._telegram_trace(arg.strip())
         if cmd == "cancel":
             return self._telegram_cancel()
         if cmd == "last":
@@ -626,6 +699,33 @@ class Hub:
             return chr(10).join(lines)
         return "Usage: /vec search <q> | add <text> | list | del <id> | clear"
 
+    def _telegram_trace(self, arg: str) -> str:
+        """Telegram: /trace [n] | clear."""
+        parts = arg.split(maxsplit=1)
+        sub = (parts[0] if parts else "").lower()
+        if sub == "clear":
+            n = len(self.trace)
+            self.trace = []
+            return f"Trace cleared ({n} events)."
+        limit = 15
+        if sub.isdigit():
+            limit = max(1, min(40, int(sub)))
+        elif arg.strip().isdigit():
+            limit = max(1, min(40, int(arg.strip())))
+        events = list(self.trace[-limit:])
+        if not events:
+            return "Trace empty. Run /bs or /exec first."
+        lines = [f"Trace (last {len(events)}/{len(self.trace)}):"]
+        for e in events:
+            d = e.get("data") if isinstance(e.get("data"), dict) else {}
+            extra = ""
+            if d.get("stage"):
+                extra = f" stage={d.get('stage')}"
+            elif d.get("error"):
+                extra = f" err={str(d.get('error'))[:60]}"
+            lines.append(f"{e.get('ts') or ''} {e.get('event') or ''}{extra}")
+        return chr(10).join(lines)
+
     # ── agent persistence ───────────────────────────────────────────
 
     def _load_agent_state(self) -> None:
@@ -816,7 +916,7 @@ class Hub:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "3.0.0",
+            "version": "3.1.0",
             "flex_presets": list(FLEX_PRESETS),
             "last_error": self.last_error,
             "trace": list(self.trace[-40:]),
@@ -1236,7 +1336,7 @@ class Hub:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "3.0.0",
+            "version": "3.1.0",
             "providers": self.llm.providers_snapshot(),
             "backups": self.list_backups()[:8],
             "packs": self.list_session_packs()[:12],
@@ -1732,7 +1832,7 @@ class Hub:
         pack = {
             "format": "gnom-hub-session-pack",
             "format_version": 1,
-            "app_version": "3.0.0",
+            "app_version": "3.1.0",
             "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
             "label": pack_label,
             "notes": (str(notes).strip()[:200] if notes else ""),
@@ -2140,7 +2240,7 @@ class Hub:
                 "5) Esc = close fullscreen or cancel job. "
                 "6) Box 3: Copy/DL/Tab/WS/↑perm/fullscreen; toolbar Copy all + Diff + History. "
                 "7) Cost badge + Compact density; job timer while busy. "
-                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat/history/workspace/ui_prefs/notes; list filter). 10) History Re-Exec. 11) Telegram: /bs /exec /pack /warm /cold /vec /cancel."
+                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat/history/workspace/ui_prefs/notes; list filter). 10) History Re-Exec. 11) Telegram: /bs /exec /pack /warm /cold /vec /trace /cancel."
             ),
             "example": "Type idea → Execute → Pack ↓ (USB) → History Re-Exec → Diff.",
             "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",

@@ -1,19 +1,21 @@
-# Gnom-Hub v3.0.0
+# Gnom-Hub v3.1.0
 
 Local multi-agent control hub: **brainstorm first**, then **Execute** workers.
 
-Desktop · USB packs · COLD restore · **Vector browser** · Telegram bs/exec/pack/warm/cold/**vec**/cancel.
+Desktop · USB packs · COLD · Vector · **Trace export** · Telegram bs/exec/pack/warm/cold/vec/**trace**/cancel.
 
 > **Convention:** every meaningful change is **pushed to `main`** and this **README is updated** in the same commit.
 
 ---
 
-## Flow
+## Trace
 
 ```
-Click Vec badge     → list / search / add / delete vector docs
-Telegram /vec       → search | add | list | del | clear
-Execute pipeline    → requirements + memory facts indexed (lexical)
+Header Trace button  → Refresh · ↓ JSON · ↓ MD · Clear
+Telegram /trace [n]  → last n events
+Telegram /trace clear
+API GET /api/trace/export?fmt=json|md
+API POST /api/trace/clear
 ```
 
 ---
@@ -27,21 +29,7 @@ cd gnom-hub-v1
 ./scripts/quality_check.sh
 ```
 
-**http://127.0.0.1:8080/?v=72**
-
----
-
-## Vector lite
-
-| Action | Desktop | Telegram |
-|--------|---------|----------|
-| Open | Click **Vec** badge | `/vec list` |
-| Search | Query + Search | `/vec search <q>` |
-| Add | Add field | `/vec add <text>` |
-| Delete | Del on row | `/vec del <id>` |
-| Clear | Clear | `/vec clear` |
-
-Lexical bag-of-words cosine (no heavy deps) — not true embeddings.
+**http://127.0.0.1:8080/?v=73**
 
 ---
 
@@ -49,9 +37,9 @@ Lexical bag-of-words cosine (no heavy deps) — not true embeddings.
 
 | Tag | Highlights |
 |-----|------------|
-| 2.8 | WARM manager + /cancel |
 | 2.9 | COLD restore/delete |
-| **3.0** | Vector browser UI + API list/del + /vec |
+| 3.0 | Vector browser + /vec |
+| **3.1** | Trace download (JSON/MD), clear, /trace |
 
 ---
 

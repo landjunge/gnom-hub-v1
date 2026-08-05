@@ -202,7 +202,16 @@
 | Telegram /vec search\|add\|list\|del\|clear | **done** |
 | Version / docs 3.0 | **done** |
 
-## Post-V3.0 (optional)
+## V3.1.0
+
+| Item | Status |
+|------|--------|
+| Trace export JSON/MD | **done** |
+| Trace clear API + UI | **done** |
+| Telegram /trace [n] \| clear | **done** |
+| Version / docs 3.1 | **done** |
+
+## Post-V3.1 (optional)
 
 | Item | Notes |
 |------|--------|

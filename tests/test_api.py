@@ -828,3 +828,27 @@ def test_vector_browser_api(client: TestClient):
     )
     client.post("/api/vector/clear")
     assert client.get("/api/vector").json()["count"] == 0
+
+
+def test_trace_export_and_clear(client: TestClient):
+    client.post("/api/chat?sync=1", json={"text": "trace me please"})
+    tr = client.get("/api/trace?limit=20")
+    assert tr.status_code == 200
+    assert tr.json()["count"] >= 1
+    exp = client.get("/api/trace/export?fmt=json")
+    assert exp.status_code == 200
+    body = exp.json()
+    assert body["ok"] is True
+    assert "gnom-hub-trace" in body["content"]
+    assert body["filename"].endswith(".json")
+    md = client.get("/api/trace/export?fmt=md")
+    assert md.status_code == 200
+    assert md.json()["filename"].endswith(".md")
+    assert "# Gnom-Hub light trace" in md.json()["content"]
+    cleared = client.post("/api/trace/clear")
+    assert cleared.status_code == 200
+    assert client.get("/api/trace").json()["count"] == 0
+    tg = client.post("/api/telegram/inbound", json={"text": "/trace"})
+    assert tg.status_code == 200
+    # empty or message
+    assert "trace" in tg.json()["reply"].lower() or "empty" in tg.json()["reply"].lower()

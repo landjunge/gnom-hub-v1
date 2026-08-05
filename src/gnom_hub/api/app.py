@@ -135,7 +135,7 @@ class ShellBody(BaseModel):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Gnom-Hub v1", version="3.0.0")
+    app = FastAPI(title="Gnom-Hub v1", version="3.1.0")
 
     @app.get("/api/health")
     def health() -> dict[str, Any]:
@@ -143,7 +143,7 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "service": "gnom-hub-v1",
-            "version": "3.0.0",
+            "version": "3.1.0",
             "telegram": hub.telegram.enabled,
             "telegram_running": hub.telegram.running,
             "llm": {
@@ -256,6 +256,18 @@ def create_app() -> FastAPI:
     def trace(limit: int = Query(40, ge=1, le=100)) -> dict[str, Any]:
         hub = get_hub()
         return {"trace": list(hub.trace[-limit:]), "count": len(hub.trace)}
+
+    @app.get("/api/trace/export")
+    def trace_export(
+        limit: int = Query(100, ge=1, le=100),
+        fmt: str = Query("json"),
+    ) -> dict[str, Any]:
+        """Downloadable light trace (json or md)."""
+        return get_hub().export_trace(limit=limit, fmt=fmt)
+
+    @app.post("/api/trace/clear")
+    def trace_clear() -> dict[str, Any]:
+        return get_hub().clear_trace()
 
     @app.post("/api/checkpoint/save")
     def checkpoint_save() -> dict[str, Any]:

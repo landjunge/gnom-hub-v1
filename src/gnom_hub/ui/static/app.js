@@ -3522,6 +3522,22 @@
         if (ev.target === els.traceModal) closeTraceModal();
       });
     }
+    const trRefresh = document.getElementById("trace-refresh");
+    if (trRefresh) trRefresh.addEventListener("click", refreshTraceView);
+    const trJson = document.getElementById("trace-dl-json");
+    if (trJson) {
+      trJson.addEventListener("click", function () {
+        downloadTrace("json");
+      });
+    }
+    const trMd = document.getElementById("trace-dl-md");
+    if (trMd) {
+      trMd.addEventListener("click", function () {
+        downloadTrace("md");
+      });
+    }
+    const trClear = document.getElementById("trace-clear");
+    if (trClear) trClear.addEventListener("click", clearTraceBuffer);
     const ckSave = document.getElementById("sys-ckpt-save");
     const ckLoad = document.getElementById("sys-ckpt-load");
     if (ckSave) ckSave.addEventListener("click", saveCheckpoint);
