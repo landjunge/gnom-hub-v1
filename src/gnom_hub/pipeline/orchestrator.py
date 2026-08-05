@@ -415,6 +415,8 @@ class Orchestrator:
             worker = self._workers.get(wid)
             if worker is None or not worker.enabled:
                 continue
+            # UI pulse: only this worker (stage id = worker1…worker4)
+            self.bus.emit("pipeline.stage", {"stage": wid})
             task_full = f"{task}\n\n{dod}".strip()
             result = worker.run(
                 task_full,

@@ -1541,8 +1541,12 @@ class Hub:
                 def _on_flex(_d: Any) -> None:
                     _on_stage({"stage": "flex"})
 
-                def _on_worker(_d: Any) -> None:
-                    _on_stage({"stage": "work"})
+                def _on_worker(data: Any) -> None:
+                    # Prefer concrete worker id so UI pulses only that card
+                    wid = ""
+                    if isinstance(data, dict):
+                        wid = str(data.get("worker") or "").strip()
+                    _on_stage({"stage": wid if wid else "work"})
 
                 def _cleanup_handlers() -> None:
                     self.bus.off("pipeline.stage", _on_stage)

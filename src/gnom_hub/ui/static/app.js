@@ -135,21 +135,22 @@
   }
 
   function agentIsActive(agent) {
-    return (
-      activeStage === agent.id ||
-      (activeStage === "memory" && agent.id === "memory") ||
-      (activeStage === "brainstorm" && agent.id === "brainstorm") ||
-      (activeStage === "distill" && agent.id === "coordinator") ||
-      (activeStage === "clarify" && agent.id === "coordinator") ||
-      (activeStage === "flex" && agent.id === "flex") ||
-      (activeStage === "coordinate" && agent.id === "coordinator") ||
-      (activeStage === "work" && agent.id.indexOf("worker") === 0) ||
-      (activeStage === "worker1" && agent.id === "worker1") ||
-      (activeStage === "worker2" && agent.id === "worker2") ||
-      (activeStage === "worker3" && agent.id === "worker3") ||
-      (activeStage === "worker4" && agent.id === "worker4") ||
-      (activeStage === "done" && agent.id === "memory")
-    );
+    if (!agent || !agent.enabled) return false;
+    const s = activeStage || "";
+    // Exact id match (worker1…, brainstorm, …) — only the agent that is running
+    if (s === agent.id) return true;
+    if (s === "memory" && agent.id === "memory") return true;
+    if (s === "brainstorm" && agent.id === "brainstorm") return true;
+    if (
+      (s === "distill" || s === "clarify" || s === "coordinate") &&
+      agent.id === "coordinator"
+    ) {
+      return true;
+    }
+    if (s === "flex" && agent.id === "flex") return true;
+    // Generic "work" without a worker id: pulse no worker (avoid fake all-worker pulse)
+    // done/error/idle: no pulse
+    return false;
   }
 
   function updateBoxBorders() {
@@ -162,7 +163,11 @@
       flex: { box1: null, box2: "flex", box3: null },
       coordinate: { box1: "coordinator", box2: null, box3: "coordinator" },
       work: { box1: null, box2: null, box3: "worker1" },
-      done: { box1: "memory", box2: "brainstorm", box3: "worker2" },
+      worker1: { box1: null, box2: null, box3: "worker1" },
+      worker2: { box1: null, box2: null, box3: "worker2" },
+      worker3: { box1: null, box2: null, box3: "worker3" },
+      worker4: { box1: null, box2: null, box3: "worker4" },
+      done: { box1: null, box2: null, box3: null },
       error: { box1: null, box2: null, box3: null },
     };
     const m = map[activeStage] || map.idle;
@@ -3175,9 +3180,48 @@
         if (stage && stage !== lastStage) {
           lastStage = stage;
           if (els.stageBadge) els.stageBadge.textContent = stage;
-          appendChat("system", "Stage: " + stage);
+          // Prefer job.stage (worker1…) over pipeline enum for card pulse
+          if (
+            stage === "worker1" ||
+            stage === "worker2" ||
+            stage === "worker3" ||
+            stage === "worker4" ||
+            stage === "brainstorm" ||
+            stage === "distill" ||
+            stage === "flex" ||
+            stage === "coordinate" ||
+            stage === "memory" ||
+            stage === "work"
+          ) {
+            activeStage = stage;
+            renderCards();
+            updateBoxBorders();
+          }
+          if (
+            stage !== "worker1" &&
+            stage !== "worker2" &&
+            stage !== "worker3" &&
+            stage !== "worker4"
+          ) {
+            appendChat("system", "Stage: " + stage);
+          } else {
+            appendChat("system", "Worker: " + stage);
+          }
         }
-        if (job.snapshot) applySnapshot(job.snapshot);
+        if (job.snapshot) {
+          applySnapshot(job.snapshot);
+          // Keep live worker id pulse if job is mid-worker (snapshot stage is still "work")
+          if (
+            stage === "worker1" ||
+            stage === "worker2" ||
+            stage === "worker3" ||
+            stage === "worker4"
+          ) {
+            activeStage = stage;
+            renderCards();
+            updateBoxBorders();
+          }
+        }
         const st = job.status;
         if (st === "done" || st === "error" || st === "clarify" || st === "cancelled") {
           // Always resync so can_execute / stage match server after soft-cancel
