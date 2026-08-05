@@ -17,5 +17,6 @@
 | 1.3 | Phase 2+: agent state persist, canvas API, live DeepSeek verified | **done** |
 | 1.4 | LLM soft-fallback, max_tokens, Help/Reset, session clear | **done** |
 | 1.5 | Memory → pipeline context (HOT facts feed all stages) | **done** |
+| CI | Install `.[dev]` so httpx is present for TestClient | **done** |
 
 Out of scope: see V1_SCOPE.md “draußen”.
