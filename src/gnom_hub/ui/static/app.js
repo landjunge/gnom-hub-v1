@@ -3549,13 +3549,14 @@
         empty.textContent = "Workers running…";
       } else {
         empty.textContent =
-          "Worker results appear here (text, plans, full HTML preview). Scroll for more.";
+          "Worker results appear here (text, plans, full HTML preview).";
       }
       body.appendChild(empty);
       if (canvas) body.appendChild(canvas);
       return;
     }
 
+    body.dataset.workers = String(outputs.length);
     outputs.forEach(function (out, idx) {
       body.appendChild(buildWorkerPanel(out, idx));
     });
@@ -3893,8 +3894,10 @@
     if (out.task) {
       const taskEl = document.createElement("div");
       taskEl.className = "worker-panel-task";
+      // One line in UI (saves height); full task on hover + Fullscreen
       const taskFull = String(out.task);
-      taskEl.textContent = "Task: " + taskFull;
+      const taskOne = taskFull.split("\n")[0].trim();
+      taskEl.textContent = "Task: " + taskOne;
       taskEl.title = taskFull;
       panel.appendChild(taskEl);
     }
@@ -3940,6 +3943,8 @@
         });
       });
     } else {
+      // Text-only: not absolute so short results don't force empty space scroll
+      sourcePre.style.position = "static";
       content.appendChild(sourcePre);
     }
     panel.appendChild(content);
