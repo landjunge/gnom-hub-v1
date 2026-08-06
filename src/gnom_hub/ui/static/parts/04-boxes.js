@@ -1,12 +1,151 @@
 /* part: 04-boxes.js  lines 3682-4267 of app.js — edit parts, run scripts/build_ui_js.py */
+
+  /**
+   * Dynamic presentation inside a box/panel:
+   * HTML → live preview (+ Source), code fence → code view, JSON → pretty, else text.
+   * Fills the host; host must be a flex column with min-height:0.
+   */
+  function renderDynamicContent(host, raw, opts) {
+    opts = opts || {};
+    const text = String(raw || "");
+    host.innerHTML = "";
+    host.classList.add("dyn-host");
+
+    const html = extractHtml(text);
+    if (html) {
+      host.dataset.kind = "html";
+      const bar = document.createElement("div");
+      bar.className = "dyn-bar";
+      const kind = document.createElement("span");
+      kind.className = "dyn-kind";
+      kind.textContent = "HTML";
+      bar.appendChild(kind);
+      const modes = document.createElement("div");
+      modes.className = "worker-panel-modes";
+      const btnPrev = document.createElement("button");
+      btnPrev.type = "button";
+      btnPrev.className = "worker-mode-btn is-active";
+      btnPrev.textContent = "Preview";
+      btnPrev.dataset.mode = "preview";
+      const btnSrc = document.createElement("button");
+      btnSrc.type = "button";
+      btnSrc.className = "worker-mode-btn";
+      btnSrc.textContent = "Source";
+      btnSrc.dataset.mode = "source";
+      modes.appendChild(btnPrev);
+      modes.appendChild(btnSrc);
+      bar.appendChild(modes);
+      host.appendChild(bar);
+
+      const stage = document.createElement("div");
+      stage.className = "dyn-stage";
+      const frame = document.createElement("iframe");
+      frame.className = "worker-preview-frame dyn-frame";
+      frame.setAttribute(
+        "sandbox",
+        "allow-same-origin allow-forms allow-popups allow-modals"
+      );
+      frame.setAttribute("title", opts.title || "preview");
+      frame.srcdoc = wrapHtmlDocument(html);
+      const pre = document.createElement("pre");
+      pre.className = "result-block worker-source dyn-source";
+      pre.textContent = text;
+      pre.hidden = true;
+      stage.appendChild(frame);
+      stage.appendChild(pre);
+      host.appendChild(stage);
+
+      modes.querySelectorAll(".worker-mode-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          modes.querySelectorAll(".worker-mode-btn").forEach(function (b) {
+            b.classList.remove("is-active");
+          });
+          btn.classList.add("is-active");
+          if (btn.dataset.mode === "preview") {
+            frame.hidden = false;
+            pre.hidden = true;
+          } else {
+            frame.hidden = true;
+            pre.hidden = false;
+          }
+        });
+      });
+      return "html";
+    }
+
+    // fenced code ```lang ... ```
+    const fence = text.match(/```([a-zA-Z0-9_+-]*)\s*\n([\s\S]*?)```/);
+    if (fence && fence[2] && fence[2].trim().length > 0) {
+      host.dataset.kind = "code";
+      const bar = document.createElement("div");
+      bar.className = "dyn-bar";
+      const kind = document.createElement("span");
+      kind.className = "dyn-kind";
+      kind.textContent = (fence[1] || "code").toUpperCase();
+      bar.appendChild(kind);
+      host.appendChild(bar);
+      const stage = document.createElement("div");
+      stage.className = "dyn-stage";
+      const pre = document.createElement("pre");
+      pre.className = "result-block dyn-source dyn-code";
+      pre.textContent = fence[2].replace(/\n$/, "");
+      stage.appendChild(pre);
+      // if more text outside fence, append note
+      const rest = text.replace(fence[0], "").trim();
+      if (rest) {
+        const note = document.createElement("pre");
+        note.className = "result-block dyn-note";
+        note.textContent = rest;
+        stage.appendChild(note);
+      }
+      host.appendChild(stage);
+      return "code";
+    }
+
+    // JSON object/array
+    const t = text.trim();
+    if (
+      (t.startsWith("{") && t.endsWith("}")) ||
+      (t.startsWith("[") && t.endsWith("]"))
+    ) {
+      try {
+        const pretty = JSON.stringify(JSON.parse(t), null, 2);
+        host.dataset.kind = "json";
+        const bar = document.createElement("div");
+        bar.className = "dyn-bar";
+        const kind = document.createElement("span");
+        kind.className = "dyn-kind";
+        kind.textContent = "JSON";
+        bar.appendChild(kind);
+        host.appendChild(bar);
+        const stage = document.createElement("div");
+        stage.className = "dyn-stage";
+        const pre = document.createElement("pre");
+        pre.className = "result-block dyn-source dyn-code";
+        pre.textContent = pretty;
+        stage.appendChild(pre);
+        host.appendChild(stage);
+        return "json";
+      } catch (_e) {
+        /* fall through */
+      }
+    }
+
+    host.dataset.kind = "text";
+    const stage = document.createElement("div");
+    stage.className = "dyn-stage";
+    const pre = document.createElement("pre");
+    pre.className = "result-block dyn-source";
+    pre.textContent = text;
+    stage.appendChild(pre);
+    host.appendChild(stage);
+    return "text";
+  }
+
   function setBox2(htmlOrText) {
     const body = document.getElementById("box2-content");
     if (!body) return;
-    body.innerHTML = "";
-    const pre = document.createElement("pre");
-    pre.className = "result-block";
-    pre.textContent = htmlOrText || "";
-    body.appendChild(pre);
+    renderDynamicContent(body, htmlOrText || "", { title: "Brainstorm" });
   }
 
   /**
@@ -337,26 +476,9 @@
     head.appendChild(title);
 
     const raw = out.result || "";
-    const html = extractHtml(raw);
-    const isHtml = !!html;
-
-    // Minimal controls only — Preview/Source (HTML) + Copy
+    // Copy only — presentation is dynamic inside the body
     const mode = document.createElement("div");
     mode.className = "worker-panel-modes";
-    if (isHtml) {
-      const btnPrev = document.createElement("button");
-      btnPrev.type = "button";
-      btnPrev.className = "worker-mode-btn is-active";
-      btnPrev.textContent = "Preview";
-      btnPrev.dataset.mode = "preview";
-      const btnSrc = document.createElement("button");
-      btnSrc.type = "button";
-      btnSrc.className = "worker-mode-btn";
-      btnSrc.textContent = "Source";
-      btnSrc.dataset.mode = "source";
-      mode.appendChild(btnPrev);
-      mode.appendChild(btnSrc);
-    }
     const btnCopy = document.createElement("button");
     btnCopy.type = "button";
     btnCopy.className = "worker-mode-btn copy-btn";
@@ -373,47 +495,9 @@
 
     const content = document.createElement("div");
     content.className = "worker-panel-body";
-
-    const sourcePre = document.createElement("pre");
-    sourcePre.className = "result-block worker-source";
-    sourcePre.textContent = raw;
-
-    if (isHtml) {
-      const frame = document.createElement("iframe");
-      frame.className = "worker-preview-frame";
-      frame.setAttribute(
-        "sandbox",
-        "allow-same-origin allow-forms allow-popups allow-modals"
-      );
-      frame.setAttribute("title", (out.name || "Worker") + " preview");
-      // Prefer full document; wrap fragments
-      let doc = wrapHtmlDocument(html);
-      frame.srcdoc = doc;
-      content.appendChild(frame);
-      sourcePre.hidden = true;
-      content.appendChild(sourcePre);
-
-      mode.querySelectorAll(".worker-mode-btn").forEach(function (btn) {
-        // Mode toggles only (Preview/Source), not action buttons
-        if (!btn.dataset.mode) return;
-        btn.addEventListener("click", function () {
-          mode.querySelectorAll(".worker-mode-btn").forEach(function (b) {
-            if (b.dataset.mode) b.classList.remove("is-active");
-          });
-          btn.classList.add("is-active");
-          const m = btn.dataset.mode;
-          if (m === "preview") {
-            frame.hidden = false;
-            sourcePre.hidden = true;
-          } else {
-            frame.hidden = true;
-            sourcePre.hidden = false;
-          }
-        });
-      });
-    } else {
-      content.appendChild(sourcePre);
-    }
+    renderDynamicContent(content, raw, {
+      title: (out.name || "Worker") + " preview",
+    });
     panel.appendChild(content);
     return panel;
   }
