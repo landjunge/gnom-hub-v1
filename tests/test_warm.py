@@ -46,3 +46,33 @@ def test_warm_rejects_garbage_and_persists_in_user_db(tmp_path: Path):
     assert info["path"].endswith("user.db")
     assert "/User/" in info["path"].replace("\\", "/") or info["path"].endswith("User/user.db")
     assert info["warm_facts"] >= 1
+
+
+def test_facade_flex_wishes_first_and_protected(tmp_path: Path):
+    warm = WarmMemory(tmp_path)
+    hot = HotMemory(tmp_path, auto_load=False)
+    warm.add_fact("User: always enable TTS for Flex", source="flex")
+    warm.add_fact("User: never wipe wishes on clear", source="flex")
+    warm.add_fact("Brand is Bean and Bloom", source="warm")
+    # Flood HOT so naive truncation would cut the top
+    for i in range(40):
+        hot.add_message("user", f"noise message number {i} " + ("x" * 40))
+    fac = MemoryFacade(hot, warm)
+    ctx = fac.pipeline_context(max_chars=400)
+    assert ctx.startswith("FLEX_WISHES")
+    assert "always enable TTS for Flex" in ctx
+    assert "never wipe wishes on clear" in ctx
+    # flex block not only present but before HOT noise / truncated rest
+    assert ctx.index("FLEX_WISHES") < ctx.find("noise") or "noise" not in ctx
+
+
+def test_facade_flex_survives_hot_clear(tmp_path: Path):
+    warm = WarmMemory(tmp_path)
+    hot = HotMemory(tmp_path, auto_load=False)
+    warm.add_fact_flex("immer Execute nur mit klarer Aufgabe")
+    hot.add_message("user", "temp")
+    hot.clear(save=True)
+    fac = MemoryFacade(HotMemory(tmp_path, auto_load=False), WarmMemory(tmp_path))
+    ctx = fac.pipeline_context()
+    assert "FLEX_WISHES" in ctx
+    assert "Execute" in ctx or "klare Aufgabe" in ctx
