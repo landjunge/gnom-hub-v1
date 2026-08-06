@@ -83,11 +83,12 @@ class AgentOpsMixin:
                 continue
             if agent.toggleable and "enabled" in item:
                 agent.enabled = bool(item["enabled"])
-            if agent.id == AgentId.FLEX and item.get("preset"):
-                try:
-                    self.agents.set_flex_preset(str(item["preset"]))
-                except ValueError:
-                    pass
+            if agent.id == AgentId.FLEX:
+                agent.enabled = True
+                agent.preset = "personal"
+                # TTS stays on for Flex unless user explicitly saved tts:false below
+            if agent.id == AgentId.BRAINSTORM and "tts" not in item:
+                agent.tts = True
             if item.get("model"):
                 agent.model = str(item["model"])
             if item.get("api_key") is not None:
@@ -183,8 +184,12 @@ class AgentOpsMixin:
         }
 
     def set_flex_preset(self, name: str) -> dict[str, Any]:
+        """Flex is fixed — always personal; name ignored."""
         self.agents.set_flex_preset(name)
-        return self._agent_dict(self.agents.get(AgentId.FLEX))
+        data = self._agent_dict(self.agents.get(AgentId.FLEX))
+        data["locked"] = True
+        data["preset"] = "personal"
+        return data
 
     def set_agent_llm(
         self,

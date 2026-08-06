@@ -1225,15 +1225,7 @@
 
   async function onFlexSelectChange() {
     if (!els.flexSelect) return;
-    const next = els.flexSelect.value;
-    try {
-      const data = await api("POST", "/api/agents/flex/preset", { preset: next });
-      const flex = findAgent("flex");
-      if (flex) flex.preset = data.preset || next;
-      renderCards();
-      appendChat("system", "Flex preset → " + (data.preset || next));
-    } catch (err) {
-      toast("Flex preset failed: " + err.message, "error");
-    }
+    els.flexSelect.value = "personal";
+    toast("Flex is fixed — personal companion only", "info");
   }
 

@@ -52,6 +52,8 @@ def test_colors_and_defaults():
 
     assert mgr.get(AgentId.MEMORY).enabled is True
     assert mgr.get(AgentId.MEMORY).toggleable is False
+    assert mgr.get(AgentId.FLEX).toggleable is False
+    assert mgr.get(AgentId.FLEX).enabled is True
     assert mgr.get(AgentId.FLEX).preset == DEFAULT_FLEX_PRESET
     assert DEFAULT_FLEX_PRESET == "personal"
     assert FLEX_PRESETS == ("personal", "security", "neutral", "researcher")
@@ -95,31 +97,25 @@ def test_enable_all_turns_workers_on():
     assert mgr.get(AgentId.WORKER4).enabled is True
 
 
-def test_flex_preset():
+def test_flex_preset_locked_personal():
     _, mgr, events = _manager()
+    assert mgr.get(AgentId.FLEX).preset == DEFAULT_FLEX_PRESET
+    assert mgr.get(AgentId.FLEX).toggleable is False
+    # preset changes ignored — stays personal
     mgr.set_flex_preset("researcher")
-    assert mgr.get(AgentId.FLEX).preset == "researcher"
-    assert len(events) == 1
-    assert events[0]["id"] == "flex"
-    assert events[0]["preset"] == "researcher"
-    assert events[0]["role"] == "flex"
-    assert events[0]["color"] == "yellow"
-
-    # same preset: no re-emit
-    mgr.set_flex_preset("researcher")
-    assert len(events) == 1
-
-    mgr.set_flex_preset("Neutral")  # case-insensitive via lower
-    assert mgr.get(AgentId.FLEX).preset == "neutral"
+    assert mgr.get(AgentId.FLEX).preset == "personal"
+    mgr.set_flex_preset("godmode")  # no raise
+    assert mgr.get(AgentId.FLEX).preset == "personal"
+    # toggle no-op
+    assert mgr.toggle(AgentId.FLEX) is True
+    assert mgr.get(AgentId.FLEX).enabled is True
 
 
-def test_flex_preset_unknown():
+def test_flex_brainstorm_tts_default_on():
     _, mgr, _ = _manager()
-    try:
-        mgr.set_flex_preset("godmode")
-        raise AssertionError("expected ValueError")
-    except ValueError as exc:
-        assert "godmode" in str(exc)
+    assert mgr.get(AgentId.FLEX).tts is True
+    assert mgr.get(AgentId.BRAINSTORM).tts is True
+    assert mgr.get(AgentId.COORDINATOR).tts is False
 
 
 def test_on_start_bulk_emit():

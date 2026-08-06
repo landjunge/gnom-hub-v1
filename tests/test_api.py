@@ -351,7 +351,9 @@ def test_toggle_brainstorm(client: TestClient):
 def test_flex_preset(client: TestClient):
     r = client.post("/api/agents/flex/preset", json={"preset": "researcher"})
     assert r.status_code == 200
-    assert r.json()["preset"] == "researcher"
+    # Flex is fixed personal — preset changes ignored
+    assert r.json()["preset"] == "personal"
+    assert r.json().get("locked") is True
 
 
 def test_agent_tune_and_system(client: TestClient):

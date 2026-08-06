@@ -126,18 +126,20 @@ def test_skip_disabled_brainstorm():
     assert any(n == "pipeline.done" for n, _ in events)
 
 
-def test_skip_disabled_flex():
+def test_flex_cannot_be_disabled():
+    """Flex is fixed on — toggle is no-op; pipeline still runs flex stage."""
     bus = EventBus()
     events = _collect(bus)
     agents = AgentManager(bus)
-    agents.toggle(AgentId.FLEX)
+    assert agents.toggle(AgentId.FLEX) is True
+    assert agents.get(AgentId.FLEX).enabled is True
 
     pipe = Pipeline(bus, agent_manager=agents)
     state = pipe.start("Ship feature Y")
 
     assert state.stage == PipelineStage.done
-    assert state.flex_notes == ""
-    assert not any(n == "pipeline.flex" for n, _ in events)
+    assert state.flex_notes  # still ran
+    assert any(n == "pipeline.flex" for n, _ in events)
     assert any(n == "pipeline.done" for n, _ in events)
 
 

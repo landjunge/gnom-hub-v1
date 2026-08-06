@@ -619,8 +619,8 @@
           clearTimeout(clickTimer);
           clickTimer = null;
         }
-        if (agent.id === "flex" && ev.shiftKey) {
-          cycleFlexPreset();
+        if (agent.id === "flex") {
+          toast("Flex is fixed — always on, personal companion", "info");
           return;
         }
         toggleAgent(agent.id);

@@ -619,8 +619,8 @@
           clearTimeout(clickTimer);
           clickTimer = null;
         }
-        if (agent.id === "flex" && ev.shiftKey) {
-          cycleFlexPreset();
+        if (agent.id === "flex") {
+          toast("Flex is fixed — always on, personal companion", "info");
           return;
         }
         toggleAgent(agent.id);
@@ -2308,16 +2308,8 @@
 
   async function onFlexSelectChange() {
     if (!els.flexSelect) return;
-    const next = els.flexSelect.value;
-    try {
-      const data = await api("POST", "/api/agents/flex/preset", { preset: next });
-      const flex = findAgent("flex");
-      if (flex) flex.preset = data.preset || next;
-      renderCards();
-      appendChat("system", "Flex preset → " + (data.preset || next));
-    } catch (err) {
-      toast("Flex preset failed: " + err.message, "error");
-    }
+    els.flexSelect.value = "personal";
+    toast("Flex is fixed — personal companion only", "info");
   }
 
 /* part: 03-chat-jobs-ops.js  lines 1950-3681 of app.js — edit parts, run scripts/build_ui_js.py */
@@ -2372,19 +2364,7 @@
   }
 
   async function cycleFlexPreset() {
-    const flex = findAgent("flex");
-    if (!flex) return;
-    const cur = flex.preset || "personal";
-    const idx = FLEX_PRESETS.indexOf(cur);
-    const next = FLEX_PRESETS[(idx + 1) % FLEX_PRESETS.length];
-    try {
-      const data = await api("POST", "/api/agents/flex/preset", { preset: next });
-      flex.preset = data.preset || next;
-      renderCards();
-      appendChat("system", "Flex preset → " + flex.preset);
-    } catch (err) {
-      appendChat("system", "Flex preset failed: " + err.message);
-    }
+    toast("Flex is fixed — personal companion only", "info");
   }
 
   async function toggleAgent(id) {

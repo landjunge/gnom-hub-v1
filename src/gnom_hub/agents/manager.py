@@ -5,7 +5,6 @@ from __future__ import annotations
 from gnom_hub.agents.models import (
     COLORS,
     DEFAULT_FLEX_PRESET,
-    FLEX_PRESETS,
     AgentId,
     AgentState,
 )
@@ -34,7 +33,7 @@ class AgentManager:
             # id, name, role, enabled, toggleable, preset
             (AgentId.BRAINSTORM, "Brainstorm", "brainstorm", True, True, None),
             (AgentId.MEMORY, "Memory", "memory", True, False, None),
-            (AgentId.FLEX, "Flex", "flex", True, True, DEFAULT_FLEX_PRESET),
+            (AgentId.FLEX, "Flex", "flex", True, False, DEFAULT_FLEX_PRESET),  # fixed: always on
             (AgentId.COORDINATOR, "Coordinator", "coordinator", True, True, None),
             # All workers on by default (user: Box 3 dynamic for 1+2+…; enable off workers)
             (AgentId.WORKER1, "Worker 1", "worker", True, True, None),
@@ -52,6 +51,8 @@ class AgentManager:
                 enabled=enabled,
                 toggleable=toggleable,
                 preset=preset,
+                # Flex + Brainstorm: thoughts audible by default (plan)
+                tts=agent_id in (AgentId.FLEX, AgentId.BRAINSTORM),
             )
         return agents
 
@@ -81,12 +82,13 @@ class AgentManager:
         """
         Flip enabled for toggleable agents.
 
-        Memory is locked on: no-op, returns True (still enabled).
+        Memory and Flex are locked on: no-op, returns True (still enabled).
         """
         aid = self._resolve_id(agent_id)
         agent = self._agents[aid]
         if not agent.toggleable:
-            # Memory (and any future locked agents): stay enabled.
+            # Memory / Flex (and any future locked agents): stay enabled.
+            agent.enabled = True
             return agent.enabled
 
         agent.enabled = not agent.enabled
@@ -94,15 +96,14 @@ class AgentManager:
         return agent.enabled
 
     def set_flex_preset(self, name: str) -> None:
-        """Set Flex preset. Raises ValueError if unknown."""
-        key = name.strip().lower()
-        if key not in FLEX_PRESETS:
-            raise ValueError(f"Unknown flex preset: {name!r}. Allowed: {FLEX_PRESETS}")
+        """Flex is fixed (personal companion). Preset changes are ignored."""
         flex = self._agents[AgentId.FLEX]
-        if flex.preset == key:
-            return
-        flex.preset = key
-        self._emit_status(flex)
+        flex.enabled = True
+        if flex.preset != DEFAULT_FLEX_PRESET:
+            flex.preset = DEFAULT_FLEX_PRESET
+            self._emit_status(flex)
+        # Unknown names: still no-op (locked), do not raise — UI/API stay calm
+        _ = (name or "").strip().lower()
 
     def enabled_workers(self) -> list[AgentState]:
         """Enabled workers only (up to 4)."""
