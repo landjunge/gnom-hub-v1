@@ -484,7 +484,7 @@ html, body {
 .agent-cards {
   display: flex;
   flex-direction: row;
-  gap: var(--gap);
+  gap: 2px; /* 2px free between agents */
   width: 100%;
   flex: 0 0 auto;
   margin-bottom: 0;
