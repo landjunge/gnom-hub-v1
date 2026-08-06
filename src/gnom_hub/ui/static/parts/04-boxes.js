@@ -475,17 +475,21 @@
     if (!panels.length) return;
     const n = panels.length;
     box3FocusIdx = ((idx % n) + n) % n;
+    // One at a time — not all panels simultaneous
     panels.forEach(function (p, i) {
-      p.classList.toggle("is-focused", i === box3FocusIdx);
+      const on = i === box3FocusIdx;
+      p.classList.toggle("is-focused", on);
+      p.hidden = !on;
     });
     const p = panels[box3FocusIdx];
-    if (p && p.scrollIntoView) {
-      p.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    }
     const label = document.getElementById("box3-worker-label");
     if (label) {
       const name =
-        (p && p.querySelector(".worker-panel-title") &&
+        (p &&
+          p.querySelector(".layer-worker-label") &&
+          p.querySelector(".layer-worker-label").textContent) ||
+        (p &&
+          p.querySelector(".worker-panel-title") &&
           p.querySelector(".worker-panel-title").textContent) ||
         "Worker " + (box3FocusIdx + 1);
       label.textContent = name + "  " + (box3FocusIdx + 1) + "/" + n;

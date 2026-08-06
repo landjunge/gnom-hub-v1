@@ -818,10 +818,10 @@ html, body {
   height: 100%;
 }
 
-/* Box 3: scroll host so large multi-worker content stays fully viewable */
+/* Box 3: one worker display at a time (Next/Prev switches) */
 .box-body.box3-dynamic {
   padding: 4px;
-  overflow: auto; /* not hidden — huge results stay reachable */
+  overflow: hidden;
   white-space: normal;
 }
 
@@ -923,15 +923,13 @@ html, body {
   font-size: 10px;
 }
 
-/* —— Box 3: one panel per worker; content of any size stays viewable —— */
+/* —— Box 3: panels stacked; only one shown (nacheinander) —— */
 .box3-dynamic {
   display: flex;
   flex-direction: column;
-  gap: 6px;
   flex: 1 1 auto;
   min-height: 0;
-  height: auto;
-  min-height: 100%;
+  height: 100%;
 }
 
 .worker-panel {
@@ -940,11 +938,16 @@ html, body {
   background: #1e1f23;
   display: flex;
   flex-direction: column;
+  /* one panel visible at a time — fills Box 3 */
   flex: 1 1 auto;
-  /* usable height even with many workers; panel scrolls for huge content */
-  min-height: clamp(200px, 36vh, 640px);
+  min-height: 0;
+  height: 100%;
   overflow: hidden;
   position: relative;
+}
+
+.worker-panel[hidden] {
+  display: none !important;
 }
 
 .worker-panel .layer-stack-panel {
