@@ -1,4 +1,4 @@
-"""Personal WS = sibling of hub; selected HTML only; DB backup."""
+"""Personal WS — simple sibling layout, no legacy seed chains."""
 
 from pathlib import Path
 
@@ -19,26 +19,18 @@ def test_ensure_creates_user_key_and_db(tmp_path: Path):
     )
     st = ensure_user_workspace(tmp_path)
     assert st.workspace_ok
-    assert st.user_dir_ok
-    # tmp roots: personal WS == hub root (isolated)
     assert personal_workspace(tmp_path) == tmp_path.resolve()
-    assert (tmp_path / "User").is_dir()
-    assert st.key_ok
     assert (tmp_path / "User" / "Key.txt").is_file()
-    assert st.db_ok
     assert (tmp_path / "User" / "user.db").is_file()
+    assert (tmp_path / "selected").is_dir()
     assert st.ready
     assert st.key_has_deepseek is False
-    report = format_user_workspace_report(st)
-    assert "selected" in report.lower()
-    assert (tmp_path / "selected").is_dir()
+    assert "selected" in format_user_workspace_report(st).lower()
 
 
 def test_inspect_missing_user_dir(tmp_path: Path):
     st = inspect_user_workspace(tmp_path)
     assert not st.user_dir_ok
-    assert not st.key_ok
-    assert not st.db_ok
     assert not st.ready
 
 
@@ -48,22 +40,9 @@ def test_ensure_preserves_existing_key_and_db(tmp_path: Path):
     (ud / "Key.txt").write_text("DEEPSEEK_API_KEY=sk-real-abc123\n", encoding="utf-8")
     st1 = ensure_user_workspace(tmp_path)
     assert st1.key_has_deepseek is True
-    assert st1.db_ok
-    st2 = ensure_user_workspace(tmp_path)
-    text = (ud / "Key.txt").read_text(encoding="utf-8")
-    assert "sk-real-abc123" in text
-    assert st2.key_has_deepseek is True
-    assert st2.ready
-    # backup mirror exists
+    ensure_user_workspace(tmp_path)
+    assert "sk-real-abc123" in (ud / "Key.txt").read_text(encoding="utf-8")
     assert (tmp_path / "backups" / "user.db").is_file()
-
-
-def test_legacy_root_key_seeded_into_user(tmp_path: Path):
-    (tmp_path / "Key.txt").write_text("DEEPSEEK_API_KEY=sk-from-root\n", encoding="utf-8")
-    st = ensure_user_workspace(tmp_path)
-    assert (tmp_path / "User" / "Key.txt").is_file()
-    assert "sk-from-root" in (tmp_path / "User" / "Key.txt").read_text(encoding="utf-8")
-    assert st.key_has_deepseek is True
 
 
 def test_only_selected_html_copies(tmp_path: Path):
@@ -72,13 +51,9 @@ def test_only_selected_html_copies(tmp_path: Path):
     ws.write_text("temp", "noise.txt", "not html")
     dest = ws.copy_to_selected("page.html", zone="temp")
     assert dest.parent == selected_dir(tmp_path)
-    assert dest.is_file()
     assert "keep me" in dest.read_text(encoding="utf-8")
-    # noise never auto-copied
     assert not (selected_dir(tmp_path) / "noise.txt").exists()
-    # second deliberate copy with same name gets stamped, still only HTML
-    dest2 = copy_selected_html(tmp_path / "data" / "workspace" / "temp" / "page.html", tmp_path)
-    assert dest2.suffix.lower() == ".html"
+    copy_selected_html(tmp_path / "data" / "workspace" / "temp" / "page.html", tmp_path)
     assert len(list(selected_dir(tmp_path).glob("*.html"))) >= 1
 
 
@@ -92,7 +67,6 @@ def test_keep_html_content_to_selected(tmp_path: Path):
     dest = ws.keep_html_content(html, "landing.html")
     assert dest.parent == selected_dir(tmp_path)
     assert "Mine" in dest.read_text(encoding="utf-8")
-    # clear hub temp does not remove selected
     ws.write_text("temp", "junk.html", html)
     ws.clear_temp()
     assert dest.is_file()

@@ -15,7 +15,6 @@ deepseek = sk-alias
 export OPENAI_API_KEY="sk-quoted"
 """
     keys = parse_key_file(text)
-    # alias deepseek overwrites / maps to DEEPSEEK_API_KEY (last wins for same key)
     assert keys["DEEPSEEK_API_KEY"] in ("sk-abc", "sk-alias")
     assert keys["OPENAI_API_KEY"] == "sk-quoted"
 
@@ -26,29 +25,19 @@ def test_parse_colon_form():
 
 
 def test_ensure_env_from_key_txt(tmp_path: Path):
-    (tmp_path / "Key.txt").write_text("DEEPSEEK_API_KEY=sk-test-1\n", encoding="utf-8")
+    ud = tmp_path / "User"
+    ud.mkdir()
+    (ud / "Key.txt").write_text("DEEPSEEK_API_KEY=sk-test-1\n", encoding="utf-8")
     env_path = ensure_env_from_key_txt(tmp_path)
     assert env_path is not None
     assert env_path.is_file()
     assert "sk-test-1" in env_path.read_text(encoding="utf-8")
-    # Root Key.txt is seeded into User/Key.txt
-    assert (tmp_path / "User" / "Key.txt").is_file()
-
-
-def test_ensure_env_prefers_user_key_txt(tmp_path: Path):
-    (tmp_path / "User").mkdir()
-    (tmp_path / "User" / "Key.txt").write_text("DEEPSEEK_API_KEY=from-user\n", encoding="utf-8")
-    (tmp_path / "Key.txt").write_text("DEEPSEEK_API_KEY=from-root\n", encoding="utf-8")
-    env_path = ensure_env_from_key_txt(tmp_path)
-    assert env_path is not None
-    text = env_path.read_text(encoding="utf-8")
-    assert "from-user" in text
-    assert "from-root" not in text
 
 
 def test_ensure_env_key_txt_wins_for_hub_keys(tmp_path: Path):
-    """Key.txt is source of truth for DEEPSEEK_* / WORKER_* (operator edits)."""
-    (tmp_path / "Key.txt").write_text("DEEPSEEK_API_KEY=from-key\n", encoding="utf-8")
+    ud = tmp_path / "User"
+    ud.mkdir()
+    (ud / "Key.txt").write_text("DEEPSEEK_API_KEY=from-key\n", encoding="utf-8")
     (tmp_path / ".env").write_text("DEEPSEEK_API_KEY=from-env\n", encoding="utf-8")
     ensure_env_from_key_txt(tmp_path)
     text = (tmp_path / ".env").read_text(encoding="utf-8")
@@ -57,19 +46,19 @@ def test_ensure_env_key_txt_wins_for_hub_keys(tmp_path: Path):
 
 
 def test_ensure_env_merges_missing_keys(tmp_path: Path):
-    (tmp_path / "Key.txt").write_text(
+    ud = tmp_path / "User"
+    ud.mkdir()
+    (ud / "Key.txt").write_text(
         "DEEPSEEK_API_KEY=sk-ds\nOTHER_API_KEY=sk-other\n", encoding="utf-8"
     )
     (tmp_path / ".env").write_text("DEEPSEEK_API_KEY=keep-me\n", encoding="utf-8")
     ensure_env_from_key_txt(tmp_path)
     loaded = load_keys(tmp_path, apply_environ=False)
-    # Hub-owned keys from Key.txt win
     assert loaded["DEEPSEEK_API_KEY"] == "sk-ds"
     assert loaded["OTHER_API_KEY"] == "sk-other"
 
 
 def test_load_keys_from_env_file(tmp_path: Path, monkeypatch):
-    # Isolate from process env secrets
     monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
     (tmp_path / ".env").write_text("DEEPSEEK_API_KEY=sk-file\n", encoding="utf-8")
     keys = load_keys(tmp_path, apply_environ=False)

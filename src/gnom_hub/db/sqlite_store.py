@@ -1,17 +1,13 @@
 """
-SQLite store — live DB in personal WS (sibling of hub):
+SQLite — live DB only at {GNOM_WS or sibling WS}/User/user.db
 
-  gnom-hub-v1/                 ← code, work here
-  WS-gnom-hub-v1/User/user.db  ← LIVE personal store
-
-Override: GNOM_USER_DB=…  or  GNOM_WS=… (whole personal root)
+No home path, no hub/User copies.
 """
 
 from __future__ import annotations
 
 import json
 import os
-import shutil
 import sqlite3
 import threading
 from datetime import datetime, timezone
@@ -61,16 +57,7 @@ def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
-def _legacy_home_db_path() -> Path:
-    """Old location (pre User/ layout). Used only for one-shot copy."""
-    return (Path.home() / ".local" / "share" / "gnom-hub" / "user.db").resolve()
-
-
 def default_user_db_path(root: Path | None = None) -> Path:
-    """
-    Live DB: {personal_ws}/User/user.db
-    (real hub → sibling WS-gnom-hub-v1; tests → {tmp}/User/user.db)
-    """
     raw = (os.getenv("GNOM_USER_DB") or os.getenv("GNOM_DB_PATH") or "").strip()
     if raw:
         return Path(raw).expanduser().resolve()
@@ -78,43 +65,16 @@ def default_user_db_path(root: Path | None = None) -> Path:
 
 
 def resolve_db_path(root: Path | None = None) -> Path:
-    env = (os.getenv("GNOM_USER_DB") or os.getenv("GNOM_DB_PATH") or "").strip()
-    if env:
-        return Path(env).expanduser().resolve()
-    r = Path(root) if root is not None else project_root()
-    return default_user_db_path(r)
+    return default_user_db_path(root if root is not None else project_root())
 
 
 def sync_user_db_backup(root: Path | None = None) -> Path | None:
-    """Keep personal WS backups/user.db on latest live DB."""
     from gnom_hub.config.user_workspace import backup_user_db
 
     return backup_user_db(root)
 
 
-def _maybe_seed_from_legacy(target: Path, root: Path) -> None:
-    """If live DB missing: seed from hub User/, then home legacy (real hub only)."""
-    if target.exists() and target.stat().st_size > 0:
-        return
-    from gnom_hub.config.paths import is_real_hub_root
-
-    if not is_real_hub_root(root):
-        return
-    target.parent.mkdir(parents=True, exist_ok=True)
-    for legacy in (
-        project_root() / "User" / "user.db",
-        _legacy_home_db_path(),
-    ):
-        if legacy.is_file() and legacy.stat().st_size > 0:
-            try:
-                shutil.copy2(legacy, target)
-                return
-            except OSError:
-                continue
-
-
 def get_db(root: Path | None = None) -> GnomDatabase:
-    """Process-wide DB (keyed by db file path)."""
     r = Path(root) if root is not None else project_root()
     path = resolve_db_path(r)
     key = str(path)
@@ -125,7 +85,7 @@ def get_db(root: Path | None = None) -> GnomDatabase:
 
 
 class GnomDatabase:
-    """Your personal Gnom database (SQLite User/user.db)."""
+    """Personal SQLite at {WS}/User/user.db."""
 
     def __init__(
         self,
@@ -134,11 +94,9 @@ class GnomDatabase:
         db_path: Path | None = None,
     ) -> None:
         self.root = Path(root) if root is not None else project_root()
-        # Project data/ only for one-time migration from old JSONL files
         self.data_dir = self.root / "data"
         self.path = Path(db_path) if db_path is not None else default_user_db_path(self.root)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        _maybe_seed_from_legacy(self.path, self.root)
         self._conn = sqlite3.connect(
             str(self.path),
             check_same_thread=False,

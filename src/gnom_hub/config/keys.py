@@ -1,14 +1,9 @@
-"""Key.txt → private .env. Simple KEY=value parsing, no extra deps.
-
-Preferred location: User/Key.txt (with User/user.db).
-Legacy fallback: repo-root Key.txt.
-"""
+"""Key.txt → private .env. Source: personal WS User/Key.txt only."""
 
 from __future__ import annotations
 
 import os
 import re
-import shutil
 from pathlib import Path
 
 from gnom_hub.config.paths import project_root, user_dir
@@ -92,47 +87,10 @@ def resolve_key_txt_path(
     *,
     key_filename: str = "Key.txt",
 ) -> Path | None:
-    """
-    Prefer personal WS User/Key.txt.
-    Fallbacks (seed into WS once): hub User/Key.txt, hub root Key.txt.
-    Never pull real hub keys into pytest tmp roots.
-    """
-    from gnom_hub.config.paths import is_real_hub_root
-
+    """Only personal WS User/Key.txt — no legacy seed chains."""
     base = Path(root) if root is not None else project_root()
     preferred = user_dir(base) / key_filename
-    if preferred.is_file():
-        return preferred
-
-    candidates: list[Path] = [
-        base / "User" / key_filename,  # old layout under same root
-        base / key_filename,
-    ]
-    # Only for the real installed hub: also seed from code-tree User/ / Key.txt
-    if is_real_hub_root(base):
-        candidates.extend(
-            [
-                project_root() / "User" / key_filename,
-                project_root() / key_filename,
-            ]
-        )
-    for legacy in candidates:
-        if not legacy.is_file():
-            continue
-        try:
-            if legacy.resolve() == preferred.resolve():
-                return preferred
-        except OSError:
-            pass
-        try:
-            preferred.parent.mkdir(parents=True, exist_ok=True)
-            if not preferred.exists():
-                shutil.copy2(legacy, preferred)
-            if preferred.is_file():
-                return preferred
-        except OSError:
-            return legacy
-    return None
+    return preferred if preferred.is_file() else None
 
 
 def ensure_env_from_key_txt(
