@@ -576,12 +576,14 @@ html, body {
   transition: border-color 0.15s ease;
 }
 
-/* 1/3 = genau 1 Box (Info) */
+/* 1/3 = genau 1 Box (Info) — kein Agenten-Rahmen, nur Modul */
 .box-1 {
   flex: 0 0 calc(100% / 3) !important;
   width: calc(100% / 3) !important;
   min-width: 0 !important;
   max-width: none !important;
+  border-color: var(--border) !important;
+  --box-agent-color: var(--border);
 }
 
 /* 2/3 = die Seite (Box 2 + Box 3) */

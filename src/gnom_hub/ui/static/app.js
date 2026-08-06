@@ -249,7 +249,7 @@
     if (doPaint !== false) paintBoxesModule(agentId);
   }
 
-  /** Box-Modul: 1px Rahmen in Agentenfarbe (Klick). */
+  /** Box-Modul: 1px Rahmen in Agentenfarbe (Klick). Box 1: keine Agentenfarbe. */
   function paintBoxesModule(agentId) {
     lastClickedAgentId = agentId || lastClickedAgentId || null;
     const hex =
@@ -261,7 +261,10 @@
         hex || "var(--border)"
       );
     }
-    ["box1", "box2", "box3"].forEach(function (id) {
+    /* only module frame — box1 never gets agent border color */
+    const b1 = document.getElementById("box1");
+    if (b1) b1.style.setProperty("--box-agent-color", "var(--border)");
+    ["box2", "box3"].forEach(function (id) {
       const el = document.getElementById(id);
       if (!el) return;
       el.style.setProperty(
@@ -279,12 +282,12 @@
     }
     const map = {
       idle: { box1: null, box2: null, box3: null },
-      memory: { box1: "memory", box2: null, box3: null },
+      memory: { box1: null, box2: null, box3: null },
       brainstorm: { box1: null, box2: "brainstorm", box3: null },
-      distill: { box1: "coordinator", box2: "coordinator", box3: null },
-      clarify: { box1: "coordinator", box2: null, box3: null },
+      distill: { box1: null, box2: "coordinator", box3: null },
+      clarify: { box1: null, box2: null, box3: null },
       flex: { box1: null, box2: "flex", box3: null },
-      coordinate: { box1: "coordinator", box2: null, box3: "coordinator" },
+      coordinate: { box1: null, box2: null, box3: "coordinator" },
       work: { box1: null, box2: null, box3: "worker1" },
       worker1: { box1: null, box2: null, box3: "worker1" },
       worker2: { box1: null, box2: null, box3: "worker2" },
