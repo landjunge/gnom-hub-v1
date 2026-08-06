@@ -28,21 +28,20 @@ def test_facade_merges_warm_into_context(tmp_path: Path):
     assert "WARM facts" in ctx
 
 
-def test_warm_rejects_and_scrubs_garbage(tmp_path: Path):
+def test_warm_rejects_garbage_and_persists_in_user_db(tmp_path: Path):
     warm = WarmMemory(tmp_path)
     assert warm.add_fact("<!DOCTYPE html>") is False
     assert warm.add_fact("(no durable facts to store)") is False
     assert warm.add_fact("Prefer portable single-file HTML exports.") is True
-    # Inject garbage on disk then reload
-    path = warm.facts_path
-    path.write_text(
-        path.read_text(encoding="utf-8")
-        + '{"text": "<html lang=\\"de\\">", "ts": "x"}\n'
-        + '{"text": "Worker produced partial HTML", "ts": "x"}\n',
-        encoding="utf-8",
-    )
+    assert warm.add_fact("Worker produced partial HTML") is False
+    # Reload from same tmp user.db — durable personal store
     warm2 = WarmMemory(tmp_path)
     facts = warm2.all_facts()
     assert "Prefer portable single-file HTML exports." in facts
     assert not any("<html" in f.lower() for f in facts)
     assert not any("worker produced" in f.lower() for f in facts)
+    from gnom_hub.db.sqlite_store import get_db
+
+    info = get_db(tmp_path).snapshot_info()
+    assert info["path"].endswith("user.db")
+    assert info["warm_facts"] >= 1

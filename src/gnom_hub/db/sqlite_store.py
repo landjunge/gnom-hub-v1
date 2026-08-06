@@ -74,10 +74,27 @@ def default_user_db_path() -> Path:
     return (Path.home() / ".local" / "share" / "gnom-hub" / "user.db").resolve()
 
 
+def resolve_db_path(root: Path | None = None) -> Path:
+    """
+    Personal home user.db for the real hub; under {root}/data/user.db for
+    tests/tmp roots so unit tests never touch your real DB.
+    """
+    env = (os.getenv("GNOM_USER_DB") or os.getenv("GNOM_DB_PATH") or "").strip()
+    if env:
+        return Path(env).expanduser().resolve()
+    r = Path(root) if root is not None else project_root()
+    try:
+        if r.resolve() != project_root().resolve():
+            return (r / "data" / "user.db").resolve()
+    except OSError:
+        return (r / "data" / "user.db").resolve()
+    return default_user_db_path()
+
+
 def get_db(root: Path | None = None) -> GnomDatabase:
     """Process-wide DB (keyed by db file path)."""
     r = Path(root) if root is not None else project_root()
-    path = default_user_db_path()
+    path = resolve_db_path(r)
     key = str(path)
     with _lock:
         if key not in _instances:

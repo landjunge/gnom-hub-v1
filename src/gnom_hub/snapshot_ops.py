@@ -47,6 +47,13 @@ class SnapshotOpsMixin:
         }
 
     def memory_dict(self) -> dict[str, Any]:
+        db_info: dict[str, Any] = {}
+        try:
+            from gnom_hub.db.sqlite_store import get_db
+
+            db_info = get_db(self.root).snapshot_info()
+        except Exception:  # noqa: BLE001
+            db_info = {}
         return {
             "summary": self.hot.get_context_summary(),
             "facts": self.hot.all_facts()[-30:],
@@ -56,6 +63,7 @@ class SnapshotOpsMixin:
             "recent_messages": self.hot.recent_messages(6),
             "context": self.memory.pipeline_context(),
             "canvas_nodes": len(self.hot.canvas.nodes),
+            "user_db": db_info,
         }
 
     def snapshot(self) -> dict[str, Any]:

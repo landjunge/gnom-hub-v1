@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from gnom_hub.config.paths import project_root
+from gnom_hub.db.sqlite_store import get_db
 from gnom_hub.memory.atomic import atomic_write_text
 from gnom_hub.memory.canvas import MermaidCanvas
 from gnom_hub.memory.offload import DEFAULT_THRESHOLD, offload, recall
@@ -42,6 +43,7 @@ class HotMemory:
         self.canvas_path = self.hot_dir / "mermaid_canvas.mmd"
         self.session: dict[str, Any] = self._empty_session()
         self.canvas = MermaidCanvas()
+        self.db = get_db(self.root)
         if auto_load:
             self.load()
 
@@ -146,20 +148,45 @@ class HotMemory:
         return n
 
     def save(self) -> None:
+        """Persist HOT to personal user.db + optional JSON mirror for COLD export tools."""
         self.hot_dir.mkdir(parents=True, exist_ok=True)
         self._touch()
+        # Source of truth: user.db
+        self.db.hot_clear_session()
+        for m in self.session.get("messages") or []:
+            if isinstance(m, dict):
+                self.db.hot_add_message(
+                    str(m.get("role") or "?"),
+                    str(m.get("content") or ""),
+                )
+        for f in self.session.get("facts") or []:
+            if str(f).strip():
+                self.db.hot_add_fact(str(f).strip())
+        self.db.kv_set("hot_updated_at", str(self.session.get("updated_at") or _utc_now_iso()))
+        # Mirror JSON (gitignored) for backups / older scripts
         payload = json.dumps(self.session, ensure_ascii=False, indent=2) + "\n"
         atomic_write_text(self.session_path, payload)
         self.canvas.save(self.canvas_path)
 
     def load(self) -> None:
-        if self.session_path.is_file():
+        """Load HOT from user.db (preferred) or legacy session.json."""
+        msgs = self.db.hot_messages()
+        facts = self.db.hot_facts()
+        if msgs or facts:
+            self.session = {
+                "messages": msgs,
+                "facts": facts,
+                "updated_at": self.db.kv_get("hot_updated_at") or _utc_now_iso(),
+            }
+        elif self.session_path.is_file():
             data = json.loads(self.session_path.read_text(encoding="utf-8"))
             self.session = {
                 "messages": list(data.get("messages") or []),
                 "facts": list(data.get("facts") or []),
                 "updated_at": data.get("updated_at") or _utc_now_iso(),
             }
+            # one-shot push into user.db
+            self.save()
         else:
             self.session = self._empty_session()
         self.canvas.load(self.canvas_path)
@@ -171,6 +198,7 @@ class HotMemory:
         """Wipe HOT session + canvas (offload files left for safety)."""
         self.session = self._empty_session()
         self.canvas.clear()
+        self.db.hot_clear_session()
         if save:
             self.save()
 

@@ -1,74 +1,36 @@
-"""WARM lite: durable facts (JSONL) that survive HOT session reset."""
+"""WARM durable facts — backed by personal ~/.local/share/gnom-hub/user.db."""
 
 from __future__ import annotations
 
-import json
-from datetime import datetime, timezone
 from pathlib import Path
 
 from gnom_hub.config.paths import project_root
-from gnom_hub.memory.atomic import atomic_write_text
-
-
-def _utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+from gnom_hub.db.sqlite_store import get_db
 
 
 class WarmMemory:
     """
-    Long-lived facts under {root}/data/warm/facts.jsonl.
+    Long-lived facts in user.db (home), survive HOT session reset.
 
-    KISS: append-only JSONL, last N facts for context, de-dupe exact lines.
+    KISS: SQLite via GnomDatabase; de-dupe + garbage filter on write.
     """
 
     def __init__(self, root: Path | None = None, *, max_facts: int = 200) -> None:
         self.root = Path(root) if root is not None else project_root()
+        self.max_facts = max_facts
+        self.db = get_db(self.root)
+        # Compat paths (legacy tools / docs may still mention these)
         self.warm_dir = self.root / "data" / "warm"
         self.facts_path = self.warm_dir / "facts.jsonl"
-        self.max_facts = max_facts
-        self._facts: list[str] = []
         self.load()
 
     def load(self) -> None:
-        self._facts = []
-        if not self.facts_path.is_file():
-            return
-        for line in self.facts_path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                obj = json.loads(line)
-            except json.JSONDecodeError:
-                # plain text line fallback
-                self._facts.append(line)
-                continue
-            if isinstance(obj, dict) and obj.get("text"):
-                self._facts.append(str(obj["text"]).strip())
-            elif isinstance(obj, str):
-                self._facts.append(obj.strip())
-        self._facts = self._filter_facts(self._facts)
-        # Rewrite file if garbage was dropped (one-time scrub on boot)
-        if self.facts_path.is_file():
-            try:
-                raw_n = sum(
-                    1
-                    for ln in self.facts_path.read_text(encoding="utf-8").splitlines()
-                    if ln.strip()
-                )
-            except OSError:
-                raw_n = len(self._facts)
-            if raw_n != len(self._facts):
-                self.save()
+        """No-op load: SQLite is source of truth (migrated once on first open)."""
+        self.db.warm_trim(self.max_facts)
 
     def save(self) -> None:
-        self.warm_dir.mkdir(parents=True, exist_ok=True)
-        # rewrite trimmed file (keeps last max_facts)
-        lines = self._facts[-self.max_facts :]
-        body = ""
-        for text in lines:
-            body += json.dumps({"text": text, "ts": _utc_now_iso()}, ensure_ascii=False) + "\n"
-        atomic_write_text(self.facts_path, body)
+        """No-op: writes are immediate in SQLite."""
+        self.db.warm_trim(self.max_facts)
 
     @staticmethod
     def _filter_facts(facts: list[str]) -> list[str]:
@@ -88,51 +50,35 @@ class WarmMemory:
         return out
 
     def add_fact(self, text: str) -> bool:
-        t = " ".join(text.split()).strip()
+        t = " ".join(str(text).split()).strip()
         if not t:
             return False
         from gnom_hub.agents.roles_helpers import _is_garbage_fact
 
         if _is_garbage_fact(t):
             return False
-        if t in self._facts:
-            return False
-        # case-insensitive de-dupe
-        low = t.lower()
-        if any(f.lower() == low for f in self._facts):
-            return False
-        self._facts.append(t)
-        if len(self._facts) > self.max_facts:
-            self._facts = self._facts[-self.max_facts :]
-        self.save()
-        return True
+        ok = self.db.warm_add(t, source="warm")
+        if ok:
+            self.db.warm_trim(self.max_facts)
+        return ok
 
     def recent_facts(self, limit: int = 12) -> list[str]:
-        return list(self._facts[-limit:])
+        return self.db.warm_recent(limit)
 
     def all_facts(self) -> list[str]:
-        return list(self._facts)
+        return self.db.warm_all()
 
     def remove_fact(self, text: str) -> bool:
-        """Remove first exact match (case-sensitive strip)."""
-        t = " ".join(text.split()).strip()
-        if not t or t not in self._facts:
+        t = " ".join(str(text).split()).strip()
+        if not t:
             return False
-        self._facts = [f for f in self._facts if f != t]
-        self.save()
-        return True
+        return self.db.warm_remove(t)
 
     def remove_at(self, index: int) -> str | None:
-        """Remove by 1-based index into all_facts order. Returns removed text."""
-        if index < 1 or index > len(self._facts):
-            return None
-        removed = self._facts.pop(index - 1)
-        self.save()
-        return removed
+        return self.db.warm_remove_at(index)
 
     def clear(self) -> None:
-        self._facts = []
-        self.save()
+        self.db.warm_clear()
 
     def pipeline_context(self, *, max_chars: int = 500) -> str:
         facts = self.recent_facts(8)
