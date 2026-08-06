@@ -45,7 +45,9 @@ def test_ui_static_has_v16_v37_features(client: TestClient):
     assert "startJobTimer" in body
     assert "updateCostBadge" in body
     assert "pushResultHistory" in body
-    assert "toggleCompactMode" in body
+    # Dynamic Box 3: every worker output, not only the first
+    assert "buildWorkerPanel" in body
+    assert "normalizeWorkerOutputs" in body
     assert "exportResultHistory" in body
     assert "rerunWorker" in body
     assert "card-cost" in body
@@ -59,7 +61,7 @@ def test_ui_static_has_v16_v37_features(client: TestClient):
     assert "diff-overlay" in css.text
     assert "job-timer" in css.text
     assert "cost-badge" in css.text
-    assert "body.compact" in css.text
+    assert "box3-dynamic" in css.text
     assert "card-cost" in css.text
 
     html = client.get("/")
@@ -67,7 +69,7 @@ def test_ui_static_has_v16_v37_features(client: TestClient):
     assert "box3-content" in html.text
     assert "Worker results" in html.text
     assert "cost-badge" in html.text
-    assert "btn-compact" in html.text
+    assert "box3-content" in html.text
     assert "btn-clarify" in html.text
 
 
