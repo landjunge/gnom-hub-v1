@@ -7,8 +7,12 @@ import os
 
 
 def run_smoke() -> None:
+    from gnom_hub.config.user_workspace import ensure_user_workspace, format_user_workspace_report
     from gnom_hub.core.event_bus import EventBus
     from gnom_hub.hub import Hub
+
+    st = ensure_user_workspace()
+    print(format_user_workspace_report(st))
 
     bus = EventBus()
 
@@ -21,6 +25,11 @@ def run_smoke() -> None:
     hub = Hub()
     snap = hub.snapshot()
     print(f"[Keys] root={hub.root}")
+    uw = snap.get("user_workspace") or {}
+    print(
+        f"[User] ready={uw.get('ready')} key={uw.get('key_ok')} "
+        f"db={uw.get('db_ok')} deepseek={uw.get('key_has_deepseek')}"
+    )
     print(f"[LLM] DeepSeek key={'yes' if snap['llm']['deepseek'] else 'no'}")
     print(f"[Agents] {len(snap['agents'])} active roster")
     print(f"[Memory] {snap['memory_summary']}")

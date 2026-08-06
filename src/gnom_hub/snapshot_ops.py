@@ -68,11 +68,14 @@ class SnapshotOpsMixin:
 
     def snapshot(self) -> dict[str, Any]:
         usage = self.llm.usage_snapshot()
+        uw = getattr(self, "user_workspace", None)
+        user_ws = uw.to_dict() if uw is not None and hasattr(uw, "to_dict") else {}
         return {
             "agents": [self._agent_dict(a) for a in self.agents.list_agents()],
             "pipeline": self.pipeline_dict(),
             "memory_summary": self.hot.get_context_summary(),
             "memory": self.memory_dict(),
+            "user_workspace": user_ws,
             "workspace": self.workspace.snapshot(),
             "telegram": {
                 "configured": self.telegram.enabled,

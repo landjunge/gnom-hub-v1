@@ -61,17 +61,23 @@ source .venv/bin/activate
 python -m pip install --upgrade pip -q
 pip install -e ".[dev]" -q
 
-# Key.txt
-if [ ! -f Key.txt ] && [ -f Key.txt.example ]; then
-  cp Key.txt.example Key.txt
-  echo "Created Key.txt from example — add DEEPSEEK_API_KEY=sk-..."
-elif [ ! -f Key.txt ]; then
-  printf '%s\n' "DEEPSEEK_API_KEY=" > Key.txt
-  echo "Created empty Key.txt — add DEEPSEEK_API_KEY"
-fi
-
 # data dirs
 mkdir -p data/hot data/warm data/cold data/workspace/temp data/workspace/perm data/backups
+
+# Personal unit: User/Key.txt + User/user.db (workspace check)
+echo ""
+echo "=== User workspace (Key + DB) ==="
+export PYTHONPATH="${ROOT}/src${PYTHONPATH:+:$PYTHONPATH}"
+python - <<'PY'
+from gnom_hub.config.user_workspace import ensure_user_workspace, format_user_workspace_report
+
+st = ensure_user_workspace()
+print(format_user_workspace_report(st))
+if not st.key_has_deepseek:
+    print("  → edit User/Key.txt and set DEEPSEEK_API_KEY=sk-...")
+if not st.ready:
+    raise SystemExit(1)
+PY
 
 echo ""
 # Version from pyproject if present
@@ -80,6 +86,7 @@ if [ -f pyproject.toml ]; then
   GNOM_VER="$(grep -E '^version\s*=' pyproject.toml | head -1 | sed -E 's/.*"([^"]+)".*/\1/' || echo "$GNOM_VER")"
 fi
 echo "OK — Gnom-Hub v${GNOM_VER} ready."
+echo "  Personal unit: User/Key.txt + User/user.db (sync yourself, never push)"
 echo "  source .venv/bin/activate"
 echo "  ./scripts/start.sh"
 echo "  → http://127.0.0.1:8080/"

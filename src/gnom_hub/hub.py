@@ -12,6 +12,7 @@ from gnom_hub.cold_ops import ColdOpsMixin
 from gnom_hub.computer_use.workflow import ComputerUseKit
 from gnom_hub.config.keys import ensure_env_from_key_txt, load_keys
 from gnom_hub.config.paths import project_root
+from gnom_hub.config.user_workspace import ensure_user_workspace
 from gnom_hub.core.event_bus import EventBus
 from gnom_hub.export_ops import ExportOpsMixin
 from gnom_hub.hot_facts import HotFactsMixin
@@ -63,6 +64,8 @@ class Hub(
 
     def __init__(self) -> None:
         self.root = project_root()
+        # New install / every start: User/ + Key.txt + user.db present?
+        self.user_workspace = ensure_user_workspace(self.root)
         ensure_env_from_key_txt(self.root)
         self.keys = load_keys(self.root)
         self.bus = EventBus()
