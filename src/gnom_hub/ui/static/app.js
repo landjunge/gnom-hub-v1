@@ -167,9 +167,91 @@
     return false;
   }
 
+  /** Build 8 agent layers per box (Agent N = Layer N). */
+  function buildAgentLayers() {
+    const hints = {
+      brainstorm: "Brainstorm dialogue",
+      memory: "Memory notes",
+      flex: "Flex review",
+      coordinator: "Coordinator / plan",
+      worker1: "Worker 1 result",
+      worker2: "Worker 2 result",
+      worker3: "Worker 3 result",
+      worker4: "Worker 4 result",
+    };
+    [1, 2, 3].forEach(function (n) {
+      const stack = document.getElementById("box" + n + "-layers");
+      if (!stack) return;
+      stack.innerHTML = "";
+      AGENTS.forEach(function (agent, idx) {
+        const layer = document.createElement("div");
+        layer.className = "agent-layer";
+        layer.dataset.agent = agent.id;
+        layer.dataset.layerIndex = String(idx + 1);
+        layer.setAttribute("aria-label", "Layer " + (idx + 1) + " " + agent.label);
+        const body = document.createElement("div");
+        body.className = "agent-layer-body box-body";
+        if (n === 3) body.classList.add("box3-dynamic");
+        body.id = "box" + n + "-" + agent.id;
+        /* compat aliases for primary content hosts */
+        if (n === 2 && agent.id === "brainstorm") body.id = "box2-content";
+        if (n === 3 && agent.id === "worker1") body.id = "box3-content";
+        body.dataset.agentBody = agent.id;
+        body.dataset.box = String(n);
+        const empty = document.createElement("p");
+        empty.className = "muted empty-hint";
+        empty.textContent = hints[agent.id] || agent.label;
+        body.appendChild(empty);
+        layer.appendChild(body);
+        stack.appendChild(layer);
+      });
+    });
+    /* default: first agent layer visible until click */
+    activateAgentLayer(lastClickedAgentId || "brainstorm", false);
+  }
+
+  function getAgentBoxBody(boxNum, agentId) {
+    const aid = agentId || lastClickedAgentId || "brainstorm";
+    if (boxNum === 2 && aid === "brainstorm") {
+      const b = document.getElementById("box2-content");
+      if (b) return b;
+    }
+    if (boxNum === 3 && aid === "worker1") {
+      const b = document.getElementById("box3-content");
+      if (b) return b;
+    }
+    return document.getElementById("box" + boxNum + "-" + aid) ||
+      document.querySelector(
+        "#box" + boxNum + "-layers .agent-layer[data-agent=\"" + aid + "\"] .agent-layer-body"
+      );
+  }
+
+  /**
+   * Agent click: show that agent's layer in Box 1/2/3 + 1px module frame color.
+   * @param {string} agentId
+   * @param {boolean} [paintOnly]
+   */
+  function activateAgentLayer(agentId, doPaint) {
+    if (!agentId) return;
+    if (!AGENTS.some(function (a) { return a.id === agentId; })) return;
+    lastClickedAgentId = agentId;
+    document.querySelectorAll(".agent-layer").forEach(function (layer) {
+      const on = layer.getAttribute("data-agent") === agentId;
+      layer.classList.toggle("is-active", on);
+      layer.hidden = !on;
+    });
+    document.querySelectorAll(".agent-card").forEach(function (card) {
+      card.classList.toggle(
+        "is-layer-active",
+        card.dataset.agentId === agentId
+      );
+    });
+    if (doPaint !== false) paintBoxesModule(agentId);
+  }
+
   /** Box-Modul: 1px Rahmen in Agentenfarbe (Klick). */
   function paintBoxesModule(agentId) {
-    lastClickedAgentId = agentId || null;
+    lastClickedAgentId = agentId || lastClickedAgentId || null;
     const hex =
       agentId && COLOR_HEX[agentId] ? COLOR_HEX[agentId] : null;
     const mod = document.querySelector(".boxes");
@@ -190,9 +272,9 @@
   }
 
   function updateBoxBorders() {
-    /* Klick-Agent hat Vorrang: ganzes Modul in Agentenfarbe 1px */
+    /* Klick-Agent hat Vorrang: Layer + Modul in Agentenfarbe 1px */
     if (lastClickedAgentId && COLOR_HEX[lastClickedAgentId]) {
-      paintBoxesModule(lastClickedAgentId);
+      activateAgentLayer(lastClickedAgentId, true);
       return;
     }
     const map = {
@@ -315,7 +397,7 @@
         if (clickTimer) clearTimeout(clickTimer);
         clickTimer = setTimeout(function () {
           clickTimer = null;
-          paintBoxesModule(agent.id);
+          activateAgentLayer(agent.id, true);
           openTuneModal(agent.id);
         }, 220);
       });
@@ -538,39 +620,39 @@
       }
     }
 
-    const box2 = [];
+    /* content → agent layers (box2: brainstorm/flex/coordinator; box3: workers) */
     if (p.brainstorm_turns && p.brainstorm_turns.length) {
-      box2.push("=== Brainstorm dialogue ===");
+      const lines = ["=== Brainstorm dialogue ==="];
       p.brainstorm_turns.forEach(function (t) {
         const role = t.role === "user" ? "You" : "Brainstorm";
-        box2.push("");
-        box2.push(role + ":");
-        box2.push(String(t.text || ""));
+        lines.push("");
+        lines.push(role + ":");
+        lines.push(String(t.text || ""));
       });
+      setBox2(lines.join("\n"));
     } else if (p.brainstorm_notes) {
-      box2.push("=== Brainstorm ===");
-      box2.push(p.brainstorm_notes);
-    }
-    if (p.flex_notes) {
-      box2.push("");
-      box2.push("=== Flex review ===");
-      box2.push(p.flex_notes);
-    }
-    if (p.distilled_requirements && p.distilled_requirements.length) {
-      box2.push("");
-      box2.push("=== Requirements ===");
-      p.distilled_requirements.forEach(function (r) {
-        box2.push("• " + r);
-      });
-    }
-    if (box2.length) {
-      setBox2(box2.join("\n"));
+      setBox2("=== Brainstorm ===\n" + p.brainstorm_notes);
     } else if (p.stage === "idle") {
       setBox2(
         "Brainstorm dialogue appears here.\n\n" +
           "1) Send messages to brainstorm freely\n" +
           "2) Press Execute when ready for workers"
       );
+    }
+    if (p.flex_notes && typeof setBox2Agent === "function") {
+      setBox2Agent("flex", "=== Flex review ===\n" + p.flex_notes, "Flex");
+    }
+    if (
+      p.distilled_requirements &&
+      p.distilled_requirements.length &&
+      typeof setBox2Agent === "function"
+    ) {
+      const req = ["=== Requirements ==="].concat(
+        p.distilled_requirements.map(function (r) {
+          return "• " + r;
+        })
+      );
+      setBox2Agent("coordinator", req.join("\n"), "Coordinator");
     }
 
     lastCanExecute = !!p.can_execute;
@@ -3972,9 +4054,20 @@
   }
 
   function setBox2(htmlOrText) {
-    const body = document.getElementById("box2-content");
+    const body =
+      (typeof getAgentBoxBody === "function" && getAgentBoxBody(2, "brainstorm")) ||
+      document.getElementById("box2-content");
     if (!body) return;
     renderDynamicContent(body, htmlOrText || "", { title: "Brainstorm" });
+  }
+
+  /** Write text into a specific agent layer in box 2 (e.g. flex notes). */
+  function setBox2Agent(agentId, htmlOrText, title) {
+    const body =
+      (typeof getAgentBoxBody === "function" && getAgentBoxBody(2, agentId)) ||
+      document.getElementById("box2-" + agentId);
+    if (!body) return;
+    renderDynamicContent(body, htmlOrText || "", { title: title || agentId });
   }
 
   /**
@@ -4024,48 +4117,57 @@
   }
 
   function renderBox3Workers(pipeline) {
-    const body = document.getElementById("box3-content");
-    if (!body) return;
-    body.innerHTML = "";
-    body.classList.add("box3-dynamic");
-
     const outputs = normalizeWorkerOutputs(pipeline);
     lastWorkerOutputs = outputs;
     updateBox3Toolbar();
 
-    if (!outputs.length) {
+    /* clear each worker agent layer in box 3 */
+    ["worker1", "worker2", "worker3", "worker4"].forEach(function (wid) {
+      const body =
+        (typeof getAgentBoxBody === "function" && getAgentBoxBody(3, wid)) ||
+        document.getElementById("box3-" + wid) ||
+        (wid === "worker1" ? document.getElementById("box3-content") : null);
+      if (!body) return;
+      body.innerHTML = "";
+      body.classList.add("box3-dynamic");
       const empty = document.createElement("p");
       empty.className = "muted empty-hint";
       if (pipeline && pipeline.stage === "work") {
         empty.textContent = "Workers running…";
-      } else if (pipeline && pipeline.stage === "done") {
-        empty.textContent = "(no worker output)";
       } else {
-        empty.textContent = "Worker result after Execute.";
+        empty.textContent = wid + " result";
       }
       body.appendChild(empty);
+    });
+
+    if (!outputs.length) {
       return;
     }
 
-    // Two content layers only — crossfade nacheinander (not all at once)
-    const dual = document.createElement("div");
-    dual.className = "dual-layers";
-    dual.id = "box3-dual";
-    const slotA = document.createElement("div");
-    slotA.className = "layer-slot layer-slot-a is-front";
-    slotA.dataset.slot = "a";
-    const slotB = document.createElement("div");
-    slotB.className = "layer-slot layer-slot-b";
-    slotB.dataset.slot = "b";
-    dual.appendChild(slotA);
-    dual.appendChild(slotB);
-    body.appendChild(dual);
+    /* each worker output → that agent’s layer in box 3 */
+    outputs.forEach(function (out, idx) {
+      const wid =
+        (out && (out.worker || out.id || out.name) || "").toString().toLowerCase();
+      let agentId = null;
+      if (/worker\s*1|w1/.test(wid) || wid === "worker1") agentId = "worker1";
+      else if (/worker\s*2|w2/.test(wid) || wid === "worker2") agentId = "worker2";
+      else if (/worker\s*3|w3/.test(wid) || wid === "worker3") agentId = "worker3";
+      else if (/worker\s*4|w4/.test(wid) || wid === "worker4") agentId = "worker4";
+      else agentId = "worker" + Math.min(idx + 1, 4);
 
-    bindBoxLayerControls();
+      const body =
+        (typeof getAgentBoxBody === "function" && getAgentBoxBody(3, agentId)) ||
+        document.getElementById(agentId === "worker1" ? "box3-content" : "box3-" + agentId);
+      if (!body) return;
+      body.innerHTML = "";
+      body.classList.add("box3-dynamic");
+      renderDynamicContent(body, (out && out.result) || "", {
+        title: ((out && out.name) || agentId) + " preview",
+      });
+    });
+
     box3FocusIdx = 0;
-    box3FrontSlot = "a";
-    paintWorkerIntoSlot(slotA, outputs[0], 0);
-    updateBox3WorkerLabel(0, outputs.length);
+    bindBoxLayerControls();
   }
 
   /** Save one worker HTML into personal WS (WS-gnom-hub-v1/selected/). */
@@ -4573,6 +4675,7 @@
 
 /* part: 05-init.js  lines 4268-4656 of app.js — edit parts, run scripts/build_ui_js.py */
   function init() {
+    if (typeof buildAgentLayers === "function") buildAgentLayers();
     renderCards();
     bindTooltipHovers();
     bindTuneSliders();

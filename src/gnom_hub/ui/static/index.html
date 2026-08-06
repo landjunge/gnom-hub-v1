@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=143" />
+  <link rel="stylesheet" href="/static/app.css?v=144" />
 </head>
 <body>
   <div id="app">
@@ -62,14 +62,14 @@
     <!-- 8 agent cards: equal width, full row = boxes -->
     <section id="agent-cards" class="agent-cards" aria-label="Agents"></section>
 
-    <!-- 3 boxes: nur Rahmen + Inhalt (keine Namen, keine Buttons) -->
+    <!-- 3 boxes: pro Agent ein Layer (Klick = Layer + 1px Modulrahmen) -->
     <section class="boxes" aria-label="Main panels">
-      <!-- Box 1 = Info-Display: Live tips / Gnom detail layers -->
       <div id="box1" class="box box-1" data-tooltip-id="box1" aria-label="Box 1">
-        <div id="box1-content" class="box-body box1-info">
-          <!-- Layer Live: mouseover / agent click -->
+        <div class="agent-layer-stack" data-box="box1" id="box1-layers"></div>
+        <!-- shared overlays (not per-agent chrome) -->
+        <div id="box1-content" class="box1-overlay box-body box1-info">
           <div class="info-layer is-active" data-info-layer="live" id="box1-layer-live">
-            <p class="box1-placeholder">Hover oder Agent-Klick → Erklärung hier.</p>
+            <p class="box1-placeholder">Agent-Klick → Layer in Box 1/2/3 + Rahmenfarbe.</p>
             <div id="box1-tooltip" class="box1-tooltip" hidden>
               <h2 id="tip-title" class="tip-title"></h2>
               <p id="tip-how" class="tip-how"></p>
@@ -95,9 +95,8 @@
               </div>
             </div>
           </div>
-          <!-- Layer Regler: dynamic slider info while tuning -->
           <div class="info-layer" data-info-layer="tune" id="box1-layer-tune" hidden>
-            <p class="box1-placeholder">Schieber bewegen → dynamische Info hier (Layer Regler).</p>
+            <p class="box1-placeholder">Schieber bewegen → Info hier.</p>
             <div id="box1-tune-tip" class="box1-tooltip">
               <h2 id="tune-tip-title" class="tip-title">Regler</h2>
               <p id="tune-tip-how" class="tip-how"></p>
@@ -105,13 +104,11 @@
               <p id="tune-tip-value" class="tip-value"></p>
             </div>
           </div>
-          <!-- Layer Gnom: system detail -->
           <div class="info-layer" data-info-layer="gnom" id="box1-layer-gnom" hidden>
             <h2 class="tip-title">Gnom-Hub — Überblick</h2>
             <div class="info-gnom-body">
               <p><strong>Pipeline:</strong> Chat → Brainstorm → Distill → Flex → Coordinator → Worker(s) → Memory.</p>
-              <p><strong>Box 1:</strong> Info-Display — Live / Regler / Gnom (anderer Button = anderer Layer).</p>
-              <p><strong>Box 2+3:</strong> Content; Agent-Tuning = Layer über Box 2+3 (Schieber).</p>
+              <p><strong>Agent-Layer:</strong> Jeder Agent hat Layer in Box 1/2/3. Klick → Layer + 1px Rahmenfarbe.</p>
               <p><strong>Memory:</strong> HOT / WARM (user.db) / COLD.</p>
             </div>
           </div>
@@ -120,23 +117,11 @@
 
       <div class="boxes-right">
       <div id="box2" class="box box-2" data-tooltip-id="box2" aria-label="Box 2">
-        <div class="layer-stack">
-          <div id="box2-content" class="layer layer-website box-body">
-            <p class="muted">Brainstorm dialogue appears here.</p>
-            <p class="muted empty-hint">(Empty — Send a message.)</p>
-          </div>
-          <div class="layer layer-worker" data-box="box2" aria-hidden="true"></div>
-        </div>
+        <div class="agent-layer-stack" data-box="box2" id="box2-layers"></div>
       </div>
 
       <div id="box3" class="box box-3" data-tooltip-id="box3" aria-label="Box 3">
-        <div class="layer-stack">
-          <div id="box3-content" class="layer layer-website box-body box3-dynamic">
-            <p class="muted">Worker result after Execute.</p>
-            <p class="muted empty-hint">(Empty until Execute finishes.)</p>
-          </div>
-          <div class="layer layer-worker" data-box="box3" aria-hidden="true"></div>
-        </div>
+        <div class="agent-layer-stack" data-box="box3" id="box3-layers"></div>
       </div>
 
       <!-- Layer 3: agent tuning over Box 2+3 (not a popup) -->
@@ -462,6 +447,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=143"></script>
+  <script src="/static/app.js?v=144"></script>
 </body>
 </html>

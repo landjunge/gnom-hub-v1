@@ -167,39 +167,39 @@
       }
     }
 
-    const box2 = [];
+    /* content → agent layers (box2: brainstorm/flex/coordinator; box3: workers) */
     if (p.brainstorm_turns && p.brainstorm_turns.length) {
-      box2.push("=== Brainstorm dialogue ===");
+      const lines = ["=== Brainstorm dialogue ==="];
       p.brainstorm_turns.forEach(function (t) {
         const role = t.role === "user" ? "You" : "Brainstorm";
-        box2.push("");
-        box2.push(role + ":");
-        box2.push(String(t.text || ""));
+        lines.push("");
+        lines.push(role + ":");
+        lines.push(String(t.text || ""));
       });
+      setBox2(lines.join("\n"));
     } else if (p.brainstorm_notes) {
-      box2.push("=== Brainstorm ===");
-      box2.push(p.brainstorm_notes);
-    }
-    if (p.flex_notes) {
-      box2.push("");
-      box2.push("=== Flex review ===");
-      box2.push(p.flex_notes);
-    }
-    if (p.distilled_requirements && p.distilled_requirements.length) {
-      box2.push("");
-      box2.push("=== Requirements ===");
-      p.distilled_requirements.forEach(function (r) {
-        box2.push("• " + r);
-      });
-    }
-    if (box2.length) {
-      setBox2(box2.join("\n"));
+      setBox2("=== Brainstorm ===\n" + p.brainstorm_notes);
     } else if (p.stage === "idle") {
       setBox2(
         "Brainstorm dialogue appears here.\n\n" +
           "1) Send messages to brainstorm freely\n" +
           "2) Press Execute when ready for workers"
       );
+    }
+    if (p.flex_notes && typeof setBox2Agent === "function") {
+      setBox2Agent("flex", "=== Flex review ===\n" + p.flex_notes, "Flex");
+    }
+    if (
+      p.distilled_requirements &&
+      p.distilled_requirements.length &&
+      typeof setBox2Agent === "function"
+    ) {
+      const req = ["=== Requirements ==="].concat(
+        p.distilled_requirements.map(function (r) {
+          return "• " + r;
+        })
+      );
+      setBox2Agent("coordinator", req.join("\n"), "Coordinator");
     }
 
     lastCanExecute = !!p.can_execute;

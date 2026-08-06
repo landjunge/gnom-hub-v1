@@ -144,9 +144,20 @@
   }
 
   function setBox2(htmlOrText) {
-    const body = document.getElementById("box2-content");
+    const body =
+      (typeof getAgentBoxBody === "function" && getAgentBoxBody(2, "brainstorm")) ||
+      document.getElementById("box2-content");
     if (!body) return;
     renderDynamicContent(body, htmlOrText || "", { title: "Brainstorm" });
+  }
+
+  /** Write text into a specific agent layer in box 2 (e.g. flex notes). */
+  function setBox2Agent(agentId, htmlOrText, title) {
+    const body =
+      (typeof getAgentBoxBody === "function" && getAgentBoxBody(2, agentId)) ||
+      document.getElementById("box2-" + agentId);
+    if (!body) return;
+    renderDynamicContent(body, htmlOrText || "", { title: title || agentId });
   }
 
   /**
@@ -196,48 +207,57 @@
   }
 
   function renderBox3Workers(pipeline) {
-    const body = document.getElementById("box3-content");
-    if (!body) return;
-    body.innerHTML = "";
-    body.classList.add("box3-dynamic");
-
     const outputs = normalizeWorkerOutputs(pipeline);
     lastWorkerOutputs = outputs;
     updateBox3Toolbar();
 
-    if (!outputs.length) {
+    /* clear each worker agent layer in box 3 */
+    ["worker1", "worker2", "worker3", "worker4"].forEach(function (wid) {
+      const body =
+        (typeof getAgentBoxBody === "function" && getAgentBoxBody(3, wid)) ||
+        document.getElementById("box3-" + wid) ||
+        (wid === "worker1" ? document.getElementById("box3-content") : null);
+      if (!body) return;
+      body.innerHTML = "";
+      body.classList.add("box3-dynamic");
       const empty = document.createElement("p");
       empty.className = "muted empty-hint";
       if (pipeline && pipeline.stage === "work") {
         empty.textContent = "Workers running…";
-      } else if (pipeline && pipeline.stage === "done") {
-        empty.textContent = "(no worker output)";
       } else {
-        empty.textContent = "Worker result after Execute.";
+        empty.textContent = wid + " result";
       }
       body.appendChild(empty);
+    });
+
+    if (!outputs.length) {
       return;
     }
 
-    // Two content layers only — crossfade nacheinander (not all at once)
-    const dual = document.createElement("div");
-    dual.className = "dual-layers";
-    dual.id = "box3-dual";
-    const slotA = document.createElement("div");
-    slotA.className = "layer-slot layer-slot-a is-front";
-    slotA.dataset.slot = "a";
-    const slotB = document.createElement("div");
-    slotB.className = "layer-slot layer-slot-b";
-    slotB.dataset.slot = "b";
-    dual.appendChild(slotA);
-    dual.appendChild(slotB);
-    body.appendChild(dual);
+    /* each worker output → that agent’s layer in box 3 */
+    outputs.forEach(function (out, idx) {
+      const wid =
+        (out && (out.worker || out.id || out.name) || "").toString().toLowerCase();
+      let agentId = null;
+      if (/worker\s*1|w1/.test(wid) || wid === "worker1") agentId = "worker1";
+      else if (/worker\s*2|w2/.test(wid) || wid === "worker2") agentId = "worker2";
+      else if (/worker\s*3|w3/.test(wid) || wid === "worker3") agentId = "worker3";
+      else if (/worker\s*4|w4/.test(wid) || wid === "worker4") agentId = "worker4";
+      else agentId = "worker" + Math.min(idx + 1, 4);
 
-    bindBoxLayerControls();
+      const body =
+        (typeof getAgentBoxBody === "function" && getAgentBoxBody(3, agentId)) ||
+        document.getElementById(agentId === "worker1" ? "box3-content" : "box3-" + agentId);
+      if (!body) return;
+      body.innerHTML = "";
+      body.classList.add("box3-dynamic");
+      renderDynamicContent(body, (out && out.result) || "", {
+        title: ((out && out.name) || agentId) + " preview",
+      });
+    });
+
     box3FocusIdx = 0;
-    box3FrontSlot = "a";
-    paintWorkerIntoSlot(slotA, outputs[0], 0);
-    updateBox3WorkerLabel(0, outputs.length);
+    bindBoxLayerControls();
   }
 
   /** Save one worker HTML into personal WS (WS-gnom-hub-v1/selected/). */

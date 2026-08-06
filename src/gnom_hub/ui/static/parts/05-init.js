@@ -1,5 +1,6 @@
 /* part: 05-init.js  lines 4268-4656 of app.js — edit parts, run scripts/build_ui_js.py */
   function init() {
+    if (typeof buildAgentLayers === "function") buildAgentLayers();
     renderCards();
     bindTooltipHovers();
     bindTuneSliders();

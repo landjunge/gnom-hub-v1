@@ -511,6 +511,11 @@ html, body {
   overflow: hidden;
 }
 
+.agent-card.is-layer-active {
+  outline: 1px solid var(--card-color, var(--border));
+  outline-offset: 1px;
+}
+
 .agent-card[data-enabled="false"] {
   opacity: 0.45;
 }
@@ -694,6 +699,68 @@ html, body {
   flex-direction: column;
   overflow: hidden;
   transition: border-color 0.2s ease;
+}
+
+/* Pro Agent ein Layer in Box 1/2/3 — Klick zeigt Layer N */
+.agent-layer-stack {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.agent-layer {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--bg-panel);
+}
+
+.agent-layer.is-active {
+  display: flex;
+  z-index: 2;
+}
+
+.agent-layer-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  padding: 8px 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 12px;
+  line-height: 1.4;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Box1: shared tip/cold/clarify over agent layers */
+.box1-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  background: transparent;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.box1-overlay .info-layer,
+.box1-overlay .box1-tooltip,
+.box1-overlay .cold-browser,
+.box1-overlay .clarify,
+.box1-overlay button,
+.box1-overlay input {
+  pointer-events: auto;
+}
+
+.box1-overlay .box1-placeholder {
+  pointer-events: none;
 }
 
 /* —— Layer stack over every box: website / worker / controls —— */
