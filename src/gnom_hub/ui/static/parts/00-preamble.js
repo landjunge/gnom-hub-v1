@@ -81,7 +81,7 @@
     clarify: document.getElementById("clarify"),
     clarifyQ: document.getElementById("clarify-question"),
     chatInput: document.getElementById("chat-input"),
-    chatLog: document.getElementById("chat-log"),
+    chatLog: null, /* set by syncActiveChatLog after buildChatLayers */
     btnSend: document.getElementById("btn-send"),
     btnExecute: document.getElementById("btn-execute"),
     btnMic: document.getElementById("btn-mic"),
@@ -167,6 +167,62 @@
     return false;
   }
 
+  /** Crux: one chat log layer per agent. */
+  function buildChatLayers() {
+    const stack = document.getElementById("chat-layers");
+    if (!stack) return;
+    stack.innerHTML = "";
+    AGENTS.forEach(function (agent, idx) {
+      const layer = document.createElement("div");
+      layer.className = "chat-agent-layer";
+      layer.dataset.agent = agent.id;
+      layer.dataset.layerIndex = String(idx + 1);
+      layer.setAttribute(
+        "aria-label",
+        "Chat layer " + (idx + 1) + " · " + agent.label
+      );
+      const log = document.createElement("div");
+      log.className = "chat-log";
+      log.id = "chat-log-" + agent.id;
+      if (agent.id === "brainstorm") log.id = "chat-log";
+      log.dataset.agent = agent.id;
+      layer.appendChild(log);
+      stack.appendChild(layer);
+    });
+    syncActiveChatLog(lastClickedAgentId || "brainstorm");
+  }
+
+  function syncActiveChatLog(agentId) {
+    const aid = agentId || lastClickedAgentId || "brainstorm";
+    document.querySelectorAll(".chat-agent-layer").forEach(function (layer) {
+      const on = layer.getAttribute("data-agent") === aid;
+      layer.classList.toggle("is-active", on);
+      layer.hidden = !on;
+    });
+    els.chatLog =
+      document.getElementById(aid === "brainstorm" ? "chat-log" : "chat-log-" + aid) ||
+      document.querySelector(
+        '.chat-agent-layer[data-agent="' + aid + '"] .chat-log'
+      ) ||
+      document.getElementById("chat-log");
+    if (els.chatLog) {
+      try {
+        els.chatLog.scrollTop = els.chatLog.scrollHeight;
+      } catch (_e) {
+        /* ignore */
+      }
+    }
+    /* Crux frame color = same agent color as boxes module */
+    const chatMod = document.getElementById("chat-mod");
+    if (chatMod) {
+      const hex = COLOR_HEX[aid] || null;
+      chatMod.style.setProperty(
+        "--chat-mod-color",
+        hex || "var(--border)"
+      );
+    }
+  }
+
   /** Build 8 agent layers per box (Agent N = Layer N). */
   function buildAgentLayers() {
     const hints = {
@@ -246,6 +302,8 @@
         card.dataset.agentId === agentId
       );
     });
+    /* Crux: chat layer switches with agent */
+    syncActiveChatLog(agentId);
     if (doPaint !== false) {
       paintBoxesModule(agentId);
       fillBox1AgentInfo(agentId);
@@ -264,6 +322,13 @@
     if (mod) {
       mod.style.setProperty(
         "--boxes-mod-color",
+        hex || "var(--border)"
+      );
+    }
+    const chatMod = document.getElementById("chat-mod");
+    if (chatMod) {
+      chatMod.style.setProperty(
+        "--chat-mod-color",
         hex || "var(--border)"
       );
     }

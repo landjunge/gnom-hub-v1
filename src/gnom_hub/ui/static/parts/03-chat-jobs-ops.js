@@ -1468,6 +1468,10 @@
   }
 
   function appendChat(who, text) {
+    /* Crux: write into active agent chat layer */
+    if (typeof syncActiveChatLog === "function") {
+      syncActiveChatLog(lastClickedAgentId || "brainstorm");
+    }
     if (!els.chatLog) return;
     renderChatLine(who, text, formatChatTime());
     els.chatLog.scrollTop = els.chatLog.scrollHeight;

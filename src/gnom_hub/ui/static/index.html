@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=146" />
+  <link rel="stylesheet" href="/static/app.css?v=147" />
 </head>
 <body>
   <div id="app">
@@ -172,22 +172,22 @@
       </div>
     </section>
 
-    <!-- Modul: Platz | Chat | Platz (Spalten = Box 1 | Box 2 | Box 3) -->
+    <!-- Crux: Chat-Layer pro Agent | Platz L/R -->
     <section id="chat-mod" class="chat-mod" aria-label="Chat module">
       <div class="chat-mod-platz chat-mod-platz-l" aria-label="Platzhalter unter Box 1">
         <button type="button" class="chat-mod-slot-btn" disabled title="Platzhalter">·</button>
         <button type="button" class="chat-mod-slot-btn" disabled title="Platzhalter">·</button>
         <button type="button" class="chat-mod-slot-btn" disabled title="Platzhalter">·</button>
       </div>
-      <section id="chat" class="chat-mod-chat chat" data-tooltip-id="chat" aria-label="Chat">
-        <div id="chat-log" class="chat-log"></div>
+      <section id="chat" class="chat-mod-chat chat" data-tooltip-id="chat" aria-label="Chat layer">
+        <div id="chat-layers" class="chat-layer-stack" aria-label="Per-agent chat layers"></div>
         <div class="chat-input-row">
           <button type="button" id="btn-mic" class="btn-mic" title="Speech to text (browser)">Mic</button>
           <input
             type="text"
             id="chat-input"
             class="chat-input"
-            placeholder="Idee oder Bau-Befehl — sonst fragt Brainstorm: Soll ich umsetzen?"
+            placeholder="Chat-Layer (Crux) — Agent-Klick wechselt Layer"
             autocomplete="off"
           />
           <button type="button" id="btn-send" class="btn-send">Send</button>
@@ -201,7 +201,7 @@
             Cancel
           </button>
         </div>
-        <p class="kbd-hint">Enter = Send · ↑/↓ History · Ctrl/⌘+Enter = Execute · Ctrl/⌘+S = Save</p>
+        <p class="kbd-hint">Chat-Layer = Crux · Agent-Klick wechselt · Enter = Send</p>
       </section>
       <div class="chat-mod-platz chat-mod-platz-r" aria-label="Platzhalter unter Box 3">
         <button type="button" class="chat-mod-slot-btn" disabled title="Platzhalter">·</button>
@@ -446,6 +446,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=146"></script>
+  <script src="/static/app.js?v=147"></script>
 </body>
 </html>
