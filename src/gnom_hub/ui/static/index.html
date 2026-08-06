@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=108" />
+  <link rel="stylesheet" href="/static/app.css?v=107" />
 </head>
 <body>
   <div id="app">
@@ -63,11 +63,11 @@
     <!-- 8 agent cards: equal width, full row = boxes -->
     <section id="agent-cards" class="agent-cards" aria-label="Agents"></section>
 
-    <!-- 3 mini-displays: create + show content (HTML/code/text) -->
-    <section class="boxes" aria-label="Mini displays">
-      <div id="box1" class="box mini-display box-arounder" data-tooltip-id="box1">
-        <div class="box-header"><span class="display-led" aria-hidden="true"></span>Arounder</div>
-        <div id="box1-content" class="box-body display-screen">
+    <!-- 3 boxes: equal thirds, fill remaining height -->
+    <section class="boxes" aria-label="Main panels">
+      <div id="box1" class="box box-arounder" data-tooltip-id="box1">
+        <div class="box-header">Arounder</div>
+        <div id="box1-content" class="box-body">
           <p class="box1-placeholder">Hover a card or control for help. Click Cold badge to browse archives.</p>
           <div id="box1-tooltip" class="box1-tooltip" hidden>
             <h2 id="tip-title" class="tip-title"></h2>
@@ -96,18 +96,18 @@
         </div>
       </div>
 
-      <div id="box2" class="box mini-display box-brainstorm" data-tooltip-id="box2">
-        <div class="box-header"><span class="display-led" aria-hidden="true"></span>Brainstorm</div>
-        <div id="box2-content" class="box-body display-screen">
-          <p class="muted">Mini-display — Brainstorm dialogue appears here.</p>
+      <div id="box2" class="box box-brainstorm" data-tooltip-id="box2">
+        <div class="box-header">Brainstorm</div>
+        <div id="box2-content" class="box-body">
+          <p class="muted">Brainstorm dialogue appears here.</p>
           <p class="muted empty-hint">(Empty — Send a message.)</p>
         </div>
       </div>
 
-      <div id="box3" class="box mini-display box-worker" data-tooltip-id="box3">
-        <div class="box-header"><span class="display-led" aria-hidden="true"></span>Worker results</div>
-        <div id="box3-content" class="box-body display-screen box3-dynamic">
-          <p class="muted">Mini-displays — HTML / code / text from every worker.</p>
+      <div id="box3" class="box box-worker" data-tooltip-id="box3">
+        <div class="box-header">Worker results</div>
+        <div id="box3-content" class="box-body box3-dynamic">
+          <p class="muted">Worker result after Execute.</p>
           <p class="muted empty-hint">(Empty until Execute finishes.)</p>
         </div>
       </div>
@@ -442,6 +442,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=108"></script>
+  <script src="/static/app.js?v=107"></script>
 </body>
 </html>
