@@ -3903,9 +3903,52 @@
     body.appendChild(buildWorkerPanel(outputs[0], 0));
   }
 
+  /** Save one worker HTML into personal WS (WS-gnom-hub-v1/selected/). */
+  async function keepWorkerToPersonalWs(out, idx) {
+    const raw = (out && out.result) || "";
+    const html = extractHtml(raw);
+    if (!html) {
+      toast("No HTML to keep — only HTML goes to personal WS", "info");
+      return;
+    }
+    const name =
+      ((out && (out.worker || out.name)) || "worker" + (idx + 1))
+        .toString()
+        .replace(/[^\w.-]+/g, "_") + ".html";
+    try {
+      const data = await api("POST", "/api/workspace/keep", {
+        content: html,
+        name: name,
+        worker: (out && out.worker) || null,
+      });
+      toast(
+        "Saved → " + (data.path || "personal WS/selected/") + " (Clear won't delete this)",
+        "ok"
+      );
+      // optional clipboard convenience
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(html).catch(function () {});
+      }
+    } catch (err) {
+      toast("Keep failed: " + (err.message || err), "error");
+    }
+  }
+
   function copyAllWorkerResults() {
     if (!lastWorkerOutputs.length) {
       toast("No worker results to copy", "info");
+      return;
+    }
+    // Keep each HTML result into personal WS (only chosen outputs that are HTML)
+    var kept = 0;
+    lastWorkerOutputs.forEach(function (o, i) {
+      if (extractHtml(o.result || "")) {
+        kept += 1;
+        keepWorkerToPersonalWs(o, i);
+      }
+    });
+    if (!kept) {
+      toast("No HTML among worker results to keep", "info");
       return;
     }
     const parts = lastWorkerOutputs.map(function (o, i) {
@@ -3916,7 +3959,7 @@
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(
         function () {
-          toast("Copied all (" + text.length + " chars)", "ok");
+          toast("Kept HTML to personal WS + clipboard (" + text.length + " chars)", "ok");
         },
         function () {
           toast("Copy failed", "error");
@@ -4136,22 +4179,11 @@
     btnCopy.type = "button";
     btnCopy.className = "worker-mode-btn copy-btn";
     btnCopy.textContent = "Copy";
-    btnCopy.title = "Copy result";
+    btnCopy.title =
+      "Copy HTML to personal WS (WS-gnom-hub-v1/selected/) — survives Clear";
     btnCopy.addEventListener("click", function (ev) {
       ev.stopPropagation();
-      const text = raw || "";
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(
-          function () {
-            toast("Copied", "ok");
-          },
-          function () {
-            toast("Copy failed", "error");
-          }
-        );
-      } else {
-        toast("Clipboard not available", "error");
-      }
+      keepWorkerToPersonalWs(out, idx);
     });
     mode.appendChild(btnCopy);
     head.appendChild(mode);

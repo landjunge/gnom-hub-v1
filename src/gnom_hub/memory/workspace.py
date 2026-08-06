@@ -76,6 +76,24 @@ class WorkspaceStore:
                 raise FileNotFoundError(safe)
         return copy_selected_html(src, self.root)
 
+    def keep_html_content(self, content: str, name: str = "page.html") -> Path:
+        """
+        Save one chosen HTML body into personal WS selected/
+        (WS-gnom-hub-v1/selected on real install).
+        """
+        from gnom_hub.config.user_workspace import copy_selected_html_text
+
+        body = str(content or "").strip()
+        if not body:
+            raise ValueError("empty content")
+        low = body.lower()
+        if "<html" not in low and "<!doctype" not in low and not body.lstrip().startswith("<"):
+            raise ValueError("not HTML — only HTML goes into personal selected/")
+        safe = Path(name or "page.html").name
+        if not safe.lower().endswith((".html", ".htm")):
+            safe = f"{safe}.html"
+        return copy_selected_html_text(body, safe, self.root)
+
     def read_text(self, which: str, name: str, max_chars: int = 12000) -> str:
         safe = Path(name).name
         path = self._dir(which) / safe

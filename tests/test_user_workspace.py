@@ -84,3 +84,15 @@ def test_only_selected_html_copies(tmp_path: Path):
 
 def test_user_dir_under_personal_ws(tmp_path: Path):
     assert user_dir(tmp_path) == (tmp_path / "User").resolve()
+
+
+def test_keep_html_content_to_selected(tmp_path: Path):
+    ws = WorkspaceStore(tmp_path)
+    html = "<!DOCTYPE html><html><body><h1>Mine</h1></body></html>"
+    dest = ws.keep_html_content(html, "landing.html")
+    assert dest.parent == selected_dir(tmp_path)
+    assert "Mine" in dest.read_text(encoding="utf-8")
+    # clear hub temp does not remove selected
+    ws.write_text("temp", "junk.html", html)
+    ws.clear_temp()
+    assert dest.is_file()

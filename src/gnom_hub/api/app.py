@@ -80,6 +80,14 @@ class WorkspaceWriteBody(BaseModel):
     content: str = ""
 
 
+class KeepSelectedBody(BaseModel):
+    """Copy one chosen HTML into personal WS selected/ (not hub temp)."""
+
+    content: str | None = None
+    name: str | None = None
+    worker: str | None = None
+
+
 class TelegramInBody(BaseModel):
     text: str = Field(min_length=1)
     chat_id: int | None = None
@@ -697,6 +705,21 @@ def create_app() -> FastAPI:
             "name": path.name,
             "workspace": get_hub().workspace.snapshot(),
         }
+
+    @app.post("/api/workspace/keep")
+    def workspace_keep(body: KeepSelectedBody) -> dict[str, Any]:
+        """
+        Copy button target: save chosen HTML into personal WS
+        (WS-gnom-hub-v1/selected/). Hub clear does not touch this.
+        """
+        try:
+            return get_hub().keep_result_to_personal_ws(
+                body.content,
+                name=body.name,
+                worker=body.worker,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
     @app.get("/api/workspace/file")
     def workspace_file(

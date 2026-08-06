@@ -1,13 +1,90 @@
-"""Workspace zip + last-execute export capture (extracted from Hub)."""
+"""Workspace zip + last-execute export + keep-to-personal-WS."""
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
 
+def _extract_html_document(raw: str) -> str | None:
+    """Pull a real HTML document from worker text (same spirit as UI)."""
+    s = str(raw or "")
+    fence = re.search(r"```html\s*([\s\S]*?)```", s, re.IGNORECASE)
+    if fence and fence.group(1):
+        body = fence.group(1).strip()
+        if re.search(r"<!DOCTYPE\s+html|<html[\s>]", body, re.IGNORECASE):
+            return body
+    m = re.search(r"(<!DOCTYPE\s+html[\s\S]*?</html>)", s, re.IGNORECASE)
+    if m:
+        return m.group(1).strip()
+    m = re.search(r"(<html[\s\S]*?</html>)", s, re.IGNORECASE)
+    if m:
+        return m.group(1).strip()
+    t = s.strip()
+    if t.startswith("<") and re.search(r"<!DOCTYPE\s+html|<html[\s>]", t, re.IGNORECASE):
+        return t
+    return None
+
+
 class ExportOpsMixin:
     """Mixin extracted from Hub — pure move."""
+
+    def keep_result_to_personal_ws(
+        self,
+        content: str | None = None,
+        *,
+        name: str | None = None,
+        worker: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Copy ONE chosen HTML result into personal WS selected/.
+
+        Hub temp may be cleared anytime; this is the durable copy for you.
+        """
+        raw = str(content or "").strip()
+        if not raw and worker:
+            for out in self.pipeline.state.worker_outputs or []:
+                if not isinstance(out, dict):
+                    continue
+                if str(out.get("worker") or "") == worker or str(out.get("name") or "") == worker:
+                    raw = str(out.get("result") or "").strip()
+                    if not name:
+                        name = f"{out.get('worker') or 'worker'}.html"
+                    break
+        if not raw:
+            # fall back to first worker with HTML
+            for out in self.pipeline.state.worker_outputs or []:
+                if not isinstance(out, dict):
+                    continue
+                cand = _extract_html_document(str(out.get("result") or ""))
+                if cand:
+                    raw = cand
+                    if not name:
+                        name = f"{out.get('worker') or 'worker'}.html"
+                    break
+            if not raw:
+                raise ValueError("no HTML result to keep")
+        html = _extract_html_document(raw) or (
+            raw if raw.lstrip().lower().startswith(("<!doctype", "<html", "<")) else None
+        )
+        if not html:
+            raise ValueError("not HTML — only HTML is kept in personal WS selected/")
+        fname = name or (f"{worker}.html" if worker else "page.html")
+        path = self.workspace.keep_html_content(html, fname)
+        self._append_trace(
+            "workspace.keep",
+            {"name": path.name, "bytes": path.stat().st_size, "path": str(path)},
+        )
+        return {
+            "ok": True,
+            "name": path.name,
+            "path": str(path),
+            "bytes": path.stat().st_size,
+            "personal_ws": str(path.parent.parent),
+            "selected_dir": str(path.parent),
+            "workspace": self.workspace.snapshot(),
+        }
 
     def export_workspace_zip(self, zone: str = "all") -> dict[str, Any]:
         path = self.workspace.export_zip(zone)
