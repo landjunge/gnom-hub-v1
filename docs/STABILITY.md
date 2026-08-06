@@ -106,6 +106,7 @@ Doc: [`WORKFLOWS_AND_PRESETS.md`](WORKFLOWS_AND_PRESETS.md).
 | 2026-08-05 | **122** + user E2E | **PASS** tasks = full page + variant + QA + a11y | deterministic HTML plan (no LLM section-split); concurrent hub traffic can race export |
 | 2026-08-05 | **125** + quality_check + B1–B3 + user E2E | **PASS** live pong, B1 max~12k, E2E full-page task + 4 panels, export ~55k | presets freeze; plan_mode sync; pinned export |
 | 2026-08-05 | **129** + quality_check + B1–B3 + live pong | **PASS** B1 max~690 (stubs-ish load), B2/B3 unfrozen | **Structural repair plan Phase A baseline** (pre hub/app.js extract) |
+| 2026-08-06 | **129** + landing E2E after Phases B–F | **PASS** 1 worker HTML 7/7, iframes=1 | Hub mixins (telegram/pack/backup/jobs/memory wire); app.js parts + build_ui_js |
 
 ### Debug-team fixes (2026-08-05)
 

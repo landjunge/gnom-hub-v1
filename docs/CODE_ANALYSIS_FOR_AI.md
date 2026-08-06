@@ -7,12 +7,12 @@
 | **Repo** | `gnom-hub-v1` (private local multi-agent hub) |
 | **Package** | `gnom_hub` under `src/` |
 | **Version** | **3.7.1** (`pyproject.toml`, `src/gnom_hub/__init__.py`) |
-| **HEAD (at write time)** | `27c2e58` — memory garbage fix |
+| **HEAD (at write time)** | structural repair Phases A–G (hub extract + UI parts) |
 | **Python** | ≥3.10 |
 | **Default UI** | `http://127.0.0.1:8080/` |
-| **Stack** | FastAPI + uvicorn · desktop SPA (`app.js`/`app.css`/`index.html`) · optional DeepSeek / Ollama |
+| **Stack** | FastAPI + uvicorn · desktop SPA (`app.js` from `parts/*` · `app.css` · `index.html`) · optional DeepSeek / Ollama |
 | **License** | Private use |
-| **LOC (approx.)** | ~9.7k Python · ~4.7k `app.js` · hub alone ~3.2k |
+| **LOC (approx.)** | ~10k Python · ~4.7k `app.js` (6 parts) · hub façade ~1.5k |
 
 ---
 
@@ -75,15 +75,19 @@ gnom-hub-v1/
 
 | Area | ~LOC | Role |
 |------|------|------|
-| `hub.py` | 3239 | Facade: jobs, snapshot, memory wire, backup/pack, telegram |
-| `ui/static/app.js` | 4656 | Entire desktop UI state machine |
+| `hub.py` | ~1520 | Façade + wiring (mixins for bulk) |
+| `telegram/commands.py` | ~690 | Telegram slash commands (mixin) |
+| `session_pack.py` | ~560 | Session pack export/import (mixin) |
+| `backup_ops.py` | ~150 | Backup zip ops (mixin) |
+| `jobs.py` | ~260 | Async job runner (mixin) |
+| `memory/wiring.py` | ~90 | Bus → HOT/WARM handlers (mixin) |
+| `ui/static/parts/*` + `app.js` | ~4.7k | Desktop UI (edit parts → `build_ui_js.py`) |
 | `pipeline/` | 1460 | Orchestrator, gates, DoD |
 | `agents/` | 1158 | Roles + helpers |
-| `memory/` | 1074 | Persistence layers |
 | `api/app.py` | 877 | Thin HTTP over Hub methods |
 | `llm/` | 593 | Clients + budget |
 
-**Architectural smell to know:** `hub.py` is a god-object. New features often land here. Prefer thin API → Hub method → focused module; do not invent parallel entry points.
+**Hub shape:** `Hub(TelegramCommandMixin, BackupOpsMixin, SessionPackMixin, JobsMixin, MemoryWiringMixin)`. Public API method names stay on Hub; bulk lives in mixins. Prefer thin API → Hub → mixin/module; no second orchestrator.
 
 ---
 
@@ -371,7 +375,7 @@ Env guards:
 
 ## 10. UI (SPA)
 
-**Files:** `ui/static/index.html`, `app.css`, `app.js` (~4.7k LOC)
+**Files:** `ui/static/index.html`, `app.css`, `app.js` (~4.7k LOC, built from `parts/00`–`05`)
 
 ### Layout
 
