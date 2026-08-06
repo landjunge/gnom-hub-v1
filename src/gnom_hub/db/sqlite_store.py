@@ -231,17 +231,79 @@ class GnomDatabase:
             self._conn.execute("DELETE FROM warm_facts")
         return n
 
-    def warm_trim(self, max_facts: int) -> None:
+    def warm_count_source(self, source: str) -> int:
+        with _lock:
+            row = self._conn.execute(
+                "SELECT COUNT(*) AS n FROM warm_facts WHERE source = ?",
+                (source,),
+            ).fetchone()
+        return int(row["n"] if row else 0)
+
+    def warm_trim(
+        self,
+        max_facts: int,
+        *,
+        flex_reserve: int = 40,
+    ) -> dict[str, int]:
+        """Drop oldest facts until at most max_facts remain.
+
+        Policy (protect-first):
+        1) delete oldest non-flex (source != 'flex') first
+        2) only then oldest flex, but never below flex_reserve flex rows
+           (may leave count > max_facts if only flex remains)
+        """
+        stats = {
+            "before": 0,
+            "after": 0,
+            "dropped_non_flex": 0,
+            "dropped_flex": 0,
+            "flex_left": 0,
+        }
         n = self.warm_count()
+        stats["before"] = n
         if n <= max_facts:
-            return
+            stats["after"] = n
+            stats["flex_left"] = self.warm_count_source("flex")
+            return stats
+
         drop = n - max_facts
         with _lock:
-            self._conn.execute(
+            # Phase 1: non-flex first (oldest id)
+            cur = self._conn.execute(
                 "DELETE FROM warm_facts WHERE id IN ("
-                "SELECT id FROM warm_facts ORDER BY id ASC LIMIT ?)",
+                "  SELECT id FROM warm_facts"
+                "  WHERE IFNULL(source, 'warm') != 'flex'"
+                "  ORDER BY id ASC"
+                "  LIMIT ?"
+                ")",
                 (drop,),
             )
+            dropped_nf = int(cur.rowcount or 0)
+            stats["dropped_non_flex"] = dropped_nf
+            still = drop - dropped_nf
+
+            if still > 0:
+                flex_n = int(
+                    self._conn.execute(
+                        "SELECT COUNT(*) AS n FROM warm_facts WHERE source = 'flex'"
+                    ).fetchone()["n"]
+                )
+                can_drop_flex = max(0, flex_n - max(0, int(flex_reserve)))
+                still = min(still, can_drop_flex)
+                if still > 0:
+                    cur2 = self._conn.execute(
+                        "DELETE FROM warm_facts WHERE id IN ("
+                        "  SELECT id FROM warm_facts WHERE source = 'flex'"
+                        "  ORDER BY id ASC"
+                        "  LIMIT ?"
+                        ")",
+                        (still,),
+                    )
+                    stats["dropped_flex"] = int(cur2.rowcount or 0)
+
+        stats["after"] = self.warm_count()
+        stats["flex_left"] = self.warm_count_source("flex")
+        return stats
 
     # ── HOT ───────────────────────────────────────────────────────────
 

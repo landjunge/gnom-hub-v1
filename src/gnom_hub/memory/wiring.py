@@ -86,21 +86,22 @@ class MemoryWiringMixin:
                 self._append_trace("compress.error", {"error": str(exc)})
 
         def on_flex_facts(data: Any) -> None:
-            """Flex personal companion → durable WARM facts about the user."""
+            """Flex wishes → durable WARM (source=flex), ADD-only, trim-protected."""
             if not isinstance(data, dict):
                 return
             from gnom_hub.agents.roles_helpers import _is_garbage_fact
 
             for fact in data.get("facts") or []:
-                text = str(fact).strip()
+                text = " ".join(str(fact).split()).strip()
                 if not text:
                     continue
-                if not text.lower().startswith("user:"):
+                if not text.lower().startswith(("user:", "wish:")):
                     text = "User: " + text
                 if 12 <= len(text) <= 200 and not _is_garbage_fact(text):
-                    self.warm.add_fact(text)
+                    # source=flex → warm_trim keeps these until non-flex exhausted
+                    self.warm.add_fact(text, source="flex")
                     self.hot.add_fact(text)
-                    self.vectors.add(text, meta={"source": "flex_personal"})
+                    self.vectors.add(text, meta={"source": "flex_wish"})
             self.hot.save()
 
         self.bus.on("pipeline.memory_hint", on_memory_hint)

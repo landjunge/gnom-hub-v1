@@ -26,11 +26,11 @@ class WarmMemory:
 
     def load(self) -> None:
         """No-op load: SQLite is source of truth (migrated once on first open)."""
-        self.db.warm_trim(self.max_facts)
+        self.db.warm_trim(self.max_facts, flex_reserve=40)
 
     def save(self) -> None:
         """No-op: writes are immediate in SQLite."""
-        self.db.warm_trim(self.max_facts)
+        self.db.warm_trim(self.max_facts, flex_reserve=40)
 
     @staticmethod
     def _filter_facts(facts: list[str]) -> list[str]:
@@ -49,7 +49,7 @@ class WarmMemory:
             out.append(t)
         return out
 
-    def add_fact(self, text: str) -> bool:
+    def add_fact(self, text: str, *, source: str = "warm") -> bool:
         t = " ".join(str(text).split()).strip()
         if not t:
             return False
@@ -57,9 +57,9 @@ class WarmMemory:
 
         if _is_garbage_fact(t):
             return False
-        ok = self.db.warm_add(t, source="warm")
+        ok = self.db.warm_add(t, source=source or "warm")
         if ok:
-            self.db.warm_trim(self.max_facts)
+            self.db.warm_trim(self.max_facts, flex_reserve=40)
             try:
                 from gnom_hub.db.sqlite_store import sync_user_db_backup
 
@@ -67,6 +67,15 @@ class WarmMemory:
             except Exception:  # noqa: BLE001
                 pass
         return ok
+
+    def add_fact_flex(self, text: str) -> bool:
+        """ADD-only Flex wish (source=flex). Survives HOT clear; trim-protected."""
+        t = " ".join(str(text).split()).strip()
+        if not t:
+            return False
+        if not t.lower().startswith(("user:", "wish:")):
+            t = "User: " + t
+        return self.add_fact(t, source="flex")
 
     def recent_facts(self, limit: int = 12) -> list[str]:
         return self.db.warm_recent(limit)
