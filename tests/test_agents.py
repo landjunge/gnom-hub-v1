@@ -53,8 +53,8 @@ def test_colors_and_defaults():
     assert mgr.get(AgentId.MEMORY).enabled is True
     assert mgr.get(AgentId.MEMORY).toggleable is False
     assert mgr.get(AgentId.FLEX).preset == DEFAULT_FLEX_PRESET
-    assert DEFAULT_FLEX_PRESET == "security"
-    assert FLEX_PRESETS == ("security", "neutral", "researcher")
+    assert DEFAULT_FLEX_PRESET == "personal"
+    assert FLEX_PRESETS == ("personal", "security", "neutral", "researcher")
     assert COLORS[AgentId.BRAINSTORM] == "red"
 
 
@@ -140,7 +140,7 @@ def test_on_start_bulk_emit():
         "worker4",
     }
     flex = next(e for e in events if e["id"] == "flex")
-    assert flex["preset"] == "security"
+    assert flex["preset"] == "personal"
     memory = next(e for e in events if e["id"] == "memory")
     assert "preset" not in memory
 

@@ -85,7 +85,26 @@ class MemoryWiringMixin:
             except Exception as exc:  # noqa: BLE001
                 self._append_trace("compress.error", {"error": str(exc)})
 
+        def on_flex_facts(data: Any) -> None:
+            """Flex personal companion → durable WARM facts about the user."""
+            if not isinstance(data, dict):
+                return
+            from gnom_hub.agents.roles_helpers import _is_garbage_fact
+
+            for fact in data.get("facts") or []:
+                text = str(fact).strip()
+                if not text:
+                    continue
+                if not text.lower().startswith("user:"):
+                    text = "User: " + text
+                if 12 <= len(text) <= 200 and not _is_garbage_fact(text):
+                    self.warm.add_fact(text)
+                    self.hot.add_fact(text)
+                    self.vectors.add(text, meta={"source": "flex_personal"})
+            self.hot.save()
+
         self.bus.on("pipeline.memory_hint", on_memory_hint)
         self.bus.on("pipeline.memory_curated", on_memory_curated)
+        self.bus.on("pipeline.flex_facts", on_flex_facts)
         self.bus.on("pipeline.error", on_error)
         self.bus.on("pipeline.done", on_done)

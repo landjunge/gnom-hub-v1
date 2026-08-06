@@ -29,9 +29,9 @@ COLORS: dict[AgentId, str] = {
     AgentId.WORKER4: "gray",
 }
 
-# Flex role presets (v1). Default is security.
-FLEX_PRESETS: tuple[str, ...] = ("security", "neutral", "researcher")
-DEFAULT_FLEX_PRESET = "security"
+# Flex: personal companion first; optional lenses.
+FLEX_PRESETS: tuple[str, ...] = ("personal", "security", "neutral", "researcher")
+DEFAULT_FLEX_PRESET = "personal"
 
 
 @dataclass

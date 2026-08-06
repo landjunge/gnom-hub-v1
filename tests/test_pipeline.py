@@ -189,14 +189,31 @@ def test_one_enabled_worker():
     assert "Worker 1" in state.worker_results[0]
 
 
-def test_flex_preset_security_in_notes():
+def test_flex_personal_remembers_user():
     bus = EventBus()
     agents = AgentManager(bus)
-    agents.set_flex_preset("researcher")
+    agents.set_flex_preset("personal")
     pipe = Pipeline(bus, agent_manager=agents)
-    state = pipe.start("Research topic Z")
+    state = pipe.start("browse zu grok.com und chatte mit Eve")
     assert state.stage == PipelineStage.done
-    assert "Zielgruppe" in state.flex_notes or "Datenquellen" in state.flex_notes
+    # Stub/heuristic path: flex notes about the user or facts absorbed
+    low = (state.flex_notes or "").lower()
+    assert "weiß" in low or "user" in low or "eve" in low or "grok" in low
+
+
+def test_flex_absorb_emits_facts():
+    from gnom_hub.agents.models import AgentId
+    from gnom_hub.agents.roles import FlexAgent
+
+    bus = EventBus()
+    agents = AgentManager(bus)
+    seen: list = []
+    bus.on("pipeline.flex_facts", lambda d: seen.append(d))
+    flex = FlexAgent(agents.get(AgentId.FLEX), bus, llm=None)
+    facts = flex.absorb("browse zu grok.com und chatte mit Eve")
+    assert any("grok" in f.lower() for f in facts)
+    assert any("eve" in f.lower() for f in facts)
+    assert seen
 
 
 def test_answer_clarify_without_pending_raises():

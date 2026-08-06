@@ -52,7 +52,7 @@
   async function cycleFlexPreset() {
     const flex = findAgent("flex");
     if (!flex) return;
-    const cur = flex.preset || "security";
+    const cur = flex.preset || "personal";
     const idx = FLEX_PRESETS.indexOf(cur);
     const next = FLEX_PRESETS[(idx + 1) % FLEX_PRESETS.length];
     try {

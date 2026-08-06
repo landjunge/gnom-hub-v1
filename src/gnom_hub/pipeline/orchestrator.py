@@ -172,6 +172,16 @@ class Orchestrator:
 
             self._state.brainstorm_turns.append({"role": "brainstorm", "text": notes})
             self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
+
+            # Flex: personal companion absorbs every user line (not only on Execute)
+            if self.flex.enabled:
+                try:
+                    self.flex.absorb(text, mem)
+                except Exception as exc:  # noqa: BLE001
+                    self.bus.emit(
+                        "pipeline.warning",
+                        {"stage": "flex_absorb", "error": str(exc)},
+                    )
             # Always pin task to the message that just arrived
             self._state.user_text = text
 
@@ -368,8 +378,16 @@ class Orchestrator:
                 {"notes": notes, "preset": self.flex.state.preset},
             )
             if notes:
-                first = notes.strip().splitlines()[0][:160]
-                preset = self.flex.state.preset or "security"
+                # Prefer a "Was ich über dich weiß" line for workers
+                first = ""
+                for ln in notes.strip().splitlines():
+                    s = ln.strip().lstrip("-•* ")
+                    if len(s) >= 12 and not s.endswith(":"):
+                        first = s[:160]
+                        break
+                if not first:
+                    first = notes.strip().splitlines()[0][:160]
+                preset = self.flex.state.preset or "personal"
                 self._state.distilled_requirements.append(f"Flex/{preset}: {first}")
 
         self._check_cancel()
