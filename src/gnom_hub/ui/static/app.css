@@ -1448,8 +1448,8 @@ body.worker-fs-open {
   background: #495057;
 }
 
-/* —— Chat row: same columns as boxes (Box1 | Box2 chat | Box3) —— */
-.chat-row {
+/* —— Modul chat-mod: Platz | Chat | Platz (Spalten = Box1 | Box2 | Box3) —— */
+.chat-mod {
   display: flex;
   flex-direction: row;
   gap: var(--gap);
@@ -1460,23 +1460,24 @@ body.worker-fs-open {
   overflow: hidden;
 }
 
-/* left = Box 1 width; mid/right = Box 2 / Box 3 (half of 2/3 each) */
-.chat-side-left {
+/* Platz L = Box 1 */
+.chat-mod-platz-l {
   flex: 0 0 calc((100% - var(--gap)) / 3);
   width: calc((100% - var(--gap)) / 3);
   min-width: 0;
   max-width: none;
 }
 
-.chat,
-.chat-side-right {
+/* Chat + Platz R = Box 2 / Box 3 */
+.chat-mod-chat,
+.chat-mod-platz-r {
   flex: 0 0 calc(((100% - var(--gap)) * 2 / 3 - var(--gap)) / 2);
   width: calc(((100% - var(--gap)) * 2 / 3 - var(--gap)) / 2);
   min-width: 0;
   max-width: none;
 }
 
-.chat-side {
+.chat-mod-platz {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
@@ -1489,11 +1490,7 @@ body.worker-fs-open {
   border-radius: 4px;
 }
 
-.chat-side-right {
-  display: flex;
-}
-
-.chat-side-btn {
+.chat-mod-slot-btn {
   height: 28px;
   min-width: 36px;
   padding: 0 10px;
@@ -1506,6 +1503,7 @@ body.worker-fs-open {
   cursor: default;
 }
 
+.chat-mod-chat,
 .chat {
   height: 100%;
   background: var(--bg-panel);
@@ -1517,7 +1515,7 @@ body.worker-fs-open {
 }
 
 .chat-input-row {
-  justify-content: center; /* Eingabe-Zeile mittig */
+  justify-content: center;
 }
 
 .chat-input {

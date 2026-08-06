@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=132" />
+  <link rel="stylesheet" href="/static/app.css?v=133" />
 </head>
 <body>
   <div id="app">
@@ -212,14 +212,14 @@
       </div>
     </section>
 
-    <!-- Chat mittig unter Box 2; Platzhalter links (Box 1) und rechts (Box 3) -->
-    <section class="chat-row" aria-label="Chat and side slots">
-      <div class="chat-side chat-side-left" aria-label="Under Box 1">
-        <button type="button" class="chat-side-btn" disabled title="Platzhalter">·</button>
-        <button type="button" class="chat-side-btn" disabled title="Platzhalter">·</button>
-        <button type="button" class="chat-side-btn" disabled title="Platzhalter">·</button>
+    <!-- Modul: Platz | Chat | Platz (Spalten = Box 1 | Box 2 | Box 3) -->
+    <section id="chat-mod" class="chat-mod" aria-label="Chat module">
+      <div class="chat-mod-platz chat-mod-platz-l" aria-label="Platzhalter unter Box 1">
+        <button type="button" class="chat-mod-slot-btn" disabled title="Platzhalter">·</button>
+        <button type="button" class="chat-mod-slot-btn" disabled title="Platzhalter">·</button>
+        <button type="button" class="chat-mod-slot-btn" disabled title="Platzhalter">·</button>
       </div>
-      <section id="chat" class="chat" data-tooltip-id="chat" aria-label="Chat">
+      <section id="chat" class="chat-mod-chat chat" data-tooltip-id="chat" aria-label="Chat">
         <div id="chat-log" class="chat-log"></div>
         <div class="chat-input-row">
           <button type="button" id="btn-mic" class="btn-mic" title="Speech to text (browser)">Mic</button>
@@ -243,10 +243,10 @@
         </div>
         <p class="kbd-hint">Enter = Send · ↑/↓ History · Ctrl/⌘+Enter = Execute · Ctrl/⌘+S = Save</p>
       </section>
-      <div class="chat-side chat-side-right" aria-label="Under Box 3">
-        <button type="button" class="chat-side-btn" disabled title="Platzhalter">·</button>
-        <button type="button" class="chat-side-btn" disabled title="Platzhalter">·</button>
-        <button type="button" class="chat-side-btn" disabled title="Platzhalter">·</button>
+      <div class="chat-mod-platz chat-mod-platz-r" aria-label="Platzhalter unter Box 3">
+        <button type="button" class="chat-mod-slot-btn" disabled title="Platzhalter">·</button>
+        <button type="button" class="chat-mod-slot-btn" disabled title="Platzhalter">·</button>
+        <button type="button" class="chat-mod-slot-btn" disabled title="Platzhalter">·</button>
       </div>
     </section>
   </div>
