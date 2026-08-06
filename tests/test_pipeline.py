@@ -163,8 +163,10 @@ def test_skip_disabled_workers():
     bus = EventBus()
     events = _collect(bus)
     agents = AgentManager(bus)
-    agents.toggle(AgentId.WORKER1)
-    agents.toggle(AgentId.WORKER2)
+    # turn all workers off
+    for wid in (AgentId.WORKER1, AgentId.WORKER2, AgentId.WORKER3, AgentId.WORKER4):
+        if agents.get(wid).enabled:
+            agents.toggle(wid)
 
     pipe = Pipeline(bus, agent_manager=agents)
     state = pipe.start("Do the thing")
@@ -179,7 +181,10 @@ def test_skip_disabled_workers():
 def test_one_enabled_worker():
     bus = EventBus()
     agents = AgentManager(bus)
-    agents.toggle(AgentId.WORKER2)  # only worker1 left
+    # only worker1 left
+    for wid in (AgentId.WORKER2, AgentId.WORKER3, AgentId.WORKER4):
+        if agents.get(wid).enabled:
+            agents.toggle(wid)
 
     pipe = Pipeline(bus, agent_manager=agents)
     state = pipe.start("Task A")

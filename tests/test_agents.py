@@ -35,8 +35,8 @@ def test_creates_fixed_agents():
         AgentId.WORKER4,
     ]
     assert len(agents) == 8
-    assert mgr.get(AgentId.WORKER3).enabled is False
-    assert mgr.get(AgentId.WORKER4).enabled is False
+    assert mgr.get(AgentId.WORKER3).enabled is True
+    assert mgr.get(AgentId.WORKER4).enabled is True
 
 
 def test_colors_and_defaults():
@@ -166,10 +166,10 @@ def test_status_payload_fields():
 
 def test_enabled_workers():
     _, mgr, _ = _manager()
-    assert len(mgr.enabled_workers()) == 2  # w3/w4 off by default
+    assert len(mgr.enabled_workers()) == 4  # all workers on by default
     mgr.toggle(AgentId.WORKER1)
     workers = mgr.enabled_workers()
-    assert len(workers) == 1
+    assert len(workers) == 3
     mgr.toggle(AgentId.WORKER3)
     assert len(mgr.enabled_workers()) == 2
-    assert workers[0].id == AgentId.WORKER2
+    assert AgentId.WORKER2 in [w.id for w in mgr.enabled_workers()]
