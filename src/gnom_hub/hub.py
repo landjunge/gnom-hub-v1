@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import json
 import os
-from pathlib import Path
 from typing import Any
 
+from gnom_hub.agent_ops import AgentOpsMixin
 from gnom_hub.agents.manager import AgentManager
-from gnom_hub.agents.models import FLEX_PRESETS, AgentId, AgentState
+from gnom_hub.agents.models import FLEX_PRESETS
 from gnom_hub.backup_ops import BackupOpsMixin
 from gnom_hub.cold_ops import ColdOpsMixin
 from gnom_hub.computer_use.workflow import ComputerUseKit
@@ -19,7 +18,6 @@ from gnom_hub.export_ops import ExportOpsMixin
 from gnom_hub.hot_facts import HotFactsMixin
 from gnom_hub.jobs import JobsMixin
 from gnom_hub.llm.manager import LLMManager
-from gnom_hub.memory.atomic import atomic_write_text
 from gnom_hub.memory.cold import ColdArchive
 from gnom_hub.memory.facade import MemoryFacade
 from gnom_hub.memory.hot import HotMemory
@@ -29,15 +27,16 @@ from gnom_hub.memory.wiring import MemoryWiringMixin
 from gnom_hub.memory.workspace import WorkspaceStore
 from gnom_hub.pipeline.orchestrator import Orchestrator as Pipeline
 from gnom_hub.plugins.loader import PluginLoader
-from gnom_hub.plugins.registry import ToolRegistry, ToolSpec
+from gnom_hub.plugins.registry import ToolRegistry
 from gnom_hub.presets import PresetsMixin
 from gnom_hub.security.god_mode import god_mode_from_env
 from gnom_hub.session_ops import SessionOpsMixin
 from gnom_hub.session_pack import SessionPackMixin
+from gnom_hub.system_ops import SystemOpsMixin
 from gnom_hub.telegram.bot import TelegramBridge
 from gnom_hub.telegram.commands import TelegramCommandMixin
+from gnom_hub.tools_ops import ToolsOpsMixin
 from gnom_hub.trace_ops import TraceOpsMixin
-from gnom_hub.ui.tooltips import TOOLTIPS
 
 
 class Hub(
@@ -52,6 +51,9 @@ class Hub(
     ColdOpsMixin,
     ExportOpsMixin,
     HotFactsMixin,
+    AgentOpsMixin,
+    ToolsOpsMixin,
+    SystemOpsMixin,
 ):
     """Single process facade used by the HTTP API and CLI."""
 
@@ -154,240 +156,6 @@ class Hub(
         ).strip()
         return TelegramBridge(self.bus, token, on_command=self._telegram_command)
 
-    def _register_core_tools(self) -> None:
-        self.tools.register(
-            ToolSpec(
-                name="hub_status",
-                description="Return compact hub status string",
-                handler=self._status_text,
-                plugin="core",
-            )
-        )
-        self.tools.register(
-            ToolSpec(
-                name="memory_search",
-                description="Lexical vector search over stored docs",
-                handler=lambda query, limit=5: self.vectors.search(str(query), limit=int(limit)),
-                input_schema={
-                    "type": "object",
-                    "properties": {
-                        "query": {"type": "string"},
-                        "limit": {"type": "integer"},
-                    },
-                    "required": ["query"],
-                },
-                plugin="core",
-            )
-        )
-        self.tools.register(
-            ToolSpec(
-                name="pipeline_do",
-                description="Run full pipeline (brainstorm+execute) with a task",
-                handler=lambda text: {
-                    "stage": self.chat(str(text), full=True)["pipeline"]["stage"],
-                    "results": list(self.pipeline.state.worker_results[:3]),
-                },
-                input_schema={
-                    "type": "object",
-                    "properties": {"text": {"type": "string"}},
-                    "required": ["text"],
-                },
-                plugin="core",
-            )
-        )
-        from gnom_hub.tools.web_fetch import web_fetch
-
-        self.tools.register(
-            ToolSpec(
-                name="web_fetch",
-                description=(
-                    "Fetch public http(s) URL as plain text. "
-                    "Blocks private IPs unless GNOM_WEB_ALLOW_LOCAL=1."
-                ),
-                handler=lambda url, max_chars=8000: web_fetch(str(url), max_chars=int(max_chars)),
-                input_schema={
-                    "type": "object",
-                    "properties": {
-                        "url": {"type": "string"},
-                        "max_chars": {"type": "integer"},
-                    },
-                    "required": ["url"],
-                },
-                plugin="core",
-            )
-        )
-
-    def _status_text(self) -> str:
-        st = self.pipeline.state
-        return (
-            f"stage={st.stage.value} "
-            f"deepseek={'yes' if self.llm.has_provider('deepseek') else 'no'} "
-            f"god={self.god_mode.enabled} "
-            f"vectors={self.vectors.count()} "
-            f"plugins={len(self.plugin_list)}"
-        )
-
-    def _apply_keys_from_keyfile(self) -> None:
-        """
-        Map Key.txt onto agents:
-          DEEPSEEK_API_KEY / SYSTEM → brainstorm, memory, flex, coordinator
-          WORKER_API_KEY / WORKER → worker1–4
-          DEEPSEEK_MODEL → default + every agent model
-        """
-        system_key = (self.keys.get("DEEPSEEK_API_KEY") or "").strip() or None
-        worker_key = (self.keys.get("WORKER_API_KEY") or "").strip() or None
-        model = (self.keys.get("DEEPSEEK_MODEL") or "").strip() or None
-        if model:
-            self.llm.default_model = model
-        system_ids = (
-            AgentId.BRAINSTORM,
-            AgentId.MEMORY,
-            AgentId.FLEX,
-            AgentId.COORDINATOR,
-        )
-        worker_ids = (
-            AgentId.WORKER1,
-            AgentId.WORKER2,
-            AgentId.WORKER3,
-            AgentId.WORKER4,
-        )
-        if system_key:
-            for aid in system_ids:
-                try:
-                    self.agents.get(aid).api_key = system_key
-                except ValueError:
-                    pass
-        if worker_key:
-            for aid in worker_ids:
-                try:
-                    self.agents.get(aid).api_key = worker_key
-                except ValueError:
-                    pass
-        if model:
-            for a in self.agents.list_agents():
-                a.model = model
-        if not system_key and not worker_key and not model:
-            return
-        # Keep agents.json in sync (gitignored)
-        try:
-            self._save_agent_state()
-        except OSError:
-            pass
-
-    def _load_agent_state(self) -> None:
-        path = self._agent_state_path
-        if not path.is_file():
-            return
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            return
-        agents = data.get("agents") if isinstance(data, dict) else None
-        if not isinstance(agents, list):
-            return
-        for item in agents:
-            if not isinstance(item, dict):
-                continue
-            aid = item.get("id")
-            if not aid:
-                continue
-            try:
-                agent = self.agents.get(aid)
-            except ValueError:
-                continue
-            if agent.toggleable and "enabled" in item:
-                agent.enabled = bool(item["enabled"])
-            if agent.id == AgentId.FLEX and item.get("preset"):
-                try:
-                    self.agents.set_flex_preset(str(item["preset"]))
-                except ValueError:
-                    pass
-            if item.get("model"):
-                agent.model = str(item["model"])
-            if item.get("api_key") is not None:
-                k = str(item["api_key"]).strip()
-                agent.api_key = k or None
-            if "tts" in item:
-                agent.tts = bool(item["tts"])
-            if item.get("system_prompt") is not None:
-                agent.system_prompt = str(item["system_prompt"]) or None
-            for key in (
-                "temperature",
-                "top_p",
-                "frequency_penalty",
-                "presence_penalty",
-            ):
-                if item.get(key) is not None:
-                    try:
-                        setattr(agent, key, float(item[key]))
-                    except (TypeError, ValueError):
-                        pass
-            if item.get("max_tokens") is not None:
-                try:
-                    agent.max_tokens = int(item["max_tokens"])
-                except (TypeError, ValueError):
-                    pass
-
-    def _save_agent_state(self) -> Path:
-        payload = {
-            "agents": [
-                {
-                    "id": a.id.value,
-                    "enabled": a.enabled,
-                    "preset": a.preset,
-                    "model": a.model,
-                    # Per-agent keys stay under data/ (gitignored) — never log them
-                    "api_key": a.api_key,
-                    "tts": a.tts,
-                    "system_prompt": a.system_prompt,
-                    "temperature": a.temperature,
-                    "top_p": a.top_p,
-                    "max_tokens": a.max_tokens,
-                    "frequency_penalty": a.frequency_penalty,
-                    "presence_penalty": a.presence_penalty,
-                }
-                for a in self.agents.list_agents()
-            ]
-        }
-        path = self._agent_state_path
-        path.parent.mkdir(parents=True, exist_ok=True)
-        atomic_write_text(path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
-        return path
-
-    # ── serialization ───────────────────────────────────────────────
-
-    def _agent_dict(self, a: AgentState) -> dict[str, Any]:
-        usage = self.llm.usage_snapshot()["by_agent"].get(a.id.value, {})
-        tokens = int(usage.get("prompt_tokens", 0)) + int(usage.get("completion_tokens", 0))
-        has_llm = (
-            bool(a.api_key) or self.llm.has_provider("deepseek") or self.llm.has_provider("ollama")
-        )
-        online = a.enabled and has_llm
-        return {
-            "id": a.id.value,
-            "name": a.name,
-            "role": a.role,
-            "color": a.color,
-            "enabled": a.enabled,
-            "toggleable": a.toggleable,
-            "preset": a.preset,
-            "model": a.model or self.llm.default_model,
-            "has_key": has_llm,
-            "online": online,
-            "tts": bool(a.tts),
-            "system_prompt": a.system_prompt or "",
-            "temperature": a.temperature,
-            "top_p": a.top_p,
-            "max_tokens": a.max_tokens,
-            "frequency_penalty": a.frequency_penalty,
-            "presence_penalty": a.presence_penalty,
-            "tokens": tokens,
-            "prompt_tokens": int(usage.get("prompt_tokens", 0)),
-            "completion_tokens": int(usage.get("completion_tokens", 0)),
-            "cost_usd": float(usage.get("cost_usd", 0.0)),
-            "calls": int(usage.get("calls", 0)),
-        }
-
     def pipeline_dict(self) -> dict[str, Any]:
         st = self.pipeline.state
         q = None
@@ -486,16 +254,6 @@ class Hub(
             "worker_presets": self.list_worker_presets(),
         }
 
-    def set_god_mode(self, enabled: bool, reason: str = "api") -> dict[str, Any]:
-        if enabled:
-            self.god_mode.enable(reason)
-        else:
-            self.god_mode.disable(reason)
-        self.computer.set_god_mode(self.god_mode.enabled)
-        return self.god_mode.snapshot()
-
-    # ── commands ────────────────────────────────────────────────────
-
     def chat(self, text: str, *, full: bool = False) -> dict[str, Any]:
         """Synchronous chat. Default: brainstorm turn. full=True: whole pipeline."""
         return self.chat_sync(text, full=full)
@@ -549,22 +307,6 @@ class Hub(
                 self._capture_workspace_outputs()
             return self.snapshot()
 
-    def usage_dict(self) -> dict[str, Any]:
-        snap = self.llm.usage_snapshot()
-        return {
-            "spent_usd": snap.get("spent_usd", 0.0),
-            "prompt_tokens": snap.get("prompt_tokens", 0),
-            "completion_tokens": snap.get("completion_tokens", 0),
-            "by_agent": snap.get("by_agent") or {},
-            "free_only": self.llm.free_only,
-            "max_budget_usd": self.llm.max_budget_usd,
-        }
-
-    def reset_usage(self) -> dict[str, Any]:
-        data = self.llm.reset_usage()
-        self._append_trace("usage.reset", {"ok": True})
-        return {"ok": True, **data, **self.usage_dict()}
-
     def clarify(self, option: str) -> dict[str, Any]:
         """Synchronous clarify (also used after async reaches clarify)."""
         self.last_error = None
@@ -573,114 +315,6 @@ class Hub(
             if self.pipeline.state.error:
                 self.last_error = self.pipeline.state.error
             return self.snapshot()
-
-    def toggle_agent(self, agent_id: str) -> dict[str, Any]:
-        enabled = self.agents.toggle(agent_id)
-        return {
-            "id": agent_id,
-            "enabled": enabled,
-            "agents": [self._agent_dict(a) for a in self.agents.list_agents()],
-        }
-
-    def set_flex_preset(self, name: str) -> dict[str, Any]:
-        self.agents.set_flex_preset(name)
-        return self._agent_dict(self.agents.get(AgentId.FLEX))
-
-    def set_agent_llm(
-        self,
-        agent_id: str,
-        *,
-        model: str | None = None,
-        api_key: str | None = None,
-    ) -> dict[str, Any]:
-        agent = self.agents.get(agent_id)
-        if model is not None:
-            agent.model = model.strip() or None
-        if api_key is not None:
-            agent.api_key = api_key.strip() or None
-        self.agents.emit_status(agent_id)
-        self._save_agent_state()
-        return self._agent_dict(agent)
-
-    def set_agent_tune(self, agent_id: str, fields: dict[str, Any]) -> dict[str, Any]:
-        """Update per-agent prompt, LLM knobs, and TTS flag (plan tuning panel)."""
-        agent = self.agents.get(agent_id)
-        if "model" in fields and fields["model"] is not None:
-            agent.model = str(fields["model"]).strip() or None
-        if "api_key" in fields and fields["api_key"] is not None:
-            key = str(fields["api_key"]).strip()
-            agent.api_key = key or None
-        if "system_prompt" in fields:
-            sp = fields["system_prompt"]
-            agent.system_prompt = (str(sp).strip() if sp is not None else "") or None
-        if "tts" in fields and fields["tts"] is not None:
-            agent.tts = bool(fields["tts"])
-        if "temperature" in fields:
-            agent.temperature = (
-                None if fields["temperature"] is None else float(fields["temperature"])
-            )
-        if "top_p" in fields:
-            agent.top_p = None if fields["top_p"] is None else float(fields["top_p"])
-        if "max_tokens" in fields:
-            agent.max_tokens = None if fields["max_tokens"] is None else int(fields["max_tokens"])
-        if "frequency_penalty" in fields:
-            agent.frequency_penalty = (
-                None if fields["frequency_penalty"] is None else float(fields["frequency_penalty"])
-            )
-        if "presence_penalty" in fields:
-            agent.presence_penalty = (
-                None if fields["presence_penalty"] is None else float(fields["presence_penalty"])
-            )
-        self.agents.emit_status(agent_id)
-        self._save_agent_state()
-        return self._agent_dict(agent)
-
-    def set_system(self, fields: dict[str, Any]) -> dict[str, Any]:
-        """Global free_only / budget / UI lang (system panel)."""
-        if "free_only" in fields and fields["free_only"] is not None:
-            self.llm.free_only = bool(fields["free_only"])
-        if "max_budget_usd" in fields:
-            raw = fields["max_budget_usd"]
-            if raw is None or raw == "":
-                self.llm.max_budget_usd = None
-            else:
-                self.llm.max_budget_usd = float(raw)
-        if fields.get("default_model"):
-            self.llm.default_model = str(fields["default_model"]).strip()
-        if fields.get("ui_lang"):
-            lang = str(fields["ui_lang"]).strip().lower()
-            if lang in ("en", "de"):
-                self.ui_lang = lang
-        if "auto_pack_after_execute" in fields and fields["auto_pack_after_execute"] is not None:
-            self.auto_pack_after_execute = bool(fields["auto_pack_after_execute"])
-        if "pack_max" in fields and fields["pack_max"] is not None:
-            try:
-                self.pack_max = max(5, min(100, int(fields["pack_max"])))
-            except (TypeError, ValueError):
-                pass
-        return self.system_dict()
-
-    def system_dict(self) -> dict[str, Any]:
-        usage = self.llm.usage_snapshot()
-        return {
-            "deepseek": self.llm.has_provider("deepseek"),
-            "ollama": self.llm.has_provider("ollama"),
-            "free_only": self.llm.free_only,
-            "max_budget_usd": self.llm.max_budget_usd,
-            "spent_usd": usage["spent_usd"],
-            "prompt_tokens": usage["prompt_tokens"],
-            "completion_tokens": usage["completion_tokens"],
-            "default_model": self.llm.default_model,
-            "god_mode": self.god_mode.enabled,
-            "ui_lang": self.ui_lang,
-            "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "3.7.1",
-            "providers": self.llm.providers_snapshot(),
-            "backups": self.list_backups()[:8],
-            "packs": self.list_session_packs()[:12],
-            "auto_pack_after_execute": self.auto_pack_after_execute,
-            "pack_max": self.pack_max,
-        }
 
     def telegram_start(self) -> dict[str, Any]:
         ok = self.telegram.start()
@@ -738,43 +372,6 @@ class Hub(
         self.last_error = None
         self._append_trace("session.reexecute.restore", {"user": text[:80]})
         return self.snapshot()
-
-    def help_text(self) -> dict[str, Any]:
-
-        return {
-            "title": "Gnom-Hub help",
-            "how_to": (
-                "1) Send / Enter = brainstorm turn. "
-                "2) Execute / Ctrl+Enter = distill + workers. "
-                "3) Send+Execute = one shot after typing. "
-                "4) Ctrl/⌘+S = save HOT + agents. "
-                "5) Esc = close fullscreen or cancel job. "
-                "6) Box 3: Copy/DL/Tab/WS/↑perm/fullscreen; toolbar Copy all + Diff + History. "
-                "7) Cost badge + Compact density; job timer while busy. "
-                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat/history/workspace/ui_prefs/notes; list filter). 10) History Re-Exec. 11) Telegram: /hot /tools /fetch /ws /jobs /usage /backup …"
-            ),
-            "example": "Type idea → Execute → Pack ↓ (USB) → History Re-Exec → Diff.",
-            "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",
-            "keys": (
-                "Keyboard: Enter send · Ctrl/⌘+Enter execute · Ctrl/⌘+S save · Esc cancel/close overlay. "
-                "DEEPSEEK_API_KEY or Ollama. TELEGRAM optional."
-            ),
-        }
-
-    def canvas(self) -> dict[str, Any]:
-        return {
-            "mermaid": self.hot.canvas.to_mermaid(),
-            "nodes": list(self.hot.canvas.nodes),
-            "path": str(self.hot.canvas_path),
-        }
-
-    def tooltips(self, lang: str = "en") -> dict[str, Any]:
-        out: dict[str, Any] = {}
-        for tip_id, langs in TOOLTIPS.items():
-            block = langs.get(lang) or langs.get("en")
-            if block:
-                out[tip_id] = dict(block)
-        return out
 
 
 _HUB: Hub | None = None
