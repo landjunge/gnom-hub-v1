@@ -83,3 +83,30 @@ def test_maintain_vacuum_flag(db: GnomDatabase) -> None:
     info = db.maintain(vacuum=True)
     assert info["vacuum"] is True
     assert info["freelist"] == 0 or info["page_count"] >= 0
+
+
+def test_compress_mirrors_hot_trim_caps(tmp_path: Path) -> None:
+    """DB hard caps fire even when session was loaded over limit without collapse path."""
+    from gnom_hub.memory.hot import HotMemory
+
+    hot = HotMemory(tmp_path, auto_load=False)
+    # Fill only via DB (session empty) then load
+    for i in range(30):
+        hot.db.hot_add_message("user", f"msg {i}")
+    for i in range(20):
+        hot.db.hot_add_fact(f"hf {i}")
+    hot.load()
+    assert len(hot.session["messages"]) == 30
+    hot.compress_if_needed(max_facts=24, max_messages=40)
+    # session collapse should have run for facts (20 <= 24? no collapse for facts)
+    # messages 30 <= 40 → no session collapse; DB trim also no-op under max
+    assert hot.db.hot_message_count() == 30
+    # force over hard caps
+    for i in range(40, 60):
+        hot.db.hot_add_message("user", f"extra {i}")
+    assert hot.db.hot_message_count() == 50
+    stats2 = hot.compress_if_needed(max_facts=10, max_messages=12)
+    assert stats2["db_messages_trimmed"] >= 1 or stats2["messages_collapsed"] >= 1
+    assert hot.db.hot_message_count() <= 12
+    assert len(hot.session["messages"]) <= 12
+    assert hot.db.hot_fact_count() <= 10

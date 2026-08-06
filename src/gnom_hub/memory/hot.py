@@ -217,7 +217,10 @@ class HotMemory:
     ) -> dict[str, int]:
         """
         Context compression for long sessions (plan §8.4).
-        Collapses old facts/messages into one summary fact; keeps recent tail.
+
+        1) Collapse old facts/messages in the in-memory session (summary + tail).
+        2) Persist session to user.db.
+        3) Enforce hard SQLite caps via hot_trim_* (mirrors max_*), then resync.
         """
         facts = list(self.session.get("facts") or [])
         msgs = list(self.session.get("messages") or [])
@@ -244,7 +247,25 @@ class HotMemory:
         if removed_facts or removed_msgs:
             self._touch()
             self.save()
-        return {"facts_collapsed": removed_facts, "messages_collapsed": removed_msgs}
+
+        # Hard caps in SQLite (safety if session and DB drifted)
+        db_messages_trimmed = self.db.hot_trim_messages(max_messages)
+        db_facts_trimmed = self.db.hot_trim_facts(max_facts)
+        if db_messages_trimmed or db_facts_trimmed:
+            self.session["messages"] = self.db.hot_messages()
+            self.session["facts"] = self.db.hot_facts()
+            self._touch()
+            self.hot_dir.mkdir(parents=True, exist_ok=True)
+            payload = json.dumps(self.session, ensure_ascii=False, indent=2) + "\n"
+            atomic_write_text(self.session_path, payload)
+            self.db.kv_set("hot_updated_at", str(self.session.get("updated_at") or _utc_now_iso()))
+
+        return {
+            "facts_collapsed": removed_facts,
+            "messages_collapsed": removed_msgs,
+            "db_messages_trimmed": db_messages_trimmed,
+            "db_facts_trimmed": db_facts_trimmed,
+        }
 
     def get_context_summary(self) -> str:
         """Short string for the pipeline (not full session dump)."""
