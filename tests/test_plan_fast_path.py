@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from gnom_hub.agents.roles_ext import (
-    _html_full_page_plan,
-    _wants_one_html_page,
-    resolve_plan_mode,
-)
+from gnom_hub.agents.plan_fast_path import _wants_one_html_page, resolve_plan_mode
+from gnom_hub.agents.roles_ext import _html_full_page_plan
+# Re-export path also works via roles_ext after import wiring
 from gnom_hub.core.event_bus import EventBus
 from gnom_hub.pipeline.models import PipelineStage, PipelineState
 from gnom_hub.pipeline.orchestrator import Orchestrator
