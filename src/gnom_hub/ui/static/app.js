@@ -856,7 +856,7 @@
       // Don't persist UI placeholder hints as real system_prompt
       system_prompt: (function () {
         var v = (document.getElementById("tune-prompt").value || "").trim();
-        var hint = (DEFAULT_PROMPTS[id] || "").trim();
+        var hint = (DEFAULT_PROMPTS[tuneAgentId] || "").trim();
         if (!v || v === hint || v.indexOf("(code default)") === 0) return "";
         // stale LOL default from older UI — drop it
         if (v.indexOf("Output 5") >= 0 && v.indexOf("bullet") >= 0) return "";
