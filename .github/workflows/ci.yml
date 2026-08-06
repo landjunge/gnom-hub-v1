@@ -8,72 +8,122 @@ on:
   pull_request:
     branches: [ main, master ]
 
-jobs:
-  lint-and-test:
-    runs-on: ubuntu-latest
+# One active run per ref: new commits cancel outdated matrix runs (avoids
+# stacked PR/main CI fighting the same runners/caches).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
+jobs:
+  # Lint once — not 3× in the matrix (faster, no parallel format races).
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            requirements*.txt
+
+      - name: Install (dev)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Ruff
+        run: |
+          ruff check .
+          ruff format --check .
+
+  # Matrix tests: isolated caches per Python version (no shared pip-cache race).
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt', '**/pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          # setup-python cache is version-scoped — safe under parallel matrix.
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            requirements*.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # [dev] includes httpx (required by starlette/fastapi TestClient)
           pip install -e ".[dev]" build
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Lint with Ruff
-        run: |
-          ruff check .
-          ruff format --check .
-
-      - name: Run tests
+      - name: Pytest
+        env:
+          # Isolate pytest temp / cache per matrix cell if jobs share a runner disk.
+          PYTEST_ADDOPTS: "-q --tb=short"
+          PYTHONPATH: src
         run: |
           if [ -d "tests" ]; then
-            pytest tests/ -v --tb=short
+            # Unique junit/tmp per matrix to avoid parallel artifact clobber.
+            export TMPDIR="${RUNNER_TEMP}/pytest-${{ matrix.python-version }}"
+            mkdir -p "$TMPDIR"
+            pytest tests/ \
+              --junitxml="$TMPDIR/junit.xml"
           else
-            echo "No tests directory found – skipping tests"
+            echo "No tests directory — skip"
           fi
 
       - name: Smoke E2E (in-process)
-        run: |
-          export PYTHONPATH=src
-          python scripts/smoke_e2e.py
+        env:
+          PYTHONPATH: src
+        run: python scripts/smoke_e2e.py
 
       - name: Live DeepSeek smoke (optional)
-        # Runs only when repo secret DEEPSEEK_API_KEY is set; otherwise skips.
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          PYTHONPATH: src
         run: |
-          export PYTHONPATH=src
           if [ -z "$DEEPSEEK_API_KEY" ]; then
             echo "SKIP live smoke — no DEEPSEEK_API_KEY secret"
             exit 0
           fi
-          # Do not fail the whole matrix if provider flakes; report status only.
           python scripts/smoke_live.py || echo "LIVE smoke non-blocking failure"
+
+      - name: Upload junit (debug flaky matrix)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-py${{ matrix.python-version }}
+          path: ${{ runner.temp }}/pytest-${{ matrix.python-version }}/junit.xml
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # Single gate for branch protection / release (avoids "3 statuses" race).
+  ci-ok:
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Require lint + all matrix cells green
+        run: |
+          echo "lint=${{ needs.lint.result }} test=${{ needs.test.result }}"
+          test "${{ needs.lint.result }}" = "success"
+          test "${{ needs.test.result }}" = "success"
 
   release:
     name: Create GitHub Release & Publish Package
-    needs: lint-and-test
+    needs: ci-ok
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
 
@@ -81,9 +131,13 @@ jobs:
       contents: write
       packages: write
 
+    # Tags must not race each other.
+    concurrency:
+      group: release-${{ github.ref }}
+      cancel-in-progress: false
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -91,6 +145,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
 
       - name: Install build tools
         run: pip install build twine
@@ -104,7 +160,7 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
           twine upload --repository-url https://upload.pypi.org/legacy/ dist/* || true
-          echo "Python package built. GitHub Packages (PyPI-style) ready when package structure is complete."
+          echo "Python package built. GitHub Packages ready when package structure is complete."
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

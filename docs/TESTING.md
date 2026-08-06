@@ -11,46 +11,39 @@ PYTHONPATH=src pytest -q
 ### Fast (CI default)
 
 ```bash
-python scripts/mutation_check.py
-PYTHONPATH=src pytest -q tests/test_mutation_helpers.py
+PYTHONPATH=src python scripts/mutation_check.py
 ```
 
-Scoped AST mutants on Flex/clarify helpers — **all must be killed**.
+### Nightly (mutmut + rank-eval)
 
-### Deep (mutmut)
-
-Full config: **[docs/MUTMUT.md](MUTMUT.md)** and `pyproject.toml` `[tool.mutmut]`.
+Workflow: `.github/workflows/mutation-nightly.yml`
 
 ```bash
-pip install 'mutmut==2.4.5' toml   # or pip install -e ".[dev]"
-./scripts/run_mutmut.sh            # profile core
-./scripts/run_mutmut.sh memory     # warm + facade
-./scripts/run_mutmut.sh wide       # broader (slow)
-./scripts/run_mutmut.sh results
-./scripts/run_mutmut.sh html
+./scripts/run_mutmut.sh core
+PYTHONPATH=src python scripts/vector_rank_eval.py
 ```
 
-**CI:** keep the fast check. mutmut is optional/manual unless you add a nightly job.
-
-### Vector rank-eval
-
-Gold-set MRR / P@1 for hybrid BM25 (distractors included):
+## Smoke
 
 ```bash
-python scripts/vector_rank_eval.py
-python scripts/vector_rank_eval.py --json
+PYTHONPATH=src python scripts/smoke_e2e.py
 ```
 
-Thresholds: P@1 ≥ 85%, MRR ≥ 0.90 (see script constants).
+## User scenarios (server required)
 
-### Nightly CI
+```bash
+python scripts/user_scenarios_e2e.py          # S1 + S5
+python scripts/user_scenarios_e2e.py --all
+```
 
-[`.github/workflows/mutation-nightly.yml`](../.github/workflows/mutation-nightly.yml):
+## CI concurrency (parallel runs)
 
-- schedule daily + `workflow_dispatch`
-- `mutation_check.py` (hard fail)
-- `vector_rank_eval.py` (hard fail)
-- `run_mutmut.sh core` (soft report under mutmut `--CI`)
-- regression pytest for mutation + vector
+| Workflow | Rule |
+|----------|------|
+| `CI/CD` | `concurrency.group = ci-…-{PR\|ref}` — **cancel-in-progress** so only the latest push runs |
+| Matrix `test` | `fail-fast: false`; pip cache via `setup-python` (version-scoped, no shared-key race) |
+| Lint | Single job (not matrix) — avoids 3× ruff races |
+| `ci-ok` | Aggregate gate for branch protection / release |
+| Mutation Nightly | Single group `mutation-nightly`, no cancel mid-run |
 
-PR CI ([`ci.yml`](../.github/workflows/ci.yml)) stays on ruff + full pytest + smoke — not full mutmut.
+Do **not** use a bare `actions/cache` key without `${{ matrix.python-version }}` for matrix jobs — parallel cells overwrite each other.
