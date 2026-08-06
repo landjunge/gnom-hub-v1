@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Clown Lab — Layer-Experiment</title>
+  <style>
+    :root {
+      --bg: #0e0f12;
+      --panel: #16181d;
+      --text: #e8eaed;
+      --muted: #7a808a;
+      --border: #2a2d34;
+      --c1: #ff2d55;
+      --c2: #00d4ff;
+      --c3: #ffff00;
+      --c4: #7c3aed;
+      --gap: 10px;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; height: 100%;
+      background: var(--bg); color: var(--text);
+      font: 14px/1.4 system-ui, -apple-system, sans-serif;
+    }
+    body {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-height: 100dvh;
+      padding: 12px;
+      gap: 12px;
+    }
+    header {
+      display: flex; flex-wrap: wrap; align-items: center;
+      justify-content: space-between; gap: 8px;
+    }
+    header h1 {
+      margin: 0; font-size: 16px; font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    header h1 span { color: var(--c1); }
+    header p { margin: 0; color: var(--muted); font-size: 12px; max-width: 42em; }
+    .badge {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--c3);
+      border: 1px solid var(--c3); padding: 2px 8px; border-radius: 999px;
+    }
+
+    /* —— Stage: the layered “website” —— */
+    .stage-wrap {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      gap: 12px;
+      min-height: 0;
+    }
+    @media (max-width: 800px) {
+      .stage-wrap { grid-template-columns: 1fr; }
+    }
+
+    .stage {
+      position: relative;
+      min-height: 360px;
+      height: 100%;
+      border: 1px solid var(--frame, var(--border));
+      background: #0a0b0d;
+      overflow: hidden;
+      isolation: isolate;
+      transition: border-color 0.2s ease;
+    }
+
+    /* Layers: only L1 receives clicks */
+    .layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.45s ease, transform 0.45s ease, filter 0.45s ease;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      overflow: hidden;
+    }
+    .layer.is-top {
+      pointer-events: auto;
+      z-index: 10;
+    }
+    .layer h2 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.6);
+    }
+    .layer p { margin: 0 0 10px; max-width: 36em; }
+    .layer .hint {
+      font-size: 11px; color: rgba(255,255,255,0.65);
+      margin-top: auto;
+    }
+
+    /* L1 — action / clickable */
+    #L1 {
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 30%, rgba(255,45,85,0.35), transparent 55%),
+        linear-gradient(160deg, #1a1020 0%, #12141a 50%, #0d1520 100%);
+      border-left: 4px solid var(--c1);
+    }
+    /* L2 — mid ghost */
+    #L2 {
+      background:
+        radial-gradient(ellipse 70% 50% at 70% 40%, rgba(0,212,255,0.28), transparent 50%),
+        linear-gradient(200deg, #0a1820 0%, #12141a 100%);
+      border-left: 4px solid var(--c2);
+      transform: scale(0.985);
+    }
+    /* L3 — deep atmosphere */
+    #L3 {
+      background:
+        radial-gradient(circle at 50% 80%, rgba(124,58,237,0.35), transparent 45%),
+        linear-gradient(180deg, #100818 0%, #0a0b0d 100%);
+      border-left: 4px solid var(--c4);
+      transform: scale(0.97);
+      filter: saturate(0.85);
+    }
+
+    .clown-face {
+      font-size: 48px;
+      line-height: 1;
+      user-select: none;
+      margin-bottom: 8px;
+    }
+    .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .stage button, .ctrl button {
+      height: 32px; padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: #22252c;
+      color: var(--text);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .stage button:hover, .ctrl button:hover {
+      border-color: #4a4f58; background: #2a2e36;
+    }
+    .stage button.primary {
+      background: var(--c1); border-color: var(--c1); color: #fff; font-weight: 600;
+    }
+    .stage button:disabled {
+      opacity: 0.35; cursor: not-allowed;
+    }
+    .pop {
+      position: absolute; z-index: 20;
+      left: 50%; top: 40%; transform: translate(-50%, -50%) scale(0.8);
+      background: #1e2028; border: 1px solid var(--c3);
+      color: var(--c3); padding: 10px 16px; border-radius: 6px;
+      font-weight: 700; pointer-events: none;
+      opacity: 0; transition: opacity 0.2s, transform 0.25s;
+    }
+    .pop.show {
+      opacity: 1; transform: translate(-50%, -50%) scale(1);
+    }
+
+    /* —— Controls —— */
+    .ctrl {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      padding: 12px;
+      display: flex; flex-direction: column; gap: 12px;
+      min-height: 0; overflow: auto;
+    }
+    .ctrl h3 {
+      margin: 0; font-size: 11px; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--muted);
+    }
+    .ctrl label {
+      display: grid;
+      grid-template-columns: 4.5em 1fr 2.5em;
+      gap: 8px; align-items: center;
+      font-size: 12px;
+    }
+    .ctrl label span.val {
+      font-variant-numeric: tabular-nums; color: var(--muted); text-align: right;
+    }
+    input[type="range"] { width: 100%; accent-color: var(--c2); }
+    .sw {
+      display: flex; flex-wrap: wrap; gap: 6px;
+    }
+    .sw button.active {
+      outline: 1px solid var(--c2);
+      background: #1a2830;
+    }
+    .log {
+      flex: 1; min-height: 80px;
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 10px; color: var(--muted);
+      background: #0c0d10; border: 1px solid var(--border);
+      padding: 8px; overflow: auto; white-space: pre-wrap;
+    }
+    .rules {
+      font-size: 11px; color: var(--muted); line-height: 1.45;
+    }
+    .rules strong { color: var(--text); }
+    footer {
+      font-size: 11px; color: var(--muted);
+      display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between;
+    }
+    footer a { color: var(--c2); }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>🤡 <span>Clown Lab</span> — Layer-Spielplatz</h1>
+      <p>
+        Experiment: nur der <strong>oberste</strong> Layer ist klickbar.
+        Layer 2/3 nur Transparenz (Film-Ghost). Zeit fährt, was durchscheint.
+      </p>
+    </div>
+    <span class="badge">experiment · nicht Produktion</span>
+  </header>
+
+  <div class="stage-wrap">
+    <div class="stage" id="stage" aria-label="Layer-Website-Bühne">
+      <!-- L3 deep -->
+      <section class="layer" id="L3" data-layer="3" aria-hidden="true">
+        <div class="clown-face">🌌</div>
+        <h2 style="color:var(--c4)">Layer 3 — Tiefe</h2>
+        <p>Atmosphäre, History, „was war“. Nie klickbar. Nur Schimmern.</p>
+        <p class="hint">pointer-events: none · z-index niedrig</p>
+      </section>
+      <!-- L2 mid -->
+      <section class="layer" id="L2" data-layer="2" aria-hidden="true">
+        <div class="clown-face">🎭</div>
+        <h2 style="color:var(--c2)">Layer 2 — Ghost</h2>
+        <p>Kontext des vorherigen Schnitts. Sichtbar durch Opacity — Klicks gehen durch.</p>
+        <p class="hint">Hier knöpfen bringt nichts (absichtlich).</p>
+        <div class="btn-row">
+          <button type="button" disabled>Ghost-Button (tot)</button>
+        </div>
+      </section>
+      <!-- L1 top — only interactive -->
+      <section class="layer is-top" id="L1" data-layer="1">
+        <div class="clown-face" id="face">🤡</div>
+        <h2 style="color:var(--c1)">Layer 1 — Handlung</h2>
+        <p id="l1-copy">
+          Das ist der klickbare Film-Frame. Unten kannst du L2/L3 durchscheinen lassen
+          und die Zeit laufen lassen.
+        </p>
+        <div class="btn-row">
+          <button type="button" class="primary" id="btn-honk">Honk!</button>
+          <button type="button" id="btn-swap">Nächster Clown-Schnitt</button>
+          <button type="button" id="btn-burst">Konfetti-Burst</button>
+        </div>
+        <p class="hint">Nur diese Ebene fängt Maus/Touch · Modulrahmen = „Licht“</p>
+      </section>
+      <div class="pop" id="pop" hidden>HONK 🎪</div>
+    </div>
+
+    <aside class="ctrl">
+      <h3>Transparenz</h3>
+      <label>
+        L1
+        <input type="range" id="o1" min="0" max="100" value="100" />
+        <span class="val" id="o1v">100%</span>
+      </label>
+      <label>
+        L2
+        <input type="range" id="o2" min="0" max="100" value="25" />
+        <span class="val" id="o2v">25%</span>
+      </label>
+      <label>
+        L3
+        <input type="range" id="o3" min="0" max="100" value="12" />
+        <span class="val" id="o3v">12%</span>
+      </label>
+
+      <h3>Zeit</h3>
+      <label>
+        t
+        <input type="range" id="time" min="0" max="100" value="0" />
+        <span class="val" id="timev">0</span>
+      </label>
+      <div class="sw">
+        <button type="button" id="btn-play">▶ Play Film</button>
+        <button type="button" id="btn-stop">■ Stop</button>
+        <button type="button" id="btn-preset-desk">Preset Desk</button>
+        <button type="button" id="btn-preset-film">Preset Film</button>
+        <button type="button" id="btn-preset-solo">Preset Solo L1</button>
+      </div>
+
+      <h3>Top-Layer (wer klickbar)</h3>
+      <div class="sw" id="top-sw">
+        <button type="button" data-top="1" class="active">L1 Clown</button>
+        <button type="button" data-top="2">L2 Ghost</button>
+        <button type="button" data-top="3">L3 Tiefe</button>
+      </div>
+
+      <h3>Regeln</h3>
+      <p class="rules">
+        <strong>1.</strong> Nur Top hat <code>pointer-events: auto</code>.<br />
+        <strong>2.</strong> L2/L3 = Opacity-Film, keine Hits.<br />
+        <strong>3.</strong> Zeit fährt Ghost/Tiefe (Presets + Play).<br />
+        <strong>4.</strong> Rahmenfarbe = aktives Licht.
+      </p>
+
+      <h3>Log</h3>
+      <div class="log" id="log"></div>
+    </aside>
+  </div>
+
+  <footer>
+    <span>Gnom-Hub Clown Lab · /static/experiments/clown.html</span>
+    <span><a href="/">← zurück zum Hub</a></span>
+  </footer>
+
+  <script>
+(function () {
+  "use strict";
+
+  const L = {
+    1: document.getElementById("L1"),
+    2: document.getElementById("L2"),
+    3: document.getElementById("L3"),
+  };
+  const stage = document.getElementById("stage");
+  const logEl = document.getElementById("log");
+  const pop = document.getElementById("pop");
+  const face = document.getElementById("face");
+  const l1Copy = document.getElementById("l1-copy");
+
+  const o1 = document.getElementById("o1");
+  const o2 = document.getElementById("o2");
+  const o3 = document.getElementById("o3");
+  const time = document.getElementById("time");
+
+  let topLayer = 1;
+  let playTimer = null;
+  let tDir = 1;
+
+  const faces = ["🤡", "🎪", "🤹", "🎩", "🎈", "🥁"];
+  let faceIdx = 0;
+
+  const frames = {
+    1: {
+      color: "#ff2d55",
+      title: "Layer 1 — Handlung",
+      copy: "Klickbare Bühne. Hier lebt der Agent / die Crux. Ghost und Tiefe nur durchscheinen.",
+    },
+    2: {
+      color: "#00d4ff",
+      title: "Layer 2 — Ghost",
+      copy: "Jetzt ist der Ghost Top: Kontext-Ebene ist klickbar (Demo). Im echten Desk wäre das selten.",
+    },
+    3: {
+      color: "#7c3aed",
+      title: "Layer 3 — Tiefe",
+      copy: "Tiefe oben = experimentell. Zeigt: wer Top ist, regiert die Hits.",
+    },
+  };
+
+  function log(msg) {
+    const line = "[" + new Date().toLocaleTimeString() + "] " + msg + "\n";
+    logEl.textContent = line + logEl.textContent.slice(0, 1200);
+  }
+
+  function applyOpacity() {
+    L[1].style.opacity = String(Number(o1.value) / 100);
+    L[2].style.opacity = String(Number(o2.value) / 100);
+    L[3].style.opacity = String(Number(o3.value) / 100);
+    document.getElementById("o1v").textContent = o1.value + "%";
+    document.getElementById("o2v").textContent = o2.value + "%";
+    document.getElementById("o3v").textContent = o3.value + "%";
+  }
+
+  function setTop(n) {
+    topLayer = n;
+    [1, 2, 3].forEach(function (i) {
+      const el = L[i];
+      const isTop = i === n;
+      el.classList.toggle("is-top", isTop);
+      el.setAttribute("aria-hidden", isTop ? "false" : "true");
+      el.style.zIndex = isTop ? "10" : String(i);
+    });
+    stage.style.setProperty("--frame", frames[n].color);
+    document.querySelectorAll("#top-sw button").forEach(function (b) {
+      b.classList.toggle("active", Number(b.getAttribute("data-top")) === n);
+    });
+    log("Top-Layer → L" + n + " (nur der ist klickbar)");
+  }
+
+  /** Zeit t 0..1 steuert Ghost/Tiefe — L1 bleibt handlungsfähig */
+  function applyTime(t01) {
+    // L2 peaks mid-film, L3 fades as story progresses, L1 stays high
+    const l2 = Math.round(Math.max(0, 0.4 * Math.sin(Math.PI * t01)) * 100);
+    const l3 = Math.round((0.22 * (1 - t01 * 0.85)) * 100);
+    const l1 = Math.round((0.92 + 0.08 * Math.sin(t01 * Math.PI * 2)) * 100);
+    o1.value = String(l1);
+    o2.value = String(l2);
+    o3.value = String(Math.max(4, l3));
+    applyOpacity();
+    document.getElementById("timev").textContent = String(Math.round(t01 * 100));
+  }
+
+  function stopPlay() {
+    if (playTimer) {
+      clearInterval(playTimer);
+      playTimer = null;
+      log("Film gestoppt");
+    }
+  }
+
+  // sliders
+  [o1, o2, o3].forEach(function (el) {
+    el.addEventListener("input", function () {
+      stopPlay();
+      applyOpacity();
+    });
+  });
+  time.addEventListener("input", function () {
+    stopPlay();
+    applyTime(Number(time.value) / 100);
+  });
+
+  document.getElementById("btn-play").addEventListener("click", function () {
+    stopPlay();
+    log("Film Play — Zeit fährt Opacity L2/L3");
+    playTimer = setInterval(function () {
+      let v = Number(time.value) + tDir * 1.2;
+      if (v >= 100) { v = 100; tDir = -1; }
+      if (v <= 0) { v = 0; tDir = 1; }
+      time.value = String(v);
+      applyTime(v / 100);
+    }, 40);
+  });
+  document.getElementById("btn-stop").addEventListener("click", stopPlay);
+
+  document.getElementById("btn-preset-desk").addEventListener("click", function () {
+    stopPlay();
+    o1.value = "100"; o2.value = "0"; o3.value = "0";
+    applyOpacity();
+    setTop(1);
+    log("Preset Desk — nur L1, klar wie Arbeitstisch");
+  });
+  document.getElementById("btn-preset-film").addEventListener("click", function () {
+    stopPlay();
+    o1.value = "100"; o2.value = "28"; o3.value = "14";
+    applyOpacity();
+    setTop(1);
+    stage.style.setProperty("--frame", "#ffff00");
+    log("Preset Film — L1 scharf, Ghost+Tiefe durchscheinend");
+  });
+  document.getElementById("btn-preset-solo").addEventListener("click", function () {
+    stopPlay();
+    o1.value = "100"; o2.value = "0"; o3.value = "0";
+    applyOpacity();
+    setTop(1);
+    log("Preset Solo — alles andere aus");
+  });
+
+  document.querySelectorAll("#top-sw button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      setTop(Number(b.getAttribute("data-top")));
+    });
+  });
+
+  // stage actions (only work when L1 is top — or whatever is top)
+  document.getElementById("btn-honk").addEventListener("click", function () {
+    pop.hidden = false;
+    pop.classList.add("show");
+    pop.textContent = "HONK 🎪";
+    log("Honk! (Hit auf Top-Layer L" + topLayer + ")");
+    setTimeout(function () {
+      pop.classList.remove("show");
+      setTimeout(function () { pop.hidden = true; }, 200);
+    }, 700);
+  });
+
+  document.getElementById("btn-swap").addEventListener("click", function () {
+    faceIdx = (faceIdx + 1) % faces.length;
+    face.textContent = faces[faceIdx];
+    l1Copy.textContent = frames[1].copy + " Schnitt #" + (faceIdx + 1);
+    stage.style.setProperty("--frame", ["#ff2d55", "#00d4ff", "#ffff00", "#7c3aed", "#ff6600", "#00cc44"][faceIdx]);
+    log("Clown-Schnitt → " + faces[faceIdx]);
+  });
+
+  document.getElementById("btn-burst").addEventListener("click", function () {
+    // quick film burst: flash L2/L3
+    stopPlay();
+    const a = Number(o2.value), b = Number(o3.value);
+    o2.value = "55"; o3.value = "40";
+    applyOpacity();
+    log("Konfetti-Burst — Ghost/Tiefe kurz hoch");
+    setTimeout(function () {
+      o2.value = String(a); o3.value = String(b);
+      applyOpacity();
+    }, 500);
+  });
+
+  // prove L2 ghost button never fires when not top
+  L[2].querySelector("button").addEventListener("click", function () {
+    log("⚠️ Ghost-Button gefeuert — nur möglich wenn L2 Top ist");
+  });
+
+  // init
+  applyOpacity();
+  setTop(1);
+  log("Clown Lab bereit. Dreh an Opacity / Play / Top-Layer.");
+})();
+  </script>
+</body>
+</html>
