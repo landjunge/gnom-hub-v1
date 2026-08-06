@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from gnom_hub.memory.vector_store import VectorStore, _bm25_scores, _tokenize
 from gnom_hub.memory import vector_store as m
+from gnom_hub.memory.vector_store import VectorStore, _bm25_scores, _tokenize
 
 
 def test_short_doc_defaults() -> None:

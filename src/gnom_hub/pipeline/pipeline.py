@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from gnom_hub.core.event_bus import EventBus
@@ -23,6 +24,74 @@ _FLEX_PROMPTS = {
     ),
 }
 
+_QUESTION_RE = re.compile(
+    r"^\s*(what|how|why|when|where|which|who|can|could|should|would|is|are|do|does|"
+    r"was|wie|warum|wann|wo|welche|welcher|wer|kann|soll)\b",
+    re.IGNORECASE,
+)
+_BUILD_RE = re.compile(
+    r"\b(build|create|make|generate|write|implement|develop|design|add|"
+    r"bau|baue|erstelle|mach|umsetzen)\b",
+    re.IGNORECASE,
+)
+_GO_WORDS = frozenset(
+    {"ja", "yes", "go", "ok", "okay", "execute", "run", "start", "do it", "mach es", "los"}
+)
+_ROLE_LABELS: dict[str, str] = {
+    "user": "You",
+    "brainstorm": "Brainstorm",
+    "flex": "Flex",
+    "coordinator": "Coordinator",
+    "worker": "Worker",
+}
+
+
+def _wants_auto_execute(text: str, turns: list[dict] | None = None) -> bool:
+    stripped = (text or "").strip()
+    if turns:
+        user_turns = [t for t in turns if t.get("role") == "user"]
+        has_brainstorm = any(t.get("role") == "brainstorm" for t in turns)
+        if len(user_turns) >= 2 and has_brainstorm and stripped.lower() in _GO_WORDS:
+            return True
+    if stripped.endswith("?") or _QUESTION_RE.match(stripped):
+        return False
+    return bool(_BUILD_RE.search(stripped))
+
+
+def _is_topic_switch(turns: list[dict], new_text: str) -> bool:
+    text = (new_text or "").strip()
+    if len(text) <= 60:
+        return False
+    had_user_turn = False
+    prior_words: set[str] = set()
+    for turn in turns:
+        if turn.get("role") != "user":
+            continue
+        had_user_turn = True
+        prior_words.update(re.findall(r"[a-zA-ZäöüÄÖÜß]{4,}", str(turn.get("text") or "").lower()))
+    if not prior_words:
+        return had_user_turn
+    new_words = set(re.findall(r"[a-zA-ZäöüÄÖÜß]{4,}", text.lower()))
+    return len(prior_words & new_words) < 2
+
+
+def _pick_execute_task(turns: list[dict], fallback: str = "") -> str:
+    for turn in reversed([t for t in turns if t.get("role") == "user"]):
+        text = str(turn.get("text") or "").strip()
+        if text.lower() not in _GO_WORDS and len(text) > 5:
+            return text
+    return fallback
+
+
+def _format_turns(turns: list[dict]) -> str:
+    parts: list[str] = []
+    for turn in turns:
+        role = str(turn.get("role") or "user")
+        text = str(turn.get("text") or "")
+        label = _ROLE_LABELS.get(role, role.capitalize())
+        parts.append(f"{label}: {text}")
+    return "\n".join(parts)
+
 
 class Pipeline:
     """
@@ -38,11 +107,13 @@ class Pipeline:
         llm_manager: Any | None = None,
         agent_manager: Any | None = None,
         memory: Any | None = None,
+        cancel_check: Any | None = None,
     ) -> None:
         self._bus = bus
         self._llm = llm_manager
         self._agents = agent_manager
         self._memory = memory
+        self.cancel_check = cancel_check
         self._state = PipelineState()
         self._clarified_once = False
         self._tasks: list[tuple[str, str]] = []
@@ -87,6 +158,202 @@ class Pipeline:
 
         try:
             self._run_flex_then_work()
+        except Exception as exc:  # noqa: BLE001
+            self._fail(str(exc))
+        return self._state
+
+    def brainstorm_turn(self, user_text: str) -> PipelineState:
+        stripped = (user_text or "").strip()
+        if not stripped:
+            self._fail("Empty user text")
+            return self._state
+
+        reset_state = self._state.stage in (
+            PipelineStage.idle,
+            PipelineStage.done,
+            PipelineStage.error,
+        )
+        topic_switch = bool(self._state.brainstorm_turns) and _is_topic_switch(
+            self._state.brainstorm_turns, stripped
+        )
+        if reset_state or topic_switch:
+            mem_ctx = self._state.memory_context or self._load_memory_context()
+            self._state = PipelineState(user_text=stripped, memory_context=mem_ctx)
+            self._clarified_once = False
+            self._tasks = []
+            if mem_ctx:
+                self._bus.emit("pipeline.memory_context", {"context": mem_ctx})
+
+        self._state.error = None
+        self._state.pending_question = None
+        self._state.mode = "brainstorm"
+        self._state.brainstorm_turns.append({"role": "user", "text": stripped})
+        self._set_stage(PipelineStage.brainstorm)
+
+        is_go = stripped.lower() in _GO_WORDS
+        self._state.user_text = (
+            stripped
+            if not is_go
+            else _pick_execute_task(self._state.brainstorm_turns, self._state.user_text)
+        )
+        user_turn_count = len([t for t in self._state.brainstorm_turns if t.get("role") == "user"])
+        is_explicit_execute = is_go and user_turn_count >= 2
+        is_auto_execute = _wants_auto_execute(stripped) and not is_go
+
+        flex = self._make_flex_agent()
+        absorbed = flex.absorb(stripped, self._state.memory_context) if flex else []
+
+        if is_go and not is_explicit_execute:
+            msg = "Flex: Execute geht erst mit einem konkreten Auftrag."
+            self._state.brainstorm_turns.append({"role": "flex", "text": msg})
+            self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
+            self._bus.emit("pipeline.flex_chat", {"message": msg, "user_text": stripped[:200]})
+            return self._state
+
+        decision = None
+        if flex:
+            decision = flex.maybe_request_execute(
+                stripped,
+                self._state.brainstorm_turns,
+                self._state.memory_context,
+            )
+
+        if is_explicit_execute or is_auto_execute:
+            msg = (
+                str((decision or {}).get("message") or "").strip()
+                or "Flex: Execute — Auftrag wird ausgeführt."
+            )
+            self._state.mode = "execute"
+            self._state.brainstorm_turns.append({"role": "flex", "text": msg})
+            self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
+            self._bus.emit(
+                "pipeline.auto_execute",
+                {
+                    "reason": (decision or {}).get(
+                        "reason",
+                        "explicit_execute" if is_explicit_execute else "context_intent",
+                    ),
+                    "user_text": self._state.user_text[:200],
+                },
+            )
+            try:
+                self._run_flex_then_work()
+            except Exception as exc:  # noqa: BLE001
+                self._fail(str(exc))
+            return self._state
+
+        notes = self._safe_stage(
+            "brainstorm",
+            lambda: self._llm_brainstorm(stripped),
+            lambda: self._stub_brainstorm(stripped),
+        )
+        self._state.brainstorm_turns.append({"role": "brainstorm", "text": notes})
+        self._bus.emit("pipeline.brainstorm", {"notes": notes})
+
+        if flex:
+            flex_msg = flex.brainstorm_contribute(
+                stripped,
+                notes,
+                self._state.memory_context,
+                absorbed=absorbed,
+            )
+            if flex_msg:
+                self._state.brainstorm_turns.append({"role": "flex", "text": flex_msg})
+
+        self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
+        return self._state
+
+    def execute(self) -> PipelineState:
+        self._state.error = None
+        self._state.pending_question = None
+        self._state.distilled_requirements = []
+        self._state.flex_notes = ""
+        self._state.worker_results = []
+        self._state.worker_outputs = []
+        self._state.quality_notes = ""
+        self._state.agent_nudges = []
+        self._clarified_once = False
+        if not (self._state.user_text or "").strip():
+            self._state.user_text = _pick_execute_task(self._state.brainstorm_turns)
+        if not self._state.user_text:
+            self._fail("No task to execute")
+            return self._state
+        try:
+            if self._check_cancel():
+                return self._state
+            self._set_stage(PipelineStage.distill)
+            requirements, question = self._safe_stage(
+                "distill",
+                lambda: self._llm_distill(self._state.user_text),
+                lambda: self._stub_distill(self._state.user_text),
+            )
+            self._state.distilled_requirements = requirements
+            self._bus.emit("pipeline.distill", {"requirements": list(requirements)})
+            if question is not None and not self._clarified_once:
+                self._state.pending_question = question
+                self._set_stage(PipelineStage.clarify)
+                self._bus.emit(
+                    "pipeline.question",
+                    {
+                        "id": question.id,
+                        "text": question.text,
+                        "options": list(question.options),
+                    },
+                )
+                return self._state
+            if self._check_cancel():
+                return self._state
+            self._run_flex_then_work()
+        except Exception as exc:  # noqa: BLE001
+            self._fail(str(exc))
+        return self._state
+
+    def rerun_worker(self, worker_id: str) -> PipelineState:
+        wid = (worker_id or "").strip().lower()
+        self._state.error = None
+        task = ""
+        output = next(
+            (out for out in reversed(self._state.worker_outputs) if out.get("worker") == wid),
+            None,
+        )
+        if output:
+            task = str(output.get("task") or "")
+        if not task:
+            for worker, worker_task in reversed(self._tasks):
+                if worker == wid:
+                    task = worker_task
+                    break
+        if not task:
+            self._fail(f"No prior task for {wid}")
+            return self._state
+
+        index = next((i for i, (worker, _) in enumerate(self._tasks, start=1) if worker == wid), 1)
+        self._set_stage(PipelineStage.work)
+        try:
+            result = self._safe_stage(
+                wid,
+                lambda w=wid, tt=task: self._llm_worker(w, tt),
+                lambda n=index, tt=task: self._stub_worker(n, tt),
+            )
+            new_output = {"worker": wid, "task": task, "index": index, "result": result}
+            replaced = False
+            for i, item in enumerate(self._state.worker_outputs):
+                if item.get("worker") == wid:
+                    self._state.worker_outputs[i] = new_output
+                    replaced = True
+                    break
+            if not replaced:
+                self._state.worker_outputs.append(new_output)
+            self._state.worker_outputs.sort(key=lambda item: int(item.get("index") or 0))
+            self._state.worker_results = [
+                str(item.get("result") or "") for item in self._state.worker_outputs
+            ]
+            self._bus.emit(
+                "pipeline.worker",
+                {"worker": wid, "index": index, "result": result, "task": task},
+            )
+            self._refresh_quality_notes()
+            self._finish_with_memory(self._state.worker_results)
         except Exception as exc:  # noqa: BLE001
             self._fail(str(exc))
         return self._state
@@ -146,10 +413,20 @@ class Pipeline:
             if notes:
                 first = notes.strip().splitlines()[0][:160]
                 self._state.distilled_requirements.append(f"Flex/{self._flex_preset()}: {first}")
+            flex = self._make_flex_agent()
+            if flex:
+                seen = {str(r).lower() for r in self._state.distilled_requirements}
+                for wish in flex.binding_wishes(self._state.memory_context):
+                    req = f"Flex-wish: {wish}"
+                    if req.lower() not in seen:
+                        self._state.distilled_requirements.append(req)
+                        seen.add(req.lower())
 
         self._run_coordinate_and_work()
 
     def _run_coordinate_and_work(self) -> None:
+        if self._check_cancel():
+            return
         if not self._agent_enabled("coordinator"):
             self._bus.emit(
                 "pipeline.coordinate",
@@ -174,20 +451,28 @@ class Pipeline:
             {"tasks": [{"worker": w, "task": t} for w, t in tasks]},
         )
 
+        if self._check_cancel():
+            return
         self._set_stage(PipelineStage.work)
         results: list[str] = []
         for i, (worker_id, task) in enumerate(tasks, start=1):
+            if self._check_cancel():
+                return
             result = self._safe_stage(
                 worker_id,
                 lambda w=worker_id, tt=task: self._llm_worker(w, tt),
                 lambda n=i, tt=task: self._stub_worker(n, tt),
             )
             results.append(result)
+            self._state.worker_outputs.append(
+                {"worker": worker_id, "task": task, "index": i, "result": result}
+            )
             self._bus.emit(
                 "pipeline.worker",
                 {"worker": worker_id, "index": i, "result": result, "task": task},
             )
         self._state.worker_results = results
+        self._refresh_quality_notes()
         self._finish_with_memory(results)
 
     def _finish_with_memory(self, results: list[str]) -> None:
@@ -250,6 +535,17 @@ class Pipeline:
 
     def _stub_flex(self) -> str:
         preset = self._flex_preset()
+        if preset == "personal":
+            text = self._state.user_text.strip()
+            keywords = [
+                w.strip(".,:;!?") for w in text.lower().split() if len(w.strip(".,:;!?")) > 3
+            ]
+            summary = ", ".join(keywords[:3]) if keywords else "task"
+            return (
+                f"• User-Kontext gemerkt: {text[:60]}\n"
+                f"• Ich weiß: {summary}\n"
+                "• Präferenzen beachtet"
+            )
         if preset == "security":
             return (
                 "• Keine Secrets im Frontend speichern\n"
@@ -266,12 +562,16 @@ class Pipeline:
 
     def _stub_coordinate(self) -> list[tuple[str, str]]:
         workers = self._enabled_worker_ids()
+        from gnom_hub.agents.plan_fast_path import _wants_one_html_page
+        from gnom_hub.agents.roles_ext import _html_full_page_plan
         from gnom_hub.agents.roles_helpers import _is_flex_meta_requirement as _ifm
 
         reqs = [r for r in self._state.distilled_requirements if not _ifm(r)]
         if not workers:
             return []
         goal = self._state.user_text
+        if _wants_one_html_page(goal, reqs):
+            return _html_full_page_plan(goal, workers, reqs)
         plans = [
             f"Erstelle einen konkreten Umsetzungsplan (Schritte) für: {goal}",
             f"Liefere ein knappes Ergebnis-Artefakt (Text/Struktur) für: {goal}",
@@ -532,6 +832,81 @@ class Pipeline:
         from gnom_hub.agents.roles_helpers import _needs_clarify as _nc
 
         return _nc(text, brainstorm)
+
+    def _make_flex_agent(self):
+        from gnom_hub.agents.models import COLORS, DEFAULT_FLEX_PRESET, AgentId, AgentState
+        from gnom_hub.agents.roles import FlexAgent
+
+        state = None
+        if self._agents is not None:
+            get = getattr(self._agents, "get", None)
+            if callable(get):
+                for candidate in (AgentId.FLEX, "flex"):
+                    try:
+                        state = get(candidate)
+                        break
+                    except (KeyError, ValueError):
+                        continue
+        if state is None:
+            state = AgentState(
+                id=AgentId.FLEX,
+                name="Flex",
+                role="flex",
+                color=COLORS[AgentId.FLEX],
+                enabled=True,
+                toggleable=False,
+                preset=DEFAULT_FLEX_PRESET,
+            )
+        return FlexAgent(state, self._bus, llm=self._llm)
+
+    def _check_cancel(self) -> bool:
+        if callable(self.cancel_check) and self.cancel_check():
+            self._state.stage = PipelineStage.idle
+            self._bus.emit("pipeline.stage", {"stage": PipelineStage.idle.value})
+            return True
+        return False
+
+    def _refresh_quality_notes(self) -> None:
+        rows: list[dict[str, Any]] = []
+        for out in self._state.worker_outputs:
+            task = str(out.get("task") or "")
+            result = str(out.get("result") or "")
+            validation = {"ok": True, "issues": []}
+            low_task = task.lower()
+            if any(x in low_task for x in ("html", "page", "web", "site", "landing")):
+                low = result.lower()
+                issues: list[str] = []
+                if "</html>" not in low and not ("</body>" in low and "<html" in low):
+                    issues.append("incomplete HTML (missing closing tags)")
+                if not any(
+                    token in low
+                    for token in (
+                        "onclick",
+                        "onsubmit",
+                        "onchange",
+                        "href=",
+                        "<button",
+                        "<input",
+                        "<form",
+                    )
+                ):
+                    issues.append("no interactive elements")
+                validation = {"ok": len(issues) == 0, "issues": issues}
+            rows.append(
+                {
+                    "name": str(out.get("worker") or "?"),
+                    "result": result,
+                    "task": task,
+                    "validation": validation,
+                }
+            )
+        lines = ["Quality", "Gates:"]
+        for row in rows:
+            check = row.get("validation") or {}
+            ok = bool(check.get("ok", True))
+            issues = check.get("issues", [])
+            lines.append(f"  {row.get('name')}: {'✓' if ok else '✗ ' + ', '.join(issues)}")
+        self._state.quality_notes = "\n".join(lines)
 
     def _set_stage(self, stage: PipelineStage) -> None:
         self._state.stage = stage
