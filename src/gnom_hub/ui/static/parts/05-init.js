@@ -162,6 +162,7 @@
     if (packFile) packFile.addEventListener("change", onSessionPackFile);
 
     updateBox3Toolbar();
+    if (typeof bindBoxLayerControls === "function") bindBoxLayerControls();
     const btnClearChat = document.getElementById("btn-clear-chat");
     if (btnClearChat) btnClearChat.addEventListener("click", clearChatLog);
     els.btnSave.addEventListener("click", onSave);

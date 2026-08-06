@@ -4022,10 +4022,12 @@
       return;
     }
 
-    // Dynamic: every worker output gets its own panel
+    // Dynamic: every worker output gets its own layered panel
     outputs.forEach(function (out, i) {
       body.appendChild(buildWorkerPanel(out, i));
     });
+    bindBoxLayerControls();
+    focusBox3Worker(0);
   }
 
   /** Save one worker HTML into personal WS (WS-gnom-hub-v1/selected/). */
@@ -4267,25 +4269,88 @@
     return [];
   }
 
+  let box3FocusIdx = 0;
+
+  function focusBox3Worker(idx) {
+    const body = document.getElementById("box3-content");
+    if (!body) return;
+    const panels = body.querySelectorAll(".worker-panel");
+    if (!panels.length) return;
+    const n = panels.length;
+    box3FocusIdx = ((idx % n) + n) % n;
+    panels.forEach(function (p, i) {
+      p.classList.toggle("is-focused", i === box3FocusIdx);
+    });
+    const p = panels[box3FocusIdx];
+    if (p && p.scrollIntoView) {
+      p.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+    const label = document.getElementById("box3-worker-label");
+    if (label) {
+      const name =
+        (p && p.querySelector(".worker-panel-title") &&
+          p.querySelector(".worker-panel-title").textContent) ||
+        "Worker " + (box3FocusIdx + 1);
+      label.textContent = name + "  " + (box3FocusIdx + 1) + "/" + n;
+    }
+  }
+
+  function bindBoxLayerControls() {
+    document.querySelectorAll(".layer-controls").forEach(function (bar) {
+      if (bar.dataset.bound === "1") return;
+      bar.dataset.bound = "1";
+      bar.addEventListener("click", function (ev) {
+        const btn = ev.target.closest(".layer-btn");
+        if (!btn) return;
+        const boxId = bar.getAttribute("data-box") || "";
+        const act = btn.getAttribute("data-act");
+        if (boxId === "box3") {
+          if (act === "next") focusBox3Worker(box3FocusIdx + 1);
+          if (act === "prev") focusBox3Worker(box3FocusIdx - 1);
+          return;
+        }
+        // box1/box2: scroll content layer
+        const website = document.getElementById(boxId + "-content");
+        if (!website) return;
+        const step = Math.max(120, Math.floor(website.clientHeight * 0.7));
+        website.scrollBy({
+          top: act === "next" ? step : -step,
+          behavior: "smooth",
+        });
+      });
+    });
+  }
+
   function buildWorkerPanel(out, idx) {
     const panel = document.createElement("div");
     panel.className = "worker-panel worker-panel-" + (out.worker || idx);
     panel.dataset.worker = out.worker || "";
+    panel.dataset.index = String(idx);
 
-    const head = document.createElement("div");
-    head.className = "worker-panel-head";
-    const title = document.createElement("span");
-    title.className = "worker-panel-title";
-    title.textContent = out.name || "Worker " + (idx + 1);
-    head.appendChild(title);
+    // Nested layer stack: website / transparent worker / controls
+    const stack = document.createElement("div");
+    stack.className = "layer-stack layer-stack-panel";
 
+    const website = document.createElement("div");
+    website.className = "layer layer-website worker-panel-body";
     const raw = out.result || "";
-    // Copy only — presentation is dynamic inside the body
-    const mode = document.createElement("div");
-    mode.className = "worker-panel-modes";
+    renderDynamicContent(website, raw, {
+      title: (out.name || "Worker") + " preview",
+    });
+
+    const workerLayer = document.createElement("div");
+    workerLayer.className = "layer layer-worker";
+    workerLayer.setAttribute("aria-hidden", "true");
+    const wLabel = document.createElement("span");
+    wLabel.className = "layer-worker-label worker-panel-title";
+    wLabel.textContent = out.name || "Worker " + (idx + 1);
+    workerLayer.appendChild(wLabel);
+
+    const controls = document.createElement("div");
+    controls.className = "layer layer-controls";
     const btnCopy = document.createElement("button");
     btnCopy.type = "button";
-    btnCopy.className = "worker-mode-btn copy-btn";
+    btnCopy.className = "layer-btn copy-btn";
     btnCopy.textContent = "Copy";
     btnCopy.title =
       "Copy HTML to personal WS (WS-gnom-hub-v1/selected/) — survives Clear";
@@ -4293,16 +4358,32 @@
       ev.stopPropagation();
       keepWorkerToPersonalWs(out, idx);
     });
-    mode.appendChild(btnCopy);
-    head.appendChild(mode);
-    panel.appendChild(head);
-
-    const content = document.createElement("div");
-    content.className = "worker-panel-body";
-    renderDynamicContent(content, raw, {
-      title: (out.name || "Worker") + " preview",
+    const btnPrev = document.createElement("button");
+    btnPrev.type = "button";
+    btnPrev.className = "layer-btn";
+    btnPrev.textContent = "‹";
+    btnPrev.title = "Previous worker";
+    btnPrev.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      focusBox3Worker(idx - 1);
     });
-    panel.appendChild(content);
+    const btnNext = document.createElement("button");
+    btnNext.type = "button";
+    btnNext.className = "layer-btn";
+    btnNext.textContent = "Next ›";
+    btnNext.title = "Next worker";
+    btnNext.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      focusBox3Worker(idx + 1);
+    });
+    controls.appendChild(btnPrev);
+    controls.appendChild(btnCopy);
+    controls.appendChild(btnNext);
+
+    stack.appendChild(website);
+    stack.appendChild(workerLayer);
+    stack.appendChild(controls);
+    panel.appendChild(stack);
     return panel;
   }
 
@@ -4671,6 +4752,7 @@
     if (packFile) packFile.addEventListener("change", onSessionPackFile);
 
     updateBox3Toolbar();
+    if (typeof bindBoxLayerControls === "function") bindBoxLayerControls();
     const btnClearChat = document.getElementById("btn-clear-chat");
     if (btnClearChat) btnClearChat.addEventListener("click", clearChatLog);
     els.btnSave.addEventListener("click", onSave);

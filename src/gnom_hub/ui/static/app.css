@@ -564,8 +564,92 @@ html, body {
   border-radius: 4px;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* header fixed; body scrolls */
+  overflow: hidden; /* header fixed; layers fill rest */
   transition: border-color 0.2s ease;
+}
+
+/* —— Layer stack over every box: website / worker / controls —— */
+.layer-stack {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+}
+
+/* L2: website / main content (scrollable, full size) */
+.layer.layer-website {
+  position: absolute;
+  z-index: 1;
+  overflow: auto;
+}
+
+/* L1: transparent worker overlay (label only, pass clicks through) */
+.layer.layer-worker {
+  z-index: 2;
+  pointer-events: none;
+  background: transparent;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 8px 10px;
+}
+
+.layer-worker-label {
+  pointer-events: none;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(233, 236, 239, 0.55);
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  padding: 2px 6px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+/* L3: controls (buttons receive clicks) */
+.layer.layer-controls {
+  z-index: 3;
+  pointer-events: none; /* only buttons active */
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 8px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.45) 0%,
+    rgba(0, 0, 0, 0) 42%
+  );
+}
+
+.layer.layer-controls .layer-btn {
+  pointer-events: auto;
+  height: 26px;
+  min-width: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  background: rgba(37, 38, 43, 0.82);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+
+.layer.layer-controls .layer-btn:hover {
+  border-color: #868e96;
+  background: rgba(52, 58, 64, 0.95);
 }
 
 .box-header {
@@ -728,6 +812,12 @@ html, body {
   flex-direction: column;
 }
 
+/* When box-body is the website layer, fill the stack completely */
+.layer.layer-website.box-body {
+  width: 100%;
+  height: 100%;
+}
+
 /* Box 3: scroll host so large multi-worker content stays fully viewable */
 .box-body.box3-dynamic {
   padding: 4px;
@@ -854,6 +944,18 @@ html, body {
   /* usable height even with many workers; panel scrolls for huge content */
   min-height: clamp(200px, 36vh, 640px);
   overflow: hidden;
+  position: relative;
+}
+
+.worker-panel .layer-stack-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.worker-panel.is-focused {
+  border-color: #74c0fc;
+  box-shadow: 0 0 0 1px rgba(116, 192, 252, 0.45);
 }
 
 .worker-panel[data-worker="worker1"] {

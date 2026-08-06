@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=110" />
+  <link rel="stylesheet" href="/static/app.css?v=111" />
 </head>
 <body>
   <div id="app">
@@ -63,52 +63,82 @@
     <!-- 8 agent cards: equal width, full row = boxes -->
     <section id="agent-cards" class="agent-cards" aria-label="Agents"></section>
 
-    <!-- 3 boxes: equal thirds, fill remaining height -->
+    <!-- 3 boxes as layered mini-displays: website / worker / controls -->
     <section class="boxes" aria-label="Main panels">
       <div id="box1" class="box box-arounder" data-tooltip-id="box1">
         <div class="box-header">Arounder</div>
-        <div id="box1-content" class="box-body">
-          <p class="box1-placeholder">Hover a card or control for help. Click Cold badge to browse archives.</p>
-          <div id="box1-tooltip" class="box1-tooltip" hidden>
-            <h2 id="tip-title" class="tip-title"></h2>
-            <p id="tip-how" class="tip-how"></p>
-            <p id="tip-example" class="tip-example"></p>
-          </div>
-          <div id="cold-browser" class="cold-browser" hidden>
-            <h2 class="tip-title">COLD archives</h2>
-            <ul id="cold-list" class="cold-list"></ul>
-            <pre id="cold-detail" class="cold-detail"></pre>
-            <div class="cold-actions" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-              <button type="button" id="btn-cold-restore" class="btn-ws-sm" title="Restore selected into HOT">Restore to HOT</button>
-              <button type="button" id="btn-cold-delete" class="btn-ws-sm" title="Delete selected archive">Delete</button>
-              <button type="button" id="btn-cold-close" class="btn-cold-close">Close</button>
+        <div class="layer-stack">
+          <!-- L2 website/content -->
+          <div id="box1-content" class="layer layer-website box-body">
+            <p class="box1-placeholder">Hover a card or control for help. Click Cold badge to browse archives.</p>
+            <div id="box1-tooltip" class="box1-tooltip" hidden>
+              <h2 id="tip-title" class="tip-title"></h2>
+              <p id="tip-how" class="tip-how"></p>
+              <p id="tip-example" class="tip-example"></p>
+            </div>
+            <div id="cold-browser" class="cold-browser" hidden>
+              <h2 class="tip-title">COLD archives</h2>
+              <ul id="cold-list" class="cold-list"></ul>
+              <pre id="cold-detail" class="cold-detail"></pre>
+              <div class="cold-actions" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+                <button type="button" id="btn-cold-restore" class="btn-ws-sm" title="Restore selected into HOT">Restore to HOT</button>
+                <button type="button" id="btn-cold-delete" class="btn-ws-sm" title="Delete selected archive">Delete</button>
+                <button type="button" id="btn-cold-close" class="btn-cold-close">Close</button>
+              </div>
+            </div>
+            <div id="clarify" class="clarify" hidden>
+              <p id="clarify-question" class="clarify-question"></p>
+              <div class="clarify-actions">
+                <button type="button" class="btn-clarify" data-answer="Yes">Yes</button>
+                <button type="button" class="btn-clarify" data-answer="No">No</button>
+                <button type="button" class="btn-clarify" data-answer="Whatever">Whatever</button>
+                <button type="button" class="btn-clarify" data-answer="Later">Later</button>
+              </div>
             </div>
           </div>
-          <div id="clarify" class="clarify" hidden>
-            <p id="clarify-question" class="clarify-question"></p>
-            <div class="clarify-actions">
-              <button type="button" class="btn-clarify" data-answer="Yes">Yes</button>
-              <button type="button" class="btn-clarify" data-answer="No">No</button>
-              <button type="button" class="btn-clarify" data-answer="Whatever">Whatever</button>
-              <button type="button" class="btn-clarify" data-answer="Later">Later</button>
-            </div>
+          <!-- L1 transparent worker overlay -->
+          <div class="layer layer-worker" data-box="box1" aria-hidden="true">
+            <span class="layer-worker-label">Arounder</span>
+          </div>
+          <!-- L3 controls -->
+          <div class="layer layer-controls" data-box="box1">
+            <button type="button" class="layer-btn" data-act="prev" title="Previous">‹</button>
+            <button type="button" class="layer-btn" data-act="next" title="Next">›</button>
           </div>
         </div>
       </div>
 
       <div id="box2" class="box box-brainstorm" data-tooltip-id="box2">
         <div class="box-header">Brainstorm</div>
-        <div id="box2-content" class="box-body">
-          <p class="muted">Brainstorm dialogue appears here.</p>
-          <p class="muted empty-hint">(Empty — Send a message.)</p>
+        <div class="layer-stack">
+          <div id="box2-content" class="layer layer-website box-body">
+            <p class="muted">Brainstorm dialogue appears here.</p>
+            <p class="muted empty-hint">(Empty — Send a message.)</p>
+          </div>
+          <div class="layer layer-worker" data-box="box2" aria-hidden="true">
+            <span class="layer-worker-label">Brainstorm</span>
+          </div>
+          <div class="layer layer-controls" data-box="box2">
+            <button type="button" class="layer-btn" data-act="prev" title="Previous">‹</button>
+            <button type="button" class="layer-btn" data-act="next" title="Next">›</button>
+          </div>
         </div>
       </div>
 
       <div id="box3" class="box box-worker" data-tooltip-id="box3">
         <div class="box-header">Worker results</div>
-        <div id="box3-content" class="box-body box3-dynamic">
-          <p class="muted">Worker result after Execute.</p>
-          <p class="muted empty-hint">(Empty until Execute finishes.)</p>
+        <div class="layer-stack">
+          <div id="box3-content" class="layer layer-website box-body box3-dynamic">
+            <p class="muted">Worker result after Execute.</p>
+            <p class="muted empty-hint">(Empty until Execute finishes.)</p>
+          </div>
+          <div class="layer layer-worker" data-box="box3" aria-hidden="true">
+            <span class="layer-worker-label" id="box3-worker-label">Workers</span>
+          </div>
+          <div class="layer layer-controls" data-box="box3">
+            <button type="button" class="layer-btn" data-act="prev" title="Previous worker">‹ Prev</button>
+            <button type="button" class="layer-btn" data-act="next" title="Next worker">Next ›</button>
+          </div>
         </div>
       </div>
     </section>
@@ -442,6 +472,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=110"></script>
+  <script src="/static/app.js?v=111"></script>
 </body>
 </html>
