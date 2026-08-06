@@ -158,6 +158,7 @@ class LLMManager:
         frequency_penalty: float | None = None,
         presence_penalty: float | None = None,
         provider: str | None = None,
+        thinking: bool | None = None,
     ) -> LLMResult:
         model_name = model or self.default_model
         prov, bare_model = self._resolve_route(model_name, provider)
@@ -209,6 +210,7 @@ class LLMManager:
                     top_p=top_p,
                     frequency_penalty=frequency_penalty,
                     presence_penalty=presence_penalty,
+                    thinking=thinking,
                 )
 
         self._spent_usd += result.cost_usd

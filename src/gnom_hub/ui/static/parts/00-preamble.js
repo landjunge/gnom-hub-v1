@@ -116,6 +116,7 @@
   let lastSpokenKey = "";
   let pendingSpeech = ""; // spoken on next click if browser blocked autoplay
   let ttsUnlocked = false; // true after speak started from a real click
+  let lastAgentThoughts = {}; // reasoning streams for TTS (not Box text)
   let currentJobId = null;
   let lastWorkerOutputs = [];
   let jobTimerStart = null;
@@ -260,7 +261,9 @@
           const on = !!ttsInput.checked;
           // Speak HERE (same user gesture) — not after await/API
           if (on) {
-            speakNow("TTS on for " + (agent.label || agent.id) + ".");
+            speakNow(
+              "Gedanken an für " + (agent.label || agent.id) + ". Ich spreche den Denkprozess, nicht den Text."
+            );
           } else {
             stopSpeech();
           }

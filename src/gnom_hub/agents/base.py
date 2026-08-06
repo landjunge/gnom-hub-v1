@@ -71,11 +71,18 @@ class BaseAgent:
             else float(temperature)
         )
         mt = int(self.state.max_tokens) if self.state.max_tokens is not None else int(max_tokens)
+        # TTS wants the thinking stream, not the written deliverable.
+        # Enable DeepSeek thinking only when this agent has TTS on.
+        want_thoughts = bool(getattr(self.state, "tts", False))
+        if want_thoughts and mt < 1800:
+            mt = 1800
         kwargs: dict[str, Any] = {
             "agent": self.id,
             "max_tokens": mt,
             "temperature": temp,
         }
+        if want_thoughts:
+            kwargs["thinking"] = True
         if self.state.top_p is not None:
             kwargs["top_p"] = float(self.state.top_p)
         if self.state.frequency_penalty is not None:
@@ -110,6 +117,16 @@ class BaseAgent:
                 messages.append(LLMMessage(role="user", content=content[:2000]))
         messages.append(LLMMessage(role="user", content=user))
         result = self.llm.chat(messages, **kwargs)
+        thought = (getattr(result, "reasoning", None) or "").strip()
+        if thought:
+            self.bus.emit(
+                "agent.thought",
+                {
+                    "id": self.id,
+                    "thought": thought[:2500],
+                    "label": self.state.name or self.id,
+                },
+            )
         return (result.content or "").strip()
 
     def has_llm(self) -> bool:

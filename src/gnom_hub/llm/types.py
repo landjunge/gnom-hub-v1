@@ -18,6 +18,8 @@ class LLMResult:
     prompt_tokens: int = 0
     completion_tokens: int = 0
     cost_usd: float = 0.0
+    # Model "thinking" / chain-of-thought (DeepSeek reasoning_content). For TTS — not Box text.
+    reasoning: str = ""
     raw: dict = field(default_factory=dict, repr=False)
 
 

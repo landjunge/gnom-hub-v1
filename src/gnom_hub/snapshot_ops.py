@@ -95,6 +95,8 @@ class SnapshotOpsMixin:
             "plan_mode": getattr(self, "plan_mode", "default") or "default",
             "team_presets": self.list_team_presets(),
             "last_error": self.last_error,
+            # Reasoning streams for TTS (Gedanken) — not the written Box 2/3 text
+            "agent_thoughts": dict(getattr(self, "_agent_thoughts", {}) or {}),
             "trace": list(self.trace[-40:]),
             "ui_lang": self.ui_lang,
             "checkpoint": {

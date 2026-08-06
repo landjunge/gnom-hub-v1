@@ -210,9 +210,14 @@
       lastReportedPipelineError = null;
     }
 
-    // TTS after brainstorm turn and after full execute
+    // Keep latest thoughts for TTS (reasoning only)
+    if (snap.agent_thoughts && typeof snap.agent_thoughts === "object") {
+      lastAgentThoughts = snap.agent_thoughts;
+    }
+
+    // TTS: speak Gedanken after brainstorm / done — not the written HTML/notes
     if (p.stage === "done" || p.stage === "brainstorm") {
-      maybeSpeakPipeline(p);
+      maybeSpeakPipeline(p, snap);
     }
   }
 
@@ -235,6 +240,15 @@
     pendingSpeech = "";
   }
 
+  /** Prefer German TTS (ui_lang or German text). */
+  function pickTtsLang(text) {
+    const clean = String(text || "");
+    if (uiLang === "de" || /[äöüÄÖÜß]/.test(clean)) return "de-DE";
+    // Default spoken thoughts in DE when UI is German-first desk
+    if (uiLang !== "en") return "de-DE";
+    return "en-US";
+  }
+
   /** Must run inside a click/change handler — not after await. */
   function speakNow(text) {
     if (!window.speechSynthesis) {
@@ -249,7 +263,7 @@
         window.speechSynthesis.cancel();
       }
       const u = new SpeechSynthesisUtterance(clean);
-      u.lang = /[äöüÄÖÜß]/.test(clean) ? "de-DE" : "en-US";
+      u.lang = pickTtsLang(clean);
       u.rate = 1.05;
       const voices = window.speechSynthesis.getVoices() || [];
       if (voices.length) {
@@ -257,7 +271,11 @@
         const match =
           voices.find(function (v) {
             return (v.lang || "").toLowerCase().indexOf(want) === 0;
-          }) || voices[0];
+          }) ||
+          voices.find(function (v) {
+            return (v.lang || "").toLowerCase().indexOf("de") === 0;
+          }) ||
+          voices[0];
         if (match) u.voice = match;
       }
       u.onstart = function () {
@@ -318,41 +336,45 @@
     );
   }
 
-  function maybeSpeakPipeline(p) {
+  /**
+   * TTS speaks agent *thoughts* (reasoning), not the written Box text / HTML.
+   * Thoughts come from snapshot.agent_thoughts when the agent has TTS on
+   * (backend enables DeepSeek thinking for that call).
+   */
+  function maybeSpeakPipeline(p, snap) {
+    const thoughts =
+      (snap && snap.agent_thoughts) ||
+      (p && p.agent_thoughts) ||
+      lastAgentThoughts ||
+      {};
+    const thoughtKey = Object.keys(thoughts)
+      .map(function (k) {
+        return k + ":" + String(thoughts[k] || "").slice(0, 40);
+      })
+      .join("|");
     const key =
       (p.stage || "") +
       "|" +
-      (p.brainstorm_notes || "").slice(0, 48) +
-      "|" +
-      ((p.worker_results && p.worker_results[0]) || "").slice(0, 48) +
+      thoughtKey +
       "|" +
       ((p.worker_outputs && p.worker_outputs.length) || 0);
     if (key === lastSpokenKey) return;
     const chunks = [];
-    const b = findAgent("brainstorm");
-    if (b && b.tts && p.brainstorm_notes) {
-      chunks.push("Brainstorm. " + stripForSpeech(p.brainstorm_notes));
-    }
-    const f = findAgent("flex");
-    if (f && f.tts && p.flex_notes) {
-      chunks.push("Flex. " + stripForSpeech(p.flex_notes));
-    }
-    (p.worker_outputs || []).forEach(function (o, i) {
-      const a = findAgent(o.worker || "worker" + (i + 1));
-      if (a && a.tts && o.result) {
-        chunks.push(
-          (a.label || o.worker || "Worker") + ". " + stripForSpeech(o.result)
-        );
+    function pushThought(agentId, label) {
+      const a = findAgent(agentId);
+      if (!a || !a.tts) return;
+      const t = thoughts[agentId];
+      if (t && String(t).trim()) {
+        chunks.push((label || a.label || agentId) + ". " + stripForSpeech(t));
       }
-    });
-    if (!chunks.length && p.worker_results) {
-      p.worker_results.forEach(function (r, i) {
-        const a = findAgent("worker" + (i + 1));
-        if (a && a.tts && r) {
-          chunks.push((a.label || "Worker") + ". " + stripForSpeech(r));
-        }
-      });
     }
+    pushThought("brainstorm", "Brainstorm");
+    pushThought("memory", "Memory");
+    pushThought("flex", "Flex");
+    pushThought("coordinator", "Coordinator");
+    ["worker1", "worker2", "worker3", "worker4"].forEach(function (wid) {
+      pushThought(wid, null);
+    });
     if (chunks.length) {
       lastSpokenKey = key;
       speakOrQueue(chunks.join(" "));

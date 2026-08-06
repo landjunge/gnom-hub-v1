@@ -73,6 +73,7 @@ class DeepSeekClient:
         top_p: float | None = None,
         frequency_penalty: float | None = None,
         presence_penalty: float | None = None,
+        thinking: bool | None = None,
     ) -> LLMResult:
         url = f"{self.base_url}/chat/completions"
         payload: dict[str, Any] = {
@@ -90,16 +91,15 @@ class DeepSeekClient:
         if presence_penalty is not None:
             payload["presence_penalty"] = presence_penalty
 
-        # V4 Flash/Pro default to thinking=on; that burns max_tokens and often
-        # leaves message.content empty. Hub UX needs stable non-thinking output.
-        # Docs: {"thinking": {"type": "enabled"|"disabled"}}
-        # Override: DEEPSEEK_THINKING=1 to enable.
-        thinking_on = os.getenv("DEEPSEEK_THINKING", "0").strip().lower() in (
+        # V4: thinking separate from content. Default off for stable worker HTML.
+        # Per-call override (e.g. TTS wants reasoning) or DEEPSEEK_THINKING=1.
+        env_on = os.getenv("DEEPSEEK_THINKING", "0").strip().lower() in (
             "1",
             "true",
             "yes",
             "on",
         )
+        thinking_on = env_on if thinking is None else bool(thinking)
         if "deepseek-v4" in model.lower():
             payload["thinking"] = {"type": "enabled" if thinking_on else "disabled"}
 
@@ -122,22 +122,24 @@ class DeepSeekClient:
         try:
             msg = data["choices"][0]["message"]
             content = msg.get("content")
-            # Thinking mode may put text only in reasoning_content
-            if content is None or (isinstance(content, str) and not content.strip()):
-                reasoning = msg.get("reasoning_content") or msg.get("reasoning")
-                if isinstance(reasoning, str) and reasoning.strip():
-                    content = reasoning
+            reasoning_raw = msg.get("reasoning_content") or msg.get("reasoning") or ""
+            if not isinstance(reasoning_raw, str):
+                reasoning_raw = str(reasoning_raw) if reasoning_raw else ""
+            reasoning = reasoning_raw.strip()
             if content is None:
                 content = ""
             elif not isinstance(content, str):
                 content = str(content)
+            content = content.strip()
+            # Pipeline needs written content; if API only returned thinking, fall back
+            # but keep reasoning separate for TTS.
+            if not content and reasoning:
+                content = reasoning
         except (KeyError, IndexError, TypeError) as e:
             raise LLMError(f"DeepSeek unexpected response shape: {data!r}") from e
 
         if not str(content).strip():
-            raise LLMError(
-                "DeepSeek empty content (enable DEEPSEEK_THINKING=0 or raise max_tokens)"
-            )
+            raise LLMError("DeepSeek empty content (raise max_tokens or set DEEPSEEK_THINKING=0)")
 
         usage = data.get("usage") or {}
         prompt_tokens = int(usage.get("prompt_tokens") or 0)
@@ -150,5 +152,6 @@ class DeepSeekClient:
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
             cost_usd=estimate_cost_usd(model, prompt_tokens, completion_tokens),
+            reasoning=reasoning,
             raw=data if isinstance(data, dict) else {},
         )

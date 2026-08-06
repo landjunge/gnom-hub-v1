@@ -78,7 +78,11 @@
     // Speak in the same click as Save (before await)
     if (ttsOn) {
       const a = findAgent(tuneAgentId);
-      speakNow("TTS on for " + ((a && a.label) || tuneAgentId) + ".");
+      speakNow(
+        "Gedanken an für " +
+          ((a && a.label) || tuneAgentId) +
+          ". Ich spreche den Denkprozess, nicht den Text."
+      );
     } else {
       stopSpeech();
     }

@@ -90,6 +90,8 @@ class Hub(
         self.plugin_list = self.plugins.discover_and_load()
         self.pipeline = self._new_pipeline()
         self._jobs: dict[str, dict[str, Any]] = {}
+        # Last reasoning stream per agent id (for TTS — not written Box content)
+        self._agent_thoughts: dict[str, str] = {}
         self.last_error: str | None = None
         # Last successful Execute snapshot for /api/export/last (survives reset)
         self._last_execute_export: dict[str, Any] | None = None
@@ -139,6 +141,7 @@ class Hub(
         self.agents.enable_all(include_extra_workers=False)
         self._wire_memory()
         self._wire_trace()
+        self._wire_thoughts()
         self.agents.on_start()
         # Auto-start telegram poll if GNOM_TELEGRAM_POLL=1
         if os.getenv("GNOM_TELEGRAM_POLL", "").strip() in ("1", "true", "yes"):
@@ -153,6 +156,24 @@ class Hub(
         )
         pipe.plan_mode = getattr(self, "plan_mode", "default") or "default"
         return pipe
+
+    def _wire_thoughts(self) -> None:
+        """Capture model reasoning for TTS (Gedanken, not written deliverable)."""
+
+        def on_thought(data: Any) -> None:
+            if not isinstance(data, dict):
+                return
+            aid = str(data.get("id") or "").strip()
+            thought = str(data.get("thought") or "").strip()
+            if not aid or not thought:
+                return
+            self._agent_thoughts[aid] = thought[:2500]
+            self._append_trace(
+                "agent.thought",
+                {"id": aid, "chars": len(thought)},
+            )
+
+        self.bus.on("agent.thought", on_thought)
 
 
 _HUB: Hub | None = None

@@ -139,6 +139,7 @@ class SessionOpsMixin:
                 self.agents.on_start()
             self.pipeline = self._new_pipeline()
             self.last_error = None
+            self._agent_thoughts = {}
             # Drop light checkpoint so restore cannot re-inject old brainstorm
             if self._checkpoint_path.is_file():
                 try:
@@ -177,6 +178,7 @@ class SessionOpsMixin:
             self.pipeline = self._new_pipeline()
             self.last_error = None
             self.trace = []
+            self._agent_thoughts = {}
             if self._checkpoint_path.is_file():
                 try:
                     self._checkpoint_path.unlink()
