@@ -1,3 +1,4 @@
+/* part: 00-preamble.js  lines 1-323 of app.js — edit parts, run scripts/build_ui_js.py */
 /**
  * Gnom-Hub v1 – desktop UI wired to /api/*
  * Hooks still available: window.GnomHub.onSend / onSave / onToggle / onClarify
@@ -321,6 +322,7 @@
     }, 4200);
   }
 
+/* part: 01-api-snapshot-tts.js  lines 324-704 of app.js — edit parts, run scripts/build_ui_js.py */
   async function api(method, path, body) {
     const opts = { method: method, headers: { "Content-Type": "application/json" } };
     if (body !== undefined) opts.body = JSON.stringify(body);
@@ -702,6 +704,7 @@
     }
   }
 
+/* part: 02-modals-tools-ws.js  lines 705-1949 of app.js — edit parts, run scripts/build_ui_js.py */
   function openTuneModal(id) {
     const a = findAgent(id);
     if (!a || !els.tuneModal) return;
@@ -1947,6 +1950,7 @@
     }
   }
 
+/* part: 03-chat-jobs-ops.js  lines 1950-3681 of app.js — edit parts, run scripts/build_ui_js.py */
   function toggleMic() {
     const SR =
       window.SpeechRecognition || window.webkitSpeechRecognition || null;
@@ -3679,6 +3683,7 @@
   w.GnomHub.setBox3 = setBox3;
   w.GnomHub.applySnapshot = applySnapshot;
 
+/* part: 04-boxes.js  lines 3682-4267 of app.js — edit parts, run scripts/build_ui_js.py */
   function setBox2(htmlOrText) {
     const body = document.getElementById("box2-content");
     if (!body) return;
@@ -4265,6 +4270,7 @@
     }
   }
 
+/* part: 05-init.js  lines 4268-4656 of app.js — edit parts, run scripts/build_ui_js.py */
   function init() {
     renderCards();
     bindTooltipHovers();

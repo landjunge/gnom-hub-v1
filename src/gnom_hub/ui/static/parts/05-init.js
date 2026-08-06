@@ -1,0 +1,390 @@
+/* part: 05-init.js  lines 4268-4656 of app.js — edit parts, run scripts/build_ui_js.py */
+  function init() {
+    renderCards();
+    bindTooltipHovers();
+    bindTuneSliders();
+
+    els.btnSend.addEventListener("click", sendChat);
+    if (els.btnExecute) els.btnExecute.addEventListener("click", runExecute);
+    const btnSendExec = document.getElementById("btn-send-exec");
+    if (btnSendExec) btnSendExec.addEventListener("click", sendAndExecute);
+    const btnCancel = document.getElementById("btn-cancel");
+    if (btnCancel) btnCancel.addEventListener("click", cancelCurrentJob);
+    if (els.btnMic) els.btnMic.addEventListener("click", toggleMic);
+    const presetApply = document.getElementById("sys-preset-apply");
+    const presetDel = document.getElementById("sys-preset-delete");
+    if (presetApply) presetApply.addEventListener("click", applySelectedPreset);
+    if (presetDel) presetDel.addEventListener("click", deleteSelectedPreset);
+    const teamApply = document.getElementById("sys-team-apply");
+    const teamSave = document.getElementById("sys-team-save");
+    const teamDel = document.getElementById("sys-team-delete");
+    const planMode = document.getElementById("sys-plan-mode");
+    if (teamApply) teamApply.addEventListener("click", applySelectedTeam);
+    if (teamSave) teamSave.addEventListener("click", saveCurrentTeam);
+    if (teamDel) teamDel.addEventListener("click", deleteSelectedTeam);
+    if (planMode) planMode.addEventListener("change", setPlanModeFromUi);
+    els.chatInput.addEventListener("keydown", function (ev) {
+      // Ctrl/Cmd+Enter = Execute; plain Enter = Send
+      if (ev.key === "Enter" && (ev.ctrlKey || ev.metaKey)) {
+        ev.preventDefault();
+        runExecute();
+        return;
+      }
+      if (ev.key === "Enter") {
+        ev.preventDefault();
+        sendChat();
+      }
+    });
+    document.addEventListener("keydown", function (ev) {
+      // Esc: close overlays first, else cancel running job
+      if (ev.key === "Escape") {
+        if (els.toolsModal && !els.toolsModal.hidden) {
+          ev.preventDefault();
+          closeToolsModal();
+          return;
+        }
+        if (els.usageModal && !els.usageModal.hidden) {
+          ev.preventDefault();
+          closeUsageModal();
+          return;
+        }
+        if (els.vectorModal && !els.vectorModal.hidden) {
+          ev.preventDefault();
+          closeVectorModal();
+          return;
+        }
+        if (document.getElementById("diff-overlay")) {
+          ev.preventDefault();
+          closeDiffOverlay();
+          return;
+        }
+        if (document.getElementById("worker-fs-overlay")) {
+          ev.preventDefault();
+          closeWorkerFullscreen();
+          return;
+        }
+        if (chatBusy) {
+          ev.preventDefault();
+          cancelCurrentJob();
+        }
+        return;
+      }
+      // Ctrl/Cmd+S = save HOT + agents (skip when typing in modal fields is fine — still save)
+      if ((ev.ctrlKey || ev.metaKey) && (ev.key === "s" || ev.key === "S")) {
+        ev.preventDefault();
+        onSave();
+      }
+    });
+    const btnCopyAll = document.getElementById("btn-copy-all");
+    if (btnCopyAll) btnCopyAll.addEventListener("click", copyAllWorkerResults);
+    const btnDiff = document.getElementById("btn-diff");
+    if (btnDiff) btnDiff.addEventListener("click", openWorkerDiff);
+    const hist = document.getElementById("result-history");
+    if (hist) {
+      hist.addEventListener("change", function () {
+        if (hist.value) restoreHistoryEntry(hist.value);
+      });
+    }
+    const btnCompact = document.getElementById("btn-compact");
+    if (btnCompact) btnCompact.addEventListener("click", toggleCompactMode);
+    loadResultHistory();
+    renderHistorySelect();
+
+    const btnReexec = document.getElementById("btn-reexec");
+    if (btnReexec) btnReexec.addEventListener("click", reexecFromHistory);
+    const btnHistExport = document.getElementById("btn-hist-export");
+    if (btnHistExport) btnHistExport.addEventListener("click", exportResultHistory);
+    const histSel = document.getElementById("result-history");
+    if (histSel) {
+      histSel.addEventListener("change", function () {
+        const re = document.getElementById("btn-reexec");
+        if (!re) return;
+        const entry = resultHistory.find(function (e) {
+          return e.id === histSel.value;
+        });
+        re.disabled = !(entry && (entry.can_reexec || entry.user_text || entry.brainstorm_notes));
+        re.dataset.historyId = entry ? entry.id : "";
+      });
+    }
+    const packExp = document.getElementById("sys-pack-export");
+    if (packExp) packExp.addEventListener("click", exportSessionPack);
+    const packImp = document.getElementById("sys-pack-import");
+    if (packImp) packImp.addEventListener("click", importSessionPack);
+    const packFilter = document.getElementById("sys-pack-filter");
+    if (packFilter) {
+      packFilter.addEventListener("input", function () {
+        renderPackList(packListCache);
+      });
+    }
+    const hotAdd = document.getElementById("sys-hot-add");
+    if (hotAdd) hotAdd.addEventListener("click", addHotFact);
+    const hotClear = document.getElementById("sys-hot-clear");
+    if (hotClear) hotClear.addEventListener("click", clearHotFacts);
+    const hotInput = document.getElementById("sys-hot-input");
+    if (hotInput) {
+      hotInput.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          addHotFact();
+        }
+      });
+    }
+    const warmAdd = document.getElementById("sys-warm-add");
+    if (warmAdd) warmAdd.addEventListener("click", addWarmFact);
+    const warmClear = document.getElementById("sys-warm-clear");
+    if (warmClear) warmClear.addEventListener("click", clearWarmFacts);
+    const warmInput = document.getElementById("sys-warm-input");
+    if (warmInput) {
+      warmInput.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          addWarmFact();
+        }
+      });
+    }
+    const packFile = document.getElementById("sys-pack-file");
+    if (packFile) packFile.addEventListener("change", onSessionPackFile);
+
+    loadCompactMode();
+    updateBox3Toolbar();
+    const btnClearChat = document.getElementById("btn-clear-chat");
+    if (btnClearChat) btnClearChat.addEventListener("click", clearChatLog);
+    els.btnSave.addEventListener("click", onSave);
+    if (els.btnHelp) els.btnHelp.addEventListener("click", onHelp);
+    if (els.btnSystem) els.btnSystem.addEventListener("click", openSystemModal);
+    if (els.btnWorkspace) els.btnWorkspace.addEventListener("click", openWorkspaceModal);
+    if (els.btnTools) els.btnTools.addEventListener("click", openToolsModal);
+    const cuInspectBtn = document.getElementById("cu-inspect");
+    const cuClickBtn = document.getElementById("cu-click");
+    const cuTypeBtn = document.getElementById("cu-type-btn");
+    const cuShellBtn = document.getElementById("cu-shell-btn");
+    if (cuInspectBtn) cuInspectBtn.addEventListener("click", cuInspect);
+    if (cuClickBtn) cuClickBtn.addEventListener("click", cuClick);
+    if (cuTypeBtn) cuTypeBtn.addEventListener("click", cuType);
+    if (cuShellBtn) cuShellBtn.addEventListener("click", cuShell);
+    const toolsClose = document.getElementById("tools-close");
+    if (toolsClose) toolsClose.addEventListener("click", closeToolsModal);
+    if (els.toolsModal) {
+      els.toolsModal.addEventListener("click", function (ev) {
+        if (ev.target === els.toolsModal) closeToolsModal();
+      });
+    }
+    const toolsRun = document.getElementById("tools-run");
+    if (toolsRun) toolsRun.addEventListener("click", runSelectedTool);
+    const toolsRefresh = document.getElementById("tools-refresh");
+    if (toolsRefresh) toolsRefresh.addEventListener("click", refreshToolsModal);
+    const toolsFetchBtn = document.getElementById("tools-fetch-btn");
+    if (toolsFetchBtn) toolsFetchBtn.addEventListener("click", runQuickFetch);
+    const toolsArgs = document.getElementById("tools-args");
+    if (toolsArgs) {
+      toolsArgs.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          runSelectedTool();
+        }
+      });
+    }
+    const toolsFetchUrl = document.getElementById("tools-fetch-url");
+    if (toolsFetchUrl) {
+      toolsFetchUrl.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          runQuickFetch();
+        }
+      });
+    }
+    if (els.btnTrace) els.btnTrace.addEventListener("click", openTraceModal);
+    const btnExport = document.getElementById("btn-export");
+    if (btnExport) btnExport.addEventListener("click", exportLast);
+    if (els.flexSelect) els.flexSelect.addEventListener("change", onFlexSelectChange);
+    const trClose = document.getElementById("trace-close");
+    if (trClose) trClose.addEventListener("click", closeTraceModal);
+    if (els.traceModal) {
+      els.traceModal.addEventListener("click", function (ev) {
+        if (ev.target === els.traceModal) closeTraceModal();
+      });
+    }
+    const trRefresh = document.getElementById("trace-refresh");
+    if (trRefresh) trRefresh.addEventListener("click", refreshTraceView);
+    const trJson = document.getElementById("trace-dl-json");
+    if (trJson) {
+      trJson.addEventListener("click", function () {
+        downloadTrace("json");
+      });
+    }
+    const trMd = document.getElementById("trace-dl-md");
+    if (trMd) {
+      trMd.addEventListener("click", function () {
+        downloadTrace("md");
+      });
+    }
+    const trClear = document.getElementById("trace-clear");
+    if (trClear) trClear.addEventListener("click", clearTraceBuffer);
+    const ckSave = document.getElementById("sys-ckpt-save");
+    const ckLoad = document.getElementById("sys-ckpt-load");
+    if (ckSave) ckSave.addEventListener("click", saveCheckpoint);
+    if (ckLoad) ckLoad.addEventListener("click", loadCheckpoint);
+    const sysBackup = document.getElementById("sys-backup");
+    const sysClean = document.getElementById("sys-clean");
+    if (sysBackup) sysBackup.addEventListener("click", runBackup);
+    if (sysClean) sysClean.addEventListener("click", runCleanState);
+    const tunePreset = document.getElementById("tune-preset-save");
+    if (tunePreset) tunePreset.addEventListener("click", saveWorkerPresetFromTune);
+    if (els.btnReset) els.btnReset.addEventListener("click", onReset);
+    const wsClose = document.getElementById("workspace-close");
+    const wsClear = document.getElementById("ws-clear-temp");
+    if (wsClose) wsClose.addEventListener("click", closeWorkspaceModal);
+    if (wsClear) wsClear.addEventListener("click", clearTempWs);
+    const wsDlTemp = document.getElementById("ws-dl-temp");
+    if (wsDlTemp) {
+      wsDlTemp.addEventListener("click", function () {
+        downloadWorkspaceZip("temp");
+      });
+    }
+    const wsDlPerm = document.getElementById("ws-dl-perm");
+    if (wsDlPerm) {
+      wsDlPerm.addEventListener("click", function () {
+        downloadWorkspaceZip("perm");
+      });
+    }
+    const wsDlAll = document.getElementById("ws-dl-all");
+    if (wsDlAll) {
+      wsDlAll.addEventListener("click", function () {
+        downloadWorkspaceZip("all");
+      });
+    }
+    if (els.workspaceModal) {
+      els.workspaceModal.addEventListener("click", function (ev) {
+        if (ev.target === els.workspaceModal) closeWorkspaceModal();
+      });
+    }
+    if (els.btnArchive) els.btnArchive.addEventListener("click", onArchive);
+    const tuneClose = document.getElementById("tune-close");
+    const tuneSave = document.getElementById("tune-save");
+    if (tuneClose) tuneClose.addEventListener("click", closeTuneModal);
+    if (tuneSave) tuneSave.addEventListener("click", saveTuneModal);
+    if (els.tuneModal) {
+      els.tuneModal.addEventListener("click", function (ev) {
+        if (ev.target === els.tuneModal) closeTuneModal();
+      });
+    }
+    const sysClose = document.getElementById("system-close");
+    const sysSave = document.getElementById("system-save");
+    if (sysClose) sysClose.addEventListener("click", closeSystemModal);
+    if (sysSave) sysSave.addEventListener("click", saveSystemModal);
+    if (els.systemModal) {
+      els.systemModal.addEventListener("click", function (ev) {
+        if (ev.target === els.systemModal) closeSystemModal();
+      });
+    }
+    if (els.godBadge) {
+      els.godBadge.addEventListener("click", toggleGodMode);
+      els.godBadge.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          toggleGodMode();
+        }
+      });
+    }
+    if (els.coldBadge) {
+      els.coldBadge.addEventListener("click", openColdBrowser);
+      els.coldBadge.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          openColdBrowser();
+        }
+      });
+    }
+    if (els.vecBadge) {
+      els.vecBadge.addEventListener("click", openVectorModal);
+      els.vecBadge.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          openVectorModal();
+        }
+      });
+    }
+    if (els.costBadge) {
+      els.costBadge.addEventListener("click", openUsageModal);
+      els.costBadge.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          openUsageModal();
+        }
+      });
+    }
+    const usageClose = document.getElementById("usage-close");
+    if (usageClose) usageClose.addEventListener("click", closeUsageModal);
+    if (els.usageModal) {
+      els.usageModal.addEventListener("click", function (ev) {
+        if (ev.target === els.usageModal) closeUsageModal();
+      });
+    }
+    const usageRefresh = document.getElementById("usage-refresh");
+    if (usageRefresh) usageRefresh.addEventListener("click", refreshUsageModal);
+    const usageReset = document.getElementById("usage-reset");
+    if (usageReset) usageReset.addEventListener("click", resetUsageCounters);
+    const vectorClose = document.getElementById("vector-close");
+    if (vectorClose) vectorClose.addEventListener("click", closeVectorModal);
+    if (els.vectorModal) {
+      els.vectorModal.addEventListener("click", function (ev) {
+        if (ev.target === els.vectorModal) closeVectorModal();
+      });
+    }
+    const vectorSearchBtn = document.getElementById("vector-search-btn");
+    if (vectorSearchBtn) vectorSearchBtn.addEventListener("click", searchVectors);
+    const vectorRefresh = document.getElementById("vector-refresh");
+    if (vectorRefresh) vectorRefresh.addEventListener("click", refreshVectorList);
+    const vectorClear = document.getElementById("vector-clear");
+    if (vectorClear) vectorClear.addEventListener("click", clearVectorStore);
+    const vectorAddBtn = document.getElementById("vector-add-btn");
+    if (vectorAddBtn) vectorAddBtn.addEventListener("click", addVectorDoc);
+    const vectorQuery = document.getElementById("vector-query");
+    if (vectorQuery) {
+      vectorQuery.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          searchVectors();
+        }
+      });
+    }
+    const vectorAddInput = document.getElementById("vector-add-input");
+    if (vectorAddInput) {
+      vectorAddInput.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          addVectorDoc();
+        }
+      });
+    }
+    if (els.btnColdClose) {
+      els.btnColdClose.addEventListener("click", function () {
+        hideColdBrowser();
+        showTooltip("box1");
+      });
+    }
+    const btnColdRestore = document.getElementById("btn-cold-restore");
+    if (btnColdRestore) {
+      btnColdRestore.addEventListener("click", restoreSelectedCold);
+    }
+    const btnColdDelete = document.getElementById("btn-cold-delete");
+    if (btnColdDelete) {
+      btnColdDelete.addEventListener("click", deleteSelectedCold);
+    }
+
+    document.querySelectorAll(".btn-clarify").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        onClarify(btn.getAttribute("data-answer"));
+      });
+    });
+
+    showTooltip("box1");
+    bootstrap();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
