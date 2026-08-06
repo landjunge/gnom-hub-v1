@@ -17,15 +17,15 @@
   --card-h: clamp(64px, 8.5vh, 96px);
   --chat-h: clamp(140px, 18vh, 220px);
 
-  /* Agent accents: muted, only as thin left bar — not full neon frames */
-  --c-brainstorm: #9a6b6b;
-  --c-memory: #6b849a;
-  --c-flex: #9a8b6b;
-  --c-coordinator: #6b9a7a;
-  --c-worker1: #9a7f6b;
-  --c-worker2: #7f6b9a;
-  --c-worker3: #6b9a90;
-  --c-worker4: #7a7f88;
+  /* Agent colors (gewollt — Karten/Box-Akzente, nicht Toolbar-Buttons) */
+  --c-brainstorm: #e03131;
+  --c-memory: #1c7ed6;
+  --c-flex: #f59f00;
+  --c-coordinator: #2f9e44;
+  --c-worker1: #fd7e14;
+  --c-worker2: #9c36b5;
+  --c-worker3: #0ca678;
+  --c-worker4: #868e96;
 }
 
 * {
@@ -449,8 +449,13 @@ html, body {
 }
 
 .agent-card.is-active {
-  border-color: var(--accent-hi);
-  background: #22242c;
+  box-shadow: 0 0 0 2px var(--card-color, #4dabf7);
+  animation: pulse-card 1s ease-in-out infinite;
+}
+
+@keyframes pulse-card {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.75; }
 }
 
 .agent-card .card-preset {
@@ -475,9 +480,8 @@ html, body {
   min-width: 0;
   height: 100%;
   background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-left: 2px solid var(--card-color, var(--border));
-  border-radius: 3px;
+  border: 1px solid var(--card-color, var(--border));
+  border-radius: 4px;
   padding: 6px 8px;
   cursor: default;
   user-select: none;
@@ -499,7 +503,7 @@ html, body {
 .agent-card .card-name {
   font-weight: 600;
   font-size: 12px;
-  color: var(--text);
+  color: var(--card-color, var(--text));
 }
 
 .agent-card .card-meta {
@@ -549,13 +553,13 @@ html, body {
   min-height: 0;
   max-height: none;
   background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-top: 2px solid var(--box-agent-color, var(--border));
-  border-radius: 3px;
+  /* active agent color on box border (gewollt) */
+  border: 1px solid var(--box-agent-color, var(--border));
+  border-radius: 4px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.2s ease;
 }
 
 /* —— Layer stack over every box: website / worker / controls —— */
@@ -788,11 +792,9 @@ html, body {
   font-weight: 600;
 }
 
-.box-arounder .box-header,
-.box-brainstorm .box-header,
-.box-worker .box-header {
-  color: var(--text-muted);
-}
+.box-arounder .box-header { color: #74c0fc; }
+.box-brainstorm .box-header { color: var(--c-brainstorm); }
+.box-worker .box-header { color: var(--c-worker1); }
 
 .box-body {
   flex: 1 1 auto;
