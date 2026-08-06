@@ -191,48 +191,99 @@ def _lines(raw: str) -> list[str]:
     return out
 
 
-def _needs_clarify(text: str) -> bool:
-    """
-    True only for real ambiguity — not every polite '?'.
+def _is_clear_build(text: str) -> bool:
+    """Concrete build/deliverable order — usually skip clarify."""
+    low = (text or "").lower()
+    keys = (
+        "baue ",
+        "baue eine",
+        "baue mir",
+        "build a",
+        "build me",
+        "build ",
+        "erstelle ",
+        "create a",
+        "create ",
+        "implement ",
+        "mach mir",
+        "mach eine",
+        "landing",
+        "html",
+        "todo app",
+        "todo-app",
+        "single-file",
+        "single file",
+        "website",
+        "webseite",
+        "dashboard",
+    )
+    return any(k in low for k in keys)
 
-    Clarify when: hedges, A-or-B choices, decision-seeking, or vague '?'
-    without a concrete build order. Clear build tasks (even with '?') skip.
-    """
-    t = (text or "").strip()
-    if not t:
-        return False
-    low = t.lower()
 
-    # 1) Explicit uncertainty / hedge
+def _strip_brainstorm_cta(notes: str) -> str:
+    """Remove standard 'shall I implement?' CTAs — those are execute signals, not clarify."""
+    t = notes or ""
+    patterns = (
+        r"soll ich das jetzt umsetzen[^\n]*",
+        r"soll ich (das )?umsetzen[^\n]*",
+        r"soll ich den plan erstellen[^\n]*",
+        r"den plan erstellen\??",
+        r"shall i (build|implement|do) (it|that|this)[^\n]*",
+        r"ready to execute\??",
+        r"→\s*soll ich[^\n]*",
+    )
+    for p in patterns:
+        t = re.sub(p, " ", t, flags=re.IGNORECASE)
+    return t
+
+
+def _has_hedge(low: str) -> bool:
     if re.search(
         r"\b(maybe|vielleicht|eventuell|unsicher|optional|either)\b",
         low,
         flags=re.IGNORECASE,
     ):
         return True
-    if re.search(
-        r"\b(nicht sicher|wei[sß]s nicht|open question|noch unklar)\b",
-        low,
-        flags=re.IGNORECASE,
-    ):
-        return True
+    return bool(
+        re.search(
+            r"\b(nicht sicher|wei[sß]s nicht|open question|noch unklar)\b",
+            low,
+            flags=re.IGNORECASE,
+        )
+    )
 
-    # 2) Explicit tradeoff phrases
+
+def _has_tradeoff(low: str) -> bool:
     if re.search(
         r"\b(schnell oder|mvp oder|oder gr[uü]ndlich|or robust|light or full)\b",
         low,
         flags=re.IGNORECASE,
     ):
         return True
-
-    # 3) "A oder B" / "A or B" (skip "mehr oder weniger")
-    if not re.search(r"\b(mehr oder weniger|more or less)\b", low) and (
-        re.search(r"\b\w{2,}\s+oder\s+\w{2,}\b", low)
-        or re.search(r"\b\w{2,}\s+or\s+\w{2,}\b", low)
-    ):
+    if re.search(r"\b(mehr oder weniger|more or less)\b", low):
+        return False
+    if re.search(r"\b\w{2,}\s+oder\s+\w{2,}\b", low) or re.search(r"\b\w{2,}\s+or\s+\w{2,}\b", low):
         return True
+    markers = (
+        "offene frage",
+        "open question",
+        "noch klären",
+        "noch zu klären",
+        "entscheidung nötig",
+        "bitte entscheiden",
+        "zwei optionen",
+        "two options",
+        "variante a",
+        "variante b",
+        "option a",
+        "option b",
+        "tradeoff",
+        "abwägen",
+    )
+    return any(m in low for m in markers)
 
-    # 4) Decision-seeking / opinion without fixed deliverable
+
+def _has_decision_seeking(low: str) -> bool:
     decision_markers = (
         "sollen wir",
         "should we",
@@ -245,38 +296,37 @@ def _needs_clarify(text: str) -> bool:
         "wie sollen wir",
         "how should we",
     )
-    if any(m in low for m in decision_markers):
-        return True
+    return any(m in low for m in decision_markers)
 
-    # 5) '?' only when the task is still vague (no clear build order)
-    if "?" in t:
-        clear_build = any(
-            k in low
-            for k in (
-                "baue ",
-                "baue eine",
-                "baue mir",
-                "build a",
-                "build me",
-                "build ",
-                "erstelle ",
-                "create a",
-                "create ",
-                "implement ",
-                "mach mir",
-                "mach eine",
-                "landing",
-                "html",
-                "todo app",
-                "todo-app",
-                "single-file",
-                "single file",
-                "website",
-                "webseite",
-                "dashboard",
-            )
-        )
+
+def _needs_clarify(text: str, brainstorm: str = "") -> bool:
+    """
+    True only for real ambiguity — not every polite '?'.
+
+    Combines USER task text + Brainstorm notes (dialogue).
+    Clear build orders skip; standard 'soll ich umsetzen?' CTAs are ignored.
+    """
+    t = (text or "").strip()
+    b_raw = (brainstorm or "").strip()
+    b = _strip_brainstorm_cta(b_raw).strip()
+    low = t.lower()
+    blow = b.lower()
+
+    # --- User text ---
+    if t:
+        if _has_hedge(low) or _has_tradeoff(low) or _has_decision_seeking(low):
+            return True
         # Polite '?' on a clear build order → no clarify; vague '?' → yes
-        return not clear_build
+        if "?" in t and not _is_clear_build(t):
+            return True
+
+    # --- Brainstorm notes (only residual ambiguity after stripping CTAs) ---
+    if b:
+        if _has_hedge(blow) or _has_tradeoff(blow):
+            # Clear user build + brainstorm only mild hedge → still ask once
+            return True
+        if _has_decision_seeking(blow):
+            return True
+        # Note: bare '?' in brainstorm notes is ignored (workshop bullets are normal).
 
     return False

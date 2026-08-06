@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from gnom_hub.core.event_bus import EventBus
@@ -238,10 +237,12 @@ class Pipeline:
             "Fehler- und Leerzustände anzeigen",
         ]
         question: DistillQuestion | None = None
-        if self._needs_clarify(text) and not self._clarified_once:
+        notes = getattr(self._state, "brainstorm_notes", "") or ""
+        if self._needs_clarify(text, notes) and not self._clarified_once:
             question = DistillQuestion(
                 id="q1",
                 text="Soll das eher schnell/MVP oder gründlich/robust werden?",
+                options=["MVP/schnell", "Gründlich/robust", "Egal", "Später"],
             )
         return requirements, question
 
@@ -368,10 +369,12 @@ class Pipeline:
         ]
         requirements = [ln for ln in lines if len(ln) > 3][:8] or [f"Ziel: {text}"]
         question: DistillQuestion | None = None
-        if self._needs_clarify(text) and not self._clarified_once:
+        notes = getattr(self._state, "brainstorm_notes", "") or ""
+        if self._needs_clarify(text, notes) and not self._clarified_once:
             question = DistillQuestion(
                 id="q1",
                 text="MVP/schnell oder gründlich/robust?",
+                options=["MVP/schnell", "Gründlich/robust", "Egal", "Später"],
             )
         return requirements, question
 
@@ -521,10 +524,10 @@ class Pipeline:
         return [i for i in ("worker1", "worker2") if self._agent_enabled(i)]
 
     @staticmethod
-    def _needs_clarify(text: str) -> bool:
-        if "?" in text:
-            return True
-        return bool(re.search(r"\b(maybe|vielleicht|eventuell)\b", text, flags=re.IGNORECASE))
+    def _needs_clarify(text: str, brainstorm: str = "") -> bool:
+        from gnom_hub.agents.roles_helpers import _needs_clarify as _nc
+
+        return _nc(text, brainstorm)
 
     def _set_stage(self, stage: PipelineStage) -> None:
         self._state.stage = stage

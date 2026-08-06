@@ -54,7 +54,7 @@ class CoordinatorAgent(BaseAgent):
                     "Fehler- und Leerzustände behandeln",
                 ]
             question = None
-            if _needs_clarify(user_text):
+            if _needs_clarify(user_text, brainstorm):
                 question = DistillQuestion(
                     id="q1",
                     text="MVP/schnell oder gründlich/robust?",

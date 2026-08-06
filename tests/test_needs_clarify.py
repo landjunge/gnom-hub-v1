@@ -39,3 +39,38 @@ def test_bare_vague_question_triggers():
 
 def test_mehr_oder_weniger_not_choice():
     assert not _needs_clarify("mehr oder weniger fertig mit dem HTML")
+
+
+def test_brainstorm_tradeoff_triggers():
+    assert _needs_clarify(
+        "Checklist app",
+        "Ideen: Variante A schnell, Variante B gründlich. Offene Frage: MVP oder robust?",
+    )
+
+
+def test_brainstorm_cta_alone_does_not_trigger():
+    # Standard stub ending must not force clarify on a clear task
+    notes = "Ideen zu: Todo\n• MVP\n→ Soll ich das jetzt umsetzen / den Plan erstellen?"
+    assert not _needs_clarify("Build a todo app with dark mode HTML", notes)
+
+
+def test_brainstorm_hedge_with_vague_user():
+    assert _needs_clarify(
+        "eine App",
+        "Vielleicht offline-first. Noch unklar ob PWA oder native.",
+    )
+
+
+def test_user_clear_build_beats_generic_brainstorm_question():
+    notes = "Ideen…\n→ Soll ich das jetzt umsetzen?"
+    assert not _needs_clarify(
+        "Baue eine Landingpage mit Hero und Footer, full HTML",
+        notes,
+    )
+
+
+def test_brainstorm_react_or_vue_triggers():
+    assert _needs_clarify(
+        "UI neu",
+        "Brainstorm: React oder Vue für die Komponenten?",
+    )
