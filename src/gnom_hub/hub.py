@@ -10,10 +10,13 @@ from typing import Any
 from gnom_hub.agents.manager import AgentManager
 from gnom_hub.agents.models import FLEX_PRESETS, AgentId, AgentState
 from gnom_hub.backup_ops import BackupOpsMixin
+from gnom_hub.cold_ops import ColdOpsMixin
 from gnom_hub.computer_use.workflow import ComputerUseKit
 from gnom_hub.config.keys import ensure_env_from_key_txt, load_keys
 from gnom_hub.config.paths import project_root
 from gnom_hub.core.event_bus import EventBus
+from gnom_hub.export_ops import ExportOpsMixin
+from gnom_hub.hot_facts import HotFactsMixin
 from gnom_hub.jobs import JobsMixin
 from gnom_hub.llm.manager import LLMManager
 from gnom_hub.memory.atomic import atomic_write_text
@@ -33,6 +36,7 @@ from gnom_hub.session_ops import SessionOpsMixin
 from gnom_hub.session_pack import SessionPackMixin
 from gnom_hub.telegram.bot import TelegramBridge
 from gnom_hub.telegram.commands import TelegramCommandMixin
+from gnom_hub.trace_ops import TraceOpsMixin
 from gnom_hub.ui.tooltips import TOOLTIPS
 
 
@@ -44,6 +48,10 @@ class Hub(
     MemoryWiringMixin,
     PresetsMixin,
     SessionOpsMixin,
+    TraceOpsMixin,
+    ColdOpsMixin,
+    ExportOpsMixin,
+    HotFactsMixin,
 ):
     """Single process facade used by the HTTP API and CLI."""
 
@@ -218,150 +226,6 @@ class Hub(
             f"vectors={self.vectors.count()} "
             f"plugins={len(self.plugin_list)}"
         )
-
-    def _wire_trace(self) -> None:
-        """Subscribe to pipeline events for light tracing (no heavy spans)."""
-
-        def make_handler(event: str) -> Any:
-            def _h(data: Any) -> None:
-                self._append_trace(event, data)
-
-            return _h
-
-        for ev in (
-            "pipeline.stage",
-            "pipeline.brainstorm",
-            "pipeline.distill",
-            "pipeline.flex",
-            "pipeline.coordinate",
-            "pipeline.worker",
-            "pipeline.quality",
-            "pipeline.done",
-            "pipeline.error",
-            "pipeline.question",
-            "pipeline.warning",
-            "pipeline.brainstorm_ready",
-        ):
-            self.bus.on(ev, make_handler(ev))
-
-    def _append_trace(self, event: str, data: Any) -> None:
-        from datetime import datetime, timezone
-
-        summary: Any = data
-        if isinstance(data, dict):
-            summary = {}
-            for k, v in list(data.items())[:12]:
-                if isinstance(v, str) and len(v) > 160:
-                    summary[k] = v[:160] + "…"
-                elif isinstance(v, list) and len(v) > 6:
-                    summary[k] = f"[{len(v)} items]"
-                else:
-                    summary[k] = v
-        self.trace.append(
-            {
-                "ts": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
-                "event": event,
-                "data": summary,
-            }
-        )
-        if len(self.trace) > 100:
-            self.trace = self.trace[-100:]
-
-    def clear_trace(self) -> dict[str, Any]:
-        n = len(self.trace)
-        self.trace = []
-        return {"ok": True, "cleared": n, "count": 0, "trace": []}
-
-    def export_trace(
-        self,
-        *,
-        limit: int = 100,
-        fmt: str = "json",
-    ) -> dict[str, Any]:
-        """Export light trace as JSON or Markdown (download helper)."""
-        from datetime import datetime, timezone
-
-        lim = max(1, min(100, int(limit)))
-        events = list(self.trace[-lim:])
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        fmt_l = (fmt or "json").strip().lower()
-        if fmt_l in ("md", "markdown"):
-            lines = [
-                "# Gnom-Hub light trace",
-                f"exported_at: {datetime.now(timezone.utc).replace(microsecond=0).isoformat()}",
-                f"events: {len(events)}",
-                "",
-            ]
-            for e in events:
-                d = e.get("data")
-                extra = ""
-                if isinstance(d, dict):
-                    bits = []
-                    for k in ("stage", "worker", "error", "label", "id", "name"):
-                        if d.get(k) is not None:
-                            bits.append(f"{k}={d.get(k)}")
-                    if not bits and d:
-                        bits.append(str(list(d.keys())[:6]))
-                    extra = " ".join(str(b) for b in bits)
-                elif d is not None:
-                    extra = str(d)[:120]
-                lines.append(f"- `{e.get('ts') or ''}` **{e.get('event') or ''}** {extra}".rstrip())
-            body = chr(10).join(lines) + chr(10)
-            filename = f"gnom-hub-trace-{stamp}.md"
-            return {
-                "ok": True,
-                "format": "markdown",
-                "filename": filename,
-                "content": body,
-                "count": len(events),
-            }
-        import json as _json
-
-        body = _json.dumps(
-            {
-                "format": "gnom-hub-trace",
-                "format_version": 1,
-                "app_version": "3.7.1",
-                "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
-                "count": len(events),
-                "trace": events,
-            },
-            ensure_ascii=False,
-            indent=2,
-        ) + chr(10)
-        filename = f"gnom-hub-trace-{stamp}.json"
-        return {
-            "ok": True,
-            "format": "json",
-            "filename": filename,
-            "content": body,
-            "count": len(events),
-        }
-
-    def export_workspace_zip(self, zone: str = "all") -> dict[str, Any]:
-        path = self.workspace.export_zip(zone)
-        self._append_trace(
-            "workspace.export",
-            {"zone": zone, "name": path.name, "bytes": path.stat().st_size},
-        )
-        return {
-            "ok": True,
-            "name": path.name,
-            "path": str(path),
-            "bytes": path.stat().st_size,
-            "zone": zone,
-        }
-
-    def workspace_export_path(self, name: str) -> Path:
-        """Safe path under data/workspace/exports for download."""
-        safe = Path(name).name
-        if not safe.startswith("gnom-hub-workspace-") or not safe.endswith(".zip"):
-            raise ValueError("invalid workspace export name")
-        export_dir = (self.root / "data" / "workspace" / "exports").resolve()
-        path = (export_dir / safe).resolve()
-        if not str(path).startswith(str(export_dir)) or not path.is_file():
-            raise FileNotFoundError(safe)
-        return path
 
     def _apply_keys_from_keyfile(self) -> None:
         """
@@ -622,69 +486,6 @@ class Hub(
             "worker_presets": self.list_worker_presets(),
         }
 
-    def archive_cold(self, label: str = "") -> dict[str, Any]:
-        meta = self.cold.archive_hot(
-            session=dict(self.hot.session),
-            canvas_mmd=self.hot.canvas.to_mermaid(),
-            label=label,
-        )
-        return {"ok": True, "archive": meta}
-
-    def restore_cold(
-        self,
-        archive_id: str,
-        *,
-        archive_current: bool = True,
-    ) -> dict[str, Any]:
-        """Restore a COLD archive into HOT (optionally archive current HOT first)."""
-        data = self.cold.get(archive_id)
-        if not data:
-            raise FileNotFoundError(archive_id)
-        archived = None
-        if archive_current:
-            sess = self.hot.session or {}
-            if sess.get("messages") or sess.get("facts"):
-                archived = self.archive_cold(label="pre-restore").get("archive")
-        session = data.get("session") if isinstance(data.get("session"), dict) else {}
-        self.hot.session = {
-            "messages": list(session.get("messages") or []),
-            "facts": list(session.get("facts") or []),
-            "updated_at": session.get("updated_at") or "",
-        }
-        canvas = str(data.get("canvas") or "")
-        if canvas.strip():
-            self.hot.canvas_path.parent.mkdir(parents=True, exist_ok=True)
-            nl = chr(10)
-            if not canvas.endswith(nl):
-                canvas = canvas + nl
-            atomic_write_text(self.hot.canvas_path, canvas)
-            self.hot.canvas.load(self.hot.canvas_path)
-        else:
-            self.hot.canvas.clear()
-        self.hot.save()
-        meta = data.get("meta") or {"id": archive_id}
-        self._append_trace(
-            "cold.restore",
-            {"id": meta.get("id") or archive_id, "label": meta.get("label")},
-        )
-        snap = self.snapshot()
-        snap["ok"] = True
-        snap["restored"] = meta
-        if archived:
-            snap["archived_previous"] = archived
-        return snap
-
-    def delete_cold(self, archive_id: str) -> dict[str, Any]:
-        ok = self.cold.delete(archive_id)
-        if not ok:
-            raise FileNotFoundError(archive_id)
-        self._append_trace("cold.delete", {"id": archive_id})
-        return {
-            "ok": True,
-            "deleted": archive_id,
-            "archives": self.cold.list_archives()[:30],
-        }
-
     def set_god_mode(self, enabled: bool, reason: str = "api") -> dict[str, Any]:
         if enabled:
             self.god_mode.enable(reason)
@@ -737,125 +538,6 @@ class Hub(
                 self.maybe_auto_pack()
             return self.snapshot()
 
-    def _remember_execute_export(self) -> None:
-        """Pin last successful Execute so export survives reset / new chat."""
-        from datetime import datetime, timezone
-
-        st = self.pipeline.state
-        if st.stage.value != "done":
-            return
-        if not (st.worker_outputs or st.brainstorm_notes):
-            return
-        self._last_execute_export = {
-            "stage": st.stage.value,
-            "user_text": st.user_text or "",
-            "brainstorm_notes": st.brainstorm_notes or "",
-            "distilled_requirements": list(st.distilled_requirements or []),
-            "flex_notes": st.flex_notes or "",
-            "quality_notes": st.quality_notes or "",
-            "worker_outputs": list(st.worker_outputs or []),
-            "saved_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
-        }
-
-    def build_export_last(self) -> dict[str, Any]:
-        """Markdown export: live pipeline if it has workers, else pinned Execute."""
-        st = self.pipeline.state
-        pinned = getattr(self, "_last_execute_export", None)
-        use_live = bool(st.worker_outputs) or (
-            st.stage.value == "done" and (st.brainstorm_notes or "").strip()
-        )
-        if use_live:
-            src = {
-                "stage": st.stage.value,
-                "user_text": st.user_text or "",
-                "brainstorm_notes": st.brainstorm_notes or "",
-                "distilled_requirements": list(st.distilled_requirements or []),
-                "flex_notes": st.flex_notes or "",
-                "quality_notes": st.quality_notes or "",
-                "worker_outputs": list(st.worker_outputs or []),
-                "source": "live",
-            }
-        elif isinstance(pinned, dict) and (
-            pinned.get("worker_outputs") or pinned.get("brainstorm_notes")
-        ):
-            src = dict(pinned)
-            src["source"] = "pinned"
-        else:
-            src = {
-                "stage": st.stage.value,
-                "user_text": st.user_text or "",
-                "brainstorm_notes": st.brainstorm_notes or "",
-                "distilled_requirements": list(st.distilled_requirements or []),
-                "flex_notes": st.flex_notes or "",
-                "quality_notes": st.quality_notes or "",
-                "worker_outputs": list(st.worker_outputs or []),
-                "source": "empty",
-            }
-        parts = [
-            "# Gnom-Hub export",
-            f"stage={src.get('stage')}",
-            f"user={src.get('user_text')}",
-            f"source={src.get('source')}",
-            "",
-            "## Brainstorm",
-            str(src.get("brainstorm_notes") or "(none)"),
-            "",
-            "## Requirements",
-            "\n".join(f"- {r}" for r in (src.get("distilled_requirements") or [])) or "(none)",
-            "",
-            "## Flex",
-            str(src.get("flex_notes") or "(none)"),
-            "",
-            "## Quality",
-            str(src.get("quality_notes") or "(none)"),
-            "",
-        ]
-        for out in src.get("worker_outputs") or []:
-            if not isinstance(out, dict):
-                continue
-            parts.append(f"## {out.get('name') or out.get('worker')}")
-            parts.append(f"Task: {out.get('task') or ''}")
-            parts.append(str(out.get("result") or ""))
-            parts.append("")
-        text = "\n".join(parts)
-        return {
-            "ok": True,
-            "filename": "gnom-hub-export.md",
-            "content": text,
-            "chars": len(text),
-            "source": src.get("source"),
-            "saved_at": src.get("saved_at"),
-        }
-
-    def _capture_workspace_outputs(self) -> None:
-        """Write worker results into temp workspace (plan: dual workspace)."""
-        st = self.pipeline.state
-        for out in st.worker_outputs or []:
-            wid = str(out.get("worker") or "worker")
-            body = str(out.get("result") or "").strip()
-            if not body:
-                continue
-            # Prefer .html when content looks like HTML
-            low = body.lower()
-            ext = ".html" if ("<!doctype" in low or "<html" in low) else ".txt"
-            name = f"{wid}_{st.stage.value}{ext}"
-            try:
-                self.workspace.write_text("temp", name, body)
-            except Exception as exc:  # noqa: BLE001
-                self._append_trace("workspace.write_error", {"name": name, "error": str(exc)})
-        if st.brainstorm_notes:
-            try:
-                self.workspace.write_text(
-                    "temp",
-                    "brainstorm_latest.txt",
-                    st.brainstorm_notes[:8000],
-                )
-            except Exception as exc:  # noqa: BLE001
-                self._append_trace(
-                    "workspace.write_error",
-                    {"name": "brainstorm_latest.txt", "error": str(exc)},
-                )
-
     def rerun_worker_sync(self, worker_id: str) -> dict[str, Any]:
         """Re-run one worker from last task."""
         self.last_error = None
@@ -882,62 +564,6 @@ class Hub(
         data = self.llm.reset_usage()
         self._append_trace("usage.reset", {"ok": True})
         return {"ok": True, **data, **self.usage_dict()}
-
-    def add_hot_fact(self, text: str) -> dict[str, Any]:
-        ok = self.hot.add_fact(text)
-        if ok:
-            self.hot.save()
-        return {
-            "ok": ok,
-            "facts": self.hot.all_facts()[-30:],
-            "hot_count": len(self.hot.all_facts()),
-        }
-
-    def delete_hot_fact(
-        self, *, text: str | None = None, index: int | None = None
-    ) -> dict[str, Any]:
-        removed = None
-        if index is not None:
-            removed = self.hot.remove_fact_at(int(index))
-            if removed is None:
-                raise FileNotFoundError("index out of range")
-        elif text and text.strip():
-            ok = self.hot.remove_fact(text.strip())
-            if not ok:
-                raise FileNotFoundError("fact not found")
-            removed = text.strip()
-        else:
-            raise ValueError("text or index required")
-        self.hot.save()
-        return {
-            "ok": True,
-            "removed": removed,
-            "facts": self.hot.all_facts()[-30:],
-            "hot_count": len(self.hot.all_facts()),
-        }
-
-    def clear_hot_facts(self) -> dict[str, Any]:
-        n = self.hot.clear_facts()
-        self.hot.save()
-        return {"ok": True, "cleared": n, "facts": [], "hot_count": 0}
-
-    def promote_hot_fact(self, text: str) -> dict[str, Any]:
-        """Copy a HOT fact into WARM (durable)."""
-        t = " ".join(str(text).split()).strip()
-        if not t:
-            raise ValueError("text required")
-        facts = self.hot.all_facts()
-        if t not in facts:
-            # allow promote by index via caller resolving text
-            raise FileNotFoundError("HOT fact not found")
-        added = self.warm.add_fact(t)
-        return {
-            "ok": True,
-            "promoted": t,
-            "warm_added": added,
-            "facts": self.hot.all_facts()[-30:],
-            "warm_facts": self.warm.all_facts()[-30:],
-        }
 
     def clarify(self, option: str) -> dict[str, Any]:
         """Synchronous clarify (also used after async reaches clarify)."""
