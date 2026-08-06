@@ -432,37 +432,6 @@
     }
   }
 
-  async function openTraceModal() {
-    if (!els.traceModal) return;
-    const body = document.getElementById("trace-body");
-    try {
-      const data = await api("GET", "/api/trace?limit=60");
-      const lines = (data.trace || []).map(function (e) {
-        const d = e.data;
-        let extra = "";
-        if (d && typeof d === "object") {
-          if (d.stage) extra = " stage=" + d.stage;
-          else if (d.worker) extra = " " + d.worker;
-          else if (d.notes) extra = " " + String(d.notes).slice(0, 80);
-          else if (d.error) extra = " " + d.error;
-        }
-        return (e.ts || "") + "  " + (e.event || "") + extra;
-      });
-      if (body) {
-        body.textContent = lines.length
-          ? lines.join("\n")
-          : "No events yet. Run Brainstorm / Execute.";
-      }
-    } catch (err) {
-      if (body) body.textContent = "Trace failed: " + err.message;
-    }
-    els.traceModal.hidden = false;
-  }
-
-  function closeTraceModal() {
-    if (els.traceModal) els.traceModal.hidden = true;
-  }
-
   function closeVectorModal() {
     if (els.vectorModal) els.vectorModal.hidden = true;
   }
@@ -1016,27 +985,6 @@
       );
     } catch (err) {
       toast("Clean failed: " + err.message, "error");
-    }
-  }
-
-  async function exportLast() {
-    try {
-      const data = await api("GET", "/api/export/last");
-      const blob = new Blob([data.content || ""], {
-        type: "text/markdown;charset=utf-8",
-      });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = data.filename || "gnom-hub-export.md";
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(function () {
-        URL.revokeObjectURL(a.href);
-        a.remove();
-      }, 500);
-      toast("Exported " + (data.chars || 0) + " chars", "ok");
-    } catch (err) {
-      toast("Export failed: " + err.message, "error");
     }
   }
 

@@ -108,9 +108,7 @@
     btnWorkspace: document.getElementById("btn-workspace"),
     btnTools: document.getElementById("btn-tools"),
     toolsModal: document.getElementById("tools-modal"),
-    btnTrace: document.getElementById("btn-trace"),
     flexSelect: document.getElementById("flex-preset-select"),
-    traceModal: document.getElementById("trace-modal"),
     vectorModal: document.getElementById("vector-modal"),
   };
 
@@ -1190,37 +1188,6 @@
     }
   }
 
-  async function openTraceModal() {
-    if (!els.traceModal) return;
-    const body = document.getElementById("trace-body");
-    try {
-      const data = await api("GET", "/api/trace?limit=60");
-      const lines = (data.trace || []).map(function (e) {
-        const d = e.data;
-        let extra = "";
-        if (d && typeof d === "object") {
-          if (d.stage) extra = " stage=" + d.stage;
-          else if (d.worker) extra = " " + d.worker;
-          else if (d.notes) extra = " " + String(d.notes).slice(0, 80);
-          else if (d.error) extra = " " + d.error;
-        }
-        return (e.ts || "") + "  " + (e.event || "") + extra;
-      });
-      if (body) {
-        body.textContent = lines.length
-          ? lines.join("\n")
-          : "No events yet. Run Brainstorm / Execute.";
-      }
-    } catch (err) {
-      if (body) body.textContent = "Trace failed: " + err.message;
-    }
-    els.traceModal.hidden = false;
-  }
-
-  function closeTraceModal() {
-    if (els.traceModal) els.traceModal.hidden = true;
-  }
-
   function closeVectorModal() {
     if (els.vectorModal) els.vectorModal.hidden = true;
   }
@@ -1774,27 +1741,6 @@
       );
     } catch (err) {
       toast("Clean failed: " + err.message, "error");
-    }
-  }
-
-  async function exportLast() {
-    try {
-      const data = await api("GET", "/api/export/last");
-      const blob = new Blob([data.content || ""], {
-        type: "text/markdown;charset=utf-8",
-      });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = data.filename || "gnom-hub-export.md";
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(function () {
-        URL.revokeObjectURL(a.href);
-        a.remove();
-      }, 500);
-      toast("Exported " + (data.chars || 0) + " chars", "ok");
-    } catch (err) {
-      toast("Export failed: " + err.message, "error");
     }
   }
 
@@ -4786,33 +4732,7 @@
         }
       });
     }
-    if (els.btnTrace) els.btnTrace.addEventListener("click", openTraceModal);
-    const btnExport = document.getElementById("btn-export");
-    if (btnExport) btnExport.addEventListener("click", exportLast);
     if (els.flexSelect) els.flexSelect.addEventListener("change", onFlexSelectChange);
-    const trClose = document.getElementById("trace-close");
-    if (trClose) trClose.addEventListener("click", closeTraceModal);
-    if (els.traceModal) {
-      els.traceModal.addEventListener("click", function (ev) {
-        if (ev.target === els.traceModal) closeTraceModal();
-      });
-    }
-    const trRefresh = document.getElementById("trace-refresh");
-    if (trRefresh) trRefresh.addEventListener("click", refreshTraceView);
-    const trJson = document.getElementById("trace-dl-json");
-    if (trJson) {
-      trJson.addEventListener("click", function () {
-        downloadTrace("json");
-      });
-    }
-    const trMd = document.getElementById("trace-dl-md");
-    if (trMd) {
-      trMd.addEventListener("click", function () {
-        downloadTrace("md");
-      });
-    }
-    const trClear = document.getElementById("trace-clear");
-    if (trClear) trClear.addEventListener("click", clearTraceBuffer);
     const ckSave = document.getElementById("sys-ckpt-save");
     const ckLoad = document.getElementById("sys-ckpt-load");
     if (ckSave) ckSave.addEventListener("click", saveCheckpoint);

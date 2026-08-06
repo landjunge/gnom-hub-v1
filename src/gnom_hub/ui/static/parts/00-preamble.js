@@ -108,9 +108,7 @@
     btnWorkspace: document.getElementById("btn-workspace"),
     btnTools: document.getElementById("btn-tools"),
     toolsModal: document.getElementById("tools-modal"),
-    btnTrace: document.getElementById("btn-trace"),
     flexSelect: document.getElementById("flex-preset-select"),
-    traceModal: document.getElementById("trace-modal"),
     vectorModal: document.getElementById("vector-modal"),
   };
 

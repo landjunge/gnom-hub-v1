@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=117" />
+  <link rel="stylesheet" href="/static/app.css?v=118" />
 </head>
 <body>
   <div id="app">
@@ -450,26 +450,8 @@
     </div>
   </div>
 
-  <!-- Light trace -->
-  <div id="trace-modal" class="modal" hidden>
-    <div class="modal-panel trace-panel">
-      <div class="modal-head">
-        <h2 class="modal-title">Light Trace</h2>
-        <button type="button" id="trace-close" class="modal-close" title="Close">×</button>
-      </div>
-      <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-        <button type="button" id="trace-refresh" class="btn-ws-sm">Refresh</button>
-        <button type="button" id="trace-dl-json" class="btn-ws-sm" title="Download JSON">↓ JSON</button>
-        <button type="button" id="trace-dl-md" class="btn-ws-sm" title="Download Markdown">↓ MD</button>
-        <button type="button" id="trace-clear" class="btn-ws-sm" title="Clear ring buffer">Clear</button>
-      </div>
-      <p id="trace-count" class="system-line muted">Events: 0</p>
-      <pre id="trace-body" class="trace-body muted">No events yet. Run Brainstorm / Execute.</pre>
-    </div>
-  </div>
-
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=117"></script>
+  <script src="/static/app.js?v=118"></script>
 </body>
 </html>
