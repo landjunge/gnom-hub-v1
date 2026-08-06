@@ -818,11 +818,73 @@ html, body {
   height: 100%;
 }
 
-/* Box 3: one worker display at a time (Next/Prev switches) */
+/* Box 3: dual-layer stage (crossfade) */
 .box-body.box3-dynamic {
-  padding: 4px;
+  padding: 0;
   overflow: hidden;
   white-space: normal;
+}
+
+/* Two content layers — overblenden / animieren */
+.dual-layers {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: #0b0c0e;
+}
+
+.layer-slot {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  transform: scale(0.985);
+  pointer-events: none;
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s ease;
+  z-index: 1;
+}
+
+.layer-slot.is-front {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+  z-index: 2;
+}
+
+.layer-slot.is-back {
+  opacity: 0;
+  transform: scale(1.01);
+  z-index: 1;
+}
+
+.dual-slot-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Transparent worker overlay can fade independently */
+.layer.layer-worker {
+  transition: opacity 0.25s ease, background 0.25s ease;
+}
+
+.layer.layer-worker.is-dim {
+  opacity: 0.35;
+}
+
+.layer.layer-worker.is-hot {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.12);
 }
 
 .box-body::-webkit-scrollbar,

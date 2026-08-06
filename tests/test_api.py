@@ -45,9 +45,10 @@ def test_ui_static_has_v16_v37_features(client: TestClient):
     assert "startJobTimer" in body
     assert "updateCostBadge" in body
     assert "pushResultHistory" in body
-    # Dynamic Box 3: every worker output, not only the first
-    assert "buildWorkerPanel" in body
+    # Dynamic Box 3: dual-layer sequential display
+    assert "focusBox3Worker" in body
     assert "normalizeWorkerOutputs" in body
+    assert "dual-layers" in body or "paintWorkerIntoSlot" in body
     assert "exportResultHistory" in body
     assert "rerunWorker" in body
     assert "card-cost" in body
