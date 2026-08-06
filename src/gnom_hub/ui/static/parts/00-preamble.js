@@ -131,7 +131,9 @@
   let lastJobElapsedSec = 0;
   let lastReportedPipelineError = null;
   let lastCanExecute = false;
-  const CHAT_STORAGE_KEY = "gnom-hub-chat-log-v1";
+  /** Per-agent chat logs: { brainstorm: [...], worker1: [...], ... } */
+  const CHAT_STORAGE_KEY = "gnom-hub-chat-logs-by-agent-v1";
+  const CHAT_STORAGE_LEGACY = "gnom-hub-chat-log-v1";
   const HISTORY_KEY = "gnom-hub-result-history-v1";
   const CHAT_HIST_KEY = "gnom-hub-chat-input-hist-v1";
   const CHAT_HIST_MAX = 50;
@@ -529,8 +531,8 @@
       card.setAttribute(
         "aria-label",
         agent.label +
-          " — click to tune, double-click to toggle" +
-          (agent.id === "flex" ? ", Shift+double-click cycles preset" : "")
+          " — click: layer+info · click again or Shift+click: tune · double-click: toggle" +
+          (agent.id === "flex" ? " · Shift+double-click: preset" : "")
       );
       const online = !!agent.online;
       const presetLine =
@@ -595,10 +597,19 @@
           return;
         }
         if (clickTimer) clearTimeout(clickTimer);
+        const shiftTune = !!ev.shiftKey;
+        /* second click on same agent the user already picked → tune */
+        const alreadyUserPick =
+          document.body.dataset.agentUserPick === agent.id &&
+          lastClickedAgentId === agent.id;
         clickTimer = setTimeout(function () {
           clickTimer = null;
+          /* B1: click = layer + Box1 info only; tune only explicit */
           activateAgentLayer(agent.id, true);
-          openTuneModal(agent.id);
+          document.body.dataset.agentUserPick = agent.id;
+          if (shiftTune || alreadyUserPick) {
+            openTuneModal(agent.id);
+          }
         }, 220);
       });
 

@@ -131,7 +131,9 @@
   let lastJobElapsedSec = 0;
   let lastReportedPipelineError = null;
   let lastCanExecute = false;
-  const CHAT_STORAGE_KEY = "gnom-hub-chat-log-v1";
+  /** Per-agent chat logs: { brainstorm: [...], worker1: [...], ... } */
+  const CHAT_STORAGE_KEY = "gnom-hub-chat-logs-by-agent-v1";
+  const CHAT_STORAGE_LEGACY = "gnom-hub-chat-log-v1";
   const HISTORY_KEY = "gnom-hub-result-history-v1";
   const CHAT_HIST_KEY = "gnom-hub-chat-input-hist-v1";
   const CHAT_HIST_MAX = 50;
@@ -529,8 +531,8 @@
       card.setAttribute(
         "aria-label",
         agent.label +
-          " — click to tune, double-click to toggle" +
-          (agent.id === "flex" ? ", Shift+double-click cycles preset" : "")
+          " — click: layer+info · click again or Shift+click: tune · double-click: toggle" +
+          (agent.id === "flex" ? " · Shift+double-click: preset" : "")
       );
       const online = !!agent.online;
       const presetLine =
@@ -595,10 +597,19 @@
           return;
         }
         if (clickTimer) clearTimeout(clickTimer);
+        const shiftTune = !!ev.shiftKey;
+        /* second click on same agent the user already picked → tune */
+        const alreadyUserPick =
+          document.body.dataset.agentUserPick === agent.id &&
+          lastClickedAgentId === agent.id;
         clickTimer = setTimeout(function () {
           clickTimer = null;
+          /* B1: click = layer + Box1 info only; tune only explicit */
           activateAgentLayer(agent.id, true);
-          openTuneModal(agent.id);
+          document.body.dataset.agentUserPick = agent.id;
+          if (shiftTune || alreadyUserPick) {
+            openTuneModal(agent.id);
+          }
         }, 220);
       });
 
@@ -3331,29 +3342,79 @@
     }
   }
 
-  function persistChatLog() {
-    if (!els.chatLog) return;
-    try {
-      sessionStorage.setItem(
-        CHAT_STORAGE_KEY,
-        JSON.stringify(collectChatLog().slice(-80))
+  function collectChatLogFrom(logEl) {
+    const lines = [];
+    if (!logEl) return lines;
+    logEl.querySelectorAll(".chat-line").forEach(function (el) {
+      lines.push({
+        who: el.dataset.who || "system",
+        text: el.dataset.text || "",
+        ts: el.dataset.ts || "",
+      });
+    });
+    return lines;
+  }
+
+  function collectChatLog() {
+    return collectChatLogFrom(els.chatLog);
+  }
+
+  function chatLogElForAgent(agentId) {
+    const aid = agentId || "brainstorm";
+    if (aid === "brainstorm") {
+      return (
+        document.getElementById("chat-log") ||
+        document.querySelector('.chat-agent-layer[data-agent="brainstorm"] .chat-log')
       );
+    }
+    return (
+      document.getElementById("chat-log-" + aid) ||
+      document.querySelector(
+        '.chat-agent-layer[data-agent="' + aid + '"] .chat-log'
+      )
+    );
+  }
+
+  /** B4: persist every agent chat layer (not only the active one). */
+  function persistChatLog() {
+    try {
+      const all = {};
+      AGENTS.forEach(function (a) {
+        const log = chatLogElForAgent(a.id);
+        if (!log) return;
+        all[a.id] = collectChatLogFrom(log).slice(-80);
+      });
+      /* also active pointer if missing from AGENTS edge case */
+      if (els.chatLog) {
+        const aid =
+          els.chatLog.dataset.agent || lastClickedAgentId || "brainstorm";
+        if (!all[aid]) all[aid] = collectChatLogFrom(els.chatLog).slice(-80);
+      }
+      sessionStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(all));
     } catch (_e) {
       /* quota / private mode */
     }
   }
 
-  function collectChatLog() {
-    const lines = [];
-    if (!els.chatLog) return lines;
-    els.chatLog.querySelectorAll(".chat-line").forEach(function (el) {
-      lines.push({
-        who: el.dataset.who || "system",
-        text: el.dataset.text || el.textContent || "",
-        ts: el.dataset.ts || "",
-      });
+  function fillChatLogEl(logEl, lines) {
+    if (!logEl || !lines || !lines.length) return;
+    const prev = els.chatLog;
+    els.chatLog = logEl;
+    logEl.innerHTML = "";
+    lines.forEach(function (entry) {
+      if (typeof entry === "string") {
+        const line = document.createElement("p");
+        line.className = "chat-line";
+        line.dataset.who = "system";
+        line.dataset.text = entry;
+        line.textContent = entry;
+        logEl.appendChild(line);
+        return;
+      }
+      renderChatLine(entry.who || "system", entry.text || "", entry.ts || "");
     });
-    return lines;
+    logEl.scrollTop = logEl.scrollHeight;
+    els.chatLog = prev;
   }
 
   function applyUiPackExtras(snap) {
@@ -3392,31 +3453,55 @@
   }
 
   function restoreChatLog() {
-    if (!els.chatLog) return;
     try {
-      const raw = sessionStorage.getItem(CHAT_STORAGE_KEY);
-      if (!raw) return;
-      const lines = JSON.parse(raw);
-      if (!Array.isArray(lines) || !lines.length) return;
-      els.chatLog.innerHTML = "";
-      lines.forEach(function (entry) {
-        if (typeof entry === "string") {
-          // legacy plain lines
-          const line = document.createElement("p");
-          line.className = "chat-line";
-          line.textContent = entry;
-          els.chatLog.appendChild(line);
-          return;
+      let raw = sessionStorage.getItem(CHAT_STORAGE_KEY);
+      let data = null;
+      if (raw) {
+        data = JSON.parse(raw);
+      } else {
+        /* migrate legacy single-array log → brainstorm */
+        raw = sessionStorage.getItem(CHAT_STORAGE_LEGACY);
+        if (raw) {
+          const legacy = JSON.parse(raw);
+          if (Array.isArray(legacy) && legacy.length) {
+            data = { brainstorm: legacy };
+            try {
+              sessionStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(data));
+              sessionStorage.removeItem(CHAT_STORAGE_LEGACY);
+            } catch (_e2) {
+              /* ignore */
+            }
+          }
         }
-        renderChatLine(entry.who || "system", entry.text || "", entry.ts || "");
-      });
-      els.chatLog.scrollTop = els.chatLog.scrollHeight;
+      }
+      if (!data) return;
+
+      if (Array.isArray(data)) {
+        /* still legacy shape */
+        const log = chatLogElForAgent("brainstorm");
+        if (log) fillChatLogEl(log, data);
+      } else if (typeof data === "object") {
+        Object.keys(data).forEach(function (aid) {
+          if (!Array.isArray(data[aid])) return;
+          const log = chatLogElForAgent(aid);
+          if (log) fillChatLogEl(log, data[aid]);
+        });
+      }
+      if (typeof syncActiveChatLog === "function") {
+        syncActiveChatLog(lastClickedAgentId || "brainstorm");
+      }
     } catch (_e) {
       /* ignore */
     }
   }
 
   function renderChatLine(who, text, ts) {
+    if (!els.chatLog) {
+      if (typeof syncActiveChatLog === "function") {
+        syncActiveChatLog(lastClickedAgentId || "brainstorm");
+      }
+    }
+    if (!els.chatLog) return null;
     const line = document.createElement("p");
     line.className = "chat-line chat-who-" + String(who).replace(/\W+/g, "");
     line.dataset.who = who;
@@ -3438,13 +3523,18 @@
   }
 
   function clearChatLog() {
+    AGENTS.forEach(function (a) {
+      const log = chatLogElForAgent(a.id);
+      if (log) log.innerHTML = "";
+    });
     if (els.chatLog) els.chatLog.innerHTML = "";
     try {
       sessionStorage.removeItem(CHAT_STORAGE_KEY);
+      sessionStorage.removeItem(CHAT_STORAGE_LEGACY);
     } catch (_e) {
       /* ignore */
     }
-    toast("Chat log cleared", "ok");
+    toast("Chat log cleared (all agents)", "ok");
   }
 
   async function resyncState() {
