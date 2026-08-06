@@ -226,7 +226,7 @@ def main() -> int:
     for op in sorted(stats.n.keys()):
         n = stats.n[op]
         avg = stats.ms[op] / n if n else 0
-        print(f"  {op:12s}  n={n:7d}  avg={avg:7.2f} ms  rate={n/wall:7.1f} /s", flush=True)
+        print(f"  {op:12s}  n={n:7d}  avg={avg:7.2f} ms  rate={n / wall:7.1f} /s", flush=True)
 
     print("\n-- latency sample (1 thread, 500) --", flush=True)
     conn = connect(db_path)
@@ -240,8 +240,8 @@ def main() -> int:
             s.append((time.perf_counter() - t0) * 1000)
         s.sort()
         print(
-            f"  {name:12s}  p50={s[len(s)//2]:6.2f}  p95={s[int(len(s)*0.95)]:6.2f}  "
-            f"p99={s[int(len(s)*0.99)]:6.2f}  ms",
+            f"  {name:12s}  p50={s[len(s) // 2]:6.2f}  p95={s[int(len(s) * 0.95)]:6.2f}  "
+            f"p99={s[int(len(s) * 0.99)]:6.2f}  ms",
             flush=True,
         )
 
@@ -249,7 +249,7 @@ def main() -> int:
         "search",
         lambda: conn.execute(
             "SELECT id FROM items WHERE name LIKE ? LIMIT 50",
-            (f"item-{rng.randint(0,9)}%",),
+            (f"item-{rng.randint(0, 9)}%",),
         ).fetchall(),
     )
     sample(
@@ -264,7 +264,7 @@ def main() -> int:
 
     report = db_path.with_name(db_path.stem + ".server_sim.txt")
     with report.open("w", encoding="utf-8") as f:
-        f.write(f"wall={wall}\nops={total}\nops_s={total/wall}\n")
+        f.write(f"wall={wall}\nops={total}\nops_s={total / wall}\n")
         f.write(f"bytes_r={stats.bytes_r}\nbytes_w={stats.bytes_w}\n")
         f.write(f"n={dict(stats.n)}\n")
     print(f"\nreport: {report}", flush=True)
