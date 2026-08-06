@@ -2,12 +2,13 @@
 """
 Real-user scenario suite: Playwright on Gnom frontend + Gnom Tools/Computer-use.
 
-Scenarios (what the product is for):
-  S1  Landing page happy path (keyboard → brainstorm → execute → Box 3)
-  S2  Topic switch (TTS chat → todo task → execute picks real task)
-  S3  Clarify path (vague request → answer Box 1 if asked)
-  S4  Clean session then small HTML task (operator path)
-  S5  Tools + computer-use via UI + hub APIs (why Tools exist)
+Scenarios — derived from data/hot|warm|cold user lines (see docs/TESTS_FROM_USER_DATA.md):
+  S1  Landing Bean & Bloom (most common user task in COLD/HOT)
+  S2  Topic switch / "not the workers" (TTS then real build task)
+  S3  Vague request / pipeline diagnose pain
+  S4  Clean then new task (heavy auto-reset history)
+  S5  Tools + computer-use (portfolio must not be dead)
+
 
 Usage:
   ./scripts/start.sh

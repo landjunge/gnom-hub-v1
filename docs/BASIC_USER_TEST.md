@@ -2,6 +2,9 @@
 
 **Purpose:** Real user-position tests — **Playwright on the desktop UI**, plus **Gnom Tools / computer-use** so the Tools portfolio is not dead weight.
 
+**Intents from your live data (not invented):** see [`TESTS_FROM_USER_DATA.md`](TESTS_FROM_USER_DATA.md)  
+(mined from HOT/WARM/COLD: landing HTML dominate, then todo, execute/UI, flex, memory, TTS, tools).
+
 ## Suite (preferred)
 
 | Script | What |
