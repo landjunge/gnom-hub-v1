@@ -57,7 +57,7 @@ def test_hook_pre_clears_pycache(tmp_path, monkeypatch):
 def test_mutmut_config_importable():
     # Must be importable from project root (mutmut does this)
     sys.path.insert(0, str(ROOT))
-    import mutmut_config  # noqa: F401
+    import mutmut_config
 
     class Ctx:
         current_source_line = "# just a comment"
