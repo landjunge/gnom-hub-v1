@@ -12,7 +12,7 @@ class MemoryWiringMixin:
         def on_memory_hint(data: Any) -> None:
             if not isinstance(data, dict):
                 return
-            from gnom_hub.agents.roles_helpers import _is_garbage_fact
+            from gnom_hub.agents.roles_helpers import _is_flex_meta_requirement, _is_garbage_fact
 
             user_text = str(data.get("user_text") or "").strip()
             if user_text:
@@ -28,7 +28,7 @@ class MemoryWiringMixin:
                 text = str(req).strip()
                 if (
                     8 <= len(text) <= 160
-                    and not text.startswith("Flex/")
+                    and not _is_flex_meta_requirement(text)
                     and not _is_garbage_fact(text)
                 ):
                     self.hot.add_fact(text)

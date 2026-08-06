@@ -6,6 +6,7 @@ from typing import Any
 
 from gnom_hub.agents.base import BaseAgent
 from gnom_hub.agents.roles_helpers import (
+    _is_flex_meta_requirement,
     _is_garbage_fact,
     _lines,
     _needs_clarify,
@@ -76,7 +77,7 @@ class CoordinatorAgent(BaseAgent):
         self.emit_active(True)
         try:
             mode = (plan_mode or "default").strip().lower()
-            clean = [r for r in requirements if not r.startswith("Flex/")]
+            clean = [r for r in requirements if not _is_flex_meta_requirement(r)]
             # Explicit plan modes first; default still auto-detects HTML pages
             if mode == "full_page_html" or (mode == "default" and _wants_one_html_page(user_text)):
                 return _html_full_page_plan(user_text, worker_ids, clean)
@@ -367,7 +368,9 @@ class MemoryAgent(BaseAgent):
             clean_reqs = [
                 r
                 for r in requirements
-                if not r.startswith("Flex/") and 8 <= len(r) < 160 and not _is_garbage_fact(r)
+                if not _is_flex_meta_requirement(r)
+                and 8 <= len(r) < 160
+                and not _is_garbage_fact(r)
             ][:5]
             self.bus.emit(
                 "pipeline.memory_hint",

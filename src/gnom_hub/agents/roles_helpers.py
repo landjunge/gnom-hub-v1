@@ -78,6 +78,15 @@ def _sanitize_memory_ctx(memory_ctx: str) -> str:
     return "\n".join(kept).strip()
 
 
+def _is_flex_meta_requirement(text: str) -> bool:
+    """True for Flex briefing meta (Flex/personal:…), False for Flex-wish binding lines."""
+    s = str(text or "").strip()
+    if not s.startswith("Flex/"):
+        return False
+    # Binding wishes must stay in DoD / plan clean lists
+    return not (s.startswith("Flex-wish:") or s.lower().startswith("flex-wish:"))
+
+
 def _is_garbage_fact(text: str) -> bool:
     """
     True if text must never enter HOT/WARM as a fact.

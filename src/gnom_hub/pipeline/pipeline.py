@@ -192,10 +192,12 @@ class Pipeline:
 
     def _finish_with_memory(self, results: list[str]) -> None:
         # Only promote clean short requirements (not flex dumps)
+        from gnom_hub.agents.roles_helpers import _is_flex_meta_requirement
+
         clean_reqs = [
             r
             for r in self._state.distilled_requirements
-            if not r.startswith("Flex/") and len(r) < 200
+            if not _is_flex_meta_requirement(r) and len(r) < 200
         ]
         self._bus.emit(
             "pipeline.memory_hint",
@@ -264,7 +266,9 @@ class Pipeline:
 
     def _stub_coordinate(self) -> list[tuple[str, str]]:
         workers = self._enabled_worker_ids()
-        reqs = [r for r in self._state.distilled_requirements if not r.startswith("Flex/")]
+        from gnom_hub.agents.roles_helpers import _is_flex_meta_requirement as _ifm
+
+        reqs = [r for r in self._state.distilled_requirements if not _ifm(r)]
         if not workers:
             return []
         goal = self._state.user_text

@@ -979,7 +979,9 @@ def _prefetch_urls(blob: str, *, limit: int = 3) -> str:
 
 def _definition_of_done(user_text: str, requirements: list[str]) -> str:
     """Binding DoD block appended to every worker task."""
-    reqs = [r for r in (requirements or []) if r and not str(r).startswith("Flex/")][:6]
+    from gnom_hub.agents.roles_helpers import _is_flex_meta_requirement
+
+    reqs = [r for r in (requirements or []) if r and not _is_flex_meta_requirement(str(r))][:6]
     lines = [
         "=== DEFINITION OF DONE (mandatory) ===",
         "DONE means functional complete — not 'draft exists' or 'pretty CSS only'.",
