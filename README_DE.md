@@ -46,7 +46,8 @@ Diese Trennung ist das Kernprodukt: Exploration bleibt günstig und umkehrbar; W
 | **Sicherheit by default** | Maus / Tastatur / Shell nur **Dry-Run**, bis **God-Mode** bewusst an ist. |
 | **Operator-Ops** | HOT / WARM / COLD-Memory, Workspace, Backups, Session-Packs, Jobs, Soft-Cancel, Light-Trace, Budget-Schutz. |
 | **Schlanke Orchestrierung** | Eine feste Pipeline. Team-/Worker-**Presets** + `plan_mode` — keine zweite Workflow-Engine. |
-| **Sauberes Memory** | Dauerhafte Fakten nach WARM; HTML, Meta und Pipeline-Müll werden herausgefiltert. |
+| **Sauberes Memory** | Dauerhafte Fakten nach WARM; Flex-Wünsche (`source=flex`) überleben HOT-Clear / warm_trim-Reserve; HTML/Meta-Müll gefiltert. |
+| **Flex als Operator-Proxy** | Gesperrter Agent: speichert nur deine Wünsche, schreibt im Brainstorm mit, kann Execute auslösen, injiziert binding wishes für Worker. |
 
 ### Für wen
 
@@ -110,10 +111,10 @@ Ohne API-Keys läuft die Pipeline mit **Stubs** (Tests / Smoke).
 |-------|------|---------|
 | Brainstorm | Freier Mehrturn-Partner | an |
 | Memory | Recall + dauerhafte Fakten | an (gesperrt) |
-| Flex | Security / neutral / researcher | an |
+| Flex | **Fest** persönlicher Companion: Wünsche → WARM, Mitreden, Execute-Trigger, Worker-Nudge | an (**gesperrt**) |
 | Coordinator | Requirements destillieren · Worker planen | an |
 | Worker 1–2 | Lieferobjekte erzeugen | an |
-| Worker 3–4 | Extra-Kapazität | **aus** |
+| Worker 3–4 | Extra-Kapazität | an (toggelbar) |
 
 ### Computer-Use
 
@@ -156,8 +157,8 @@ FastAPI  ──►  Hub (~180 LOC Composition Root + Mixins)
 memory → brainstorm → distill → [clarify] → flex → coordinate → work → done
 ```
 
-- **Brainstorm** (Send): nur Dialog; keine Worker.  
-- **Execute**: echte Pipeline; optional Clarify in Box 1.  
+- **Brainstorm** (Send): nur Dialog; Flex speichert Wünsche + schreibt mit; kann bei klarem Intent auto-Execute.  
+- **Execute**: Distill → optional Clarify → Flex-Briefing + Wish-Inject → Plan → Worker → Flex-Nudge.  
 - One-Shot-Pfad für Tests / Telegram (`/do`).  
 
 ### Memory-Schichten
@@ -167,7 +168,7 @@ memory → brainstorm → distill → [clarify] → flex → coordinate → work
 | **HOT** | Session | Messages, Session-Fakten, Mermaid-Canvas |
 | **WARM** | Dauerhaft | Langzeit-Fakten (überleben HOT-Clear / Clean) |
 | **COLD** | Archiv | Gespeicherte Sessions |
-| **Vector** | Dauerhaft | Leichter lexical Recall (Bag-of-Words-Cosine) |
+| **Vector** | Dauerhaft | Hybrid BM25 + Cosine (Short-Facts; Flex-Boost) |
 | **Workspace** | Artefakte | Temp / permanent nach Execute |
 
 Clean / Reset leert HOT + Temp-Workspace + Pipeline; **WARM bleibt**, außer explizit geleert.
@@ -178,7 +179,7 @@ Clean / Reset leert HOT + Temp-Workspace + Pipeline; **WARM bleibt**, außer exp
 
 | Modus | Verhalten |
 |-------|-----------|
-| `default` | Coordinator plant Tasks für aktivierte Worker |
+| `default` | Auto HTML-Full-Page wenn Task wie eine Seite wirkt; sonst LLM/Stub-Split |
 | `full_page_html` | Genau **ein** Worker baut eine komplette HTML-Seite |
 | `plan_qa` | Deterministische QA-Task-Templates |
 | `diagnosis` | Deterministische Diagnose-Templates |
@@ -195,6 +196,10 @@ ruff format .
 ruff format --check .
 pytest tests/ -q --tb=short
 
+# Mutationstests (Tests der Tests)
+python scripts/mutation_check.py              # schnelle Helper — alle Mutanten killen
+# optional tief: ./scripts/run_mutmut.sh      # siehe docs/MUTMUT.md
+
 ./scripts/quality_check.sh
 python scripts/basic_tests.py          # braucht Server :8080
 python scripts/user_landing_e2e.py     # Playwright + Live-Key
@@ -202,6 +207,8 @@ python -m gnom_hub.main --smoke        # Brainstorm → Execute ohne UI
 ```
 
 Coding-Agenten: [AGENTS.md](AGENTS.md) — ruff + pytest grün vor jedem Push; nach jedem fertigen Schritt committen und pushen; keine Secrets committen.
+
+Flex-Vertrag: [docs/AGENTS_DEFINITION.md](docs/AGENTS_DEFINITION.md). Tests: [docs/TESTING.md](docs/TESTING.md).
 
 ---
 
@@ -216,7 +223,10 @@ Coding-Agenten: [AGENTS.md](AGENTS.md) — ruff + pytest grün vor jedem Push; n
 | [docs/BASIC_USER_TEST.md](docs/BASIC_USER_TEST.md) | Canonical User-E2E |
 | [docs/STABILITY.md](docs/STABILITY.md) | Stabilitäts-Checkliste |
 | [docs/TOOLS_PORTFOLIO.md](docs/TOOLS_PORTFOLIO.md) | Computer-Use-Bibliotheken |
+| [docs/AGENTS_DEFINITION.md](docs/AGENTS_DEFINITION.md) | Agenten-Roster · **Flex fixed** |
 | [docs/WORKFLOWS_AND_PRESETS.md](docs/WORKFLOWS_AND_PRESETS.md) | Presets & plan_mode |
+| [docs/TESTING.md](docs/TESTING.md) | pytest + Mutation-Überblick |
+| [docs/MUTMUT.md](docs/MUTMUT.md) | mutmut-Config · Profile · Hooks |
 | [docs/V1_SCOPE.md](docs/V1_SCOPE.md) | Produkt-Scope |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Release-Historie |
 
