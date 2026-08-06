@@ -52,10 +52,11 @@ Canonical real-user regression — **Playwright on UI + Gnom Tools**:
 **Single reference:** [`docs/KEYS_AND_MODELS.md`](docs/KEYS_AND_MODELS.md)
 
 - Default model: **`deepseek-v4-flash`** (official DeepSeek API id)
-- **Hub (work):** `gnom-hub-v1/` — code, temp workspace, active run
-- **Personal WS:** sibling `WS-gnom-hub-v1/` — `User/Key.txt`, `User/user.db` (live + backups/), `selected/` **only chosen HTML**
-- **Select HTML:** `POST /api/workspace/select/{name}` — never bulk auto-copy
-- **Install/start:** `ensure_user_workspace` creates/seeds WS + backups latest DB
+- **Hub (work):** `gnom-hub-v1/` — code + `data/workspace/` clutter + **Clear**
+- **Personal WS (live):** sibling `WS-gnom-hub-v1/` only — Key, `user.db`, `selected/`
+- **Not live:** `gnom-hub-v1/User/` is a pointer README only (do not store secrets there)
+- **Copy button:** HTML → `WS-gnom-hub-v1/selected/` (`POST /api/workspace/keep`)
+- **Install/start:** `ensure_user_workspace` seeds sibling WS + DB backup
 - Keys: `DEEPSEEK_API_KEY` (system) + `WORKER_API_KEY` (workers) + `DEEPSEEK_MODEL`
 - Thinking **off** by default (`DEEPSEEK_THINKING=0`) — empty content with v4-flash was a real issue
 - Never commit real keys / `User/user.db`; never invent model ids — update that doc when DeepSeek changes IDs

@@ -5,11 +5,12 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-# Code repo: /Users/…/gnom-hub-v1  (work happens here)
-# Personal:  /Users/…/WS-gnom-hub-v1 (Key, DB, only selected HTML)
+# Code repo: /Users/…/gnom-hub-v1  (work + clutter + Clear)
+# Personal:  /Users/…/WS-gnom-hub-v1 (Key, live DB, selected HTML only)
+# Never treat hub/User as the live store — sibling WS only.
 DEFAULT_WS_NAME = "WS-gnom-hub-v1"
 USER_DIR_NAME = "User"
-SELECTED_DIR_NAME = "selected"  # only user-chosen HTML copies
+SELECTED_DIR_NAME = "selected"  # only user-chosen HTML (Copy button)
 
 
 def project_root() -> Path:
