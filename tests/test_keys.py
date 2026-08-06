@@ -31,6 +31,19 @@ def test_ensure_env_from_key_txt(tmp_path: Path):
     assert env_path is not None
     assert env_path.is_file()
     assert "sk-test-1" in env_path.read_text(encoding="utf-8")
+    # Root Key.txt is seeded into User/Key.txt
+    assert (tmp_path / "User" / "Key.txt").is_file()
+
+
+def test_ensure_env_prefers_user_key_txt(tmp_path: Path):
+    (tmp_path / "User").mkdir()
+    (tmp_path / "User" / "Key.txt").write_text("DEEPSEEK_API_KEY=from-user\n", encoding="utf-8")
+    (tmp_path / "Key.txt").write_text("DEEPSEEK_API_KEY=from-root\n", encoding="utf-8")
+    env_path = ensure_env_from_key_txt(tmp_path)
+    assert env_path is not None
+    text = env_path.read_text(encoding="utf-8")
+    assert "from-user" in text
+    assert "from-root" not in text
 
 
 def test_ensure_env_key_txt_wins_for_hub_keys(tmp_path: Path):

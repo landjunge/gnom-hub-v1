@@ -52,9 +52,10 @@ Canonical real-user regression — **Playwright on UI + Gnom Tools**:
 **Single reference:** [`docs/KEYS_AND_MODELS.md`](docs/KEYS_AND_MODELS.md)
 
 - Default model: **`deepseek-v4-flash`** (official DeepSeek API id)
-- `Key.txt`: `DEEPSEEK_API_KEY` (system) + `WORKER_API_KEY` (workers) + `DEEPSEEK_MODEL`
+- **Personal unit:** `User/Key.txt` + `User/user.db` (sync yourself; never push)
+- Keys: `DEEPSEEK_API_KEY` (system) + `WORKER_API_KEY` (workers) + `DEEPSEEK_MODEL`
 - Thinking **off** by default (`DEEPSEEK_THINKING=0`) — empty content with v4-flash was a real issue
-- Never commit real keys; never invent model ids — update that doc when DeepSeek changes IDs
+- Never commit real keys / `User/user.db`; never invent model ids — update that doc when DeepSeek changes IDs
 
 ## Stability (track A)
 

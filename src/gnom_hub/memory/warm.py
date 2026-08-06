@@ -1,4 +1,4 @@
-"""WARM durable facts — backed by personal ~/.local/share/gnom-hub/user.db."""
+"""WARM durable facts — backed by personal User/user.db."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from gnom_hub.db.sqlite_store import get_db
 
 class WarmMemory:
     """
-    Long-lived facts in user.db (home), survive HOT session reset.
+    Long-lived facts in User/user.db, survive HOT session reset.
 
     KISS: SQLite via GnomDatabase; de-dupe + garbage filter on write.
     """

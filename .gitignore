@@ -1,6 +1,10 @@
 # Secrets (never commit)
 .env
 Key.txt
+User/Key.txt
+User/user.db
+User/*.db
+User/*.db-*
 *.pem
 *.key
 
@@ -36,5 +40,6 @@ data/smoke-run/
 # Local backups / secrets
 *.bak
 *.bak-*
-Key.txt*
-!.Key.txt.example
+# Key.txt anywhere (real secrets); keep templates
+**/Key.txt
+!**/Key.txt.example

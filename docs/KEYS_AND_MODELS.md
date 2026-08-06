@@ -58,10 +58,12 @@ If content is still empty, client falls back to `reasoning_content` when present
 
 | File | Git | Purpose |
 |------|-----|---------|
-| **`Key.txt`** | ignored | Source of truth for keys + model |
+| **`User/Key.txt`** | ignored | Source of truth for keys + model (preferred) |
+| **`User/user.db`** | ignored | Personal SQLite (WARM/HOT/Flex) — sync yourself |
+| **`Key.txt`** (root) | ignored | Legacy; hub seeds `User/Key.txt` once |
 | **`.env`** | ignored | Generated / merged from Key.txt on start |
 | **`data/hot/agents.json`** | ignored | Per-agent `api_key` + `model` after hub applies Key.txt |
-| **`Key.txt.example`** | tracked | Template only |
+| **`User/Key.txt.example`** / **`Key.txt.example`** | tracked | Template only |
 
 ### Canonical `Key.txt` shape
 

@@ -1,24 +1,29 @@
 """
-SQLite store — personal file: ~/…/user.db (never git-pushed).
+SQLite store — personal file: {project}/User/user.db (never git-pushed).
 
-Default path: ~/.local/share/gnom-hub/user.db
+Default path: <repo>/User/user.db
 Override: GNOM_USER_DB=/absolute/or/~/path/user.db
 
-Holds durable WARM facts, HOT session messages/facts, and simple KV.
-Legacy data/warm + data/hot JSON is migrated once from the project tree.
+Clean layout with Key.txt:
+  User/
+    Key.txt    # API keys (source of truth)
+    user.db    # this store (WARM/HOT + KV) — sync in your workflow
+
+Legacy: one-time migrate from ~/.local/share/gnom-hub/user.db and data/*.json.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import shutil
 import sqlite3
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from gnom_hub.config.paths import project_root
+from gnom_hub.config.paths import project_root, user_dir
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -61,34 +66,58 @@ def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
-def default_user_db_path() -> Path:
-    """
-    Personal DB in the user's home (never inside the git repo).
+def _legacy_home_db_path() -> Path:
+    """Old location (pre User/ layout). Used only for one-shot copy."""
+    return (Path.home() / ".local" / "share" / "gnom-hub" / "user.db").resolve()
 
-    Default: ~/.local/share/gnom-hub/user.db
+
+def default_user_db_path(root: Path | None = None) -> Path:
+    """
+    Personal DB in workspace User/ (sync this folder yourself; never git-push).
+
+    Default: {project}/User/user.db
     Override with env GNOM_USER_DB (or GNOM_DB_PATH).
     """
     raw = (os.getenv("GNOM_USER_DB") or os.getenv("GNOM_DB_PATH") or "").strip()
     if raw:
         return Path(raw).expanduser().resolve()
-    return (Path.home() / ".local" / "share" / "gnom-hub" / "user.db").resolve()
+    return (user_dir(root) / "user.db").resolve()
 
 
 def resolve_db_path(root: Path | None = None) -> Path:
     """
-    Personal home user.db for the real hub; under {root}/data/user.db for
-    tests/tmp roots so unit tests never touch your real DB.
+    {root}/User/user.db for real hub and tmp tests (isolated per root).
+
+    Env GNOM_USER_DB / GNOM_DB_PATH always wins when set.
     """
     env = (os.getenv("GNOM_USER_DB") or os.getenv("GNOM_DB_PATH") or "").strip()
     if env:
         return Path(env).expanduser().resolve()
     r = Path(root) if root is not None else project_root()
+    return default_user_db_path(r)
+
+
+def _maybe_seed_from_legacy(target: Path, root: Path) -> None:
+    """
+    If User/user.db is missing, copy once from legacy home path
+    (only when target is the real project User/user.db).
+    """
+    if target.exists():
+        return
     try:
-        if r.resolve() != project_root().resolve():
-            return (r / "data" / "user.db").resolve()
+        is_real = root.resolve() == project_root().resolve()
     except OSError:
-        return (r / "data" / "user.db").resolve()
-    return default_user_db_path()
+        is_real = False
+    if not is_real:
+        return
+    legacy = _legacy_home_db_path()
+    if not legacy.is_file():
+        return
+    target.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        shutil.copy2(legacy, target)
+    except OSError:
+        pass
 
 
 def get_db(root: Path | None = None) -> GnomDatabase:
@@ -103,7 +132,7 @@ def get_db(root: Path | None = None) -> GnomDatabase:
 
 
 class GnomDatabase:
-    """Your personal Gnom database (SQLite user.db in home)."""
+    """Your personal Gnom database (SQLite User/user.db)."""
 
     def __init__(
         self,
@@ -114,8 +143,9 @@ class GnomDatabase:
         self.root = Path(root) if root is not None else project_root()
         # Project data/ only for one-time migration from old JSONL files
         self.data_dir = self.root / "data"
-        self.path = Path(db_path) if db_path is not None else default_user_db_path()
+        self.path = Path(db_path) if db_path is not None else default_user_db_path(self.root)
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        _maybe_seed_from_legacy(self.path, self.root)
         self._conn = sqlite3.connect(
             str(self.path),
             check_same_thread=False,

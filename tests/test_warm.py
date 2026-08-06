@@ -44,4 +44,5 @@ def test_warm_rejects_garbage_and_persists_in_user_db(tmp_path: Path):
 
     info = get_db(tmp_path).snapshot_info()
     assert info["path"].endswith("user.db")
+    assert "/User/" in info["path"].replace("\\", "/") or info["path"].endswith("User/user.db")
     assert info["warm_facts"] >= 1
