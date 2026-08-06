@@ -12,7 +12,7 @@
 | **Default UI** | `http://127.0.0.1:8080/` |
 | **Stack** | FastAPI + uvicorn · desktop SPA (`app.js` from `parts/*` · `app.css` · `index.html`) · optional DeepSeek / Ollama |
 | **License** | Private use |
-| **LOC (approx.)** | ~10k Python · ~4.7k `app.js` (6 parts) · hub façade ~1.5k |
+| **LOC (approx.)** | ~10k Python · ~4.7k `app.js` (6 parts) · hub composition root ~180 |
 
 ---
 
@@ -75,19 +75,16 @@ gnom-hub-v1/
 
 | Area | ~LOC | Role |
 |------|------|------|
-| `hub.py` | ~1520 | Façade + wiring (mixins for bulk) |
-| `telegram/commands.py` | ~690 | Telegram slash commands (mixin) |
-| `session_pack.py` | ~560 | Session pack export/import (mixin) |
-| `backup_ops.py` | ~150 | Backup zip ops (mixin) |
-| `jobs.py` | ~260 | Async job runner (mixin) |
-| `memory/wiring.py` | ~90 | Bus → HOT/WARM handlers (mixin) |
+| `hub.py` | ~180 | Composition root: construct graph only |
+| Mixins (`*_ops.py`, `jobs`, `presets`, …) | bulk | Public Hub methods via inheritance |
+| `telegram/commands.py` + `lifecycle.py` | ~700 | Telegram slash + start/stop |
 | `ui/static/parts/*` + `app.js` | ~4.7k | Desktop UI (edit parts → `build_ui_js.py`) |
 | `pipeline/` | 1460 | Orchestrator, gates, DoD |
 | `agents/` | 1158 | Roles + helpers |
 | `api/app.py` | 877 | Thin HTTP over Hub methods |
 | `llm/` | 593 | Clients + budget |
 
-**Hub shape:** `Hub(TelegramCommandMixin, BackupOpsMixin, SessionPackMixin, JobsMixin, MemoryWiringMixin)`. Public API method names stay on Hub; bulk lives in mixins. Prefer thin API → Hub → mixin/module; no second orchestrator.
+**Hub shape:** thin `Hub(...mixins...)` with `__init__` + `_new_pipeline` + `get_hub`. Public API names unchanged; behavior in mixins. No second orchestrator.
 
 ---
 
