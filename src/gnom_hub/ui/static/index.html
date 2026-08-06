@@ -64,17 +64,19 @@
 
     <!-- 3 boxes: one bar = name + buttons (no double header strip) -->
     <section class="boxes" aria-label="Main panels">
+      <!-- Box 1 = Info-Display: Live tips / Gnom detail layers -->
       <div id="box1" class="box box-1" data-tooltip-id="box1">
         <div class="box-bar">
-          <span class="box-title">Box 1</span>
-          <div class="box-toolbar" data-box="box1" role="toolbar" aria-label="Box 1">
-            <button type="button" class="layer-btn" data-act="prev" title="Previous">‹</button>
-            <button type="button" class="layer-btn" data-act="next" title="Next">›</button>
+          <span class="box-title">Info</span>
+          <div class="box-toolbar" data-box="box1" role="toolbar" aria-label="Info layers">
+            <button type="button" class="layer-btn is-active" data-info-layer="live" title="Live: hover/slider/agent">Live</button>
+            <button type="button" class="layer-btn" data-info-layer="gnom" title="Gnom system detail">Gnom</button>
           </div>
         </div>
-        <div class="layer-stack">
-          <div id="box1-content" class="layer layer-website box-body">
-            <p class="box1-placeholder">Hover a card or control for help. Click Cold badge to browse archives.</p>
+        <div id="box1-content" class="box-body box1-info">
+          <!-- Layer Live: mouseover / slider / agent click -->
+          <div class="info-layer is-active" data-info-layer="live" id="box1-layer-live">
+            <p class="box1-placeholder">Schieber, Hover oder Agent-Klick → Erklärung hier.</p>
             <div id="box1-tooltip" class="box1-tooltip" hidden>
               <h2 id="tip-title" class="tip-title"></h2>
               <p id="tip-how" class="tip-how"></p>
@@ -100,7 +102,19 @@
               </div>
             </div>
           </div>
-          <div class="layer layer-worker" data-box="box1" aria-hidden="true"></div>
+          <!-- Layer Gnom: system detail explanation -->
+          <div class="info-layer" data-info-layer="gnom" id="box1-layer-gnom" hidden>
+            <h2 class="tip-title">Gnom-Hub — Überblick</h2>
+            <div class="info-gnom-body">
+              <p><strong>Pipeline:</strong> Chat → Brainstorm → Distill → Flex → Coordinator → Worker(s) → Memory.</p>
+              <p><strong>Box 1 (Info):</strong> Live-Hilfe bei Hover/Klick/Schieber. Layer „Gnom“ = Systemdetail.</p>
+              <p><strong>Box 2:</strong> Brainstorm-Dialog und Plan.</p>
+              <p><strong>Box 3:</strong> Worker-Ergebnisse (HTML-Preview, nacheinander, ‹ ›).</p>
+              <p><strong>Memory:</strong> HOT (Session), WARM (dauerhaft in user.db), COLD (Archiv).</p>
+              <p><strong>Keys:</strong> User/Key.txt bzw. personal WS — nie committen.</p>
+              <p><strong>Schieber (Agent-Tuning):</strong> Temperature = Kreativität, Top-P = Fokus, Max Tokens = Länge, Frequency/Presence = Wiederholung/Themenwechsel. Live-Erklärung erscheint im Layer „Live“.</p>
+            </div>
+          </div>
         </div>
       </div>
 

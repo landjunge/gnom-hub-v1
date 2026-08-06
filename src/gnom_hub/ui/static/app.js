@@ -789,11 +789,14 @@
   function showSliderTip(key) {
     const tip = SLIDER_TIPS[key];
     if (!tip) return;
+    if (typeof showInfoLayer === "function") showInfoLayer("live");
     if (els.placeholder) els.placeholder.hidden = true;
     if (els.tipRoot) els.tipRoot.hidden = false;
-    if (els.tipTitle) els.tipTitle.textContent = "Slider: " + key;
+    if (els.tipTitle) els.tipTitle.textContent = "Schieber: " + key;
     if (els.tipHow) els.tipHow.textContent = tip;
-    if (els.tipExample) els.tipExample.textContent = "Change the slider — live explanation stays in Box 1.";
+    if (els.tipExample)
+      els.tipExample.textContent =
+        "Nach links/rechts schieben — Erklärung live in Info (Box 1).";
   }
 
   function bindTuneSliders() {
@@ -2058,14 +2061,28 @@
     }
   }
 
+  /** Box 1 info layers: Live (hover/slider) | Gnom (system detail). */
+  function showInfoLayer(name) {
+    const n = name === "gnom" ? "gnom" : "live";
+    document.querySelectorAll("#box1-content .info-layer").forEach(function (el) {
+      const on = el.getAttribute("data-info-layer") === n;
+      el.hidden = !on;
+      el.classList.toggle("is-active", on);
+    });
+    document.querySelectorAll('#box1 .box-toolbar [data-info-layer]').forEach(function (btn) {
+      btn.classList.toggle("is-active", btn.getAttribute("data-info-layer") === n);
+    });
+  }
+
   function showTooltip(id) {
     const tip = TOOLTIPS[id];
     if (!tip) return;
+    showInfoLayer("live");
     if (els.placeholder) els.placeholder.hidden = true;
-    els.tipRoot.hidden = false;
-    els.tipTitle.textContent = tip.title;
-    els.tipHow.textContent = tip.how_to;
-    els.tipExample.textContent = tip.example;
+    if (els.tipRoot) els.tipRoot.hidden = false;
+    if (els.tipTitle) els.tipTitle.textContent = tip.title;
+    if (els.tipHow) els.tipHow.textContent = tip.how_to;
+    if (els.tipExample) els.tipExample.textContent = tip.example;
   }
 
   function bindTooltipHovers() {
@@ -2073,6 +2090,13 @@
       node.addEventListener("mouseenter", function () {
         const id = node.getAttribute("data-tooltip-id");
         if (id) showTooltip(id);
+      });
+    });
+    // Box 1 layer buttons: Live | Gnom
+    document.querySelectorAll("#box1 [data-info-layer]").forEach(function (btn) {
+      btn.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        showInfoLayer(btn.getAttribute("data-info-layer") || "live");
       });
     });
   }

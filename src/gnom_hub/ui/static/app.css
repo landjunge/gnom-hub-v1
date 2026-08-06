@@ -825,6 +825,46 @@ html, body {
 .box-2 .box-title { color: var(--c-brainstorm); }
 .box-3 .box-title { color: var(--c-worker1); }
 
+/* Box 1 Info-Display: Live / Gnom layers */
+.box1-info {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: auto;
+}
+
+.box1-info .info-layer {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.box1-info .info-layer[hidden] {
+  display: none !important;
+}
+
+.box-toolbar .layer-btn.is-active {
+  color: var(--text);
+  border-color: #3f434c;
+  background: #2a2c32;
+}
+
+.info-gnom-body {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text);
+  padding: 4px 2px 8px;
+}
+
+.info-gnom-body p {
+  margin: 0 0 8px;
+}
+
+.info-gnom-body strong {
+  color: #c1c6ce;
+}
+
 .box-body {
   flex: 1 1 auto;
   padding: 8px 10px;

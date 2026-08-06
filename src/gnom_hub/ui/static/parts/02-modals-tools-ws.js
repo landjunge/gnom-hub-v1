@@ -33,11 +33,14 @@
   function showSliderTip(key) {
     const tip = SLIDER_TIPS[key];
     if (!tip) return;
+    if (typeof showInfoLayer === "function") showInfoLayer("live");
     if (els.placeholder) els.placeholder.hidden = true;
     if (els.tipRoot) els.tipRoot.hidden = false;
-    if (els.tipTitle) els.tipTitle.textContent = "Slider: " + key;
+    if (els.tipTitle) els.tipTitle.textContent = "Schieber: " + key;
     if (els.tipHow) els.tipHow.textContent = tip;
-    if (els.tipExample) els.tipExample.textContent = "Change the slider — live explanation stays in Box 1.";
+    if (els.tipExample)
+      els.tipExample.textContent =
+        "Nach links/rechts schieben — Erklärung live in Info (Box 1).";
   }
 
   function bindTuneSliders() {
