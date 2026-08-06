@@ -481,21 +481,21 @@ html, body {
 }
 
 /* —— Agent cards: 8 equal columns, full width = boxes row —— */
+/* A P A P … — Agent, 20px Platzhalter, Agent, 20px … */
 .agent-cards {
   display: flex;
   flex-direction: row;
-  gap: 2px; /* 2px free between agents */
-  justify-content: center;
+  gap: 20px;
+  justify-content: stretch;
   width: 100%;
   flex: 0 0 auto;
   margin-bottom: 0;
   height: var(--card-h);
 }
 
-/* equal share minus 20px horizontal each (7×2px gaps) */
 .agent-card {
-  flex: 0 0 calc((100% - 14px) / 8 - 20px);
-  width: calc((100% - 14px) / 8 - 20px);
+  flex: 1 1 0;
+  width: 0;
   min-width: 0;
   height: 100%;
   background: var(--bg-card);
