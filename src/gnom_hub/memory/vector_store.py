@@ -43,20 +43,23 @@ _STOP = frozenset(
 )
 
 # Short-document Okapi BM25 (WARM/Flex facts ≈ 5–20 tokens, not web pages).
-# k1 lower → less double-count on repeated tokens in one line.
-# b lower → length normalization mild when all docs are short and similar.
-_K1 = 1.2
-_B = 0.3
+# Tuned 2026-08 for Gnom fact lines (grid + distractor ranking):
+#   k1≈1.15 → mild TF saturation (lines rarely repeat tokens)
+#   b≈0.25  → little length norm (all candidates similarly short)
+#   BM25 88% / cosine 12% → lexical phrase match dominates BoW ties
+#   flex_wish ×1.20 → standing wishes outrank similar requirement/warm lines
+_K1 = 1.15
+_B = 0.25
 
 # Hybrid: BM25 carries lexical intent; cosine is a light tie-breaker on BoW vec.
-_BM25_WEIGHT = 0.85
-_COSINE_WEIGHT = 0.15
-_MIN_SCORE = 0.03
+_BM25_WEIGHT = 0.88
+_COSINE_WEIGHT = 0.12
+_MIN_SCORE = 0.025
 
 _SOURCE_BOOST = {
-    "flex_wish": 1.18,
+    "flex_wish": 1.20,
     "flex_personal": 1.15,
-    "warm": 1.08,
+    "warm": 1.06,
     "memory_agent": 1.05,
     "requirement": 1.0,
 }
