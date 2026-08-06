@@ -98,11 +98,13 @@ class BrainstormAgent(BaseAgent):
 
 class FlexAgent(BaseAgent):
     """
-    Personal companion for the human operator.
+    Fixed system agent — personal companion + wish memory + pipeline driver.
 
-    Remembers what the user writes (preferences, people, sites, habits) into
-    durable memory, and briefs the pipeline with “what I know about you”.
-    Optional presets only add a light lens (security/research/neutral).
+    Jobs (immutable):
+      1) absorb user wishes into WARM (source=flex)
+      2) co-talk in brainstorm + request Execute when clear
+      3) brief workers on Execute; nudge gaps after workers
+    Preset/toggle/UI role edits are ignored (always personal, always on).
     """
 
     def absorb(self, user_text: str, memory_ctx: str = "") -> list[str]:
@@ -485,38 +487,55 @@ class FlexAgent(BaseAgent):
             )
         return nudges
 
+    def binding_wishes(self, memory_ctx: str = "", *, limit: int = 12) -> list[str]:
+        """Standing User:/Wish: lines from memory — for requirement injection."""
+        out: list[str] = []
+        seen: set[str] = set()
+        for ln in (memory_ctx or "").splitlines():
+            s = " ".join(str(ln).split()).strip().lstrip("-•* ")
+            if not s:
+                continue
+            low = s.lower()
+            if not low.startswith(("user:", "wish:", "flex-wish:")):
+                continue
+            if not low.startswith("user:"):
+                s = "User: " + s.split(":", 1)[-1].strip()
+            key = s.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(s[:200])
+            if len(out) >= limit:
+                break
+        return out
+
     def run(self, user_text: str, requirements: list[str], memory_ctx: str = "") -> str:
         if not self.enabled:
             return ""
-        preset = (self.state.preset or "personal").lower()
+        self.state.preset = "personal"
         self.emit_active(True)
         try:
             # Always learn from this turn first
             self._extract_and_emit(user_text, memory_ctx)
 
             system = (
-                "You are Flex — the user's personal companion inside Gnom-Hub.\n"
-                "You ONLY care about the human operator: their preferences, people they "
-                "mention, sites/tools they use, habits, language, constraints.\n"
+                "You are Flex — FIXED personal companion in Gnom-Hub (not a free preset).\n"
+                "You ONLY represent the human operator: preferences, people, tools, habits, "
+                "standing rules. Never invent facts the user did not state.\n"
                 "Output in the user's language (DE/EN).\n"
                 "Structure:\n"
                 "1) Was ich über dich weiß (relevant jetzt) — short bullets from context\n"
                 "2) Neu gemerkt — 0–3 new personal facts from THIS message\n"
                 "3) Für die Worker — 1–3 practical hints so workers respect the user\n"
-                "Do NOT write generic security essays unless preset is security.\n"
-                "Do NOT invent people/sites the user never mentioned.\n"
+                "4) Binding wishes — restate any User:/Wish: lines that workers must obey\n"
             )
-            if preset == "security":
-                system += "Extra lens: flag personal-data / privacy risks in one short line.\n"
-            elif preset == "researcher":
-                system += "Extra lens: one open question about the user's intent.\n"
-            elif preset == "neutral":
-                system += "Extra lens: one trade-off for the user.\n"
-
+            wishes = self.binding_wishes(memory_ctx)
+            wish_block = "\n".join(f"- {w}" for w in wishes) if wishes else "(none in context)"
             body = (
                 f"User now says:\n{user_text}\n\n"
                 f"Requirements:\n"
                 + "\n".join(f"- {r}" for r in requirements[:6])
+                + f"\n\nBinding wishes from memory:\n{wish_block}"
                 + f"\n\nKnown context (WARM/HOT):\n{(memory_ctx or '')[:900]}"
             )
             if self.has_llm():
@@ -532,20 +551,22 @@ class FlexAgent(BaseAgent):
                         "pipeline.warning",
                         {"stage": "flex", "error": str(exc)},
                     )
-            # Stub without LLM: echo what we can store
+            # Stub without LLM: echo facts + binding wishes for workers
             facts = self._heuristic_facts(user_text)
             if facts:
                 self.bus.emit("pipeline.flex_facts", {"facts": facts, "user_text": user_text[:200]})
-            return (
-                "Was ich über dich weiß:\n"
-                + (
-                    "\n".join(f"• {f}" for f in facts)
-                    if facts
-                    else "• (noch wenig — schreib weiter)"
-                )
-                + "\nNeu gemerkt: siehe oben.\n"
-                "Für die Worker: User-Kontext in WARM beachten."
+            know_bits = facts or wishes
+            know = (
+                "\n".join(f"• {f}" for f in know_bits)
+                if know_bits
+                else "• (noch wenig — schreib weiter)"
             )
+            worker_hint = (
+                "Für die Worker: " + "; ".join(wishes[:3])
+                if wishes
+                else "Für die Worker: User-Kontext in WARM beachten."
+            )
+            return "Was ich über dich weiß:\n" + know + "\nNeu gemerkt: siehe oben.\n" + worker_hint
         finally:
             self.emit_active(False)
 

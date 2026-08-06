@@ -447,14 +447,23 @@ class Orchestrator:
         self._check_cancel()
         if self.flex.enabled:
             self._set_stage(PipelineStage.flex)
+            # Re-bind standing wishes into requirements before workers (pipeline contract)
+            for wish in self.flex.binding_wishes(mem or ""):
+                tag = f"Flex-wish: {wish}"
+                if tag not in self._state.distilled_requirements:
+                    self._state.distilled_requirements.append(tag)
+            reqs = list(self._state.distilled_requirements)
             notes = self.flex.run(text, reqs, mem)
             self._state.flex_notes = notes
             self.bus.emit(
                 "pipeline.flex",
-                {"notes": notes, "preset": self.flex.state.preset},
+                {
+                    "notes": notes,
+                    "preset": "personal",
+                    "wishes": self.flex.binding_wishes(mem or ""),
+                },
             )
             if notes:
-                # Prefer a "Was ich über dich weiß" line for workers
                 first = ""
                 for ln in notes.strip().splitlines():
                     s = ln.strip().lstrip("-•* ")
@@ -463,8 +472,9 @@ class Orchestrator:
                         break
                 if not first:
                     first = notes.strip().splitlines()[0][:160]
-                preset = self.flex.state.preset or "personal"
-                self._state.distilled_requirements.append(f"Flex/{preset}: {first}")
+                line = f"Flex/personal: {first}"
+                if line not in self._state.distilled_requirements:
+                    self._state.distilled_requirements.append(line)
 
         self._check_cancel()
         if not self.coordinator.enabled:

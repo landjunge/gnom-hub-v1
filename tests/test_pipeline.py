@@ -510,3 +510,37 @@ def test_flex_execute_line_not_double_with_contribute():
     # Last flex line should be Execute message, not contribute
     assert flex_turns
     assert any("Execute" in str(t.get("text") or "") for t in flex_turns)
+
+
+def test_flex_pipeline_injects_wishes_into_requirements():
+    """Execute path: standing wishes become Flex-wish requirements for workers."""
+    bus = EventBus()
+    pipe = Pipeline(bus)
+    # Seed memory via flex absorb path + warm through pipeline memory if available
+    # Directly put wishes into memory_context for binding_wishes
+    pipe.brainstorm_turn("Build a landing page for Bean Shop full HTML with hero and footer.")
+    # If auto-executed, state may already be done — set wishes on next execute path
+    st = pipe.state
+    # Force re-execute with memory context containing a User wish
+    pipe.state.memory_context = (
+        pipe.state.memory_context or ""
+    ) + "\nUser: always enable dark theme\nUser: never truncate HTML\n"
+    if st.stage == PipelineStage.done:
+        st2 = pipe.execute()
+    else:
+        st2 = pipe.execute()
+    reqs = "\n".join(st2.distilled_requirements)
+    assert "Flex-wish:" in reqs or "dark theme" in reqs.lower()
+    assert st2.flex_notes
+    assert st2.stage in (PipelineStage.done, PipelineStage.clarify)
+
+
+def test_flex_binding_wishes_helper():
+    from gnom_hub.agents import AgentManager, FlexAgent, AgentId
+    from gnom_hub.core.event_bus import EventBus
+
+    bus = EventBus()
+    flex = FlexAgent(AgentManager(bus).get(AgentId.FLEX), bus, llm=None)
+    wishes = flex.binding_wishes("noise\nUser: always TTS on\n- Wish: keep flex wishes\nother")
+    assert any("TTS" in w or "tts" in w.lower() for w in wishes)
+    assert any("keep flex" in w.lower() or "wishes" in w.lower() for w in wishes)
