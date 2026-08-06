@@ -22,7 +22,9 @@ class PipelineStage(str, Enum):
 class DistillQuestion:
     id: str
     text: str
-    options: list[str] = field(default_factory=lambda: ["Yes", "No", "Whatever", "Later"])
+    options: list[str] = field(
+        default_factory=lambda: ["MVP/schnell", "Gründlich/robust", "Egal", "Später"]
+    )
 
 
 @dataclass

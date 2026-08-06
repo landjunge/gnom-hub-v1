@@ -58,6 +58,7 @@ class CoordinatorAgent(BaseAgent):
                 question = DistillQuestion(
                     id="q1",
                     text="MVP/schnell oder gründlich/robust?",
+                    options=["MVP/schnell", "Gründlich/robust", "Egal", "Später"],
                 )
             return reqs[:8], question
         finally:

@@ -192,6 +192,91 @@ def _lines(raw: str) -> list[str]:
 
 
 def _needs_clarify(text: str) -> bool:
-    if "?" in text:
+    """
+    True only for real ambiguity — not every polite '?'.
+
+    Clarify when: hedges, A-or-B choices, decision-seeking, or vague '?'
+    without a concrete build order. Clear build tasks (even with '?') skip.
+    """
+    t = (text or "").strip()
+    if not t:
+        return False
+    low = t.lower()
+
+    # 1) Explicit uncertainty / hedge
+    if re.search(
+        r"\b(maybe|vielleicht|eventuell|unsicher|optional|either)\b",
+        low,
+        flags=re.IGNORECASE,
+    ):
         return True
-    return bool(re.search(r"\b(maybe|vielleicht|eventuell)\b", text, flags=re.IGNORECASE))
+    if re.search(
+        r"\b(nicht sicher|wei[sß]s nicht|open question|noch unklar)\b",
+        low,
+        flags=re.IGNORECASE,
+    ):
+        return True
+
+    # 2) Explicit tradeoff phrases
+    if re.search(
+        r"\b(schnell oder|mvp oder|oder gr[uü]ndlich|or robust|light or full)\b",
+        low,
+        flags=re.IGNORECASE,
+    ):
+        return True
+
+    # 3) "A oder B" / "A or B" (skip "mehr oder weniger")
+    if not re.search(r"\b(mehr oder weniger|more or less)\b", low) and (
+        re.search(r"\b\w{2,}\s+oder\s+\w{2,}\b", low)
+        or re.search(r"\b\w{2,}\s+or\s+\w{2,}\b", low)
+    ):
+        return True
+
+    # 4) Decision-seeking / opinion without fixed deliverable
+    decision_markers = (
+        "sollen wir",
+        "should we",
+        "shall we",
+        "what do you think",
+        "was meinst du",
+        "was denkst du",
+        "which approach",
+        "welchen ansatz",
+        "wie sollen wir",
+        "how should we",
+    )
+    if any(m in low for m in decision_markers):
+        return True
+
+    # 5) '?' only when the task is still vague (no clear build order)
+    if "?" in t:
+        clear_build = any(
+            k in low
+            for k in (
+                "baue ",
+                "baue eine",
+                "baue mir",
+                "build a",
+                "build me",
+                "build ",
+                "erstelle ",
+                "create a",
+                "create ",
+                "implement ",
+                "mach mir",
+                "mach eine",
+                "landing",
+                "html",
+                "todo app",
+                "todo-app",
+                "single-file",
+                "single file",
+                "website",
+                "webseite",
+                "dashboard",
+            )
+        )
+        # Polite '?' on a clear build order → no clarify; vague '?' → yes
+        return not clear_build
+
+    return False

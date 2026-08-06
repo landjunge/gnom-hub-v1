@@ -94,11 +94,11 @@ def test_clarify_path_then_continue():
     assert state.stage == PipelineStage.clarify
     assert state.pending_question is not None
     assert isinstance(state.pending_question, DistillQuestion)
-    assert state.pending_question.options == ["Yes", "No", "Whatever", "Later"]
+    assert state.pending_question.options == ["MVP/schnell", "Gründlich/robust", "Egal", "Später"]
     assert any(n == "pipeline.question" for n, _ in events)
     assert not any(n == "pipeline.done" for n, _ in events)
 
-    state2 = pipe.answer_clarify("Yes")
+    state2 = pipe.answer_clarify("MVP/schnell")
     assert state2.stage == PipelineStage.done
     assert state2.pending_question is None
     assert any("clarified" in r.lower() for r in state2.distilled_requirements)
@@ -239,7 +239,7 @@ def test_pipeline_state_defaults():
     assert s.flex_notes == ""
     assert s.warnings == []
     q = DistillQuestion(id="x", text="?")
-    assert q.options == ["Yes", "No", "Whatever", "Later"]
+    assert q.options == ["MVP/schnell", "Gründlich/robust", "Egal", "Später"]
 
 
 class _FailLLM:

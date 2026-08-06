@@ -331,7 +331,7 @@ def test_chat_clarify_then_continue(client: TestClient):
     assert r.json()["pipeline"]["stage"] == "clarify"
     assert r.json()["pipeline"]["pending_question"]
 
-    r2 = client.post("/api/clarify?sync=1", json={"option": "Yes"})
+    r2 = client.post("/api/clarify?sync=1", json={"option": "MVP/schnell"})
     assert r2.status_code == 200
     assert r2.json()["pipeline"]["stage"] == "done"
 
