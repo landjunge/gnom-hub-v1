@@ -92,8 +92,16 @@ class WarmMemory:
     def remove_at(self, index: int) -> str | None:
         return self.db.warm_remove_at(index)
 
-    def clear(self) -> None:
-        self.db.warm_clear()
+    def clear(self, *, keep_flex: bool = True) -> int:
+        """Clear WARM facts. Default keeps Flex wishes (source=flex)."""
+        n = self.db.warm_clear(keep_flex=keep_flex)
+        try:
+            from gnom_hub.db.sqlite_store import sync_user_db_backup
+
+            sync_user_db_backup(self.root)
+        except Exception:  # noqa: BLE001
+            pass
+        return n
 
     def pipeline_context(self, *, max_chars: int = 500) -> str:
         facts = self.recent_facts(8)

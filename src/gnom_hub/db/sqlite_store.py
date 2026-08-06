@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS warm_facts (
   ts     TEXT NOT NULL
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_warm_text ON warm_facts(text);
+CREATE INDEX IF NOT EXISTS idx_warm_source_id ON warm_facts(source, id);
 
 CREATE TABLE IF NOT EXISTS hot_messages (
   id      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,6 +43,7 @@ CREATE TABLE IF NOT EXISTS hot_facts (
   text TEXT NOT NULL,
   ts   TEXT NOT NULL
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_hot_facts_text ON hot_facts(text);
 
 CREATE TABLE IF NOT EXISTS kv (
   key   TEXT PRIMARY KEY,
@@ -105,9 +107,16 @@ class GnomDatabase:
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA foreign_keys=ON")
+        # Storage-friendly defaults for a local single-user hub DB
+        self._conn.execute("PRAGMA synchronous=NORMAL")
+        self._conn.execute("PRAGMA temp_store=MEMORY")
+        self._conn.execute("PRAGMA busy_timeout=5000")
+        self._conn.execute("PRAGMA cache_size=-8000")  # ~8 MiB page cache
+        self._conn.execute("PRAGMA mmap_size=67108864")  # 64 MiB mmap
         with _lock:
             self._conn.executescript(_SCHEMA)
             self._migrate_legacy_once()
+            self._ensure_indexes()
 
     def close(self) -> None:
         with _lock:
@@ -124,7 +133,28 @@ class GnomDatabase:
             (key, value),
         )
 
+    def _ensure_indexes(self) -> None:
+        """Idempotent indexes for trim/dupe paths (older DBs predate schema string)."""
+        self._conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_warm_source_id ON warm_facts(source, id)"
+        )
+        try:
+            self._conn.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_hot_facts_text ON hot_facts(text)"
+            )
+        except sqlite3.OperationalError:
+            # Pre-existing duplicate HOT facts — keep oldest row per text
+            self._conn.execute(
+                "DELETE FROM hot_facts WHERE id NOT IN ("
+                "  SELECT MIN(id) FROM hot_facts GROUP BY text"
+                ")"
+            )
+            self._conn.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_hot_facts_text ON hot_facts(text)"
+            )
+
     def _migrate_legacy_once(self) -> None:
+
         if self._meta_get("migrated_jsonl_v1") == "1":
             return
         # WARM JSONL
@@ -225,11 +255,17 @@ class GnomDatabase:
         self.warm_remove(text)
         return text
 
-    def warm_clear(self) -> int:
+    def warm_clear(self, *, keep_flex: bool = False) -> int:
+        """Clear WARM facts. keep_flex=True preserves source='flex' (Flex wishes)."""
         with _lock:
+            if keep_flex:
+                cur = self._conn.execute(
+                    "DELETE FROM warm_facts WHERE IFNULL(source, 'warm') != 'flex'"
+                )
+                return int(cur.rowcount or 0)
             n = self.warm_count()
             self._conn.execute("DELETE FROM warm_facts")
-        return n
+            return n
 
     def warm_count_source(self, source: str) -> int:
         with _lock:
@@ -341,15 +377,14 @@ class GnomDatabase:
         t = " ".join(str(text).split()).strip()
         if not t:
             return False
-        low = t.lower()
-        for existing in self.hot_facts():
-            if existing.lower() == low:
-                return False
-        with _lock:
-            self._conn.execute(
-                "INSERT INTO hot_facts(text, ts) VALUES (?, ?)",
-                (t, ts or _utc_now_iso()),
-            )
+        try:
+            with _lock:
+                self._conn.execute(
+                    "INSERT INTO hot_facts(text, ts) VALUES (?, ?)",
+                    (t, ts or _utc_now_iso()),
+                )
+        except sqlite3.IntegrityError:
+            return False
         self.kv_set("hot_updated_at", _utc_now_iso())
         return True
 
@@ -418,11 +453,76 @@ class GnomDatabase:
     def kv_set_json(self, key: str, value: Any) -> None:
         self.kv_set(key, json.dumps(value, ensure_ascii=False))
 
+    def hot_trim_messages(self, max_messages: int) -> int:
+        """Keep newest max_messages; delete oldest. Returns rows deleted."""
+        if max_messages < 0:
+            return 0
+        n = self.hot_message_count()
+        if n <= max_messages:
+            return 0
+        drop = n - max_messages
+        with _lock:
+            cur = self._conn.execute(
+                "DELETE FROM hot_messages WHERE id IN ("
+                "  SELECT id FROM hot_messages ORDER BY id ASC LIMIT ?"
+                ")",
+                (drop,),
+            )
+            deleted = int(cur.rowcount or 0)
+        if deleted:
+            self.kv_set("hot_updated_at", _utc_now_iso())
+        return deleted
+
+    def hot_trim_facts(self, max_facts: int) -> int:
+        """Keep newest max_facts; delete oldest. Returns rows deleted."""
+        if max_facts < 0:
+            return 0
+        n = self.hot_fact_count()
+        if n <= max_facts:
+            return 0
+        drop = n - max_facts
+        with _lock:
+            cur = self._conn.execute(
+                "DELETE FROM hot_facts WHERE id IN ("
+                "  SELECT id FROM hot_facts ORDER BY id ASC LIMIT ?"
+                ")",
+                (drop,),
+            )
+            deleted = int(cur.rowcount or 0)
+        if deleted:
+            self.kv_set("hot_updated_at", _utc_now_iso())
+        return deleted
+
+    def maintain(self, *, vacuum: bool = False) -> dict[str, Any]:
+        """Light maintenance: analyze + optional VACUUM. Safe to call after heavy clears."""
+        info: dict[str, Any] = {"analyze": False, "vacuum": False, "page_count": 0, "freelist": 0}
+        with _lock:
+            self._conn.execute("PRAGMA optimize")
+            self._conn.execute("ANALYZE")
+            info["analyze"] = True
+            page = self._conn.execute("PRAGMA page_count").fetchone()
+            free = self._conn.execute("PRAGMA freelist_count").fetchone()
+            info["page_count"] = int(page[0] if page else 0)
+            info["freelist"] = int(free[0] if free else 0)
+            # Auto-vacuum when freelist is large relative to DB
+            if vacuum or (info["freelist"] >= 64 and info["freelist"] * 4 >= info["page_count"]):
+                self._conn.execute("VACUUM")
+                info["vacuum"] = True
+                page = self._conn.execute("PRAGMA page_count").fetchone()
+                free = self._conn.execute("PRAGMA freelist_count").fetchone()
+                info["page_count"] = int(page[0] if page else 0)
+                info["freelist"] = int(free[0] if free else 0)
+        info["bytes"] = self.path.stat().st_size if self.path.is_file() else 0
+        return info
+
     def snapshot_info(self) -> dict[str, Any]:
+        bytes_ = self.path.stat().st_size if self.path.is_file() else 0
         return {
             "path": str(self.path),
             "warm_facts": self.warm_count(),
+            "warm_flex": self.warm_count_source("flex"),
             "hot_messages": self.hot_message_count(),
             "hot_facts": self.hot_fact_count(),
+            "bytes": bytes_,
             "migrated": self._meta_get("migrated_jsonl_v1") == "1",
         }
