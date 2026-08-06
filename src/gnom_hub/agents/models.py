@@ -17,16 +17,16 @@ class AgentId(str, Enum):
     WORKER4 = "worker4"
 
 
-# Fixed card frame colors (plan: 8 agents).
+# Fixed card frame colors — system (kräfig) vs workers (other palette, no gray).
 COLORS: dict[AgentId, str] = {
     AgentId.BRAINSTORM: "red",
     AgentId.MEMORY: "blue",
     AgentId.FLEX: "yellow",
     AgentId.COORDINATOR: "green",
-    AgentId.WORKER1: "orange",
-    AgentId.WORKER2: "purple",
-    AgentId.WORKER3: "teal",
-    AgentId.WORKER4: "gray",
+    AgentId.WORKER1: "cyan",
+    AgentId.WORKER2: "violet",
+    AgentId.WORKER3: "magenta",
+    AgentId.WORKER4: "orange",
 }
 
 # Flex: personal companion first; optional lenses.
