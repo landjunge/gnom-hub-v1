@@ -126,9 +126,15 @@
   const CHAT_STORAGE_KEY = "gnom-hub-chat-log-v1";
   const HISTORY_KEY = "gnom-hub-result-history-v1";
   const COMPACT_KEY = "gnom-hub-compact-v1";
+  const CHAT_HIST_KEY = "gnom-hub-chat-input-hist-v1";
+  const CHAT_HIST_MAX = 50;
   const HISTORY_MAX = 12;
   let resultHistory = [];
   let selectedColdId = null;
+  /** Terminal-style input history (ArrowUp/Down). idx -1 = live draft. */
+  let chatHist = [];
+  let chatHistIdx = -1;
+  let chatDraft = "";
 
   function statusLabel(agent) {
     if (agent.parked) return agent.enabled ? "on · later" : "off / parked";
@@ -3208,11 +3214,90 @@
     }
   }
 
+  function loadChatHist() {
+    try {
+      const raw = localStorage.getItem(CHAT_HIST_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      chatHist = Array.isArray(arr)
+        ? arr.filter(function (s) {
+            return typeof s === "string" && s.trim();
+          }).slice(-CHAT_HIST_MAX)
+        : [];
+    } catch (_e) {
+      chatHist = [];
+    }
+    chatHistIdx = -1;
+    chatDraft = "";
+  }
+
+  function saveChatHist() {
+    try {
+      localStorage.setItem(
+        CHAT_HIST_KEY,
+        JSON.stringify(chatHist.slice(-CHAT_HIST_MAX))
+      );
+    } catch (_e) {
+      /* ignore quota */
+    }
+  }
+
+  /** Push a sent line (like shell history). Dedupes consecutive duplicates. */
+  function pushChatHist(text) {
+    const t = String(text || "").trim();
+    if (!t) return;
+    if (chatHist.length && chatHist[chatHist.length - 1] === t) {
+      chatHistIdx = -1;
+      chatDraft = "";
+      return;
+    }
+    chatHist.push(t);
+    if (chatHist.length > CHAT_HIST_MAX) {
+      chatHist = chatHist.slice(-CHAT_HIST_MAX);
+    }
+    saveChatHist();
+    chatHistIdx = -1;
+    chatDraft = "";
+  }
+
+  /**
+   * ArrowUp = older, ArrowDown = newer (back to empty draft).
+   * Same mental model as bash/zsh.
+   */
+  function chatHistNav(dir) {
+    if (!els.chatInput || !chatHist.length) return;
+    if (chatHistIdx === -1) {
+      if (dir < 0) {
+        chatDraft = els.chatInput.value;
+        chatHistIdx = chatHist.length - 1;
+      } else {
+        return;
+      }
+    } else {
+      chatHistIdx += dir;
+      if (chatHistIdx < 0) chatHistIdx = 0;
+      if (chatHistIdx >= chatHist.length) {
+        chatHistIdx = -1;
+        els.chatInput.value = chatDraft;
+        return;
+      }
+    }
+    const line = chatHist[chatHistIdx] || "";
+    els.chatInput.value = line;
+    try {
+      els.chatInput.setSelectionRange(line.length, line.length);
+    } catch (_e) {
+      /* ignore */
+    }
+  }
+
   async function sendChat() {
     const text = (els.chatInput.value || "").trim();
     if (!text || chatBusy) return;
     appendChat("you", text);
+    pushChatHist(text);
     els.chatInput.value = "";
+    chatHistIdx = -1;
+    chatDraft = "";
     const cb = w.GnomHub.onSend;
     if (typeof cb === "function") cb(text);
 
@@ -4295,7 +4380,26 @@
     if (teamSave) teamSave.addEventListener("click", saveCurrentTeam);
     if (teamDel) teamDel.addEventListener("click", deleteSelectedTeam);
     if (planMode) planMode.addEventListener("change", setPlanModeFromUi);
+    loadChatHist();
     els.chatInput.addEventListener("keydown", function (ev) {
+      // Terminal-style history: ↑ older · ↓ newer
+      if (ev.key === "ArrowUp") {
+        ev.preventDefault();
+        chatHistNav(-1);
+        return;
+      }
+      if (ev.key === "ArrowDown") {
+        ev.preventDefault();
+        chatHistNav(1);
+        return;
+      }
+      // Typing resets history cursor to "live draft"
+      if (ev.key.length === 1 || ev.key === "Backspace" || ev.key === "Delete") {
+        if (chatHistIdx !== -1) {
+          chatHistIdx = -1;
+          chatDraft = "";
+        }
+      }
       // Ctrl/Cmd+Enter = Execute; plain Enter = Send
       if (ev.key === "Enter" && (ev.ctrlKey || ev.metaKey)) {
         ev.preventDefault();

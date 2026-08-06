@@ -1256,11 +1256,90 @@
     }
   }
 
+  function loadChatHist() {
+    try {
+      const raw = localStorage.getItem(CHAT_HIST_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      chatHist = Array.isArray(arr)
+        ? arr.filter(function (s) {
+            return typeof s === "string" && s.trim();
+          }).slice(-CHAT_HIST_MAX)
+        : [];
+    } catch (_e) {
+      chatHist = [];
+    }
+    chatHistIdx = -1;
+    chatDraft = "";
+  }
+
+  function saveChatHist() {
+    try {
+      localStorage.setItem(
+        CHAT_HIST_KEY,
+        JSON.stringify(chatHist.slice(-CHAT_HIST_MAX))
+      );
+    } catch (_e) {
+      /* ignore quota */
+    }
+  }
+
+  /** Push a sent line (like shell history). Dedupes consecutive duplicates. */
+  function pushChatHist(text) {
+    const t = String(text || "").trim();
+    if (!t) return;
+    if (chatHist.length && chatHist[chatHist.length - 1] === t) {
+      chatHistIdx = -1;
+      chatDraft = "";
+      return;
+    }
+    chatHist.push(t);
+    if (chatHist.length > CHAT_HIST_MAX) {
+      chatHist = chatHist.slice(-CHAT_HIST_MAX);
+    }
+    saveChatHist();
+    chatHistIdx = -1;
+    chatDraft = "";
+  }
+
+  /**
+   * ArrowUp = older, ArrowDown = newer (back to empty draft).
+   * Same mental model as bash/zsh.
+   */
+  function chatHistNav(dir) {
+    if (!els.chatInput || !chatHist.length) return;
+    if (chatHistIdx === -1) {
+      if (dir < 0) {
+        chatDraft = els.chatInput.value;
+        chatHistIdx = chatHist.length - 1;
+      } else {
+        return;
+      }
+    } else {
+      chatHistIdx += dir;
+      if (chatHistIdx < 0) chatHistIdx = 0;
+      if (chatHistIdx >= chatHist.length) {
+        chatHistIdx = -1;
+        els.chatInput.value = chatDraft;
+        return;
+      }
+    }
+    const line = chatHist[chatHistIdx] || "";
+    els.chatInput.value = line;
+    try {
+      els.chatInput.setSelectionRange(line.length, line.length);
+    } catch (_e) {
+      /* ignore */
+    }
+  }
+
   async function sendChat() {
     const text = (els.chatInput.value || "").trim();
     if (!text || chatBusy) return;
     appendChat("you", text);
+    pushChatHist(text);
     els.chatInput.value = "";
+    chatHistIdx = -1;
+    chatDraft = "";
     const cb = w.GnomHub.onSend;
     if (typeof cb === "function") cb(text);
 

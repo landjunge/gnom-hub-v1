@@ -23,7 +23,26 @@
     if (teamSave) teamSave.addEventListener("click", saveCurrentTeam);
     if (teamDel) teamDel.addEventListener("click", deleteSelectedTeam);
     if (planMode) planMode.addEventListener("change", setPlanModeFromUi);
+    loadChatHist();
     els.chatInput.addEventListener("keydown", function (ev) {
+      // Terminal-style history: ↑ older · ↓ newer
+      if (ev.key === "ArrowUp") {
+        ev.preventDefault();
+        chatHistNav(-1);
+        return;
+      }
+      if (ev.key === "ArrowDown") {
+        ev.preventDefault();
+        chatHistNav(1);
+        return;
+      }
+      // Typing resets history cursor to "live draft"
+      if (ev.key.length === 1 || ev.key === "Backspace" || ev.key === "Delete") {
+        if (chatHistIdx !== -1) {
+          chatHistIdx = -1;
+          chatDraft = "";
+        }
+      }
       // Ctrl/Cmd+Enter = Execute; plain Enter = Send
       if (ev.key === "Enter" && (ev.ctrlKey || ev.metaKey)) {
         ev.preventDefault();
