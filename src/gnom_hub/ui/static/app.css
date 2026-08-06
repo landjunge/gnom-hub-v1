@@ -539,42 +539,78 @@ html, body {
 .agent-card.color-worker3 { --card-color: var(--c-worker3); }
 .agent-card.color-worker4 { --card-color: var(--c-worker4); }
 
-/* —— Three boxes: same full width as agents; fill remaining height —— */
+/* —— Three mini-displays: full width = agents; fill remaining height ——
+   Each box is a small screen: create + show HTML / code / text inside. */
 .boxes {
   display: flex;
   flex-direction: row;
   gap: var(--gap);
-  width: 100%; /* exact horizontal match with .agent-cards */
-  flex: 1 1 auto; /* take all free vertical space */
+  width: 100%;
+  flex: 1 1 auto;
   min-height: 0;
   margin-bottom: 0;
 }
 
-.box {
-  /* equal thirds of full width; height = full boxes row */
+.box.mini-display {
   flex: 1 1 0;
   width: 0;
   min-width: 0;
   height: 100%;
   min-height: 0;
   max-height: none;
-  background: var(--bg-panel);
-  /* Plan: 1px border; color = active agent using this box */
+  /* device bezel */
+  background: #141518;
   border: 1px solid var(--box-agent-color, var(--border));
-  border-radius: 4px;
+  border-radius: 8px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 4px 14px rgba(0, 0, 0, 0.45);
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* header fixed; body scrolls */
-  transition: border-color 0.2s ease;
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.box.mini-display:focus-within {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 0 0 1px var(--box-agent-color, #4dabf7),
+    0 4px 18px rgba(0, 0, 0, 0.5);
 }
 
 .box-header {
   flex: 0 0 auto;
-  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
   font-weight: 600;
-  font-size: 12px;
-  border-bottom: 1px solid var(--border);
-  background: #2c2e33;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  text-transform: none;
+  border-bottom: 1px solid #0a0a0c;
+  background: linear-gradient(180deg, #2a2c32 0%, #1e2024 100%);
+  user-select: none;
+}
+
+.display-led {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2f9e44;
+  box-shadow: 0 0 6px #2f9e44;
+  flex: 0 0 auto;
+}
+
+.box[data-active="true"] .display-led {
+  background: #69db7c;
+  box-shadow: 0 0 8px #69db7c;
+  animation: display-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes display-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
 }
 
 .box3-header {
@@ -712,10 +748,10 @@ html, body {
 .box-brainstorm .box-header { color: var(--c-brainstorm); }
 .box-worker .box-header { color: var(--c-worker1); }
 
-.box-body {
+/* Screen surface inside the bezel */
+.box-body.display-screen {
   flex: 1 1 auto;
-  padding: 8px 10px;
-  /* Fill remaining box height; scroll only when content exceeds (not fixed 300px) */
+  padding: 6px 8px;
   overflow: auto;
   min-height: 0;
   white-space: pre-wrap;
@@ -726,13 +762,16 @@ html, body {
   scrollbar-color: #495057 transparent;
   display: flex;
   flex-direction: column;
+  background: #0b0c0e; /* black screen */
+  color: var(--text);
 }
 
-/* Box 3 body is also the dynamic panel host — no double outer scroll */
-.box-body.box3-dynamic {
-  padding: 4px;
+/* Box 3 hosts nested mini-displays (one per worker) */
+.box-body.display-screen.box3-dynamic {
+  padding: 5px;
   overflow: hidden;
   white-space: normal;
+  gap: 5px;
 }
 
 .box-body::-webkit-scrollbar,
@@ -755,27 +794,44 @@ html, body {
 .box-body .result-block {
   white-space: pre-wrap;
   margin: 0;
-  /* fill box; long text scrolls inside body only if needed */
   max-height: none;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
 }
 
-/* —— Box 3: dynamic — one panel per worker (1,2,3,4…), equal height share —— */
+/* Full-area content stack inside a mini-display */
+.display-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  gap: 4px;
+}
+
+.display-modes {
+  flex: 0 0 auto;
+  align-self: flex-end;
+}
+
+/* —— Nested mini-displays: one screen per worker result —— */
 .box3-dynamic {
   display: flex;
   flex-direction: column;
-  gap: 4px;
   flex: 1 1 auto;
   min-height: 0;
   height: 100%;
 }
 
 .worker-panel {
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: #1e1f23;
+  border: 1px solid #2c2e33;
+  border-radius: 6px;
+  background: #121316;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
   display: flex;
   flex-direction: column;
-  flex: 1 1 0; /* equal share of Box 3 for each worker result */
+  flex: 1 1 0;
   min-height: 0;
   overflow: hidden;
 }
@@ -799,8 +855,8 @@ html, body {
   justify-content: space-between;
   gap: 6px;
   padding: 3px 6px;
-  background: #2c2e33;
-  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, #25272c 0%, #1a1b1e 100%);
+  border-bottom: 1px solid #0a0a0c;
   flex: 0 0 auto;
 }
 
@@ -854,6 +910,7 @@ html, body {
   position: relative;
   display: flex;
   flex-direction: column;
+  background: #0b0c0e; /* nested screen */
 }
 
 .worker-panel-body .worker-source {

@@ -1,11 +1,68 @@
 /* part: 04-boxes.js  lines 3682-4267 of app.js — edit parts, run scripts/build_ui_js.py */
+  /**
+   * Box 2 mini-display: text always; if real HTML is present, show live preview too.
+   * Create + show everything inside the screen.
+   */
   function setBox2(htmlOrText) {
     const body = document.getElementById("box2-content");
     if (!body) return;
     body.innerHTML = "";
+    const raw = htmlOrText || "";
+    const html = extractHtml(raw);
+
+    if (html) {
+      const wrap = document.createElement("div");
+      wrap.className = "display-content";
+      const modes = document.createElement("div");
+      modes.className = "worker-panel-modes display-modes";
+      const btnPrev = document.createElement("button");
+      btnPrev.type = "button";
+      btnPrev.className = "worker-mode-btn is-active";
+      btnPrev.textContent = "Preview";
+      const btnSrc = document.createElement("button");
+      btnSrc.type = "button";
+      btnSrc.className = "worker-mode-btn";
+      btnSrc.textContent = "Source";
+      modes.appendChild(btnPrev);
+      modes.appendChild(btnSrc);
+      wrap.appendChild(modes);
+
+      const frame = document.createElement("iframe");
+      frame.className = "worker-preview-frame";
+      frame.setAttribute(
+        "sandbox",
+        "allow-same-origin allow-forms allow-popups allow-modals"
+      );
+      frame.setAttribute("title", "Brainstorm preview");
+      frame.srcdoc = wrapHtmlDocument(html);
+
+      const pre = document.createElement("pre");
+      pre.className = "result-block worker-source";
+      pre.textContent = raw;
+      pre.hidden = true;
+
+      wrap.appendChild(frame);
+      wrap.appendChild(pre);
+      body.appendChild(wrap);
+
+      btnPrev.addEventListener("click", function () {
+        btnPrev.classList.add("is-active");
+        btnSrc.classList.remove("is-active");
+        frame.hidden = false;
+        pre.hidden = true;
+      });
+      btnSrc.addEventListener("click", function () {
+        btnSrc.classList.add("is-active");
+        btnPrev.classList.remove("is-active");
+        frame.hidden = true;
+        pre.hidden = false;
+      });
+      return;
+    }
+
     const pre = document.createElement("pre");
     pre.className = "result-block";
-    pre.textContent = htmlOrText || "";
+    pre.textContent = raw;
     body.appendChild(pre);
   }
 
@@ -326,11 +383,16 @@
 
   function buildWorkerPanel(out, idx) {
     const panel = document.createElement("div");
-    panel.className = "worker-panel worker-panel-" + (out.worker || idx);
+    panel.className =
+      "worker-panel mini-display worker-panel-" + (out.worker || idx);
     panel.dataset.worker = out.worker || "";
 
     const head = document.createElement("div");
     head.className = "worker-panel-head";
+    const led = document.createElement("span");
+    led.className = "display-led";
+    led.setAttribute("aria-hidden", "true");
+    head.appendChild(led);
     const title = document.createElement("span");
     title.className = "worker-panel-title";
     title.textContent = out.name || "Worker " + (idx + 1);
