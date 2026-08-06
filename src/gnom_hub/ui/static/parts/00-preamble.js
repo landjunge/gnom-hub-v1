@@ -114,6 +114,8 @@
 
   let activeStage = "idle";
   let tuneAgentId = null;
+  /** Agent id last clicked — box module 1px border color */
+  let lastClickedAgentId = null;
   let clickTimer = null;
   let recognition = null;
   let listening = false;
@@ -165,7 +167,34 @@
     return false;
   }
 
+  /** Box-Modul: 1px Rahmen in Agentenfarbe (Klick). */
+  function paintBoxesModule(agentId) {
+    lastClickedAgentId = agentId || null;
+    const hex =
+      agentId && COLOR_HEX[agentId] ? COLOR_HEX[agentId] : null;
+    const mod = document.querySelector(".boxes");
+    if (mod) {
+      mod.style.setProperty(
+        "--boxes-mod-color",
+        hex || "var(--border)"
+      );
+    }
+    ["box1", "box2", "box3"].forEach(function (id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.style.setProperty(
+        "--box-agent-color",
+        hex || "var(--border)"
+      );
+    });
+  }
+
   function updateBoxBorders() {
+    /* Klick-Agent hat Vorrang: ganzes Modul in Agentenfarbe 1px */
+    if (lastClickedAgentId && COLOR_HEX[lastClickedAgentId]) {
+      paintBoxesModule(lastClickedAgentId);
+      return;
+    }
     const map = {
       idle: { box1: null, box2: null, box3: null },
       memory: { box1: "memory", box2: null, box3: null },
@@ -183,6 +212,10 @@
       error: { box1: null, box2: null, box3: null },
     };
     const m = map[activeStage] || map.idle;
+    const mod = document.querySelector(".boxes");
+    if (mod) {
+      mod.style.setProperty("--boxes-mod-color", "var(--border)");
+    }
     [
       ["box1", m.box1],
       ["box2", m.box2],
@@ -282,6 +315,7 @@
         if (clickTimer) clearTimeout(clickTimer);
         clickTimer = setTimeout(function () {
           clickTimer = null;
+          paintBoxesModule(agent.id);
           openTuneModal(agent.id);
         }, 220);
       });

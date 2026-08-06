@@ -565,6 +565,10 @@ html, body {
   margin-top: calc(20px - var(--gap));
   margin-bottom: 0;
   position: relative;
+  /* 1px module frame — agent color on click */
+  border: 1px solid var(--boxes-mod-color, var(--border));
+  box-sizing: border-box;
+  transition: border-color 0.15s ease;
 }
 
 /* 1/3 = genau 1 Box (Info) */
