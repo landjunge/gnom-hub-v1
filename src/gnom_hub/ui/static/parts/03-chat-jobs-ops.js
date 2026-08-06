@@ -1374,12 +1374,16 @@
       if (stage === "brainstorm") {
         appendChat(
           "system",
-          "Brainstorm ready — keep chatting, or press Execute for workers."
+          "Brainstorm — weiter chatten. Klare Bau-Aufträge laufen von selbst (Execute aus Kontext)."
         );
-        toast("Brainstorm ready · Execute when ready", "ok");
+        toast("Brainstorm · bei Bau-Auftrag startet die Pipeline von selbst", "ok");
       } else if (stage === "done") {
-        appendChat("system", "Pipeline done.");
-        toast("Pipeline done", "ok");
+        appendChat(
+          "system",
+          "Auto-Execute aus Kontext — fertig, siehe Box 3 (kein extra Execute-Klick)."
+        );
+        toast("Aus Kontext ausgeführt · Box 3", "ok");
+        focusBox3();
       } else if (stage === "clarify") {
         appendChat("system", "Need a clarify answer in Box 1.");
         toast("Clarify needed in Box 1", "info");

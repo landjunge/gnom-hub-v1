@@ -281,19 +281,33 @@ def test_state_and_agents(client: TestClient):
 
 
 def test_chat_brainstorm_then_execute(client: TestClient):
-    r = client.post("/api/chat?sync=1", json={"text": "Build a simple landing page"})
+    # Pure question → brainstorm only (no auto-execute)
+    r = client.post("/api/chat?sync=1", json={"text": "was ist mit tts im hub"})
     assert r.status_code == 200
     data = r.json()
     assert data["pipeline"]["stage"] == "brainstorm"
     assert data["pipeline"]["brainstorm_notes"]
     assert data["pipeline"].get("can_execute") is True
-    assert data["pipeline"].get("worker_results") in (None, [])
 
-    r2 = client.post("/api/execute?sync=1")
+    # Clear build intent → auto-execute from context (no extra Execute click)
+    r2 = client.post(
+        "/api/chat?sync=1",
+        json={"text": "Build a simple landing page as one HTML file"},
+    )
     assert r2.status_code == 200
     data2 = r2.json()
     assert data2["pipeline"]["stage"] == "done"
     assert data2["pipeline"]["worker_results"]
+
+
+def test_manual_execute_still_works(client: TestClient):
+    r = client.post("/api/chat?sync=1", json={"text": "nur ideen zu einer checkliste"})
+    assert r.status_code == 200
+    assert r.json()["pipeline"]["stage"] == "brainstorm"
+    r2 = client.post("/api/execute?sync=1")
+    assert r2.status_code == 200
+    assert r2.json()["pipeline"]["stage"] == "done"
+    assert r2.json()["pipeline"]["worker_results"]
 
 
 def test_chat_full_pipeline_compat(client: TestClient):

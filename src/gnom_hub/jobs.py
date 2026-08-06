@@ -55,11 +55,12 @@ class JobsMixin:
             else:
                 job["status"] = "done"
                 job["stage"] = sv
-                if name in ("execute", "pipeline", "worker_rerun"):
+                # brainstorm jobs may auto-execute from context → stage done
+                if name in ("execute", "pipeline", "worker_rerun", "brainstorm") and sv == "done":
                     self._capture_workspace_outputs()
-                    if name in ("execute", "pipeline"):
+                    if name in ("execute", "pipeline", "brainstorm"):
                         self._remember_execute_export()
-                    if name == "execute":
+                    if name in ("execute", "pipeline"):
                         self.maybe_auto_pack()
 
         def _run() -> None:
@@ -165,10 +166,11 @@ class JobsMixin:
         self.memory.set_query_hint(text)
 
         def _runner() -> None:
+            self.pipeline.plan_mode = getattr(self, "plan_mode", "default") or "default"
             if full:
-                self.pipeline.plan_mode = getattr(self, "plan_mode", "default") or "default"
                 self.pipeline.start(text)
             else:
+                # brainstorm_turn may auto-execute from context
                 self.pipeline.brainstorm_turn(text)
 
         return self._start_job("brainstorm" if not full else "pipeline", _runner)

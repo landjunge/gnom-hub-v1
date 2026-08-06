@@ -29,12 +29,16 @@ class PipelineApiMixin:
                 self.pipeline.plan_mode = getattr(self, "plan_mode", "default") or "default"
                 self.pipeline.start(text)
             else:
+                # May auto-execute when user intent is clearly “build/do it”
+                self.pipeline.plan_mode = getattr(self, "plan_mode", "default") or "default"
                 self.pipeline.brainstorm_turn(text)
             if self.pipeline.state.error:
                 self.last_error = self.pipeline.state.error
-            elif full and self.pipeline.state.stage.value == "done":
+            elif self.pipeline.state.stage.value == "done":
                 self._capture_workspace_outputs()
                 self._remember_execute_export()
+                if full:
+                    self.maybe_auto_pack()
             return self.snapshot()
 
     def execute_sync(self) -> dict[str, Any]:

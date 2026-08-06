@@ -201,6 +201,13 @@ class Orchestrator:
                     "turns": len(self._state.brainstorm_turns),
                 },
             )
+            # Execute emerges from context — no forced extra button when intent is clear
+            if _wants_auto_execute(text, self._state.brainstorm_turns):
+                self.bus.emit(
+                    "pipeline.auto_execute",
+                    {"reason": "context", "text": text[:120]},
+                )
+                return self.execute()
         except Exception as exc:  # noqa: BLE001
             self._fail(str(exc))
         return self._state
@@ -652,6 +659,103 @@ class Orchestrator:
         self._state.error = message
         self.bus.emit("pipeline.stage", {"stage": PipelineStage.error.value})
         self.bus.emit("pipeline.error", {"error": message})
+
+
+def _wants_auto_execute(text: str, turns: list[dict] | None = None) -> bool:
+    """
+    True when the user message already means “do it / build it” — Execute
+    should follow from context instead of an extra click.
+    """
+    from gnom_hub.agents.roles_ext import _wants_one_html_page
+
+    t = (text or "").strip()
+    if len(t) < 6:
+        return False
+    low = t.lower()
+
+    # Pure questions / diagnosis without a deliverable → brainstorm only
+    diagnose = (
+        "wo hakt",
+        "wo es hakt",
+        "wo ist der fehler",
+        "was ist mit",
+        "warum",
+        "erklär",
+        "analys",
+        "prüfe die pipeline",
+        "only brainstorm",
+        "nur brainstorm",
+        "nur ideen",
+        "ideen zu",
+    )
+    buildish = (
+        "baue",
+        "build",
+        "html",
+        "landing",
+        "seite",
+        "page",
+        "implement",
+        "erstelle",
+        "mach mir",
+        "todo",
+    )
+    if any(d in low for d in diagnose) and not any(b in low for b in buildish):
+        return False
+    if low.endswith("?") and not any(b in low for b in buildish):
+        return False
+
+    # Explicit deliverable / build intent
+    if _wants_one_html_page(t):
+        return True
+    triggers = (
+        "baue ",
+        "baue eine",
+        "baue mir",
+        "build a",
+        "build me",
+        "erstelle ",
+        "create a",
+        "implement ",
+        "mach mir",
+        "mach eine",
+        "schreibe ",
+        "schreib eine",
+        "single-file",
+        "single file",
+        "landingpage",
+        "landing page",
+        "website",
+        "todo app",
+        "ausführen",
+        "setz um",
+        "umsetzen",
+        "deliver",
+        "fertig machen",
+    )
+    if any(k in low for k in triggers):
+        return True
+
+    # Short “go” after prior brainstorm turns
+    users = [
+        str(x.get("text") or "").strip()
+        for x in (turns or [])
+        if x.get("role") == "user" and str(x.get("text") or "").strip()
+    ]
+    return len(users) >= 2 and low in (
+        "go",
+        "los",
+        "ok",
+        "machs",
+        "mach das",
+        "mach es",
+        "execute",
+        "do it",
+        "ja mach",
+        "jetzt",
+        "bau es",
+        "bau das",
+    )
 
 
 def _pick_execute_task(turns: list[dict], fallback: str = "") -> str:
