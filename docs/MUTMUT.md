@@ -75,3 +75,31 @@ Workflow for a survivor:
 ## Relation to Stryker
 
 No Stryker-Python. mutmut ≈ Stryker’s role for this repo; see chat notes / TESTING.md.
+
+
+## Hooks (implementation)
+
+### Shell — `scripts/mutmut_hooks.py`
+
+| Phase | Action |
+|-------|--------|
+| **pre** | clear `gnom_hub/**/__pycache__` + `*.pyc`, remove orphan `*.bak`, require `src/gnom_hub` |
+| **post** | same cleanup after mutmut restores the source file |
+
+```toml
+pre_mutation = "python scripts/mutmut_hooks.py pre"
+post_mutation = "python scripts/mutmut_hooks.py post"
+```
+
+`MUTMUT_HOOK_QUIET=1` silences log lines (stdout still ok for mutmut).
+
+### In-process — `mutmut_config.py` (repo root)
+
+mutmut imports this automatically. `pre_mutation(context)` can set `context.skip = True` for:
+
+- empty / comment lines
+- `mutmut skip` / `pragma: no mutmut` markers
+- single-line docstrings
+- debug `print(...)` lines
+
+Skips are **not** killed/survived — they are excluded from the score.
