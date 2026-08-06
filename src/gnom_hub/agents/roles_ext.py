@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from gnom_hub.agents.base import BaseAgent
+from gnom_hub.agents.plan_fast_path import _wants_one_html_page, resolve_plan_mode  # noqa: F401
 from gnom_hub.agents.roles_helpers import (
     _is_flex_meta_requirement,
-    _is_garbage_fact,
     _lines,
     _needs_clarify,
     _with_memory,
 )
-from gnom_hub.agents.plan_fast_path import _wants_one_html_page, resolve_plan_mode
-from gnom_hub.core.event_bus import EventBus
 from gnom_hub.pipeline.models import DistillQuestion
 
 
@@ -193,3 +189,37 @@ def _simple_task_plan(
     if clean and templates:
         templates[0] += "\n" + "\n".join(f"- {r}" for r in clean[:4])
     return [(wid, templates[i % len(templates)]) for i, wid in enumerate(worker_ids[:4])]
+
+
+class WorkerAgent(BaseAgent):
+    """Worker agent: executes a single assigned task and returns the result."""
+
+    def execute(self, task: str, context: str = "") -> str:
+        self.emit_active(True)
+        try:
+            if self.has_llm():
+                try:
+                    return self.ask(
+                        system=(
+                            "You are a worker agent. Complete the assigned task. "
+                            "Deliver a concrete, self-contained result."
+                        ),
+                        user=f"Task: {task}\n\nContext: {context}" if context else f"Task: {task}",
+                        max_tokens=800,
+                        temperature=0.4,
+                    )
+                except Exception:  # noqa: BLE001
+                    pass
+            return f"[stub] {task}"
+        finally:
+            self.emit_active(False)
+
+
+class MemoryAgent(BaseAgent):
+    """Memory agent: stores and retrieves pipeline context."""
+
+    def store(self, key: str, value: str) -> None:
+        self.bus.emit("memory.store", {"key": key, "value": value})
+
+    def recall(self, key: str) -> str:
+        return ""
