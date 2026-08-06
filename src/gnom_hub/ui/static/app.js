@@ -3849,6 +3849,7 @@
         "allow-same-origin allow-forms allow-popups allow-modals"
       );
       frame.setAttribute("title", opts.title || "preview");
+      frame.setAttribute("scrolling", "yes"); /* full-size pages scroll inside */
       frame.srcdoc = wrapHtmlDocument(html);
       const pre = document.createElement("pre");
       pre.className = "result-block worker-source dyn-source";

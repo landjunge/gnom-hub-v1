@@ -728,10 +728,10 @@ html, body {
   flex-direction: column;
 }
 
-/* Box 3 body is also the dynamic panel host — no double outer scroll */
+/* Box 3: scroll host so large multi-worker content stays fully viewable */
 .box-body.box3-dynamic {
   padding: 4px;
-  overflow: hidden;
+  overflow: auto; /* not hidden — huge results stay reachable */
   white-space: normal;
 }
 
@@ -790,7 +790,7 @@ html, body {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: auto; /* any size content: scroll, never clip */
 }
 
 .dyn-frame,
@@ -798,6 +798,14 @@ html, body {
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
+}
+
+.dyn-frame {
+  /* large HTML pages scroll inside the frame */
+  min-height: clamp(180px, 32vh, 520px);
+  height: 100%;
+  border: 0;
+  background: #fff;
 }
 
 .dyn-source {
@@ -808,6 +816,7 @@ html, body {
   line-height: 1.35;
   white-space: pre-wrap;
   word-break: break-word;
+  max-height: none; /* never cap source length */
 }
 
 .dyn-code {
@@ -816,21 +825,23 @@ html, body {
 }
 
 .dyn-note {
-  flex: 0 0 auto;
-  max-height: 30%;
+  flex: 0 1 auto;
+  max-height: none; /* full text, scroll stage if needed */
+  overflow: auto;
   border-top: 1px solid var(--border);
   color: var(--text-muted);
   font-size: 10px;
 }
 
-/* —— Box 3: one panel per worker; content inside is dynamic by type —— */
+/* —— Box 3: one panel per worker; content of any size stays viewable —— */
 .box3-dynamic {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   flex: 1 1 auto;
   min-height: 0;
-  height: 100%;
+  height: auto;
+  min-height: 100%;
 }
 
 .worker-panel {
@@ -839,8 +850,9 @@ html, body {
   background: #1e1f23;
   display: flex;
   flex-direction: column;
-  flex: 1 1 0; /* equal share of Box 3 for each worker result */
-  min-height: 0;
+  flex: 1 1 auto;
+  /* usable height even with many workers; panel scrolls for huge content */
+  min-height: clamp(200px, 36vh, 640px);
   overflow: hidden;
 }
 
@@ -937,7 +949,7 @@ html, body {
   display: block;
   flex: 1 1 auto;
   width: 100%;
-  min-height: 0; /* fill panel — no fixed 300px tile */
+  min-height: clamp(180px, 32vh, 520px);
   height: 100%;
   border: 0;
   background: #fff;
