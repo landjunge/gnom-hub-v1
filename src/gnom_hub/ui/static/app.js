@@ -4344,7 +4344,8 @@
   }
 
   function bindBoxLayerControls() {
-    document.querySelectorAll(".layer-controls").forEach(function (bar) {
+    // Toolbar under each box header (horizontal, centered)
+    document.querySelectorAll(".box-toolbar").forEach(function (bar) {
       if (bar.dataset.bound === "1") return;
       bar.dataset.bound = "1";
       bar.addEventListener("click", function (ev) {
