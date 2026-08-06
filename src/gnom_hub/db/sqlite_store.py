@@ -1,13 +1,17 @@
 """
-SQLite store — one file: data/hub.db (portable, private; never git-pushed).
+SQLite store — personal file: ~/…/user.db (never git-pushed).
+
+Default path: ~/.local/share/gnom-hub/user.db
+Override: GNOM_USER_DB=/absolute/or/~/path/user.db
 
 Holds durable WARM facts, HOT session messages/facts, and simple KV.
-JSONL/session.json are migrated once on first open (legacy import).
+Legacy data/warm + data/hot JSON is migrated once from the project tree.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import threading
 from datetime import datetime, timezone
@@ -50,32 +54,51 @@ CREATE TABLE IF NOT EXISTS kv (
 """
 
 _lock = threading.RLock()
-_instances: dict[str, "GnomDatabase"] = {}
+_instances: dict[str, GnomDatabase] = {}
 
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
-def get_db(root: Path | None = None) -> "GnomDatabase":
-    """Process-wide DB per project root."""
+def default_user_db_path() -> Path:
+    """
+    Personal DB in the user's home (never inside the git repo).
+
+    Default: ~/.local/share/gnom-hub/user.db
+    Override with env GNOM_USER_DB (or GNOM_DB_PATH).
+    """
+    raw = (os.getenv("GNOM_USER_DB") or os.getenv("GNOM_DB_PATH") or "").strip()
+    if raw:
+        return Path(raw).expanduser().resolve()
+    return (Path.home() / ".local" / "share" / "gnom-hub" / "user.db").resolve()
+
+
+def get_db(root: Path | None = None) -> GnomDatabase:
+    """Process-wide DB (keyed by db file path)."""
     r = Path(root) if root is not None else project_root()
-    key = str(r.resolve())
+    path = default_user_db_path()
+    key = str(path)
     with _lock:
         if key not in _instances:
-            _instances[key] = GnomDatabase(r)
+            _instances[key] = GnomDatabase(r, db_path=path)
         return _instances[key]
 
 
 class GnomDatabase:
-    """Your local Gnom database (SQLite)."""
+    """Your personal Gnom database (SQLite user.db in home)."""
 
-    def __init__(self, root: Path | None = None) -> None:
+    def __init__(
+        self,
+        root: Path | None = None,
+        *,
+        db_path: Path | None = None,
+    ) -> None:
         self.root = Path(root) if root is not None else project_root()
+        # Project data/ only for one-time migration from old JSONL files
         self.data_dir = self.root / "data"
-        self.data_dir.mkdir(parents=True, exist_ok=True)
-        # Not gnom.db — plain instance DB under data/ (gitignored)
-        self.path = self.data_dir / "hub.db"
+        self.path = Path(db_path) if db_path is not None else default_user_db_path()
+        self.path.parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(
             str(self.path),
             check_same_thread=False,
@@ -93,9 +116,7 @@ class GnomDatabase:
             self._conn.close()
 
     def _meta_get(self, key: str) -> str | None:
-        row = self._conn.execute(
-            "SELECT value FROM meta WHERE key = ?", (key,)
-        ).fetchone()
+        row = self._conn.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
         return str(row["value"]) if row else None
 
     def _meta_set(self, key: str, value: str) -> None:
@@ -194,9 +215,7 @@ class GnomDatabase:
         if not t:
             return False
         with _lock:
-            cur = self._conn.execute(
-                "DELETE FROM warm_facts WHERE text = ? COLLATE NOCASE", (t,)
-            )
+            cur = self._conn.execute("DELETE FROM warm_facts WHERE text = ? COLLATE NOCASE", (t,))
         return cur.rowcount > 0
 
     def warm_remove_at(self, index: int) -> str | None:
@@ -250,9 +269,7 @@ class GnomDatabase:
 
     def hot_facts(self) -> list[str]:
         with _lock:
-            rows = self._conn.execute(
-                "SELECT text FROM hot_facts ORDER BY id ASC"
-            ).fetchall()
+            rows = self._conn.execute("SELECT text FROM hot_facts ORDER BY id ASC").fetchall()
         return [str(r["text"]) for r in rows]
 
     def hot_fact_count(self) -> int:
@@ -279,9 +296,7 @@ class GnomDatabase:
     def hot_remove_fact(self, text: str) -> bool:
         t = " ".join(str(text).split()).strip()
         with _lock:
-            cur = self._conn.execute(
-                "DELETE FROM hot_facts WHERE lower(text) = lower(?)", (t,)
-            )
+            cur = self._conn.execute("DELETE FROM hot_facts WHERE lower(text) = lower(?)", (t,))
         return cur.rowcount > 0
 
     def hot_remove_fact_at(self, index: int) -> str | None:
@@ -320,9 +335,7 @@ class GnomDatabase:
 
     def kv_get(self, key: str, default: str | None = None) -> str | None:
         with _lock:
-            row = self._conn.execute(
-                "SELECT value FROM kv WHERE key = ?", (key,)
-            ).fetchone()
+            row = self._conn.execute("SELECT value FROM kv WHERE key = ?", (key,)).fetchone()
         return str(row["value"]) if row else default
 
     def kv_set(self, key: str, value: str) -> None:
