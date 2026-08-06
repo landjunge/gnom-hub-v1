@@ -485,15 +485,17 @@ html, body {
   display: flex;
   flex-direction: row;
   gap: 2px; /* 2px free between agents */
+  justify-content: center;
   width: 100%;
   flex: 0 0 auto;
   margin-bottom: 0;
   height: var(--card-h);
 }
 
+/* equal share minus 20px horizontal each (7×2px gaps) */
 .agent-card {
-  flex: 1 1 0;
-  width: 0;
+  flex: 0 0 calc((100% - 14px) / 8 - 20px);
+  width: calc((100% - 14px) / 8 - 20px);
   min-width: 0;
   height: 100%;
   background: var(--bg-card);
