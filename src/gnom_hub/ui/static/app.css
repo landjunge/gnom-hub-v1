@@ -627,42 +627,54 @@ html, body {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
-.box-header {
-  flex: 0 0 auto;
-  padding: 6px 10px;
-  font-weight: 600;
-  font-size: 12px;
-  border-bottom: 1px solid var(--border);
-  background: #2c2e33;
-}
-
-/* Button module under header — horizontal, centered */
-.box-toolbar {
+/* One strip: name + buttons (no second row wasted) */
+.box-bar {
   flex: 0 0 auto;
   display: flex;
   flex-direction: row;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 4px 8px;
-  min-height: 30px;
+  gap: 8px;
+  min-height: 28px;
+  padding: 2px 6px 2px 8px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-elev);
 }
 
-.box-toolbar-label {
+.box-title {
+  flex: 0 0 auto;
+  font-weight: 600;
   font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.box-toolbar {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.box-toolbar-label {
+  font-size: 10px;
   font-weight: 500;
   color: var(--text-muted);
-  min-width: 4.5em;
+  min-width: 3em;
   text-align: center;
 }
 
 .box-toolbar .layer-btn {
-  height: 24px;
-  min-width: 36px;
-  padding: 0 10px;
+  height: 22px;
+  min-width: 28px;
+  padding: 0 8px;
   border: 1px solid var(--border);
   border-radius: 3px;
   background: var(--bg-card);
@@ -809,9 +821,9 @@ html, body {
   font-weight: 600;
 }
 
-.box-arounder .box-header { color: #74c0fc; }
-.box-brainstorm .box-header { color: var(--c-brainstorm); }
-.box-worker .box-header { color: var(--c-worker1); }
+.box-1 .box-title { color: #74c0fc; }
+.box-2 .box-title { color: var(--c-brainstorm); }
+.box-3 .box-title { color: var(--c-worker1); }
 
 .box-body {
   flex: 1 1 auto;

@@ -114,31 +114,31 @@ TOOLTIPS: dict[str, dict[str, TooltipText]] = {
     },
     "box1": {
         "en": {
-            "title": "Arounder (Box 1)",
+            "title": "Box 1",
             "how_to": "Hover help, clarify buttons, slider explanations while tuning.",
             "example": "Hover Memory or open agent tuning → explanations appear here.",
         },
         "de": {
-            "title": "Arounder (Box 1)",
+            "title": "Box 1",
             "how_to": "Hover-Hilfe, Clarify-Buttons, Slider-Erklärungen beim Tuning.",
             "example": "Memory hovern oder Agent-Tuning öffnen → Erklärung hier.",
         },
     },
     "box2": {
         "en": {
-            "title": "Brainstorm (Box 2)",
+            "title": "Box 2",
             "how_to": "Dialogue turns, flex notes, distilled requirements.",
             "example": "You + Brainstorm messages stack here until Execute.",
         },
         "de": {
-            "title": "Brainstorm (Box 2)",
+            "title": "Box 2",
             "how_to": "Dialog-Turns, Flex-Notizen, destillierte Anforderungen.",
             "example": "Du + Brainstorm erscheinen hier bis Execute.",
         },
     },
     "box3": {
         "en": {
-            "title": "Worker results (Box 3)",
+            "title": "Box 3",
             "how_to": "Worker 1/2 panels with HTML Preview + Source.",
             "example": "After Execute, landing-page HTML renders in Preview.",
         },

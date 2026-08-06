@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=123" />
+  <link rel="stylesheet" href="/static/app.css?v=124" />
 </head>
 <body>
   <div id="app">
@@ -62,13 +62,15 @@
     <!-- 8 agent cards: equal width, full row = boxes -->
     <section id="agent-cards" class="agent-cards" aria-label="Agents"></section>
 
-    <!-- 3 boxes: dual content layers + button bar under header (centered) -->
+    <!-- 3 boxes: one bar = name + buttons (no double header strip) -->
     <section class="boxes" aria-label="Main panels">
-      <div id="box1" class="box box-arounder" data-tooltip-id="box1">
-        <div class="box-header">Arounder</div>
-        <div class="box-toolbar" data-box="box1" role="toolbar" aria-label="Arounder controls">
-          <button type="button" class="layer-btn" data-act="prev" title="Previous">‹ Prev</button>
-          <button type="button" class="layer-btn" data-act="next" title="Next">Next ›</button>
+      <div id="box1" class="box box-1" data-tooltip-id="box1">
+        <div class="box-bar">
+          <span class="box-title">Box 1</span>
+          <div class="box-toolbar" data-box="box1" role="toolbar" aria-label="Box 1">
+            <button type="button" class="layer-btn" data-act="prev" title="Previous">‹</button>
+            <button type="button" class="layer-btn" data-act="next" title="Next">›</button>
+          </div>
         </div>
         <div class="layer-stack">
           <div id="box1-content" class="layer layer-website box-body">
@@ -98,45 +100,43 @@
               </div>
             </div>
           </div>
-          <div class="layer layer-worker" data-box="box1" aria-hidden="true">
-            <span class="layer-worker-label">Arounder</span>
-          </div>
+          <div class="layer layer-worker" data-box="box1" aria-hidden="true"></div>
         </div>
       </div>
 
-      <div id="box2" class="box box-brainstorm" data-tooltip-id="box2">
-        <div class="box-header">Brainstorm</div>
-        <div class="box-toolbar" data-box="box2" role="toolbar" aria-label="Brainstorm controls">
-          <button type="button" class="layer-btn" data-act="prev" title="Previous">‹ Prev</button>
-          <button type="button" class="layer-btn" data-act="next" title="Next">Next ›</button>
+      <div id="box2" class="box box-2" data-tooltip-id="box2">
+        <div class="box-bar">
+          <span class="box-title">Box 2</span>
+          <div class="box-toolbar" data-box="box2" role="toolbar" aria-label="Box 2">
+            <button type="button" class="layer-btn" data-act="prev" title="Previous">‹</button>
+            <button type="button" class="layer-btn" data-act="next" title="Next">›</button>
+          </div>
         </div>
         <div class="layer-stack">
           <div id="box2-content" class="layer layer-website box-body">
             <p class="muted">Brainstorm dialogue appears here.</p>
             <p class="muted empty-hint">(Empty — Send a message.)</p>
           </div>
-          <div class="layer layer-worker" data-box="box2" aria-hidden="true">
-            <span class="layer-worker-label">Brainstorm</span>
-          </div>
+          <div class="layer layer-worker" data-box="box2" aria-hidden="true"></div>
         </div>
       </div>
 
-      <div id="box3" class="box box-worker" data-tooltip-id="box3">
-        <div class="box-header">Worker results</div>
-        <div class="box-toolbar" data-box="box3" role="toolbar" aria-label="Worker controls">
-          <button type="button" class="layer-btn" data-act="prev" title="Previous worker">‹ Prev</button>
-          <span class="box-toolbar-label" id="box3-worker-label">Workers</span>
-          <button type="button" class="layer-btn" data-act="copy" title="Copy to personal WS">Copy</button>
-          <button type="button" class="layer-btn" data-act="next" title="Next worker">Next ›</button>
+      <div id="box3" class="box box-3" data-tooltip-id="box3">
+        <div class="box-bar">
+          <span class="box-title">Box 3</span>
+          <div class="box-toolbar" data-box="box3" role="toolbar" aria-label="Box 3">
+            <button type="button" class="layer-btn" data-act="prev" title="Previous worker">‹</button>
+            <span class="box-toolbar-label" id="box3-worker-label"></span>
+            <button type="button" class="layer-btn" data-act="copy" title="Copy to personal WS">Copy</button>
+            <button type="button" class="layer-btn" data-act="next" title="Next worker">›</button>
+          </div>
         </div>
         <div class="layer-stack">
           <div id="box3-content" class="layer layer-website box-body box3-dynamic">
             <p class="muted">Worker result after Execute.</p>
             <p class="muted empty-hint">(Empty until Execute finishes.)</p>
           </div>
-          <div class="layer layer-worker" data-box="box3" aria-hidden="true">
-            <span class="layer-worker-label">Workers</span>
-          </div>
+          <div class="layer layer-worker" data-box="box3" aria-hidden="true"></div>
         </div>
       </div>
     </section>
@@ -452,6 +452,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=119"></script>
+  <script src="/static/app.js?v=124"></script>
 </body>
 </html>
