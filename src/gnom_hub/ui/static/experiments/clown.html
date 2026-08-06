@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Clown Lab — Layer-Experiment</title>
+  <title>Clown Lab — 4-Wege Nav · Layer · Filmstreifen</title>
   <style>
     :root {
       --bg: #0e0f12;
@@ -15,7 +15,7 @@
       --c2: #00d4ff;
       --c3: #ffff00;
       --c4: #7c3aed;
-      --gap: 10px;
+      --frame: var(--border);
     }
     * { box-sizing: border-box; }
     html, body {
@@ -34,128 +34,148 @@
       display: flex; flex-wrap: wrap; align-items: center;
       justify-content: space-between; gap: 8px;
     }
-    header h1 {
-      margin: 0; font-size: 16px; font-weight: 700;
-      letter-spacing: 0.02em;
-    }
+    header h1 { margin: 0; font-size: 16px; font-weight: 700; }
     header h1 span { color: var(--c1); }
-    header p { margin: 0; color: var(--muted); font-size: 12px; max-width: 42em; }
+    header p { margin: 0; color: var(--muted); font-size: 12px; max-width: 48em; }
     .badge {
       font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
       text-transform: uppercase; color: var(--c3);
       border: 1px solid var(--c3); padding: 2px 8px; border-radius: 999px;
     }
+    kbd {
+      font: 11px ui-monospace, Menlo, monospace;
+      border: 1px solid var(--border); border-bottom-width: 2px;
+      border-radius: 3px; padding: 1px 5px; background: #1a1c22; color: var(--text);
+    }
 
-    /* —— Stage: the layered “website” —— */
     .stage-wrap {
       display: grid;
-      grid-template-columns: 1fr 280px;
+      grid-template-columns: 1fr 300px;
       gap: 12px;
       min-height: 0;
     }
-    @media (max-width: 800px) {
+    @media (max-width: 860px) {
       .stage-wrap { grid-template-columns: 1fr; }
     }
 
+    /* —— Stage stack (layers up/down) —— */
     .stage {
       position: relative;
-      min-height: 360px;
+      min-height: 380px;
       height: 100%;
-      border: 1px solid var(--frame, var(--border));
+      border: 2px solid var(--frame);
       background: #0a0b0d;
       overflow: hidden;
       isolation: isolate;
       transition: border-color 0.2s ease;
     }
 
-    /* Layers: only L1 receives clicks */
     .layer {
       position: absolute;
       inset: 0;
       pointer-events: none;
       opacity: 0;
-      transition: opacity 0.45s ease, transform 0.45s ease, filter 0.45s ease;
+      z-index: 1;
+      transition: opacity 0.35s ease, transform 0.35s ease;
       display: flex;
       flex-direction: column;
-      padding: 20px;
+      background: #0a0b0d;
+    }
+    .layer.is-active {
+      opacity: 1;
+      z-index: 5;
+      pointer-events: auto;
+    }
+    .layer.is-ghost {
+      opacity: 0.18;
+      z-index: 2;
+      pointer-events: none;
+      transform: scale(0.99);
+    }
+
+    /* film strip inside each layer */
+    .strip {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .frame {
+      flex: 0 0 100%;
+      width: 100%;
+      height: 100%;
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow: hidden;
+      border-right: 1px dashed rgba(255,255,255,0.06);
+    }
+    .frame .mod-tag {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; opacity: 0.75;
+    }
+    .frame h2 { margin: 0; font-size: 20px; }
+    .frame p { margin: 0; color: rgba(255,255,255,0.78); font-size: 13px; max-width: 36em; }
+    .frame .face { font-size: 42px; line-height: 1; }
+    .frame .mod-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      margin-top: 6px;
+      padding: 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px;
+      background: rgba(0,0,0,0.25);
+      font-size: 12px;
       overflow: hidden;
     }
-    .layer.is-top {
-      pointer-events: auto;
-      z-index: 10;
-    }
-    .layer h2 {
-      margin: 0 0 8px;
-      font-size: 22px;
-      text-shadow: 0 2px 12px rgba(0,0,0,0.6);
-    }
-    .layer p { margin: 0 0 10px; max-width: 36em; }
-    .layer .hint {
-      font-size: 11px; color: rgba(255,255,255,0.65);
-      margin-top: auto;
-    }
-
-    /* L1 — action / clickable */
-    #L1 {
-      background:
-        radial-gradient(ellipse 80% 60% at 20% 30%, rgba(255,45,85,0.35), transparent 55%),
-        linear-gradient(160deg, #1a1020 0%, #12141a 50%, #0d1520 100%);
-      border-left: 4px solid var(--c1);
-    }
-    /* L2 — mid ghost */
-    #L2 {
-      background:
-        radial-gradient(ellipse 70% 50% at 70% 40%, rgba(0,212,255,0.28), transparent 50%),
-        linear-gradient(200deg, #0a1820 0%, #12141a 100%);
-      border-left: 4px solid var(--c2);
-      transform: scale(0.985);
-    }
-    /* L3 — deep atmosphere */
-    #L3 {
-      background:
-        radial-gradient(circle at 50% 80%, rgba(124,58,237,0.35), transparent 45%),
-        linear-gradient(180deg, #100818 0%, #0a0b0d 100%);
-      border-left: 4px solid var(--c4);
-      transform: scale(0.97);
-      filter: saturate(0.85);
-    }
-
-    .clown-face {
-      font-size: 48px;
-      line-height: 1;
-      user-select: none;
-      margin-bottom: 8px;
-    }
-    .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-    .stage button, .ctrl button {
-      height: 32px; padding: 0 12px;
+    .frame .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .frame button {
+      height: 30px; padding: 0 12px;
       border: 1px solid var(--border);
       border-radius: 4px;
-      background: #22252c;
-      color: var(--text);
-      font-size: 12px;
-      cursor: pointer;
+      background: #22252c; color: var(--text);
+      font-size: 12px; cursor: pointer;
     }
-    .stage button:hover, .ctrl button:hover {
-      border-color: #4a4f58; background: #2a2e36;
-    }
-    .stage button.primary {
+    .frame button.primary {
       background: var(--c1); border-color: var(--c1); color: #fff; font-weight: 600;
     }
-    .stage button:disabled {
-      opacity: 0.35; cursor: not-allowed;
+    .frame button:hover { filter: brightness(1.1); }
+
+    .layer[data-layer="0"] { --accent: var(--c1); }
+    .layer[data-layer="1"] { --accent: var(--c2); }
+    .layer[data-layer="2"] { --accent: var(--c4); }
+    .layer[data-layer="0"] .frame { background: linear-gradient(160deg, #1a1020, #12141a 55%, #0d1520); }
+    .layer[data-layer="1"] .frame { background: linear-gradient(200deg, #0a1820, #12141a); }
+    .layer[data-layer="2"] .frame { background: linear-gradient(180deg, #100818, #0a0b0d); }
+    .mod-tag { color: var(--accent); }
+    .frame h2 { color: var(--accent); }
+
+    /* film position dots */
+    .film-hud {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 10px;
+      background: linear-gradient(transparent, rgba(0,0,0,0.75));
+      pointer-events: none;
+      font-size: 11px;
+      color: var(--muted);
     }
-    .pop {
-      position: absolute; z-index: 20;
-      left: 50%; top: 40%; transform: translate(-50%, -50%) scale(0.8);
-      background: #1e2028; border: 1px solid var(--c3);
-      color: var(--c3); padding: 10px 16px; border-radius: 6px;
-      font-weight: 700; pointer-events: none;
-      opacity: 0; transition: opacity 0.2s, transform 0.25s;
+    .film-hud .dots { display: flex; gap: 5px; }
+    .film-hud .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #3a3e46;
     }
-    .pop.show {
-      opacity: 1; transform: translate(-50%, -50%) scale(1);
-    }
+    .film-hud .dot.on { background: var(--frame); box-shadow: 0 0 6px var(--frame); }
+    .film-hud .pos { font-variant-numeric: tabular-nums; color: var(--text); }
 
     /* —— Controls —— */
     .ctrl {
@@ -169,135 +189,141 @@
       margin: 0; font-size: 11px; text-transform: uppercase;
       letter-spacing: 0.06em; color: var(--muted);
     }
-    .ctrl label {
+    .nav-map {
       display: grid;
-      grid-template-columns: 4.5em 1fr 2.5em;
-      gap: 8px; align-items: center;
+      grid-template-columns: 1fr auto 1fr;
+      grid-template-rows: auto auto auto;
+      gap: 4px;
+      place-items: center;
+      padding: 8px 0;
+    }
+    .nav-map .pad {
+      width: 48px; height: 40px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #1c1e24;
+      color: var(--text);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .nav-map .pad:hover { border-color: #4a4f58; background: #262a32; }
+    .nav-map .pad:active, .nav-map .pad.flash {
+      background: #2a3040; border-color: var(--c2); color: var(--c2);
+    }
+    .nav-map .up { grid-column: 2; grid-row: 1; }
+    .nav-map .left { grid-column: 1; grid-row: 2; }
+    .nav-map .center {
+      grid-column: 2; grid-row: 2;
+      width: 56px; height: 40px;
+      font-size: 9px; text-align: center; line-height: 1.15;
+      color: var(--muted); border: 1px dashed var(--border); border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      user-select: none;
+    }
+    .nav-map .right { grid-column: 3; grid-row: 2; }
+    .nav-map .down { grid-column: 2; grid-row: 3; }
+
+    .status {
       font-size: 12px;
+      padding: 8px;
+      background: #0c0d10;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-variant-numeric: tabular-nums;
     }
-    .ctrl label span.val {
-      font-variant-numeric: tabular-nums; color: var(--muted); text-align: right;
+    .status strong { color: var(--text); }
+    .status .dim { color: var(--muted); }
+
+    .sw { display: flex; flex-wrap: wrap; gap: 6px; }
+    .sw button, .ctrl > button {
+      height: 30px; padding: 0 10px;
+      border: 1px solid var(--border); border-radius: 4px;
+      background: #22252c; color: var(--text); font-size: 12px; cursor: pointer;
     }
-    input[type="range"] { width: 100%; accent-color: var(--c2); }
-    .sw {
-      display: flex; flex-wrap: wrap; gap: 6px;
+    .sw button:hover { border-color: #4a4f58; }
+    .rules {
+      font-size: 11px; color: var(--muted); line-height: 1.45;
     }
-    .sw button.active {
-      outline: 1px solid var(--c2);
-      background: #1a2830;
-    }
+    .rules strong { color: var(--text); }
     .log {
-      flex: 1; min-height: 80px;
+      flex: 1; min-height: 70px;
       font-family: ui-monospace, Menlo, monospace;
       font-size: 10px; color: var(--muted);
       background: #0c0d10; border: 1px solid var(--border);
       padding: 8px; overflow: auto; white-space: pre-wrap;
     }
-    .rules {
-      font-size: 11px; color: var(--muted); line-height: 1.45;
-    }
-    .rules strong { color: var(--text); }
     footer {
       font-size: 11px; color: var(--muted);
       display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between;
     }
     footer a { color: var(--c2); }
+
+    .pop {
+      position: absolute; z-index: 30;
+      left: 50%; top: 42%; transform: translate(-50%, -50%) scale(0.85);
+      background: #1e2028; border: 1px solid var(--c3);
+      color: var(--c3); padding: 10px 16px; border-radius: 6px;
+      font-weight: 700; pointer-events: none;
+      opacity: 0; transition: opacity 0.2s, transform 0.25s;
+    }
+    .pop.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
   </style>
 </head>
 <body>
   <header>
     <div>
-      <h1>🤡 <span>Clown Lab</span> — Layer-Spielplatz</h1>
+      <h1>🤡 <span>Clown Lab</span> — 4-Wege Navigation</h1>
       <p>
-        Experiment: nur der <strong>oberste</strong> Layer ist klickbar.
-        Layer 2/3 nur Transparenz (Film-Ghost). Zeit fährt, was durchscheint.
+        <kbd>↑</kbd><kbd>↓</kbd> Layer rauf/runter ·
+        <kbd>←</kbd><kbd>→</kbd> Filmstreifen (jedes Frame = ein Modul) ·
+        nur der aktive Layer ist klickbar.
       </p>
     </div>
-    <span class="badge">experiment · nicht Produktion</span>
+    <span class="badge">experiment</span>
   </header>
 
   <div class="stage-wrap">
-    <div class="stage" id="stage" aria-label="Layer-Website-Bühne">
-      <!-- L3 deep -->
-      <section class="layer" id="L3" data-layer="3" aria-hidden="true">
-        <div class="clown-face">🌌</div>
-        <h2 style="color:var(--c4)">Layer 3 — Tiefe</h2>
-        <p>Atmosphäre, History, „was war“. Nie klickbar. Nur Schimmern.</p>
-        <p class="hint">pointer-events: none · z-index niedrig</p>
-      </section>
-      <!-- L2 mid -->
-      <section class="layer" id="L2" data-layer="2" aria-hidden="true">
-        <div class="clown-face">🎭</div>
-        <h2 style="color:var(--c2)">Layer 2 — Ghost</h2>
-        <p>Kontext des vorherigen Schnitts. Sichtbar durch Opacity — Klicks gehen durch.</p>
-        <p class="hint">Hier knöpfen bringt nichts (absichtlich).</p>
-        <div class="btn-row">
-          <button type="button" disabled>Ghost-Button (tot)</button>
-        </div>
-      </section>
-      <!-- L1 top — only interactive -->
-      <section class="layer is-top" id="L1" data-layer="1">
-        <div class="clown-face" id="face">🤡</div>
-        <h2 style="color:var(--c1)">Layer 1 — Handlung</h2>
-        <p id="l1-copy">
-          Das ist der klickbare Film-Frame. Unten kannst du L2/L3 durchscheinen lassen
-          und die Zeit laufen lassen.
-        </p>
-        <div class="btn-row">
-          <button type="button" class="primary" id="btn-honk">Honk!</button>
-          <button type="button" id="btn-swap">Nächster Clown-Schnitt</button>
-          <button type="button" id="btn-burst">Konfetti-Burst</button>
-        </div>
-        <p class="hint">Nur diese Ebene fängt Maus/Touch · Modulrahmen = „Licht“</p>
-      </section>
-      <div class="pop" id="pop" hidden>HONK 🎪</div>
+    <div class="stage" id="stage" tabindex="0" aria-label="Layer-Bühne">
+      <!-- layers filled by JS -->
+      <div class="film-hud">
+        <span id="hud-layer">Layer 1 / 3</span>
+        <div class="dots" id="hud-dots"></div>
+        <span class="pos" id="hud-frame">Frame 1 / 1</span>
+      </div>
+      <div class="pop" id="pop" hidden>!</div>
     </div>
 
     <aside class="ctrl">
-      <h3>Transparenz</h3>
-      <label>
-        L1
-        <input type="range" id="o1" min="0" max="100" value="100" />
-        <span class="val" id="o1v">100%</span>
-      </label>
-      <label>
-        L2
-        <input type="range" id="o2" min="0" max="100" value="25" />
-        <span class="val" id="o2v">25%</span>
-      </label>
-      <label>
-        L3
-        <input type="range" id="o3" min="0" max="100" value="12" />
-        <span class="val" id="o3v">12%</span>
-      </label>
-
-      <h3>Zeit</h3>
-      <label>
-        t
-        <input type="range" id="time" min="0" max="100" value="0" />
-        <span class="val" id="timev">0</span>
-      </label>
-      <div class="sw">
-        <button type="button" id="btn-play">▶ Play Film</button>
-        <button type="button" id="btn-stop">■ Stop</button>
-        <button type="button" id="btn-preset-desk">Preset Desk</button>
-        <button type="button" id="btn-preset-film">Preset Film</button>
-        <button type="button" id="btn-preset-solo">Preset Solo L1</button>
+      <h3>Navigation</h3>
+      <div class="nav-map" aria-label="D-Pad">
+        <button type="button" class="pad up" data-nav="up" title="Layer up">↑</button>
+        <button type="button" class="pad left" data-nav="left" title="Frame prev">←</button>
+        <div class="center">↑↓ Layer<br />←→ Modul</div>
+        <button type="button" class="pad right" data-nav="right" title="Frame next">→</button>
+        <button type="button" class="pad down" data-nav="down" title="Layer down">↓</button>
       </div>
 
-      <h3>Top-Layer (wer klickbar)</h3>
-      <div class="sw" id="top-sw">
-        <button type="button" data-top="1" class="active">L1 Clown</button>
-        <button type="button" data-top="2">L2 Ghost</button>
-        <button type="button" data-top="3">L3 Tiefe</button>
+      <div class="status" id="status">
+        <strong>Layer</strong> <span id="st-layer">1</span>
+        <span class="dim">·</span>
+        <strong>Frame</strong> <span id="st-frame">1</span>
+        <span class="dim">·</span>
+        <span id="st-mod">—</span>
+      </div>
+
+      <h3>Ghost (darunter sichtbar?)</h3>
+      <div class="sw">
+        <button type="button" id="btn-ghost-on">Ghost an</button>
+        <button type="button" id="btn-ghost-off">Ghost aus</button>
       </div>
 
       <h3>Regeln</h3>
       <p class="rules">
-        <strong>1.</strong> Nur Top hat <code>pointer-events: auto</code>.<br />
-        <strong>2.</strong> L2/L3 = Opacity-Film, keine Hits.<br />
-        <strong>3.</strong> Zeit fährt Ghost/Tiefe (Presets + Play).<br />
-        <strong>4.</strong> Rahmenfarbe = aktives Licht.
+        <strong>↑ ↓</strong> Layer-Stack (Tiefe / „Z“).<br />
+        <strong>← →</strong> Filmstreifen im Layer — <strong>1 Frame = 1 Modul</strong>.<br />
+        <strong>Top</strong> = klickbar · darunter nur durchscheinend.<br />
+        Fokus: Stage anklicken, dann Pfeiltasten.
       </p>
 
       <h3>Log</h3>
@@ -306,202 +332,298 @@
   </div>
 
   <footer>
-    <span>Gnom-Hub Clown Lab · /static/experiments/clown.html</span>
-    <span><a href="/">← zurück zum Hub</a></span>
+    <span>Clown Lab · 4-button nav experiment</span>
+    <span><a href="/">← Hub</a></span>
   </footer>
 
   <script>
 (function () {
   "use strict";
 
-  const L = {
-    1: document.getElementById("L1"),
-    2: document.getElementById("L2"),
-    3: document.getElementById("L3"),
-  };
-  const stage = document.getElementById("stage");
-  const logEl = document.getElementById("log");
-  const pop = document.getElementById("pop");
-  const face = document.getElementById("face");
-  const l1Copy = document.getElementById("l1-copy");
-
-  const o1 = document.getElementById("o1");
-  const o2 = document.getElementById("o2");
-  const o3 = document.getElementById("o3");
-  const time = document.getElementById("time");
-
-  let topLayer = 1;
-  let playTimer = null;
-  let tDir = 1;
-
-  const faces = ["🤡", "🎪", "🤹", "🎩", "🎈", "🥁"];
-  let faceIdx = 0;
-
-  const frames = {
-    1: {
+  /**
+   * World model:
+   * layers[z].frames[x] = module { id, title, body, face, color, actions? }
+   * ↑↓ → z   ←→ → x
+   */
+  var LAYERS = [
+    {
+      name: "Handlung",
       color: "#ff2d55",
-      title: "Layer 1 — Handlung",
-      copy: "Klickbare Bühne. Hier lebt der Agent / die Crux. Ghost und Tiefe nur durchscheinen.",
+      frames: [
+        {
+          id: "mod-chat",
+          tag: "Modul Chat",
+          title: "Chat-Crux",
+          face: "💬",
+          body: "Die Crux: Gespräch. Im echten Hub = pro-Agent Chat-Layer. Hier nur Demo-Modul im Filmstreifen.",
+          action: "honk",
+          actionLabel: "Honk aus Chat",
+        },
+        {
+          id: "mod-info",
+          tag: "Modul Info",
+          title: "Box 1 · Erklärung",
+          face: "📋",
+          body: "Agent-Klick füllt Info: wer, Parameter, Prompt. Ein Frame = ein Info-Modul.",
+          action: "ping",
+          actionLabel: "Info blink",
+        },
+        {
+          id: "mod-regler",
+          tag: "Modul Regler",
+          title: "Box 3 · Tuning",
+          face: "🎚️",
+          body: "Temperature, Top-P, Tokens … Regler-Modul. Im Hub nur in Box 3.",
+          action: "burst",
+          actionLabel: "Regler-Flash",
+        },
+      ],
     },
-    2: {
+    {
+      name: "Ghost",
       color: "#00d4ff",
-      title: "Layer 2 — Ghost",
-      copy: "Jetzt ist der Ghost Top: Kontext-Ebene ist klickbar (Demo). Im echten Desk wäre das selten.",
+      frames: [
+        {
+          id: "mod-prev",
+          tag: "Modul History",
+          title: "Vorheriger Schnitt",
+          face: "🎭",
+          body: "Ghost-Layer: was eben war. Nicht klickbar wenn darunter — hier zum Spielen aktiv.",
+          action: "ping",
+          actionLabel: "Echo",
+        },
+        {
+          id: "mod-agent",
+          tag: "Modul Agent",
+          title: "Agent-Karte",
+          face: "🃏",
+          body: "Ein Agent als Frame im Streifen. Links/Rechts = nächster Agent-Frame.",
+          action: "honk",
+          actionLabel: "Agent Honk",
+        },
+      ],
     },
-    3: {
+    {
+      name: "Tiefe",
       color: "#7c3aed",
-      title: "Layer 3 — Tiefe",
-      copy: "Tiefe oben = experimentell. Zeigt: wer Top ist, regiert die Hits.",
+      frames: [
+        {
+          id: "mod-atmos",
+          tag: "Modul Atmosphäre",
+          title: "Tiefe / System",
+          face: "🌌",
+          body: "Unterstes Layer: System, Memory, Ambient. Meist nur durchscheinend.",
+          action: "burst",
+          actionLabel: "Tiefe-Pulse",
+        },
+        {
+          id: "mod-memory",
+          tag: "Modul Memory",
+          title: "HOT / WARM / COLD",
+          face: "🧠",
+          body: "Memory als Frame. Filmstreifen = Module nebeneinander in der Zeit.",
+          action: "ping",
+          actionLabel: "Mem tick",
+        },
+        {
+          id: "mod-pipe",
+          tag: "Modul Pipeline",
+          title: "Stage-Film",
+          face: "▶️",
+          body: "brainstorm → distill → workers. Jede Stage könnte ein Frame sein.",
+          action: "honk",
+          actionLabel: "Stage Honk",
+        },
+        {
+          id: "mod-empty",
+          tag: "Modul Leer",
+          title: "Leeres Frame",
+          face: "⬜",
+          body: "Platzhalter-Modul — Struktur halten, Inhalt später.",
+          action: null,
+          actionLabel: null,
+        },
+      ],
     },
-  };
+  ];
+
+  var layerIdx = 0;
+  var frameIdx = [0, 0, 0];
+  var ghost = true;
+
+  var stage = document.getElementById("stage");
+  var logEl = document.getElementById("log");
+  var pop = document.getElementById("pop");
+  var layerEls = [];
 
   function log(msg) {
-    const line = "[" + new Date().toLocaleTimeString() + "] " + msg + "\n";
-    logEl.textContent = line + logEl.textContent.slice(0, 1200);
+    logEl.textContent =
+      "[" + new Date().toLocaleTimeString() + "] " + msg + "\n" + logEl.textContent.slice(0, 1400);
   }
 
-  function applyOpacity() {
-    L[1].style.opacity = String(Number(o1.value) / 100);
-    L[2].style.opacity = String(Number(o2.value) / 100);
-    L[3].style.opacity = String(Number(o3.value) / 100);
-    document.getElementById("o1v").textContent = o1.value + "%";
-    document.getElementById("o2v").textContent = o2.value + "%";
-    document.getElementById("o3v").textContent = o3.value + "%";
+  function flashPad(dir) {
+    var b = document.querySelector('.pad[data-nav="' + dir + '"]');
+    if (!b) return;
+    b.classList.add("flash");
+    setTimeout(function () { b.classList.remove("flash"); }, 120);
   }
 
-  function setTop(n) {
-    topLayer = n;
-    [1, 2, 3].forEach(function (i) {
-      const el = L[i];
-      const isTop = i === n;
-      el.classList.toggle("is-top", isTop);
-      el.setAttribute("aria-hidden", isTop ? "false" : "true");
-      el.style.zIndex = isTop ? "10" : String(i);
+  function build() {
+    LAYERS.forEach(function (layer, zi) {
+      var sec = document.createElement("section");
+      sec.className = "layer";
+      sec.dataset.layer = String(zi);
+      sec.setAttribute("aria-label", "Layer " + (zi + 1) + " " + layer.name);
+
+      var strip = document.createElement("div");
+      strip.className = "strip";
+      strip.dataset.strip = String(zi);
+
+      layer.frames.forEach(function (fr, fi) {
+        var frame = document.createElement("article");
+        frame.className = "frame";
+        frame.dataset.frame = String(fi);
+        frame.innerHTML =
+          '<div class="face">' + fr.face + "</div>" +
+          '<div class="mod-tag">' + fr.tag + "</div>" +
+          "<h2>" + fr.title + "</h2>" +
+          "<p>" + fr.body + "</p>" +
+          '<div class="mod-body">Modul-ID: <code>' + fr.id + "</code><br/>" +
+          "Layer " + (zi + 1) + " · Frame " + (fi + 1) + " / " + layer.frames.length +
+          "<br/>↑↓ Layer · ←→ nächstes Modul</div>";
+        if (fr.action) {
+          var row = document.createElement("div");
+          row.className = "actions";
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "primary";
+          btn.textContent = fr.actionLabel || "Action";
+          btn.addEventListener("click", function (ev) {
+            ev.stopPropagation();
+            runAction(fr.action, fr);
+          });
+          row.appendChild(btn);
+          frame.appendChild(row);
+        }
+        strip.appendChild(frame);
+      });
+
+      sec.appendChild(strip);
+      stage.insertBefore(sec, stage.querySelector(".film-hud"));
+      layerEls.push(sec);
     });
-    stage.style.setProperty("--frame", frames[n].color);
-    document.querySelectorAll("#top-sw button").forEach(function (b) {
-      b.classList.toggle("active", Number(b.getAttribute("data-top")) === n);
-    });
-    log("Top-Layer → L" + n + " (nur der ist klickbar)");
   }
 
-  /** Zeit t 0..1 steuert Ghost/Tiefe — L1 bleibt handlungsfähig */
-  function applyTime(t01) {
-    // L2 peaks mid-film, L3 fades as story progresses, L1 stays high
-    const l2 = Math.round(Math.max(0, 0.4 * Math.sin(Math.PI * t01)) * 100);
-    const l3 = Math.round((0.22 * (1 - t01 * 0.85)) * 100);
-    const l1 = Math.round((0.92 + 0.08 * Math.sin(t01 * Math.PI * 2)) * 100);
-    o1.value = String(l1);
-    o2.value = String(l2);
-    o3.value = String(Math.max(4, l3));
-    applyOpacity();
-    document.getElementById("timev").textContent = String(Math.round(t01 * 100));
-  }
-
-  function stopPlay() {
-    if (playTimer) {
-      clearInterval(playTimer);
-      playTimer = null;
-      log("Film gestoppt");
-    }
-  }
-
-  // sliders
-  [o1, o2, o3].forEach(function (el) {
-    el.addEventListener("input", function () {
-      stopPlay();
-      applyOpacity();
-    });
-  });
-  time.addEventListener("input", function () {
-    stopPlay();
-    applyTime(Number(time.value) / 100);
-  });
-
-  document.getElementById("btn-play").addEventListener("click", function () {
-    stopPlay();
-    log("Film Play — Zeit fährt Opacity L2/L3");
-    playTimer = setInterval(function () {
-      let v = Number(time.value) + tDir * 1.2;
-      if (v >= 100) { v = 100; tDir = -1; }
-      if (v <= 0) { v = 0; tDir = 1; }
-      time.value = String(v);
-      applyTime(v / 100);
-    }, 40);
-  });
-  document.getElementById("btn-stop").addEventListener("click", stopPlay);
-
-  document.getElementById("btn-preset-desk").addEventListener("click", function () {
-    stopPlay();
-    o1.value = "100"; o2.value = "0"; o3.value = "0";
-    applyOpacity();
-    setTop(1);
-    log("Preset Desk — nur L1, klar wie Arbeitstisch");
-  });
-  document.getElementById("btn-preset-film").addEventListener("click", function () {
-    stopPlay();
-    o1.value = "100"; o2.value = "28"; o3.value = "14";
-    applyOpacity();
-    setTop(1);
-    stage.style.setProperty("--frame", "#ffff00");
-    log("Preset Film — L1 scharf, Ghost+Tiefe durchscheinend");
-  });
-  document.getElementById("btn-preset-solo").addEventListener("click", function () {
-    stopPlay();
-    o1.value = "100"; o2.value = "0"; o3.value = "0";
-    applyOpacity();
-    setTop(1);
-    log("Preset Solo — alles andere aus");
-  });
-
-  document.querySelectorAll("#top-sw button").forEach(function (b) {
-    b.addEventListener("click", function () {
-      setTop(Number(b.getAttribute("data-top")));
-    });
-  });
-
-  // stage actions (only work when L1 is top — or whatever is top)
-  document.getElementById("btn-honk").addEventListener("click", function () {
+  function runAction(kind, fr) {
+    log("Action «" + kind + "» auf Modul " + fr.id + " (L" + (layerIdx + 1) + " F" + (frameIdx[layerIdx] + 1) + ")");
     pop.hidden = false;
+    pop.textContent =
+      kind === "honk" ? "HONK 🎪" : kind === "burst" ? "✨ BURST" : "PING";
     pop.classList.add("show");
-    pop.textContent = "HONK 🎪";
-    log("Honk! (Hit auf Top-Layer L" + topLayer + ")");
     setTimeout(function () {
       pop.classList.remove("show");
       setTimeout(function () { pop.hidden = true; }, 200);
-    }, 700);
+    }, 650);
+  }
+
+  function render() {
+    var L = LAYERS[layerIdx];
+    var fi = frameIdx[layerIdx];
+
+    layerEls.forEach(function (el, zi) {
+      el.classList.remove("is-active", "is-ghost");
+      if (zi === layerIdx) el.classList.add("is-active");
+      else if (ghost && zi === layerIdx + 1) el.classList.add("is-ghost");
+      // position strip
+      var strip = el.querySelector(".strip");
+      var f = frameIdx[zi] || 0;
+      strip.style.transform = "translateX(" + -f * 100 + "%)";
+    });
+
+    stage.style.setProperty("--frame", L.color);
+    document.getElementById("hud-layer").textContent =
+      "Layer " + (layerIdx + 1) + " / " + LAYERS.length + " · " + L.name;
+    document.getElementById("hud-frame").textContent =
+      "Frame " + (fi + 1) + " / " + L.frames.length;
+    document.getElementById("st-layer").textContent = String(layerIdx + 1) + " (" + L.name + ")";
+    document.getElementById("st-frame").textContent = String(fi + 1);
+    document.getElementById("st-mod").textContent = L.frames[fi].title;
+
+    var dots = document.getElementById("hud-dots");
+    dots.innerHTML = "";
+    L.frames.forEach(function (_, i) {
+      var d = document.createElement("span");
+      d.className = "dot" + (i === fi ? " on" : "");
+      dots.appendChild(d);
+    });
+  }
+
+  function layerUp() {
+    if (layerIdx <= 0) {
+      log("Layer: schon ganz oben (Handlung)");
+      return;
+    }
+    layerIdx--;
+    log("↑ Layer → " + (layerIdx + 1) + " " + LAYERS[layerIdx].name);
+    render();
+  }
+  function layerDown() {
+    if (layerIdx >= LAYERS.length - 1) {
+      log("Layer: schon ganz unten (Tiefe)");
+      return;
+    }
+    layerIdx++;
+    log("↓ Layer → " + (layerIdx + 1) + " " + LAYERS[layerIdx].name);
+    render();
+  }
+  function framePrev() {
+    var n = LAYERS[layerIdx].frames.length;
+    frameIdx[layerIdx] = (frameIdx[layerIdx] - 1 + n) % n;
+    log("← Frame → Modul «" + LAYERS[layerIdx].frames[frameIdx[layerIdx]].title + "»");
+    render();
+  }
+  function frameNext() {
+    var n = LAYERS[layerIdx].frames.length;
+    frameIdx[layerIdx] = (frameIdx[layerIdx] + 1) % n;
+    log("→ Frame → Modul «" + LAYERS[layerIdx].frames[frameIdx[layerIdx]].title + "»");
+    render();
+  }
+
+  function nav(dir) {
+    flashPad(dir);
+    if (dir === "up") layerUp();
+    else if (dir === "down") layerDown();
+    else if (dir === "left") framePrev();
+    else if (dir === "right") frameNext();
+  }
+
+  document.querySelectorAll(".pad[data-nav]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      nav(b.getAttribute("data-nav"));
+      stage.focus();
+    });
   });
 
-  document.getElementById("btn-swap").addEventListener("click", function () {
-    faceIdx = (faceIdx + 1) % faces.length;
-    face.textContent = faces[faceIdx];
-    l1Copy.textContent = frames[1].copy + " Schnitt #" + (faceIdx + 1);
-    stage.style.setProperty("--frame", ["#ff2d55", "#00d4ff", "#ffff00", "#7c3aed", "#ff6600", "#00cc44"][faceIdx]);
-    log("Clown-Schnitt → " + faces[faceIdx]);
+  window.addEventListener("keydown", function (ev) {
+    if (ev.target && (ev.target.tagName === "INPUT" || ev.target.tagName === "TEXTAREA")) return;
+    var k = ev.key;
+    if (k === "ArrowUp") { ev.preventDefault(); nav("up"); }
+    else if (k === "ArrowDown") { ev.preventDefault(); nav("down"); }
+    else if (k === "ArrowLeft") { ev.preventDefault(); nav("left"); }
+    else if (k === "ArrowRight") { ev.preventDefault(); nav("right"); }
   });
 
-  document.getElementById("btn-burst").addEventListener("click", function () {
-    // quick film burst: flash L2/L3
-    stopPlay();
-    const a = Number(o2.value), b = Number(o3.value);
-    o2.value = "55"; o3.value = "40";
-    applyOpacity();
-    log("Konfetti-Burst — Ghost/Tiefe kurz hoch");
-    setTimeout(function () {
-      o2.value = String(a); o3.value = String(b);
-      applyOpacity();
-    }, 500);
+  document.getElementById("btn-ghost-on").addEventListener("click", function () {
+    ghost = true; log("Ghost an — nächst-tieferes Layer schimmert"); render();
+  });
+  document.getElementById("btn-ghost-off").addEventListener("click", function () {
+    ghost = false; log("Ghost aus"); render();
   });
 
-  // prove L2 ghost button never fires when not top
-  L[2].querySelector("button").addEventListener("click", function () {
-    log("⚠️ Ghost-Button gefeuert — nur möglich wenn L2 Top ist");
-  });
-
-  // init
-  applyOpacity();
-  setTop(1);
-  log("Clown Lab bereit. Dreh an Opacity / Play / Top-Layer.");
+  build();
+  render();
+  stage.focus();
+  log("Bereit. Pfeiltasten oder D-Pad: ↑↓ Layer · ←→ Modul-Frames.");
 })();
   </script>
 </body>
