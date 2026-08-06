@@ -125,6 +125,170 @@ class FlexAgent(BaseAgent):
         finally:
             self.emit_active(False)
 
+    def nudge_gaps(
+        self,
+        user_text: str,
+        requirements: list[str],
+        outputs: list[dict],
+        quality_notes: str = "",
+        memory_ctx: str = "",
+    ) -> list[dict]:
+        """
+        Before the user has to repeat themselves: find unfulfilled bits and
+        tell the responsible agent (worker/coordinator) what to fix.
+
+        Returns list of {agent, message, reason}.
+        """
+        if not self.enabled:
+            return []
+        self.emit_active(True)
+        try:
+            nudges = self._heuristic_nudges(user_text, requirements, outputs, quality_notes)
+            if self.has_llm() and (quality_notes or outputs):
+                try:
+                    pack = (
+                        f"User task:\n{user_text}\n\n"
+                        f"Requirements:\n"
+                        + "\n".join(f"- {r}" for r in (requirements or [])[:8])
+                        + f"\n\nQuality notes:\n{(quality_notes or '')[:800]}\n\n"
+                        "Worker results (head):\n"
+                        + "\n---\n".join(
+                            f"{o.get('worker')}: {str(o.get('result') or '')[:280]}"
+                            for o in (outputs or [])[:3]
+                        )
+                        + f"\n\nUser context:\n{(memory_ctx or '')[:400]}"
+                    )
+                    raw = self.ask(
+                        system=(
+                            "You are Flex protecting the user from having to nag agents.\n"
+                            "If something the user asked for is MISSING or WRONG in worker output, "
+                            "emit 1–4 correction lines:\n"
+                            "  agent_id | short mandatory fix for that agent\n"
+                            "agent_id is one of: worker1 worker2 worker3 worker4 coordinator brainstorm\n"
+                            "If everything is fine: (none)\n"
+                            "No fluff. Match user language."
+                        ),
+                        user=pack,
+                        max_tokens=280,
+                        temperature=0.15,
+                    )
+                    for ln in (raw or "").splitlines():
+                        if "|" not in ln:
+                            continue
+                        left, right = ln.split("|", 1)
+                        aid = left.strip().lower().replace(" ", "")
+                        msg = right.strip()
+                        if (
+                            aid
+                            in (
+                                "worker1",
+                                "worker2",
+                                "worker3",
+                                "worker4",
+                                "coordinator",
+                                "brainstorm",
+                            )
+                            and len(msg) >= 8
+                        ):
+                            nudges.append(
+                                {
+                                    "agent": aid,
+                                    "message": msg[:400],
+                                    "reason": "flex_gap",
+                                }
+                            )
+                except Exception as exc:  # noqa: BLE001
+                    self.bus.emit(
+                        "pipeline.warning",
+                        {"stage": "flex_nudge", "error": str(exc)},
+                    )
+            # de-dupe by agent keep last
+            by: dict[str, dict] = {}
+            for n in nudges:
+                by[str(n.get("agent"))] = n
+            out = list(by.values())[:4]
+            if out:
+                self.bus.emit("pipeline.agent_nudges", {"nudges": out})
+            return out
+        finally:
+            self.emit_active(False)
+
+    def _heuristic_nudges(
+        self,
+        user_text: str,
+        requirements: list[str],
+        outputs: list[dict],
+        quality_notes: str,
+    ) -> list[dict]:
+        nudges: list[dict] = []
+        qlow = (quality_notes or "").lower()
+        for o in outputs or []:
+            wid = str(o.get("worker") or "worker1")
+            body = str(o.get("result") or "")
+            gate = o.get("validation") if isinstance(o.get("validation"), dict) else {}
+            issues = list(gate.get("issues") or [])
+            msgs: list[str] = []
+            if "incomplete_html" in issues or "html incomplete" in qlow:
+                msgs.append("Pflicht: komplette HTML-Datei bis </html>, nichts abschneiden.")
+            if "missing_required_interaction" in issues:
+                msgs.append(
+                    "Pflicht: mindestens eine echte Interaktion (onclick oder addEventListener)."
+                )
+            if "too short" in issues or "too_short" in issues or len(body) < 200:
+                msgs.append(
+                    "Output zu dünn — erfülle die User-Anforderungen vollständig, nicht als Skizze."
+                )
+            if "weak task match" in issues or "weak task match" in qlow:
+                msgs.append(f"Am User-Auftrag bleiben: {(user_text or '')[:120]}")
+            if not gate.get("ok", True) and not msgs:
+                msgs.append(
+                    "Quality-Gate fail: "
+                    + ", ".join(issues[:4] or ["unspecified"])
+                    + " — jetzt korrigieren, User soll das nicht wiederholen müssen."
+                )
+            if msgs:
+                nudges.append(
+                    {
+                        "agent": wid,
+                        "message": " ".join(msgs)[:400],
+                        "reason": "quality_gap",
+                    }
+                )
+        # Standing user rules often in requirements / warm context lines
+        for r in requirements or []:
+            rl = str(r).lower()
+            looks_standing = any(
+                k in rl
+                for k in (
+                    "immer",
+                    "always",
+                    "vor dem push",
+                    "before push",
+                    "agents.md",
+                    "nicht vergessen",
+                )
+            )
+            if not looks_standing or not outputs:
+                continue
+            if "agents.md" not in rl and "push" not in rl:
+                continue
+            # Remind if quality notes don't show compliance
+            ok_hint = "push" in qlow or "agents.md" in qlow or "ruff" in qlow
+            if ok_hint:
+                continue
+            nudges.append(
+                {
+                    "agent": str(outputs[0].get("worker") or "worker1"),
+                    "message": (
+                        "User-Regel beachten: "
+                        + str(r)[:200]
+                        + " — erledigen BEVOR der User es nochmal sagen muss."
+                    ),
+                    "reason": "standing_rule",
+                }
+            )
+        return nudges
+
     def run(self, user_text: str, requirements: list[str], memory_ctx: str = "") -> str:
         if not self.enabled:
             return ""

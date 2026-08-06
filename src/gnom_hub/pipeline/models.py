@@ -42,5 +42,7 @@ class PipelineState:
     worker_outputs: list[dict] = field(default_factory=list)
     # Light quality notes after workers (plan §8)
     quality_notes: str = ""
+    # Flex proactive corrections: [{agent, message, reason}] before user has to yell
+    agent_nudges: list[dict] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     error: str | None = None

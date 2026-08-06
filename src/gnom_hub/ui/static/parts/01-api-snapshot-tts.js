@@ -129,6 +129,21 @@
       });
     }
 
+    // Flex told agents what was missing — surface once so you don't have to nag
+    if (p.stage === "done" && p.agent_nudges && p.agent_nudges.length) {
+      const nk = JSON.stringify(p.agent_nudges).slice(0, 200);
+      if (nk !== lastNudgeKey) {
+        lastNudgeKey = nk;
+        p.agent_nudges.slice(0, 4).forEach(function (n) {
+          const aid = (n && n.agent) || "?";
+          const msg = (n && n.message) || "";
+          if (!msg) return;
+          appendChat("system", "Flex → " + aid + ": " + msg);
+        });
+        toast("Flex hat Agenten korrigiert (ohne dass du es wiederholen musst)", "ok");
+      }
+    }
+
     // Mermaid canvas preview under Box 3 when nodes exist
     if (snap.canvas && snap.canvas.mermaid && snap.canvas.nodes > 0) {
       const box3 = document.getElementById("box3-content");

@@ -522,7 +522,106 @@ class Orchestrator:
             "pipeline.quality",
             {"notes": self._state.quality_notes, "workers": len(outputs)},
         )
+        # Flex: tell the responsible agent what is still missing — before the user nags
+        self._flex_nudge_and_fix(text, mem, dod)
         self._finish()
+
+    def _flex_nudge_and_fix(self, text: str, mem: str, dod: str) -> None:
+        """Proactive gap-fix: Flex routes fixes to the right agent once."""
+        if not self.flex.enabled:
+            self._state.agent_nudges = []
+            return
+        outputs = list(self._state.worker_outputs or [])
+        try:
+            nudges = self.flex.nudge_gaps(
+                text,
+                list(self._state.distilled_requirements),
+                outputs,
+                self._state.quality_notes or "",
+                mem,
+            )
+        except Exception as exc:  # noqa: BLE001
+            self.bus.emit(
+                "pipeline.warning",
+                {"stage": "flex_nudge", "error": str(exc)},
+            )
+            nudges = []
+        self._state.agent_nudges = list(nudges or [])
+        if not nudges:
+            return
+        lines = [
+            self._state.quality_notes or "",
+            "",
+            "Flex → Agenten (bevor du es wiederholen musst):",
+        ]
+        for n in nudges:
+            aid = str(n.get("agent") or "")
+            msg = str(n.get("message") or "").strip()
+            if not aid or not msg:
+                continue
+            lines.append(f"• {aid}: {msg}")
+            self.bus.emit(
+                "pipeline.agent_nudge",
+                {"agent": aid, "message": msg, "reason": n.get("reason")},
+            )
+            worker = self._workers.get(aid)
+            if worker is None or not worker.enabled:
+                continue
+            # Find original task for this worker
+            task = text
+            for o in outputs:
+                if str(o.get("worker") or "") == aid:
+                    task = str(o.get("task") or text)
+                    break
+            self._check_cancel()
+            self.bus.emit("pipeline.stage", {"stage": aid})
+            fixed = worker.run(
+                f"{task}\n\n{dod}\n\n"
+                f"=== FLEX CORRECTION (mandatory — user should not have to repeat this) ===\n"
+                f"{msg}\n"
+                f"=== END CORRECTION ===",
+                text,
+                list(self._state.distilled_requirements),
+                mem,
+            )
+            # Patch output list
+            for o in outputs:
+                if str(o.get("worker") or "") == aid:
+                    o["result"] = fixed
+                    o["validation"] = _validate_worker_draft(fixed, user_text=text, task=task)
+                    o["flex_nudge"] = msg
+                    break
+            self.bus.emit(
+                "pipeline.worker",
+                {
+                    "worker": aid,
+                    "result": fixed,
+                    "task": task,
+                    "flex_nudge": msg,
+                    "rerun": True,
+                },
+            )
+        self._state.worker_outputs = outputs
+        self._state.worker_results = [str(o.get("result") or "") for o in outputs]
+        self._state.quality_notes = "\n".join(lines).strip()
+        # Re-score after fixes
+        self._state.quality_notes = (
+            _quality_check(
+                self._state.user_text,
+                self._state.distilled_requirements,
+                outputs,
+            )
+            + "\n\n"
+            + "\n".join(lines[2:])
+        ).strip()
+        self.bus.emit(
+            "pipeline.quality",
+            {
+                "notes": self._state.quality_notes,
+                "workers": len(outputs),
+                "nudges": list(self._state.agent_nudges),
+            },
+        )
 
     def _finish(self) -> None:
         self.memory.store(

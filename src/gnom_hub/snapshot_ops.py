@@ -41,6 +41,7 @@ class SnapshotOpsMixin:
             "worker_results": list(st.worker_results),
             "worker_outputs": list(st.worker_outputs or []),
             "quality_notes": getattr(st, "quality_notes", "") or "",
+            "agent_nudges": list(getattr(st, "agent_nudges", None) or []),
             "warnings": list(st.warnings),
             "error": st.error,
         }

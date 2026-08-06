@@ -117,6 +117,7 @@
   let pendingSpeech = ""; // spoken on next click if browser blocked autoplay
   let ttsUnlocked = false; // true after speak started from a real click
   let lastAgentThoughts = {}; // reasoning streams for TTS (not Box text)
+  let lastNudgeKey = ""; // avoid re-spamming Flex corrections in chat
   let currentJobId = null;
   let lastWorkerOutputs = [];
   let jobTimerStart = null;
@@ -460,6 +461,21 @@
       p.warnings.slice(0, 2).forEach(function (w) {
         toast(String(w), "info");
       });
+    }
+
+    // Flex told agents what was missing — surface once so you don't have to nag
+    if (p.stage === "done" && p.agent_nudges && p.agent_nudges.length) {
+      const nk = JSON.stringify(p.agent_nudges).slice(0, 200);
+      if (nk !== lastNudgeKey) {
+        lastNudgeKey = nk;
+        p.agent_nudges.slice(0, 4).forEach(function (n) {
+          const aid = (n && n.agent) || "?";
+          const msg = (n && n.message) || "";
+          if (!msg) return;
+          appendChat("system", "Flex → " + aid + ": " + msg);
+        });
+        toast("Flex hat Agenten korrigiert (ohne dass du es wiederholen musst)", "ok");
+      }
     }
 
     // Mermaid canvas preview under Box 3 when nodes exist

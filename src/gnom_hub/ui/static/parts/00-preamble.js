@@ -117,6 +117,7 @@
   let pendingSpeech = ""; // spoken on next click if browser blocked autoplay
   let ttsUnlocked = false; // true after speak started from a real click
   let lastAgentThoughts = {}; // reasoning streams for TTS (not Box text)
+  let lastNudgeKey = ""; // avoid re-spamming Flex corrections in chat
   let currentJobId = null;
   let lastWorkerOutputs = [];
   let jobTimerStart = null;
