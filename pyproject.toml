@@ -75,6 +75,25 @@ pythonpath = ["src"]
 
 
 [tool.mutmut]
-paths_to_mutate = "src/gnom_hub/agents/roles_helpers.py,src/gnom_hub/memory/facade.py"
-runner = "python -m pytest -x -q --tb=line tests/test_flex_wish_filter.py tests/test_needs_clarify.py tests/test_flex_pipeline.py tests/test_warm.py tests/test_warm_trim.py tests/test_vector_bm25.py"
+# Pure Flex/clarify helpers only — high signal, low noise.
+# For full-tree exploration, override:
+#   mutmut run --paths-to-mutate=src/gnom_hub/
+paths_to_mutate = "src/gnom_hub/agents/roles_helpers.py"
+
+# Must include PYTHONPATH=src (src-layout package).
+# Focused suites that kill Flex-wish / clarify / warm contracts.
+# --assert=plain is required by mutmut's pytest integration.
+runner = "env PYTHONPATH=src python -m pytest -x -q --tb=line --assert=plain tests/test_flex_wish_filter.py tests/test_needs_clarify.py tests/test_flex_pipeline.py tests/test_warm.py tests/test_warm_trim.py"
+
 tests_dir = "tests/"
+
+# Slightly more headroom than default (slow CI / first import).
+test_time_multiplier = 2.0
+test_time_base = 0.5
+
+# Skip decorator mutations (noise on helpers with none / rare).
+disable_mutation_types = "decorator"
+
+# CI-friendly progress when run via scripts/run_mutmut.sh --CI
+simple_output = true
+no_progress = true
