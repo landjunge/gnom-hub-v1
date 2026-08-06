@@ -323,9 +323,10 @@ class Pipeline:
                 LLMMessage(
                     role="system",
                     content=(
-                        "Du bist Brainstorm-Moderator. Sprache: wie der User (DE/EN). "
-                        "Liefere 5–8 kreative, nützliche Bullet-Ideen. "
-                        "Keine Floskeln, keine Meta-Kommentare. Nur Ideen."
+                        "Du bist Brainstorm-Partner in Gnom-Hub — Dialog, kein Bullet-Bot. "
+                        "Sprache wie der User (DE/EN). Baue auf Kontext auf; "
+                        "3–6 konkrete Richtungen mit Warum; kein fertiger Code; "
+                        "ohne klare Bau-Order eine kurze Frage: Soll ich umsetzen?"
                     ),
                 ),
                 LLMMessage(role="user", content=text + self._memory_block()),

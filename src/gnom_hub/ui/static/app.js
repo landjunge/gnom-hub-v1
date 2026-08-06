@@ -42,15 +42,21 @@
       "Presence Penalty: encourages talking about new topics; reduces staying on the same idea.",
   };
 
+  // Display hints only (role prompts live in Python). Empty = code default.
+  // Never treat these as the real system prompt unless the user edits Extra tuning.
   const DEFAULT_PROMPTS = {
-    brainstorm: "You are the Brainstorm agent. Output 5–8 concrete bullet ideas for the USER TASK.",
-    memory: "You are the Memory agent. Select or curate durable facts relevant to the task.",
-    flex: "You are Flex. List 3–5 concrete risks/questions/trade-offs (by preset).",
-    coordinator: "You are the Coordinator. Distill requirements and assign worker tasks.",
-    worker1: "You are Worker 1. Deliver a concrete useful result for your assigned task.",
-    worker2: "You are Worker 2. Deliver a concrete useful result for your assigned task.",
-    worker3: "Reserved worker slot.",
-    worker4: "Reserved worker slot.",
+    brainstorm:
+      "(code default) Dialogue partner — build on history, concrete angles, optional “Soll ich umsetzen?”, no full code dump.",
+    memory:
+      "(code default) Extract durable personal/project facts only — no HTML garbage.",
+    flex:
+      "(code default) Personal companion: remember user facts, spot gaps, brief workers.",
+    coordinator:
+      "(code default) Distill requirements + worker plan from brainstorm dialogue.",
+    worker1: "(code default) Deliver the assigned artifact (HTML/page when asked).",
+    worker2: "(code default) Deliver the assigned artifact.",
+    worker3: "(code default) Reserved worker.",
+    worker4: "(code default) Reserved worker.",
   };
 
   /** 8 slots – Worker3/4 UI-reserved (shown on; pipeline uses Worker 1+2) */
@@ -817,7 +823,15 @@
     if (!tuneAgentId) return;
     const ttsOn = !!document.getElementById("tune-tts").checked;
     const body = {
-      system_prompt: document.getElementById("tune-prompt").value,
+      // Don't persist UI placeholder hints as real system_prompt
+      system_prompt: (function () {
+        var v = (document.getElementById("tune-prompt").value || "").trim();
+        var hint = (DEFAULT_PROMPTS[id] || "").trim();
+        if (!v || v === hint || v.indexOf("(code default)") === 0) return "";
+        // stale LOL default from older UI — drop it
+        if (v.indexOf("Output 5") >= 0 && v.indexOf("bullet") >= 0) return "";
+        return v;
+      })(),
       model: document.getElementById("tune-model").value,
       temperature: Number(document.getElementById("tune-temp").value),
       top_p: Number(document.getElementById("tune-topp").value),

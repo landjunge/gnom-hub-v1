@@ -64,7 +64,15 @@
     if (!tuneAgentId) return;
     const ttsOn = !!document.getElementById("tune-tts").checked;
     const body = {
-      system_prompt: document.getElementById("tune-prompt").value,
+      // Don't persist UI placeholder hints as real system_prompt
+      system_prompt: (function () {
+        var v = (document.getElementById("tune-prompt").value || "").trim();
+        var hint = (DEFAULT_PROMPTS[id] || "").trim();
+        if (!v || v === hint || v.indexOf("(code default)") === 0) return "";
+        // stale LOL default from older UI — drop it
+        if (v.indexOf("Output 5") >= 0 && v.indexOf("bullet") >= 0) return "";
+        return v;
+      })(),
       model: document.getElementById("tune-model").value,
       temperature: Number(document.getElementById("tune-temp").value),
       top_p: Number(document.getElementById("tune-topp").value),
