@@ -551,11 +551,11 @@ html, body {
 .agent-card.color-worker3 { --card-color: var(--c-worker3); }
 .agent-card.color-worker4 { --card-color: var(--c-worker4); }
 
-/* —— Fixed: 1/3 = one Info box | 2/3 = page (Box 2+3) —— */
+/* —— Fixed: 1/3 = one Info box | 2/3 = page (Box 2+3); 0px between boxes —— */
 .boxes {
   display: flex;
   flex-direction: row;
-  gap: var(--gap);
+  gap: 0;
   width: 100%;
   flex: 1 1 auto;
   min-height: 0;
@@ -567,21 +567,21 @@ html, body {
 
 /* 1/3 = genau 1 Box (Info) */
 .box-1 {
-  flex: 0 0 calc((100% - var(--gap)) / 3) !important;
-  width: calc((100% - var(--gap)) / 3) !important;
+  flex: 0 0 calc(100% / 3) !important;
+  width: calc(100% / 3) !important;
   min-width: 0 !important;
   max-width: none !important;
 }
 
 /* 2/3 = die Seite (Box 2 + Box 3) */
 .boxes-right {
-  flex: 0 0 calc((100% - var(--gap)) * 2 / 3);
-  width: calc((100% - var(--gap)) * 2 / 3);
+  flex: 0 0 calc(100% * 2 / 3);
+  width: calc(100% * 2 / 3);
   min-width: 0;
   max-width: none;
   display: flex;
   flex-direction: row;
-  gap: var(--gap);
+  gap: 0;
   position: relative;
 }
 
@@ -1363,11 +1363,11 @@ body.worker-fs-open {
   background: #495057;
 }
 
-/* —— Modul chat-mod: Platz | Chat | Platz (Spalten = Box1 | Box2 | Box3) —— */
+/* —— Modul chat-mod: Platz | Chat | Platz (Spalten = Box1 | Box2 | Box3, 0px) —— */
 .chat-mod {
   display: flex;
   flex-direction: row;
-  gap: var(--gap);
+  gap: 0;
   width: 100%;
   height: var(--chat-h);
   min-height: 120px;
@@ -1377,17 +1377,17 @@ body.worker-fs-open {
 
 /* Platz L = Box 1 */
 .chat-mod-platz-l {
-  flex: 0 0 calc((100% - var(--gap)) / 3);
-  width: calc((100% - var(--gap)) / 3);
+  flex: 0 0 calc(100% / 3);
+  width: calc(100% / 3);
   min-width: 0;
   max-width: none;
 }
 
-/* Chat + Platz R = Box 2 / Box 3 */
+/* Chat + Platz R = Box 2 / Box 3 (je 1/3) */
 .chat-mod-chat,
 .chat-mod-platz-r {
-  flex: 0 0 calc(((100% - var(--gap)) * 2 / 3 - var(--gap)) / 2);
-  width: calc(((100% - var(--gap)) * 2 / 3 - var(--gap)) / 2);
+  flex: 0 0 calc(100% / 3);
+  width: calc(100% / 3);
   min-width: 0;
   max-width: none;
 }
