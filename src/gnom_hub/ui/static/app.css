@@ -356,26 +356,6 @@ html, body {
   background: #3b1f1f;
 }
 
-.btn-compact {
-  height: 28px;
-  padding: 0 8px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg-panel);
-  color: var(--text-muted);
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.btn-compact:hover {
-  color: var(--text);
-}
-
-.btn-compact.is-active {
-  color: #74c0fc;
-  border-color: #4dabf7;
-}
-
 .result-history {
   max-width: 140px;
   height: 20px;
@@ -385,48 +365,6 @@ html, body {
   border: 1px solid var(--border);
   border-radius: 3px;
   padding: 0 2px;
-}
-
-/* Compact density */
-body.compact .top-bar {
-  padding: 4px 8px;
-}
-
-body.compact .agent-cards {
-  gap: 4px;
-  padding: 4px 8px;
-}
-
-body.compact .agent-card {
-  padding: 4px 6px;
-  min-height: 0;
-}
-
-body.compact .box-header {
-  padding: 3px 6px;
-  font-size: 11px;
-}
-
-body.compact .box-body {
-  padding: 4px 6px;
-  font-size: 11px;
-}
-
-body.compact .chat {
-  padding: 4px 8px;
-}
-
-body.compact .chat-log {
-  max-height: 120px;
-}
-
-body.compact .worker-panel-head {
-  padding: 2px 4px;
-}
-
-body.compact .kbd-hint {
-  font-size: 10px;
-  opacity: 0.7;
 }
 
 .god-badge.on {
@@ -812,12 +750,13 @@ body.compact .kbd-hint {
   max-height: none;
 }
 
-/* —— Box 3: single worker result fills the pane —— */
+/* —— Box 3: dynamic — one panel per worker, equal share of height —— */
 .box3-dynamic {
   white-space: normal;
   padding: 4px;
   display: flex;
   flex-direction: column;
+  gap: 4px;
   height: 100%;
   min-height: 0;
   overflow: hidden;
@@ -829,7 +768,7 @@ body.compact .kbd-hint {
   background: #1e1f23;
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
+  flex: 1 1 0; /* equal height for each worker panel */
   min-height: 0;
   overflow: hidden;
 }

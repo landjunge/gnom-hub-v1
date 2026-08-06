@@ -133,7 +133,6 @@
   let lastCanExecute = false;
   const CHAT_STORAGE_KEY = "gnom-hub-chat-log-v1";
   const HISTORY_KEY = "gnom-hub-result-history-v1";
-  const COMPACT_KEY = "gnom-hub-compact-v1";
   const CHAT_HIST_KEY = "gnom-hub-chat-input-hist-v1";
   const CHAT_HIST_MAX = 50;
   const HISTORY_MAX = 12;

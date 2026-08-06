@@ -919,7 +919,6 @@
         ui_chat_log: collectChatLog().slice(-80),
         ui_result_history: resultHistory.slice(0, HISTORY_MAX),
         ui_prefs: {
-          compact: document.body.classList.contains("compact"),
           ui_lang: uiLang || "en",
         },
       };
@@ -974,32 +973,6 @@
       toast("Pack import failed: " + err.message, "error");
     } finally {
       if (ev.target) ev.target.value = "";
-    }
-  }
-
-  function applyCompactMode(on) {
-    document.body.classList.toggle("compact", !!on);
-    const btn = document.getElementById("btn-compact");
-    if (btn) {
-      btn.classList.toggle("is-active", !!on);
-      btn.textContent = on ? "Compact ✓" : "Compact";
-    }
-    try {
-      localStorage.setItem(COMPACT_KEY, on ? "1" : "0");
-    } catch (_e) {
-      /* ignore */
-    }
-  }
-
-  function toggleCompactMode() {
-    applyCompactMode(!document.body.classList.contains("compact"));
-  }
-
-  function loadCompactMode() {
-    try {
-      applyCompactMode(localStorage.getItem(COMPACT_KEY) === "1");
-    } catch (_e) {
-      applyCompactMode(false);
     }
   }
 
@@ -1073,9 +1046,6 @@
       renderHistorySelect();
     }
     if (snap.ui_prefs && typeof snap.ui_prefs === "object") {
-      if (typeof snap.ui_prefs.compact === "boolean") {
-        applyCompactMode(!!snap.ui_prefs.compact);
-      }
       if (snap.ui_prefs.ui_lang === "en" || snap.ui_prefs.ui_lang === "de") {
         uiLang = snap.ui_prefs.ui_lang;
         loadTooltips(uiLang);

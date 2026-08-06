@@ -104,10 +104,7 @@
         if (hist.value) restoreHistoryEntry(hist.value);
       });
     }
-    const btnCompact = document.getElementById("btn-compact");
-    if (btnCompact) btnCompact.addEventListener("click", toggleCompactMode);
-    loadResultHistory();
-    renderHistorySelect();
+    loadResultHistory();    renderHistorySelect();
 
     const btnReexec = document.getElementById("btn-reexec");
     if (btnReexec) btnReexec.addEventListener("click", reexecFromHistory);
@@ -164,7 +161,6 @@
     const packFile = document.getElementById("sys-pack-file");
     if (packFile) packFile.addEventListener("change", onSessionPackFile);
 
-    loadCompactMode();
     updateBox3Toolbar();
     const btnClearChat = document.getElementById("btn-clear-chat");
     if (btnClearChat) btnClearChat.addEventListener("click", clearChatLog);

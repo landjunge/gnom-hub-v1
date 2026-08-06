@@ -48,8 +48,8 @@
   }
 
   /**
-   * Box 3: dynamic worker panels (all enabled workers).
-   * HTML → sandboxed Preview + Source; plain text → scrollable pre.
+   * Box 3: dynamic — one panel per worker result (all outputs, not only first).
+   * HTML → Preview + Source; plain text → pre. Panels share height equally.
    */
   function updateBox3Toolbar() {
     // Box 3 toolbar intentionally minimal (no history/diff chrome)
@@ -79,8 +79,10 @@
       return;
     }
 
-    // One panel: first worker result (HTML landing uses only worker1)
-    body.appendChild(buildWorkerPanel(outputs[0], 0));
+    // Dynamic: every worker output gets its own panel
+    outputs.forEach(function (out, i) {
+      body.appendChild(buildWorkerPanel(out, i));
+    });
   }
 
   /** Save one worker HTML into personal WS (WS-gnom-hub-v1/selected/). */

@@ -133,7 +133,6 @@
   let lastCanExecute = false;
   const CHAT_STORAGE_KEY = "gnom-hub-chat-log-v1";
   const HISTORY_KEY = "gnom-hub-result-history-v1";
-  const COMPACT_KEY = "gnom-hub-compact-v1";
   const CHAT_HIST_KEY = "gnom-hub-chat-input-hist-v1";
   const CHAT_HIST_MAX = 50;
   const HISTORY_MAX = 12;
@@ -2936,7 +2935,6 @@
         ui_chat_log: collectChatLog().slice(-80),
         ui_result_history: resultHistory.slice(0, HISTORY_MAX),
         ui_prefs: {
-          compact: document.body.classList.contains("compact"),
           ui_lang: uiLang || "en",
         },
       };
@@ -2991,32 +2989,6 @@
       toast("Pack import failed: " + err.message, "error");
     } finally {
       if (ev.target) ev.target.value = "";
-    }
-  }
-
-  function applyCompactMode(on) {
-    document.body.classList.toggle("compact", !!on);
-    const btn = document.getElementById("btn-compact");
-    if (btn) {
-      btn.classList.toggle("is-active", !!on);
-      btn.textContent = on ? "Compact ✓" : "Compact";
-    }
-    try {
-      localStorage.setItem(COMPACT_KEY, on ? "1" : "0");
-    } catch (_e) {
-      /* ignore */
-    }
-  }
-
-  function toggleCompactMode() {
-    applyCompactMode(!document.body.classList.contains("compact"));
-  }
-
-  function loadCompactMode() {
-    try {
-      applyCompactMode(localStorage.getItem(COMPACT_KEY) === "1");
-    } catch (_e) {
-      applyCompactMode(false);
     }
   }
 
@@ -3090,9 +3062,6 @@
       renderHistorySelect();
     }
     if (snap.ui_prefs && typeof snap.ui_prefs === "object") {
-      if (typeof snap.ui_prefs.compact === "boolean") {
-        applyCompactMode(!!snap.ui_prefs.compact);
-      }
       if (snap.ui_prefs.ui_lang === "en" || snap.ui_prefs.ui_lang === "de") {
         uiLang = snap.ui_prefs.ui_lang;
         loadTooltips(uiLang);
@@ -3882,8 +3851,8 @@
   }
 
   /**
-   * Box 3: dynamic worker panels (all enabled workers).
-   * HTML → sandboxed Preview + Source; plain text → scrollable pre.
+   * Box 3: dynamic — one panel per worker result (all outputs, not only first).
+   * HTML → Preview + Source; plain text → pre. Panels share height equally.
    */
   function updateBox3Toolbar() {
     // Box 3 toolbar intentionally minimal (no history/diff chrome)
@@ -3913,8 +3882,10 @@
       return;
     }
 
-    // One panel: first worker result (HTML landing uses only worker1)
-    body.appendChild(buildWorkerPanel(outputs[0], 0));
+    // Dynamic: every worker output gets its own panel
+    outputs.forEach(function (out, i) {
+      body.appendChild(buildWorkerPanel(out, i));
+    });
   }
 
   /** Save one worker HTML into personal WS (WS-gnom-hub-v1/selected/). */
@@ -4557,10 +4528,7 @@
         if (hist.value) restoreHistoryEntry(hist.value);
       });
     }
-    const btnCompact = document.getElementById("btn-compact");
-    if (btnCompact) btnCompact.addEventListener("click", toggleCompactMode);
-    loadResultHistory();
-    renderHistorySelect();
+    loadResultHistory();    renderHistorySelect();
 
     const btnReexec = document.getElementById("btn-reexec");
     if (btnReexec) btnReexec.addEventListener("click", reexecFromHistory);
@@ -4617,7 +4585,6 @@
     const packFile = document.getElementById("sys-pack-file");
     if (packFile) packFile.addEventListener("change", onSessionPackFile);
 
-    loadCompactMode();
     updateBox3Toolbar();
     const btnClearChat = document.getElementById("btn-clear-chat");
     if (btnClearChat) btnClearChat.addEventListener("click", clearChatLog);
