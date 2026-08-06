@@ -46,3 +46,7 @@ data/smoke-run/
 
 # layer db stress bench
 bench_data/
+.mutmut-cache
+html/
+mutmut-junit.xml
+*.mutmut-backup

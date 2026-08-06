@@ -75,25 +75,44 @@ pythonpath = ["src"]
 
 
 [tool.mutmut]
-# Pure Flex/clarify helpers only — high signal, low noise.
-# For full-tree exploration, override:
-#   mutmut run --paths-to-mutate=src/gnom_hub/
+# =============================================================================
+# mutmut deep config (Gnom-Hub)
+# Fast CI path stays: python scripts/mutation_check.py
+# Deep path:         ./scripts/run_mutmut.sh [profile]
+# =============================================================================
+
+# Default mutate target: pure Flex/clarify helpers (high signal).
+# Profiles in scripts/run_mutmut.sh can widen this (flex|memory|wide).
 paths_to_mutate = "src/gnom_hub/agents/roles_helpers.py"
 
-# Must include PYTHONPATH=src (src-layout package).
-# Focused suites that kill Flex-wish / clarify / warm contracts.
-# --assert=plain is required by mutmut's pytest integration.
-runner = "env PYTHONPATH=src python -m pytest -x -q --tb=line --assert=plain tests/test_flex_wish_filter.py tests/test_needs_clarify.py tests/test_flex_pipeline.py tests/test_warm.py tests/test_warm_trim.py"
+# Never mutate tests, vendor, generated UI bundles, or data.
+paths_to_exclude = "tests/,src/gnom_hub/ui/,data/,.venv/,venv/,dist/,build/"
+
+# Pytest runner:
+#  - PYTHONPATH=src  → src-layout package
+#  - --assert=plain  → required by mutmut's pytest integration
+#  - -x             → fail-fast (mutant killed ASAP)
+#  - focused suite   → only contracts that assert helper behavior
+runner = "env PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 python -m pytest -x -q --tb=line --assert=plain -p no:cacheprovider tests/test_flex_wish_filter.py tests/test_needs_clarify.py tests/test_flex_pipeline.py tests/test_warm.py tests/test_warm_trim.py tests/test_vector_bm25.py"
 
 tests_dir = "tests/"
 
-# Slightly more headroom than default (slow CI / first import).
-test_time_multiplier = 2.0
-test_time_base = 0.5
+# Timeout = baseline * multiplier + base  (infinite-loop protection)
+test_time_multiplier = 2.5
+test_time_base = 1.0
 
-# Skip decorator mutations (noise on helpers with none / rare).
-disable_mutation_types = "decorator"
+# Operators: keep logic/control/string (regex & keywords in clarify matter).
+# Drop decorator / annassign / lambdef / fstring noise for this module.
+enable_mutation_types = "operator,keyword,number,name,string,or_test,and_test,argument,expr_stmt"
 
-# CI-friendly progress when run via scripts/run_mutmut.sh --CI
+# Optional hooks (restore path hygiene around each mutant)
+pre_mutation = "python scripts/mutmut_hooks.py pre"
+post_mutation = "python scripts/mutmut_hooks.py post"
+
+# CI-friendly console
 simple_output = true
 no_progress = true
+swallow_output = true
+
+# dict-like names (if any TypedDict-style helpers appear later)
+dict_synonyms = "Struct, NamedStruct, TypedDict"

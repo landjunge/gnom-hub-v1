@@ -8,41 +8,26 @@ PYTHONPATH=src pytest -q
 
 ## Mutation testing
 
-### Fast (CI default) — pure-helper AST mutations
-
-Scoped to Flex/clarify helpers; **must kill all** mutants:
+### Fast (CI default)
 
 ```bash
 python scripts/mutation_check.py
-# or
 PYTHONPATH=src pytest -q tests/test_mutation_helpers.py
 ```
 
-### Deep — mutmut
+Scoped AST mutants on Flex/clarify helpers — **all must be killed**.
 
-Config lives in `pyproject.toml` → `[tool.mutmut]`:
+### Deep (mutmut)
 
-| Key | Value |
-|-----|--------|
-| `paths_to_mutate` | `src/gnom_hub/agents/roles_helpers.py` |
-| `runner` | focused pytest + `PYTHONPATH=src` + `--assert=plain` |
-| `tests_dir` | `tests/` |
-| `test_time_multiplier` | `2.0` |
-| `disable_mutation_types` | `decorator` |
+Full config: **[docs/MUTMUT.md](MUTMUT.md)** and `pyproject.toml` `[tool.mutmut]`.
 
 ```bash
 pip install 'mutmut==2.4.5' toml   # or pip install -e ".[dev]"
-./scripts/run_mutmut.sh
-mutmut results
-mutmut html          # optional HTML under html/
+./scripts/run_mutmut.sh            # profile core
+./scripts/run_mutmut.sh memory     # warm + facade
+./scripts/run_mutmut.sh wide       # broader (slow)
+./scripts/run_mutmut.sh results
+./scripts/run_mutmut.sh html
 ```
 
-Override mutate paths without editing config:
-
-```bash
-MUTMUT_PATHS=src/gnom_hub/memory/warm.py ./scripts/run_mutmut.sh
-# or
-mutmut run --paths-to-mutate=src/gnom_hub/agents/roles_helpers.py
-```
-
-**Note:** Prefer the fast `mutation_check.py` in CI. Use mutmut for exploratory deep dives.
+**CI:** keep the fast check. mutmut is optional/manual unless you add a nightly job.
