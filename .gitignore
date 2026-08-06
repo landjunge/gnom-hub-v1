@@ -43,3 +43,6 @@ data/smoke-run/
 # Key.txt anywhere (real secrets); keep templates
 **/Key.txt
 !**/Key.txt.example
+
+# layer db stress bench
+bench_data/
