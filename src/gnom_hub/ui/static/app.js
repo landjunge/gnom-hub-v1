@@ -301,6 +301,10 @@
       card.addEventListener("mouseenter", function () {
         showTooltip(agent.id);
       });
+      // Click: same as mouseover — explanation in Box 1 (tune stays on delayed single-click)
+      card.addEventListener("mousedown", function () {
+        showTooltip(agent.id);
+      });
 
       els.cards.appendChild(card);
     });

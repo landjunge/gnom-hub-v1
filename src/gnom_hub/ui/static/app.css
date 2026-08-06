@@ -551,32 +551,69 @@ html, body {
 .agent-card.color-worker3 { --card-color: var(--c-worker3); }
 .agent-card.color-worker4 { --card-color: var(--c-worker4); }
 
-/* —— Three boxes: same full width as agents; fill remaining height —— */
+/* —— Box 1 (help) | Workspace (brainstorm + workers) —— */
 .boxes {
   display: flex;
   flex-direction: row;
   gap: var(--gap);
-  width: 100%; /* exact horizontal match with .agent-cards */
-  flex: 1 1 auto; /* take all free vertical space */
+  width: 100%;
+  flex: 1 1 auto;
   min-height: 0;
   margin-bottom: 0;
 }
 
 .box {
-  flex: 1 1 0;
-  width: 0;
   min-width: 0;
   height: 100%;
   min-height: 0;
   max-height: none;
   background: var(--bg-panel);
-  /* active agent color on box border (gewollt) */
   border: 1px solid var(--box-agent-color, var(--border));
   border-radius: 4px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   transition: border-color 0.2s ease;
+}
+
+.box-1 {
+  flex: 0 0 28%;
+  max-width: 360px;
+  min-width: 200px;
+  width: auto;
+}
+
+.box-workspace {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+}
+
+.workspace-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.workspace-pane {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.workspace-pane:first-child {
+  border-top: 0;
+}
+
+.workspace-pane-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
 }
 
 /* —— Layer stack over every box: website / worker / controls —— */
@@ -822,8 +859,7 @@ html, body {
 }
 
 .box-1 .box-title { color: #74c0fc; }
-.box-2 .box-title { color: var(--c-brainstorm); }
-.box-3 .box-title { color: var(--c-worker1); }
+.box-workspace .box-title { color: var(--c-worker1); }
 
 .box-body {
   flex: 1 1 auto;
@@ -1300,7 +1336,7 @@ body.worker-fs-open {
   background: #495057;
 }
 
-/* —— Chat row: same 3 columns as boxes (chat = Box 2 width) —— */
+/* —— Chat under workspace; left slot under Box 1 —— */
 .chat-row {
   display: flex;
   flex-direction: row;
@@ -1313,9 +1349,9 @@ body.worker-fs-open {
 }
 
 .chat-side {
-  flex: 1 1 0;
-  width: 0;
-  min-width: 0;
+  flex: 0 0 28%;
+  max-width: 360px;
+  min-width: 200px;
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
@@ -1342,8 +1378,7 @@ body.worker-fs-open {
 }
 
 .chat {
-  flex: 1 1 0;
-  width: 0;
+  flex: 1 1 auto;
   min-width: 0;
   height: 100%;
   background: var(--bg-panel);
