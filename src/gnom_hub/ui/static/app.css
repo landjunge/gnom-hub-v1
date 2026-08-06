@@ -17,16 +17,16 @@
   --card-h: clamp(64px, 8.5vh, 96px);
   --chat-h: clamp(140px, 18vh, 220px);
 
-  /* System agents — kräftige Basisfarben (klar unterscheidbar) */
-  --c-brainstorm: #fa5252;   /* rot */
-  --c-memory: #339af0;       /* blau */
-  --c-flex: #fcc419;         /* gelb/gold */
-  --c-coordinator: #40c057;  /* grün */
-  /* Workers — andere Palette (cyan / violett / magenta / orange), kein Grau */
-  --c-worker1: #22b8cf;      /* cyan */
-  --c-worker2: #7950f2;      /* violett */
-  --c-worker3: #e64980;      /* magenta/rosa */
-  --c-worker4: #ff922b;      /* orange */
+  /* System agents — sehr kräftig, Flex = reines Gelb (nicht Gold) */
+  --c-brainstorm: #ff1a1a;
+  --c-memory: #1c7ed6;
+  --c-flex: #ffe066;         /* gelb, nicht gold */
+  --c-coordinator: #37b24d;
+  /* Workers — andere Palette, ebenfalls knallig, kein Grau */
+  --c-worker1: #15aabf;
+  --c-worker2: #7048e8;
+  --c-worker3: #f06595;
+  --c-worker4: #ff6b00;
 }
 
 * {
