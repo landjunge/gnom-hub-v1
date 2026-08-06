@@ -55,7 +55,7 @@
     if (how) how.textContent = tip;
     if (ex)
       ex.textContent =
-        "Schieber nach links/rechts — Info live in Box 1 (Layer Regler).";
+        "Schieber — Info live in Box 1. Regler-UI in Box 3.";
     // current value if range exists
     const map = {
       temperature: "tune-temp",

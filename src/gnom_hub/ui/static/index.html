@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=145" />
+  <link rel="stylesheet" href="/static/app.css?v=146" />
 </head>
 <body>
   <div id="app">
@@ -69,7 +69,7 @@
         <!-- shared overlays (not per-agent chrome) -->
         <div id="box1-content" class="box1-overlay box-body box1-info">
           <div class="info-layer is-active" data-info-layer="live" id="box1-layer-live">
-            <p class="box1-placeholder">Agent-Klick → Layer in Box 1/2/3 + Rahmenfarbe.</p>
+            <p class="box1-placeholder">Agent-Klick → Info hier (Box 1). Rahmenfarbe = Modul.</p>
             <div id="box1-tooltip" class="box1-tooltip" hidden>
               <h2 id="tip-title" class="tip-title"></h2>
               <p id="tip-how" class="tip-how"></p>
@@ -122,52 +122,51 @@
 
       <div id="box3" class="box box-3" data-tooltip-id="box3" aria-label="Box 3">
         <div class="agent-layer-stack" data-box="box3" id="box3-layers"></div>
-      </div>
-
-      <!-- Layer 3: agent tuning over Box 2+3 (not a popup) -->
-      <div id="tune-layer" class="tune-layer" hidden>
-        <div class="tune-layer-bar">
-          <span id="tune-title" class="tune-layer-title">Agent tuning</span>
-          <button type="button" id="tune-close" class="layer-btn" title="Close">×</button>
-        </div>
-        <div class="tune-layer-body">
-          <div class="tune-sliders-col">
-            <div class="tune-slider" data-tip="temperature">
-              <label>Temperature <span id="tune-temp-val">0.50</span></label>
-              <input id="tune-temp" type="range" min="0" max="2" step="0.05" value="0.5" />
-            </div>
-            <div class="tune-slider" data-tip="top_p">
-              <label>Top-P <span id="tune-topp-val">1.00</span></label>
-              <input id="tune-topp" type="range" min="0" max="1" step="0.01" value="1" />
-            </div>
-            <div class="tune-slider" data-tip="max_tokens">
-              <label>Max Tokens <span id="tune-maxtok-val">800</span></label>
-              <input id="tune-maxtok" type="range" min="64" max="4096" step="32" value="800" />
-            </div>
-            <div class="tune-slider" data-tip="frequency">
-              <label>Frequency Penalty <span id="tune-freq-val">0.00</span></label>
-              <input id="tune-freq" type="range" min="0" max="2" step="0.05" value="0" />
-            </div>
-            <div class="tune-slider" data-tip="presence">
-              <label>Presence Penalty <span id="tune-pres-val">0.00</span></label>
-              <input id="tune-pres" type="range" min="0" max="2" step="0.05" value="0" />
-            </div>
-            <label class="tune-tts-row">
-              <input id="tune-tts" type="checkbox" /> TTS
-            </label>
+        <!-- Regler-Modul nur in Box 3 -->
+        <div id="tune-layer" class="tune-layer" hidden>
+          <div class="tune-layer-bar">
+            <span id="tune-title" class="tune-layer-title">Agent tuning</span>
+            <button type="button" id="tune-close" class="layer-btn" title="Close">×</button>
           </div>
-          <div class="tune-prompt-col">
-            <label for="tune-model">Model</label>
-            <input id="tune-model" class="tune-input" type="text" placeholder="deepseek-chat" />
-            <label for="tune-key">API key (optional)</label>
-            <input id="tune-key" class="tune-input" type="password" placeholder="empty = global" />
-            <label for="tune-prompt">Extra prompt</label>
-            <textarea id="tune-prompt" class="tune-prompt" rows="5" spellcheck="false"></textarea>
+          <div class="tune-layer-body">
+            <div class="tune-sliders-col">
+              <div class="tune-slider" data-tip="temperature">
+                <label>Temperature <span id="tune-temp-val">0.50</span></label>
+                <input id="tune-temp" type="range" min="0" max="2" step="0.05" value="0.5" />
+              </div>
+              <div class="tune-slider" data-tip="top_p">
+                <label>Top-P <span id="tune-topp-val">1.00</span></label>
+                <input id="tune-topp" type="range" min="0" max="1" step="0.01" value="1" />
+              </div>
+              <div class="tune-slider" data-tip="max_tokens">
+                <label>Max Tokens <span id="tune-maxtok-val">800</span></label>
+                <input id="tune-maxtok" type="range" min="64" max="4096" step="32" value="800" />
+              </div>
+              <div class="tune-slider" data-tip="frequency">
+                <label>Frequency Penalty <span id="tune-freq-val">0.00</span></label>
+                <input id="tune-freq" type="range" min="0" max="2" step="0.05" value="0" />
+              </div>
+              <div class="tune-slider" data-tip="presence">
+                <label>Presence Penalty <span id="tune-pres-val">0.00</span></label>
+                <input id="tune-pres" type="range" min="0" max="2" step="0.05" value="0" />
+              </div>
+              <label class="tune-tts-row">
+                <input id="tune-tts" type="checkbox" /> TTS
+              </label>
+            </div>
+            <div class="tune-prompt-col">
+              <label for="tune-model">Model</label>
+              <input id="tune-model" class="tune-input" type="text" placeholder="deepseek-chat" />
+              <label for="tune-key">API key (optional)</label>
+              <input id="tune-key" class="tune-input" type="password" placeholder="empty = global" />
+              <label for="tune-prompt">Extra prompt</label>
+              <textarea id="tune-prompt" class="tune-prompt" rows="5" spellcheck="false"></textarea>
+            </div>
           </div>
-        </div>
-        <div class="tune-layer-actions">
-          <button type="button" id="tune-preset-save" class="btn-ws-sm">Preset</button>
-          <button type="button" id="tune-save" class="btn-save">Apply</button>
+          <div class="tune-layer-actions">
+            <button type="button" id="tune-preset-save" class="btn-ws-sm">Preset</button>
+            <button type="button" id="tune-save" class="btn-save">Apply</button>
+          </div>
         </div>
       </div>
       </div>
@@ -447,6 +446,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=145"></script>
+  <script src="/static/app.js?v=146"></script>
 </body>
 </html>

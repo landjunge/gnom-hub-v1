@@ -246,10 +246,16 @@
         card.dataset.agentId === agentId
       );
     });
-    if (doPaint !== false) paintBoxesModule(agentId);
+    if (doPaint !== false) {
+      paintBoxesModule(agentId);
+      fillBox1AgentInfo(agentId);
+    }
   }
 
-  /** Box-Modul: 1px Rahmen in Agentenfarbe (Klick). Box 1: keine Agentenfarbe. */
+  /**
+   * Agent-Klick: nur Modul-Rahmen 1px Agentenfarbe.
+   * Einzelne Boxen nie agentenfarbig.
+   */
   function paintBoxesModule(agentId) {
     lastClickedAgentId = agentId || lastClickedAgentId || null;
     const hex =
@@ -261,58 +267,66 @@
         hex || "var(--border)"
       );
     }
-    /* only module frame — box1 never gets agent border color */
-    const b1 = document.getElementById("box1");
-    if (b1) b1.style.setProperty("--box-agent-color", "var(--border)");
-    ["box2", "box3"].forEach(function (id) {
+    ["box1", "box2", "box3"].forEach(function (id) {
       const el = document.getElementById(id);
-      if (!el) return;
-      el.style.setProperty(
-        "--box-agent-color",
-        hex || "var(--border)"
-      );
+      if (el) el.style.setProperty("--box-agent-color", "var(--border)");
     });
   }
 
+  /** Box 1 = Info-Platz: Agent-Tooltip füllt den Raum. */
+  function fillBox1AgentInfo(agentId) {
+    const tip = TOOLTIPS[agentId];
+    const agent = findAgent(agentId);
+    if (typeof showInfoLayer === "function") showInfoLayer("live");
+    if (els.placeholder) els.placeholder.hidden = true;
+    if (els.tipRoot) els.tipRoot.hidden = false;
+    if (tip) {
+      if (els.tipTitle) els.tipTitle.textContent = tip.title || (agent && agent.label) || agentId;
+      if (els.tipHow) els.tipHow.textContent = tip.how_to || "";
+      if (els.tipExample) els.tipExample.textContent = tip.example || "";
+    } else if (agent) {
+      if (els.tipTitle) els.tipTitle.textContent = agent.label || agentId;
+      if (els.tipHow)
+        els.tipHow.textContent =
+          "Layer " +
+          (AGENTS.findIndex(function (a) {
+            return a.id === agentId;
+          }) +
+            1) +
+          " · Klick = Info in Box 1 · Regler in Box 3 · Modulrahmen = Agentenfarbe.";
+      if (els.tipExample)
+        els.tipExample.textContent =
+          "Model: " + (agent.model || "—") + (agent.enabled ? " · on" : " · off");
+    }
+    /* auch in Agent-Layer Body von Box 1 (Platz nutzen) */
+    const body =
+      typeof getAgentBoxBody === "function" ? getAgentBoxBody(1, agentId) : null;
+    if (body) {
+      const title = (tip && tip.title) || (agent && agent.label) || agentId;
+      const how = (tip && tip.how_to) || "";
+      const ex = (tip && tip.example) || "";
+      body.innerHTML =
+        '<div class="box1-agent-info">' +
+        '<h2 class="tip-title">' +
+        title +
+        "</h2>" +
+        (how ? '<p class="tip-how">' + how + "</p>" : "") +
+        (ex ? '<p class="tip-example">' + ex + "</p>" : "") +
+        "</div>";
+    }
+  }
+
   function updateBoxBorders() {
-    /* Klick-Agent hat Vorrang: Layer + Modul in Agentenfarbe 1px */
+    /* nur Modulrahmen; Box-Rahmen bleiben neutral */
     if (lastClickedAgentId && COLOR_HEX[lastClickedAgentId]) {
-      activateAgentLayer(lastClickedAgentId, true);
+      paintBoxesModule(lastClickedAgentId);
       return;
     }
-    const map = {
-      idle: { box1: null, box2: null, box3: null },
-      memory: { box1: null, box2: null, box3: null },
-      brainstorm: { box1: null, box2: "brainstorm", box3: null },
-      distill: { box1: null, box2: "coordinator", box3: null },
-      clarify: { box1: null, box2: null, box3: null },
-      flex: { box1: null, box2: "flex", box3: null },
-      coordinate: { box1: null, box2: null, box3: "coordinator" },
-      work: { box1: null, box2: null, box3: "worker1" },
-      worker1: { box1: null, box2: null, box3: "worker1" },
-      worker2: { box1: null, box2: null, box3: "worker2" },
-      worker3: { box1: null, box2: null, box3: "worker3" },
-      worker4: { box1: null, box2: null, box3: "worker4" },
-      done: { box1: null, box2: null, box3: null },
-      error: { box1: null, box2: null, box3: null },
-    };
-    const m = map[activeStage] || map.idle;
     const mod = document.querySelector(".boxes");
-    if (mod) {
-      mod.style.setProperty("--boxes-mod-color", "var(--border)");
-    }
-    [
-      ["box1", m.box1],
-      ["box2", m.box2],
-      ["box3", m.box3],
-    ].forEach(function (pair) {
-      const el = document.getElementById(pair[0]);
-      if (!el) return;
-      const aid = pair[1];
-      el.style.setProperty(
-        "--box-agent-color",
-        aid && COLOR_HEX[aid] ? COLOR_HEX[aid] : "var(--border)"
-      );
+    if (mod) mod.style.setProperty("--boxes-mod-color", "var(--border)");
+    ["box1", "box2", "box3"].forEach(function (id) {
+      const el = document.getElementById(id);
+      if (el) el.style.setProperty("--box-agent-color", "var(--border)");
     });
   }
 
@@ -930,7 +944,7 @@
     if (how) how.textContent = tip;
     if (ex)
       ex.textContent =
-        "Schieber nach links/rechts — Info live in Box 1 (Layer Regler).";
+        "Schieber — Info live in Box 1. Regler-UI in Box 3.";
     // current value if range exists
     const map = {
       temperature: "tune-temp",
