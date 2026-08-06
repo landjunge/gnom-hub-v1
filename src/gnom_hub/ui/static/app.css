@@ -1,31 +1,31 @@
-/* Gnom-Hub v1 – fills the display; agents row width = boxes row width */
+/* Gnom-Hub — calm dark UI (no rainbow chrome) */
 
 :root {
-  --bg: #1a1b1e;
-  --bg-panel: #25262b;
-  --bg-card: #2c2e33;
-  --text: #e9ecef;
-  --text-muted: #909296;
-  --border: #373a40;
+  --bg: #121316;
+  --bg-panel: #1a1b1f;
+  --bg-card: #1e1f24;
+  --bg-elev: #22242a;
+  --text: #d8dbe0;
+  --text-muted: #7a7f88;
+  --border: #2c2e34;
+  --accent: #6b7280;
+  --accent-hi: #9ca3af;
   --gap: clamp(4px, 0.35vw, 8px);
   --pad-x: clamp(8px, 1vw, 16px);
   --pad-y: clamp(6px, 0.8vh, 12px);
-  /* Full content width of the app (agents + boxes + chat share this) */
   --layout-w: 100%;
-  /* Agent cards: equal 1/8 of row; height scales with viewport */
-  --card-h: clamp(72px, 9.5vh, 110px);
-  /* Chat strip */
+  --card-h: clamp(64px, 8.5vh, 96px);
   --chat-h: clamp(140px, 18vh, 220px);
 
-  /* Agent frame colors */
-  --c-brainstorm: #e03131;
-  --c-memory: #1c7ed6;
-  --c-flex: #f59f00;
-  --c-coordinator: #2f9e44;
-  --c-worker1: #fd7e14;
-  --c-worker2: #9c36b5;
-  --c-worker3: #0ca678;
-  --c-worker4: #868e96;
+  /* Agent accents: muted, only as thin left bar — not full neon frames */
+  --c-brainstorm: #9a6b6b;
+  --c-memory: #6b849a;
+  --c-flex: #9a8b6b;
+  --c-coordinator: #6b9a7a;
+  --c-worker1: #9a7f6b;
+  --c-worker2: #7f6b9a;
+  --c-worker3: #6b9a90;
+  --c-worker4: #7a7f88;
 }
 
 * {
@@ -100,19 +100,19 @@ html, body {
   min-width: 0;
 }
 
-/* All header buttons — horizontal module, mittig under head */
+/* Header actions — one quiet module, mittig */
 .top-toolbar {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: center; /* horizontal mittig */
-  gap: 8px;
+  justify-content: center;
+  gap: 6px;
   width: 100%;
-  padding: 6px 8px;
+  padding: 5px 8px;
   border: 1px solid var(--border);
-  border-radius: 6px;
-  background: #22242a;
+  border-radius: 4px;
+  background: var(--bg-elev);
 }
 
 .top-toolbar .flex-preset-label {
@@ -123,49 +123,13 @@ html, body {
   color: var(--text-muted);
 }
 
-.top-toolbar .btn-workspace,
-.top-toolbar .btn-trace,
-.top-toolbar .btn-export,
-.top-toolbar .btn-clear-chat,
-.top-toolbar .btn-system,
-.top-toolbar .btn-help,
-.top-toolbar .btn-archive,
-.top-toolbar .btn-reset,
-.top-toolbar .btn-save {
-  flex: 0 0 auto;
-}
-
 .ver-badge {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   color: var(--text-muted);
   border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 1px 6px;
-}
-
-.btn-clear-chat {
-  width: 84px;
-  height: 28px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: #343a40;
-  color: var(--text-muted);
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.btn-clear-chat:hover {
-  color: var(--text);
-  background: #495057;
-}
-
-.sys-backup-list li {
-  cursor: pointer;
-}
-
-.sys-backup-list li:hover {
-  border-color: #748ffc;
+  border-radius: 3px;
+  padding: 1px 5px;
 }
 
 .kbd-hint {
@@ -173,95 +137,71 @@ html, body {
   color: var(--text-muted);
   margin: 0;
   padding: 0 4px 4px;
+  opacity: 0.75;
 }
 
+/* One button style everywhere in toolbar — no rainbow */
+.top-toolbar button,
+.btn-clear-chat,
 .btn-save,
 .btn-help,
 .btn-reset,
 .btn-archive,
-.btn-system {
-  width: 72px;
+.btn-system,
+.btn-workspace {
   height: 28px;
+  min-width: 64px;
+  width: auto;
+  padding: 0 10px;
   border: 1px solid var(--border);
-  border-radius: 4px;
-  background: #343a40;
-  color: var(--text);
-  font-size: 13px;
+  border-radius: 3px;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
 }
 
+.top-toolbar button:hover,
+.btn-clear-chat:hover,
 .btn-save:hover,
 .btn-help:hover,
 .btn-reset:hover,
 .btn-archive:hover,
-.btn-system:hover {
-  background: #495057;
-}
-
-.btn-system {
-  border-color: #5c7cfa;
-  color: #a5b4fc;
-}
-
-.btn-workspace {
-  width: 88px;
-  height: 28px;
-  border: 1px solid #0ca678;
-  border-radius: 4px;
-  background: #343a40;
-  color: #63e6be;
-  font-size: 12px;
-  cursor: pointer;
-}
-
+.btn-system:hover,
 .btn-workspace:hover {
-  background: #495057;
+  color: var(--text);
+  border-color: #3f434c;
+  background: #2a2c32;
 }
 
-.btn-trace {
-  width: 64px;
-  height: 28px;
-  border: 1px solid #845ef7;
-  border-radius: 4px;
-  background: #343a40;
-  color: #d0bfff;
-  font-size: 12px;
+.btn-save {
+  color: var(--text);
+  border-color: #3f434c;
+}
+
+.sys-backup-list li {
   cursor: pointer;
 }
 
-.btn-trace:hover {
-  background: #495057;
-}
-
-.btn-export {
-  width: 72px;
-  height: 28px;
-  border: 1px solid #748ffc;
-  border-radius: 4px;
-  background: #343a40;
-  color: #bac8ff;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.btn-export:hover {
-  background: #495057;
+.sys-backup-list li:hover {
+  border-color: var(--accent);
 }
 
 .btn-cancel {
   flex: 0 0 72px;
   height: 28px;
-  border: 1px solid #e03131;
-  border-radius: 4px;
-  background: #862e2e;
-  color: #ffa8a8;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg-card);
+  color: var(--text-muted);
   font-size: 12px;
   cursor: pointer;
 }
 
 .btn-cancel:hover {
-  background: #a61e4d;
-  color: #fff;
+  color: var(--text);
+  background: #2a2c32;
 }
 
 .btn-cancel[hidden] {
@@ -271,17 +211,17 @@ html, body {
 .btn-send-exec {
   flex: 0 0 88px;
   height: 28px;
-  border: 1px solid #2f9e44;
-  border-radius: 4px;
-  background: #1864ab;
-  color: #fff;
+  border: 1px solid #3f434c;
+  border-radius: 3px;
+  background: var(--bg-card);
+  color: var(--text);
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .btn-send-exec:hover:not(:disabled) {
-  background: #1c7ed6;
+  background: #2a2c32;
 }
 
 .btn-send-exec:disabled {
@@ -375,17 +315,18 @@ html, body {
 .cost-badge,
 .mem-badge,
 .vec-badge,
-.god-badge {
-  min-width: 64px;
-  max-width: 200px;
-  height: 28px;
-  padding: 0 8px;
+.god-badge,
+.cold-badge {
+  min-width: 56px;
+  max-width: 160px;
+  height: 26px;
+  padding: 0 7px;
   border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg-panel);
+  border-radius: 3px;
+  background: var(--bg-card);
   color: var(--text-muted);
-  font-size: 11px;
-  line-height: 26px;
+  font-size: 10px;
+  line-height: 24px;
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -395,19 +336,19 @@ html, body {
 .cost-badge {
   min-width: 72px;
   font-variant-numeric: tabular-nums;
-  color: #69db7c;
-  border-color: #2f9e44;
+  color: var(--text-muted);
+  border-color: var(--border);
 }
 
 .cost-badge.cost-warn {
-  color: #ffd43b;
-  border-color: #f59f00;
+  color: var(--text);
+  border-color: #3f434c;
 }
 
 .cost-badge.cost-hot {
-  color: #ff8787;
-  border-color: #fa5252;
-  background: #3b1f1f;
+  color: var(--text);
+  border-color: #5c3d3d;
+  background: #1f1818;
 }
 
 .result-history {
@@ -422,9 +363,9 @@ html, body {
 }
 
 .god-badge.on {
-  color: #ffa94d;
-  border-color: #e8590c;
-  background: #3d2a14;
+  color: var(--text);
+  border-color: #3f434c;
+  background: #2a2c32;
 }
 
 .god-badge,
@@ -503,18 +444,13 @@ html, body {
 }
 
 .llm-badge.has-key {
-  color: #69db7c;
-  border-color: #2f9e44;
+  color: var(--text);
+  border-color: #3f434c;
 }
 
 .agent-card.is-active {
-  box-shadow: 0 0 0 2px var(--card-color, #4dabf7);
-  animation: pulse-card 1s ease-in-out infinite;
-}
-
-@keyframes pulse-card {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.75; }
+  border-color: var(--accent-hi);
+  background: #22242c;
 }
 
 .agent-card .card-preset {
@@ -535,12 +471,13 @@ html, body {
 
 .agent-card {
   flex: 1 1 0;
-  width: 0; /* equal eighths of full width */
+  width: 0;
   min-width: 0;
   height: 100%;
   background: var(--bg-card);
-  border: 1px solid var(--card-color, var(--border));
-  border-radius: 4px;
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--card-color, var(--border));
+  border-radius: 3px;
   padding: 6px 8px;
   cursor: default;
   user-select: none;
@@ -562,7 +499,7 @@ html, body {
 .agent-card .card-name {
   font-weight: 600;
   font-size: 12px;
-  color: var(--card-color, var(--text));
+  color: var(--text);
 }
 
 .agent-card .card-meta {
@@ -605,7 +542,6 @@ html, body {
 }
 
 .box {
-  /* equal thirds of full width; height = full boxes row */
   flex: 1 1 0;
   width: 0;
   min-width: 0;
@@ -613,13 +549,13 @@ html, body {
   min-height: 0;
   max-height: none;
   background: var(--bg-panel);
-  /* Plan: 1px border; color = active agent using this box */
-  border: 1px solid var(--box-agent-color, var(--border));
-  border-radius: 4px;
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--box-agent-color, var(--border));
+  border-radius: 3px;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* header fixed; layers fill rest */
-  transition: border-color 0.2s ease;
+  overflow: hidden;
+  transition: border-color 0.15s ease;
 }
 
 /* —— Layer stack over every box: website / worker / controls —— */
@@ -686,39 +622,39 @@ html, body {
   flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: center; /* mittig */
-  gap: 8px;
-  padding: 5px 8px;
-  min-height: 32px;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 8px;
+  min-height: 30px;
   border-bottom: 1px solid var(--border);
-  background: #22242a;
+  background: var(--bg-elev);
 }
 
 .box-toolbar-label {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-muted);
   min-width: 4.5em;
   text-align: center;
-  letter-spacing: 0.02em;
 }
 
 .box-toolbar .layer-btn {
-  height: 26px;
+  height: 24px;
   min-width: 36px;
-  padding: 0 12px;
+  padding: 0 10px;
   border: 1px solid var(--border);
-  border-radius: 4px;
-  background: #343a40;
-  color: var(--text);
+  border-radius: 3px;
+  background: var(--bg-card);
+  color: var(--text-muted);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
 }
 
 .box-toolbar .layer-btn:hover {
-  border-color: #868e96;
-  background: #495057;
+  color: var(--text);
+  border-color: #3f434c;
+  background: #2a2c32;
 }
 
 .box3-header {
@@ -852,9 +788,11 @@ html, body {
   font-weight: 600;
 }
 
-.box-arounder .box-header { color: #74c0fc; }
-.box-brainstorm .box-header { color: var(--c-brainstorm); }
-.box-worker .box-header { color: var(--c-worker1); }
+.box-arounder .box-header,
+.box-brainstorm .box-header,
+.box-worker .box-header {
+  color: var(--text-muted);
+}
 
 .box-body {
   flex: 1 1 auto;
@@ -1079,8 +1017,7 @@ html, body {
 }
 
 .worker-panel.is-focused {
-  border-color: #74c0fc;
-  box-shadow: 0 0 0 1px rgba(116, 192, 252, 0.45);
+  border-color: #3f434c;
 }
 
 .worker-panel[data-worker="worker1"] {
