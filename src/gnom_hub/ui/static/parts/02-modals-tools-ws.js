@@ -1,46 +1,71 @@
 /* part: 02-modals-tools-ws.js  lines 705-1949 of app.js — edit parts, run scripts/build_ui_js.py */
   function openTuneModal(id) {
     const a = findAgent(id);
-    if (!a || !els.tuneModal) return;
+    const layer = document.getElementById("tune-layer");
+    if (!a || !layer) return;
     tuneAgentId = id;
-    document.getElementById("tune-title").textContent = a.label + " — tuning";
-    document.getElementById("tune-prompt").value =
-      a.system_prompt || DEFAULT_PROMPTS[id] || "";
-    document.getElementById("tune-model").value = a.model || "deepseek-chat";
-    document.getElementById("tune-key").value = "";
+    const title = document.getElementById("tune-title");
+    if (title) title.textContent = a.label + " — tuning";
+    const promptEl = document.getElementById("tune-prompt");
+    if (promptEl)
+      promptEl.value = a.system_prompt || DEFAULT_PROMPTS[id] || "";
+    const modelEl = document.getElementById("tune-model");
+    if (modelEl) modelEl.value = a.model || "deepseek-chat";
+    const keyEl = document.getElementById("tune-key");
+    if (keyEl) keyEl.value = "";
     const setRange = function (idEl, valEl, v, def, digits) {
       const el = document.getElementById(idEl);
+      if (!el) return;
       const num = v != null ? Number(v) : def;
       el.value = String(num);
-      document.getElementById(valEl).textContent =
-        digits === 0 ? String(Math.round(num)) : Number(num).toFixed(digits);
+      const valNode = document.getElementById(valEl);
+      if (valNode)
+        valNode.textContent =
+          digits === 0 ? String(Math.round(num)) : Number(num).toFixed(digits);
     };
     setRange("tune-temp", "tune-temp-val", a.temperature, 0.5, 2);
     setRange("tune-topp", "tune-topp-val", a.top_p, 1, 2);
     setRange("tune-maxtok", "tune-maxtok-val", a.max_tokens, 800, 0);
     setRange("tune-freq", "tune-freq-val", a.frequency_penalty, 0, 2);
     setRange("tune-pres", "tune-pres-val", a.presence_penalty, 0, 2);
-    document.getElementById("tune-tts").checked = !!a.tts;
-    els.tuneModal.hidden = false;
+    const tts = document.getElementById("tune-tts");
+    if (tts) tts.checked = !!a.tts;
+    layer.hidden = false;
+    document.body.classList.add("tune-open");
     showSliderTip("temperature");
   }
 
   function closeTuneModal() {
-    if (els.tuneModal) els.tuneModal.hidden = true;
+    const layer = document.getElementById("tune-layer");
+    if (layer) layer.hidden = true;
+    document.body.classList.remove("tune-open");
     tuneAgentId = null;
   }
 
   function showSliderTip(key) {
     const tip = SLIDER_TIPS[key];
     if (!tip) return;
-    if (typeof showInfoLayer === "function") showInfoLayer("live");
-    if (els.placeholder) els.placeholder.hidden = true;
-    if (els.tipRoot) els.tipRoot.hidden = false;
-    if (els.tipTitle) els.tipTitle.textContent = "Schieber: " + key;
-    if (els.tipHow) els.tipHow.textContent = tip;
-    if (els.tipExample)
-      els.tipExample.textContent =
-        "Nach links/rechts schieben — Erklärung live in Info (Box 1).";
+    // Box 1 layer "Regler" — dynamic info for active control
+    if (typeof showInfoLayer === "function") showInfoLayer("tune");
+    const title = document.getElementById("tune-tip-title");
+    const how = document.getElementById("tune-tip-how");
+    const ex = document.getElementById("tune-tip-example");
+    const val = document.getElementById("tune-tip-value");
+    if (title) title.textContent = "Regler: " + key;
+    if (how) how.textContent = tip;
+    if (ex)
+      ex.textContent =
+        "Schieber nach links/rechts — Info live in Box 1 (Layer Regler).";
+    // current value if range exists
+    const map = {
+      temperature: "tune-temp",
+      top_p: "tune-topp",
+      max_tokens: "tune-maxtok",
+      frequency: "tune-freq",
+      presence: "tune-pres",
+    };
+    const el = document.getElementById(map[key] || "");
+    if (val && el) val.textContent = "Aktuell: " + el.value;
   }
 
   function bindTuneSliders() {
@@ -56,8 +81,13 @@
       if (!el) return;
       el.addEventListener("input", function () {
         const n = Number(el.value);
-        document.getElementById(p[1]).textContent =
-          p[2] === 0 ? String(Math.round(n)) : n.toFixed(p[2]);
+        const valNode = document.getElementById(p[1]);
+        if (valNode)
+          valNode.textContent =
+            p[2] === 0 ? String(Math.round(n)) : n.toFixed(p[2]);
+        showSliderTip(p[3]);
+      });
+      el.addEventListener("pointerdown", function () {
         showSliderTip(p[3]);
       });
     });

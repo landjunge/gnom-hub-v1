@@ -102,7 +102,7 @@
     coldList: document.getElementById("cold-list"),
     coldDetail: document.getElementById("cold-detail"),
     btnColdClose: document.getElementById("btn-cold-close"),
-    tuneModal: document.getElementById("tune-modal"),
+    tuneModal: document.getElementById("tune-layer"),
     systemModal: document.getElementById("system-modal"),
     workspaceModal: document.getElementById("workspace-modal"),
     btnWorkspace: document.getElementById("btn-workspace"),

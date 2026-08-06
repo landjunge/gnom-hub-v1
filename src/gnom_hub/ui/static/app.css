@@ -551,15 +551,111 @@ html, body {
 .agent-card.color-worker3 { --card-color: var(--c-worker3); }
 .agent-card.color-worker4 { --card-color: var(--c-worker4); }
 
-/* —— Three boxes: same full width as agents; fill remaining height —— */
+/* —— Three boxes; right pair can host tune layer —— */
 .boxes {
   display: flex;
   flex-direction: row;
   gap: var(--gap);
-  width: 100%; /* exact horizontal match with .agent-cards */
-  flex: 1 1 auto; /* take all free vertical space */
+  width: 100%;
+  flex: 1 1 auto;
   min-height: 0;
   margin-bottom: 0;
+  position: relative;
+}
+
+.boxes-right {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  gap: var(--gap);
+  position: relative;
+}
+
+.boxes-right > .box {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+}
+
+/* Layer 3: agent tune over Box 2+3 */
+.tune-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  background: rgba(18, 19, 22, 0.92);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  backdrop-filter: blur(3px);
+  overflow: hidden;
+}
+
+.tune-layer[hidden] {
+  display: none !important;
+}
+
+.tune-layer-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elev);
+}
+
+.tune-layer-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.tune-layer-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  padding: 10px;
+  overflow: auto;
+}
+
+.tune-layer-body .tune-sliders-col {
+  flex: 1 1 50%;
+  min-width: 0;
+}
+
+.tune-layer-body .tune-prompt-col {
+  flex: 1 1 50%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tune-layer-body .tune-prompt {
+  flex: 1 1 auto;
+  min-height: 80px;
+}
+
+.tune-layer-actions {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 6px 10px;
+  border-top: 1px solid var(--border);
+}
+
+.tip-value {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
 }
 
 .box {
