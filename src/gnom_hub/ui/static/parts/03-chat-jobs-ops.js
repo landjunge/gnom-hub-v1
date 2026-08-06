@@ -96,7 +96,7 @@
     }
   }
 
-  /** Box 1 info layers: Live | Regler | Gnom */
+  /** Box 1 info layers (Live | Regler | Gnom) — switched by JS, no box buttons */
   function showInfoLayer(name) {
     const allowed = { live: 1, tune: 1, gnom: 1 };
     const n = allowed[name] ? name : "live";
@@ -104,12 +104,6 @@
       const on = el.getAttribute("data-info-layer") === n;
       el.hidden = !on;
       el.classList.toggle("is-active", on);
-    });
-    document.querySelectorAll("#box1 .box-toolbar [data-info-layer]").forEach(function (btn) {
-      btn.classList.toggle(
-        "is-active",
-        btn.getAttribute("data-info-layer") === n
-      );
     });
   }
 
@@ -129,13 +123,6 @@
       node.addEventListener("mouseenter", function () {
         const id = node.getAttribute("data-tooltip-id");
         if (id) showTooltip(id);
-      });
-    });
-    // Box 1 layer buttons: Live | Gnom
-    document.querySelectorAll("#box1 [data-info-layer]").forEach(function (btn) {
-      btn.addEventListener("click", function (ev) {
-        ev.preventDefault();
-        showInfoLayer(btn.getAttribute("data-info-layer") || "live");
       });
     });
   }

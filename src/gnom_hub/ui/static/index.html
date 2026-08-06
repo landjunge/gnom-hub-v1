@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=134" />
+  <link rel="stylesheet" href="/static/app.css?v=135" />
 </head>
 <body>
   <div id="app">
@@ -62,15 +62,10 @@
     <!-- 8 agent cards: equal width, full row = boxes -->
     <section id="agent-cards" class="agent-cards" aria-label="Agents"></section>
 
-    <!-- 3 boxes: nur Quadrat-Rahmen (kein Name) -->
+    <!-- 3 boxes: nur Rahmen + Inhalt (keine Namen, keine Buttons) -->
     <section class="boxes" aria-label="Main panels">
       <!-- Box 1 = Info-Display: Live tips / Gnom detail layers -->
       <div id="box1" class="box box-1" data-tooltip-id="box1" aria-label="Box 1">
-        <div class="box-toolbar" data-box="box1" role="toolbar" aria-label="Info layers">
-          <button type="button" class="layer-btn is-active" data-info-layer="live" title="Live: hover/agent">Live</button>
-          <button type="button" class="layer-btn" data-info-layer="tune" title="Slider / Regler info">Regler</button>
-          <button type="button" class="layer-btn" data-info-layer="gnom" title="Gnom system detail">Gnom</button>
-        </div>
         <div id="box1-content" class="box-body box1-info">
           <!-- Layer Live: mouseover / agent click -->
           <div class="info-layer is-active" data-info-layer="live" id="box1-layer-live">
@@ -125,10 +120,6 @@
 
       <div class="boxes-right">
       <div id="box2" class="box box-2" data-tooltip-id="box2" aria-label="Box 2">
-        <div class="box-toolbar" data-box="box2" role="toolbar" aria-label="Box 2">
-          <button type="button" class="layer-btn" data-act="prev" title="Previous">‹</button>
-          <button type="button" class="layer-btn" data-act="next" title="Next">›</button>
-        </div>
         <div class="layer-stack">
           <div id="box2-content" class="layer layer-website box-body">
             <p class="muted">Brainstorm dialogue appears here.</p>
@@ -139,12 +130,6 @@
       </div>
 
       <div id="box3" class="box box-3" data-tooltip-id="box3" aria-label="Box 3">
-        <div class="box-toolbar" data-box="box3" role="toolbar" aria-label="Box 3">
-          <button type="button" class="layer-btn" data-act="prev" title="Previous worker">‹</button>
-          <span class="box-toolbar-label" id="box3-worker-label"></span>
-          <button type="button" class="layer-btn" data-act="copy" title="Copy to personal WS">Copy</button>
-          <button type="button" class="layer-btn" data-act="next" title="Next worker">›</button>
-        </div>
         <div class="layer-stack">
           <div id="box3-content" class="layer layer-website box-body box3-dynamic">
             <p class="muted">Worker result after Execute.</p>
@@ -477,6 +462,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=128"></script>
+  <script src="/static/app.js?v=135"></script>
 </body>
 </html>

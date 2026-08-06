@@ -2091,7 +2091,7 @@
     }
   }
 
-  /** Box 1 info layers: Live | Regler | Gnom */
+  /** Box 1 info layers (Live | Regler | Gnom) — switched by JS, no box buttons */
   function showInfoLayer(name) {
     const allowed = { live: 1, tune: 1, gnom: 1 };
     const n = allowed[name] ? name : "live";
@@ -2099,12 +2099,6 @@
       const on = el.getAttribute("data-info-layer") === n;
       el.hidden = !on;
       el.classList.toggle("is-active", on);
-    });
-    document.querySelectorAll("#box1 .box-toolbar [data-info-layer]").forEach(function (btn) {
-      btn.classList.toggle(
-        "is-active",
-        btn.getAttribute("data-info-layer") === n
-      );
     });
   }
 
@@ -2124,13 +2118,6 @@
       node.addEventListener("mouseenter", function () {
         const id = node.getAttribute("data-tooltip-id");
         if (id) showTooltip(id);
-      });
-    });
-    // Box 1 layer buttons: Live | Gnom
-    document.querySelectorAll("#box1 [data-info-layer]").forEach(function (btn) {
-      btn.addEventListener("click", function (ev) {
-        ev.preventDefault();
-        showInfoLayer(btn.getAttribute("data-info-layer") || "live");
       });
     });
   }
@@ -4291,11 +4278,9 @@
   let box3BlendBusy = false;
 
   function updateBox3WorkerLabel(idx, n) {
-    const label = document.getElementById("box3-worker-label");
-    if (!label) return;
-    const out = lastWorkerOutputs[idx];
-    const name = (out && (out.name || out.worker)) || "Worker " + (idx + 1);
-    label.textContent = name + "  " + (idx + 1) + "/" + n;
+    /* label UI removed — pure box frame */
+    void idx;
+    void n;
   }
 
   function paintWorkerIntoSlot(slotEl, out, idx) {
@@ -4348,34 +4333,7 @@
   }
 
   function bindBoxLayerControls() {
-    // Toolbar under each box header (horizontal, centered)
-    document.querySelectorAll(".box-toolbar").forEach(function (bar) {
-      if (bar.dataset.bound === "1") return;
-      bar.dataset.bound = "1";
-      bar.addEventListener("click", function (ev) {
-        const btn = ev.target.closest(".layer-btn");
-        if (!btn) return;
-        const boxId = bar.getAttribute("data-box") || "";
-        const act = btn.getAttribute("data-act");
-        if (boxId === "box3") {
-          if (act === "next") focusBox3Worker(box3FocusIdx + 1);
-          if (act === "prev") focusBox3Worker(box3FocusIdx - 1);
-          if (act === "copy") {
-            const out = lastWorkerOutputs[box3FocusIdx];
-            if (out) keepWorkerToPersonalWs(out, box3FocusIdx);
-          }
-          return;
-        }
-        // box1/box2: scroll website layer
-        const website = document.getElementById(boxId + "-content");
-        if (!website) return;
-        const step = Math.max(120, Math.floor(website.clientHeight * 0.7));
-        website.scrollBy({
-          top: act === "next" ? step : -step,
-          behavior: "smooth",
-        });
-      });
-    });
+    /* box chrome buttons removed — pure frame */
   }
 
   function wrapHtmlDocument(html) {
