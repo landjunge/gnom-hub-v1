@@ -1448,7 +1448,7 @@ body.worker-fs-open {
   background: #495057;
 }
 
-/* —— Chat row: 1/3 | 1/3 mittig (unter Box 2) | 1/3 —— */
+/* —— Chat row: same columns as boxes (Box1 | Box2 chat | Box3) —— */
 .chat-row {
   display: flex;
   flex-direction: row;
@@ -1460,12 +1460,18 @@ body.worker-fs-open {
   overflow: hidden;
 }
 
-/* three equal columns, same as visual thirds under boxes */
-.chat-side-left,
-.chat-side-right,
-.chat {
-  flex: 0 0 calc((100% - 2 * var(--gap)) / 3);
-  width: calc((100% - 2 * var(--gap)) / 3);
+/* left = Box 1 width; mid/right = Box 2 / Box 3 (half of 2/3 each) */
+.chat-side-left {
+  flex: 0 0 calc((100% - var(--gap)) / 3);
+  width: calc((100% - var(--gap)) / 3);
+  min-width: 0;
+  max-width: none;
+}
+
+.chat,
+.chat-side-right {
+  flex: 0 0 calc(((100% - var(--gap)) * 2 / 3 - var(--gap)) / 2);
+  width: calc(((100% - var(--gap)) * 2 / 3 - var(--gap)) / 2);
   min-width: 0;
   max-width: none;
 }
