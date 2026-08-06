@@ -66,7 +66,7 @@
       background: #0a0b0d;
       overflow: hidden;
       isolation: isolate;
-      transition: border-color 0.2s ease;
+      transition: border-color 0.06s linear;
     }
 
     /* all layers stacked; only visibility (opacity) changes with ↑↓ */
@@ -75,7 +75,7 @@
       inset: 0;
       pointer-events: none;
       opacity: 0;
-      transition: opacity 0.4s ease, transform 0.4s ease;
+      transition: opacity 0.08s linear, transform 0.08s linear;
       display: flex;
       flex-direction: column;
       z-index: 1;
@@ -95,7 +95,7 @@
       flex-direction: row;
       width: 100%;
       height: 100%;
-      transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+      transition: transform 0.07s linear;
     }
     .frame {
       flex: 0 0 100%;
@@ -189,7 +189,7 @@
     .vis-row .bar > i {
       display: block; height: 100%; width: 0%;
       background: var(--c, var(--c1));
-      transition: width 0.35s ease;
+      transition: width 0.07s linear;
     }
     .vis-row .pct {
       font-variant-numeric: tabular-nums; color: var(--muted); text-align: right;
@@ -274,7 +274,7 @@
       background: #1e2028; border: 1px solid var(--c3);
       color: var(--c3); padding: 10px 16px; border-radius: 6px;
       font-weight: 700; pointer-events: none;
-      opacity: 0; transition: opacity 0.2s, transform 0.25s;
+      opacity: 0; transition: opacity 0.06s linear, transform 0.06s linear;
     }
     .pop.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
   </style>
@@ -464,7 +464,7 @@
     var b = document.querySelector('.pad[data-nav="' + dir + '"]');
     if (!b) return;
     b.classList.add("flash");
-    setTimeout(function () { b.classList.remove("flash"); }, 120);
+    setTimeout(function () { b.classList.remove("flash"); }, 50);
   }
 
   function maxFrames() {
@@ -547,8 +547,8 @@
     pop.classList.add("show");
     setTimeout(function () {
       pop.classList.remove("show");
-      setTimeout(function () { pop.hidden = true; }, 200);
-    }, 650);
+      setTimeout(function () { pop.hidden = true; }, 80);
+    }, 220);
   }
 
   function applyVisibility() {
