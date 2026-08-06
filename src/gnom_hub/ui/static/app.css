@@ -715,7 +715,7 @@ html, body {
 .box-body {
   flex: 1 1 auto;
   padding: 8px 10px;
-  /* Prefer fit-in-viewport; scroll only when content truly exceeds the box */
+  /* Fill remaining box height; scroll only when content exceeds (not fixed 300px) */
   overflow: auto;
   min-height: 0;
   white-space: pre-wrap;
@@ -724,6 +724,15 @@ html, body {
   line-height: 1.4;
   scrollbar-width: thin;
   scrollbar-color: #495057 transparent;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Box 3 body is also the dynamic panel host — no double outer scroll */
+.box-body.box3-dynamic {
+  padding: 4px;
+  overflow: hidden;
+  white-space: normal;
 }
 
 .box-body::-webkit-scrollbar,
@@ -750,16 +759,14 @@ html, body {
   max-height: none;
 }
 
-/* —— Box 3: dynamic — one panel per worker, equal share of height —— */
+/* —— Box 3: dynamic — one panel per worker (1,2,3,4…), equal height share —— */
 .box3-dynamic {
-  white-space: normal;
-  padding: 4px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  height: 100%;
+  flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden;
+  height: 100%;
 }
 
 .worker-panel {
@@ -768,7 +775,7 @@ html, body {
   background: #1e1f23;
   display: flex;
   flex-direction: column;
-  flex: 1 1 0; /* equal height for each worker panel */
+  flex: 1 1 0; /* equal share of Box 3 for each worker result */
   min-height: 0;
   overflow: hidden;
 }
@@ -866,7 +873,7 @@ html, body {
   display: block;
   flex: 1 1 auto;
   width: 100%;
-  min-height: 120px;
+  min-height: 0; /* fill panel — no fixed 300px tile */
   height: 100%;
   border: 0;
   background: #fff;

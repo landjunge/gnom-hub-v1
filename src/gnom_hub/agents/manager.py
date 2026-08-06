@@ -36,10 +36,11 @@ class AgentManager:
             (AgentId.MEMORY, "Memory", "memory", True, False, None),
             (AgentId.FLEX, "Flex", "flex", True, True, DEFAULT_FLEX_PRESET),
             (AgentId.COORDINATOR, "Coordinator", "coordinator", True, True, None),
+            # All workers on by default (user: Box 3 dynamic for 1+2+…; enable off workers)
             (AgentId.WORKER1, "Worker 1", "worker", True, True, None),
             (AgentId.WORKER2, "Worker 2", "worker", True, True, None),
-            (AgentId.WORKER3, "Worker 3", "worker", False, True, None),
-            (AgentId.WORKER4, "Worker 4", "worker", False, True, None),
+            (AgentId.WORKER3, "Worker 3", "worker", True, True, None),
+            (AgentId.WORKER4, "Worker 4", "worker", True, True, None),
         ]
         agents: dict[AgentId, AgentState] = {}
         for agent_id, name, role, enabled, toggleable, preset in specs:
@@ -107,8 +108,8 @@ class AgentManager:
         """Enabled workers only (up to 4)."""
         return [self._agents[aid] for aid in _WORKER_IDS if self._agents[aid].enabled]
 
-    def enable_all(self, *, include_extra_workers: bool = False) -> list[AgentState]:
-        """Turn core agents on. Worker3/4 stay off unless include_extra_workers."""
+    def enable_all(self, *, include_extra_workers: bool = True) -> list[AgentState]:
+        """Turn all agents on (Worker3/4 included by default)."""
         for agent in self._agents.values():
             if agent.id in (AgentId.WORKER3, AgentId.WORKER4) and not include_extra_workers:
                 continue

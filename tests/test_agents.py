@@ -90,9 +90,7 @@ def test_enable_all_turns_workers_on():
     assert mgr.get(AgentId.BRAINSTORM).enabled is True
     assert mgr.get(AgentId.WORKER1).enabled is True
     assert mgr.get(AgentId.WORKER2).enabled is True
-    # w3/w4 stay off unless include_extra_workers
-    assert mgr.get(AgentId.WORKER3).enabled is False
-    mgr.enable_all(include_extra_workers=True)
+    # all workers on by default (Box 3 dynamic for 1–4)
     assert mgr.get(AgentId.WORKER3).enabled is True
     assert mgr.get(AgentId.WORKER4).enabled is True
 
