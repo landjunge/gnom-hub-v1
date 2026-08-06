@@ -115,13 +115,13 @@ TOOLTIPS: dict[str, dict[str, TooltipText]] = {
     "box1": {
         "en": {
             "title": "Box 1",
-            "how_to": "Mouse over or click agents/controls — explanation shows here.",
-            "example": "Hover or click Memory → explanation in Box 1.",
+            "how_to": "Hover help, clarify buttons, slider explanations while tuning.",
+            "example": "Hover Memory or open agent tuning → explanations appear here.",
         },
         "de": {
             "title": "Box 1",
-            "how_to": "Maus über Agenten/Controls oder Klick — Erklärung hier.",
-            "example": "Memory hovern oder klicken → Erklärung in Box 1.",
+            "how_to": "Hover-Hilfe, Clarify-Buttons, Slider-Erklärungen beim Tuning.",
+            "example": "Memory hovern oder Agent-Tuning öffnen → Erklärung hier.",
         },
     },
     "box2": {

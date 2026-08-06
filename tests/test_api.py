@@ -68,8 +68,7 @@ def test_ui_static_has_v16_v37_features(client: TestClient):
     html = client.get("/")
     assert html.status_code == 200
     assert "box3-content" in html.text
-    assert "Workspace" in html.text
-    assert "box3-content" in html.text
+    assert "Box 3" in html.text
     assert "cost-badge" in html.text
     assert "box3-content" in html.text
     assert "btn-clarify" in html.text

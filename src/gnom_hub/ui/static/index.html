@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=126" />
+  <link rel="stylesheet" href="/static/app.css?v=125" />
 </head>
 <body>
   <div id="app">
@@ -62,15 +62,19 @@
     <!-- 8 agent cards: equal width, full row = boxes -->
     <section id="agent-cards" class="agent-cards" aria-label="Agents"></section>
 
-    <!-- Left: Box 1 explanations (hover + agent click). Right: Workspace (old Box 2+3). -->
+    <!-- 3 boxes: one bar = name + buttons (no double header strip) -->
     <section class="boxes" aria-label="Main panels">
       <div id="box1" class="box box-1" data-tooltip-id="box1">
         <div class="box-bar">
           <span class="box-title">Box 1</span>
+          <div class="box-toolbar" data-box="box1" role="toolbar" aria-label="Box 1">
+            <button type="button" class="layer-btn" data-act="prev" title="Previous">‹</button>
+            <button type="button" class="layer-btn" data-act="next" title="Next">›</button>
+          </div>
         </div>
         <div class="layer-stack">
           <div id="box1-content" class="layer layer-website box-body">
-            <p class="box1-placeholder">Mouse over agents/controls, or click an agent — explanation here.</p>
+            <p class="box1-placeholder">Hover a card or control for help. Click Cold badge to browse archives.</p>
             <div id="box1-tooltip" class="box1-tooltip" hidden>
               <h2 id="tip-title" class="tip-title"></h2>
               <p id="tip-how" class="tip-how"></p>
@@ -96,37 +100,48 @@
               </div>
             </div>
           </div>
+          <div class="layer layer-worker" data-box="box1" aria-hidden="true"></div>
         </div>
       </div>
 
-      <div id="workspace" class="box box-workspace">
+      <div id="box2" class="box box-2" data-tooltip-id="box2">
         <div class="box-bar">
-          <span class="box-title">Workspace</span>
-          <div class="box-toolbar" data-box="box3" role="toolbar" aria-label="Workspace">
+          <span class="box-title">Box 2</span>
+          <div class="box-toolbar" data-box="box2" role="toolbar" aria-label="Box 2">
+            <button type="button" class="layer-btn" data-act="prev" title="Previous">‹</button>
+            <button type="button" class="layer-btn" data-act="next" title="Next">›</button>
+          </div>
+        </div>
+        <div class="layer-stack">
+          <div id="box2-content" class="layer layer-website box-body">
+            <p class="muted">Brainstorm dialogue appears here.</p>
+            <p class="muted empty-hint">(Empty — Send a message.)</p>
+          </div>
+          <div class="layer layer-worker" data-box="box2" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <div id="box3" class="box box-3" data-tooltip-id="box3">
+        <div class="box-bar">
+          <span class="box-title">Box 3</span>
+          <div class="box-toolbar" data-box="box3" role="toolbar" aria-label="Box 3">
             <button type="button" class="layer-btn" data-act="prev" title="Previous worker">‹</button>
             <span class="box-toolbar-label" id="box3-worker-label"></span>
             <button type="button" class="layer-btn" data-act="copy" title="Copy to personal WS">Copy</button>
             <button type="button" class="layer-btn" data-act="next" title="Next worker">›</button>
           </div>
         </div>
-        <div class="workspace-body">
-          <div id="box2" class="workspace-pane workspace-brainstorm" data-tooltip-id="box2">
-            <div id="box2-content" class="box-body workspace-pane-body">
-              <p class="muted">Brainstorm dialogue appears here.</p>
-              <p class="muted empty-hint">(Empty — Send a message.)</p>
-            </div>
+        <div class="layer-stack">
+          <div id="box3-content" class="layer layer-website box-body box3-dynamic">
+            <p class="muted">Worker result after Execute.</p>
+            <p class="muted empty-hint">(Empty until Execute finishes.)</p>
           </div>
-          <div id="box3" class="workspace-pane workspace-workers" data-tooltip-id="box3">
-            <div id="box3-content" class="box-body box3-dynamic workspace-pane-body">
-              <p class="muted">Worker result after Execute.</p>
-              <p class="muted empty-hint">(Empty until Execute finishes.)</p>
-            </div>
-          </div>
+          <div class="layer layer-worker" data-box="box3" aria-hidden="true"></div>
         </div>
       </div>
     </section>
 
-    <!-- Chat under workspace; side under Box 1 -->
+    <!-- Chat row: same 3 columns as boxes — chat under Box 2, side slots under Box 1/3 -->
     <section class="chat-row" aria-label="Chat and side slots">
       <div class="chat-side chat-side-left" aria-label="Under Box 1">
         <button type="button" class="chat-side-btn" disabled title="Platzhalter">·</button>
@@ -157,6 +172,11 @@
         </div>
         <p class="kbd-hint">Enter = Send · ↑/↓ History · Ctrl/⌘+Enter = Execute · Ctrl/⌘+S = Save</p>
       </section>
+      <div class="chat-side chat-side-right" aria-label="Under Box 3">
+        <button type="button" class="chat-side-btn" disabled title="Platzhalter">·</button>
+        <button type="button" class="chat-side-btn" disabled title="Platzhalter">·</button>
+        <button type="button" class="chat-side-btn" disabled title="Platzhalter">·</button>
+      </div>
     </section>
   </div>
 
@@ -444,6 +464,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=126"></script>
+  <script src="/static/app.js?v=125"></script>
 </body>
 </html>
