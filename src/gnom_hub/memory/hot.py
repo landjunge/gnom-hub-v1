@@ -167,6 +167,13 @@ class HotMemory:
         payload = json.dumps(self.session, ensure_ascii=False, indent=2) + "\n"
         atomic_write_text(self.session_path, payload)
         self.canvas.save(self.canvas_path)
+        # Keep personal WS backup of user.db on latest
+        try:
+            from gnom_hub.db.sqlite_store import sync_user_db_backup
+
+            sync_user_db_backup(self.root)
+        except Exception:  # noqa: BLE001
+            pass
 
     def load(self) -> None:
         """Load HOT from user.db (preferred) or legacy session.json."""

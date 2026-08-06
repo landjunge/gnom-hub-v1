@@ -93,17 +93,37 @@ def resolve_key_txt_path(
     key_filename: str = "Key.txt",
 ) -> Path | None:
     """
-    Prefer User/Key.txt; fall back to repo-root Key.txt (legacy).
-
-    One-shot: if only root Key.txt exists, copy into User/ so the layout stays clean.
+    Prefer personal WS User/Key.txt.
+    Fallbacks (seed into WS once): hub User/Key.txt, hub root Key.txt.
+    Never pull real hub keys into pytest tmp roots.
     """
+    from gnom_hub.config.paths import is_real_hub_root
+
     base = Path(root) if root is not None else project_root()
     preferred = user_dir(base) / key_filename
-    legacy = base / key_filename
     if preferred.is_file():
         return preferred
-    if legacy.is_file():
-        # Seed User/ from root once (do not delete root — operator may still have it)
+
+    candidates: list[Path] = [
+        base / "User" / key_filename,  # old layout under same root
+        base / key_filename,
+    ]
+    # Only for the real installed hub: also seed from code-tree User/ / Key.txt
+    if is_real_hub_root(base):
+        candidates.extend(
+            [
+                project_root() / "User" / key_filename,
+                project_root() / key_filename,
+            ]
+        )
+    for legacy in candidates:
+        if not legacy.is_file():
+            continue
+        try:
+            if legacy.resolve() == preferred.resolve():
+                return preferred
+        except OSError:
+            pass
         try:
             preferred.parent.mkdir(parents=True, exist_ok=True)
             if not preferred.exists():
@@ -112,7 +132,6 @@ def resolve_key_txt_path(
                 return preferred
         except OSError:
             return legacy
-        return legacy
     return None
 
 

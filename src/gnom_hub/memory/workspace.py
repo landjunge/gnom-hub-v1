@@ -1,18 +1,22 @@
-"""Minimal dual workspace: temp + permanent (relative, USB-capable)."""
+"""Hub scratch workspace + copy of selected HTML into personal WS."""
 
 from __future__ import annotations
 
 import shutil
 from pathlib import Path
 
-from gnom_hub.config.paths import project_root
+from gnom_hub.config.paths import project_root, selected_dir
 from gnom_hub.memory.atomic import atomic_write_text
 
 
 class WorkspaceStore:
     """
-    data/workspace/temp  — scratch
-    data/workspace/perm  — keep
+    Hub (work):
+      data/workspace/temp  — scratch
+      data/workspace/perm  — hub-local keep
+
+    Personal WS (only deliberate HTML):
+      WS-…/selected/       — copy_to_selected()
     """
 
     def __init__(self, root: Path | None = None) -> None:
@@ -22,6 +26,8 @@ class WorkspaceStore:
         self.perm = self.base / "perm"
         self.temp.mkdir(parents=True, exist_ok=True)
         self.perm.mkdir(parents=True, exist_ok=True)
+        self.selected = selected_dir(self.root)
+        self.selected.mkdir(parents=True, exist_ok=True)
 
     def list_files(self, which: str = "temp") -> list[dict[str, str | int]]:
         folder = self._dir(which)
@@ -38,7 +44,7 @@ class WorkspaceStore:
         return path
 
     def promote(self, name: str) -> Path:
-        """Copy temp → perm."""
+        """Copy temp → perm (still on hub)."""
         safe = Path(name).name
         src = self.temp / safe
         if not src.is_file():
@@ -46,6 +52,29 @@ class WorkspaceStore:
         dst = self.perm / safe
         shutil.copy2(src, dst)
         return dst
+
+    def copy_to_selected(
+        self,
+        name: str,
+        *,
+        zone: str = "temp",
+    ) -> Path:
+        """
+        Copy ONE chosen file into personal WS selected/ (HTML only).
+        Does not bulk-copy — only the name you pick.
+        """
+        from gnom_hub.config.user_workspace import copy_selected_html
+
+        safe = Path(name).name
+        src = self._dir(zone) / safe
+        if not src.is_file():
+            # also allow reading from perm if zone was wrong
+            alt = self.perm / safe if zone != "perm" else self.temp / safe
+            if alt.is_file():
+                src = alt
+            else:
+                raise FileNotFoundError(safe)
+        return copy_selected_html(src, self.root)
 
     def read_text(self, which: str, name: str, max_chars: int = 12000) -> str:
         safe = Path(name).name
@@ -73,11 +102,25 @@ class WorkspaceStore:
                 n += 1
         return n
 
+    def list_selected(self) -> list[dict[str, str | int]]:
+        out: list[dict[str, str | int]] = []
+        if not self.selected.is_dir():
+            return out
+        for p in sorted(self.selected.iterdir()):
+            if p.is_file() and p.suffix.lower() in (".html", ".htm"):
+                out.append({"name": p.name, "bytes": p.stat().st_size, "zone": "selected"})
+        return out
+
     def snapshot(self) -> dict:
         return {
             "temp": self.list_files("temp"),
             "perm": self.list_files("perm"),
-            "paths": {"temp": str(self.temp), "perm": str(self.perm)},
+            "selected": self.list_selected(),
+            "paths": {
+                "temp": str(self.temp),
+                "perm": str(self.perm),
+                "selected": str(self.selected),
+            },
         }
 
     def export_zip(self, zone: str = "all") -> Path:

@@ -14,20 +14,20 @@ export PYTHONPATH="${ROOT}/src${PYTHONPATH:+:$PYTHONPATH}"
 HOST="${GNOM_HUB_HOST:-127.0.0.1}"
 PORT="${GNOM_HUB_PORT:-8080}"
 
-# Check workspace + Key + DB before serving
+# Personal WS (sibling) + Key + DB; selected/ only for chosen HTML
 python - <<'PY'
 from gnom_hub.config.user_workspace import ensure_user_workspace, format_user_workspace_report
 
 st = ensure_user_workspace()
 print(format_user_workspace_report(st))
-if not st.workspace_ok or not st.user_dir_ok:
-    raise SystemExit("User workspace missing — run ./scripts/install.sh")
+if not st.user_dir_ok:
+    raise SystemExit("personal WS User/ missing — run ./scripts/install.sh")
 if not st.key_ok:
     raise SystemExit("User/Key.txt missing — run ./scripts/install.sh")
 if not st.key_has_deepseek:
-    print("  note: no DeepSeek key yet — LLM calls will stub until you edit User/Key.txt")
+    print("  note: no DeepSeek key yet — edit personal WS User/Key.txt")
 PY
 
 echo "Gnom-Hub v1 → http://${HOST}:${PORT}/"
-echo "  User/ = Key.txt + user.db · Send = brainstorm · Execute = workers"
+echo "  work=hub · Key/DB/selected HTML=WS-gnom-hub-v1"
 exec python -m gnom_hub.main --host "$HOST" --port "$PORT"

@@ -1,16 +1,10 @@
 """
-SQLite store — live personal file: {workspace}/User/user.db
+SQLite store — live DB in personal WS (sibling of hub):
 
-Always under the hub workspace (disk or USB). Hub reads/writes only here.
-You update/sync the whole User/ folder with your workflow — never git-push.
+  gnom-hub-v1/                 ← code, work here
+  WS-gnom-hub-v1/User/user.db  ← LIVE personal store
 
-  {workspace}/
-    User/
-      Key.txt    # API keys
-      user.db    # THIS store (WARM/HOT + KV) — the only live DB
-
-Override: GNOM_USER_DB=/path/user.db
-Legacy one-shot seed only: ~/.local/share/gnom-hub/user.db if User/user.db missing.
+Override: GNOM_USER_DB=…  or  GNOM_WS=… (whole personal root)
 """
 
 from __future__ import annotations
@@ -74,10 +68,8 @@ def _legacy_home_db_path() -> Path:
 
 def default_user_db_path(root: Path | None = None) -> Path:
     """
-    Personal DB in workspace User/ (sync this folder yourself; never git-push).
-
-    Default: {project}/User/user.db
-    Override with env GNOM_USER_DB (or GNOM_DB_PATH).
+    Live DB: {personal_ws}/User/user.db
+    (real hub → sibling WS-gnom-hub-v1; tests → {tmp}/User/user.db)
     """
     raw = (os.getenv("GNOM_USER_DB") or os.getenv("GNOM_DB_PATH") or "").strip()
     if raw:
@@ -86,11 +78,6 @@ def default_user_db_path(root: Path | None = None) -> Path:
 
 
 def resolve_db_path(root: Path | None = None) -> Path:
-    """
-    {root}/User/user.db for real hub and tmp tests (isolated per root).
-
-    Env GNOM_USER_DB / GNOM_DB_PATH always wins when set.
-    """
     env = (os.getenv("GNOM_USER_DB") or os.getenv("GNOM_DB_PATH") or "").strip()
     if env:
         return Path(env).expanduser().resolve()
@@ -98,27 +85,32 @@ def resolve_db_path(root: Path | None = None) -> Path:
     return default_user_db_path(r)
 
 
+def sync_user_db_backup(root: Path | None = None) -> Path | None:
+    """Keep personal WS backups/user.db on latest live DB."""
+    from gnom_hub.config.user_workspace import backup_user_db
+
+    return backup_user_db(root)
+
+
 def _maybe_seed_from_legacy(target: Path, root: Path) -> None:
-    """
-    If User/user.db is missing, copy once from legacy home path
-    (only when target is the real project User/user.db).
-    """
-    if target.exists():
+    """If live DB missing: seed from hub User/, then home legacy (real hub only)."""
+    if target.exists() and target.stat().st_size > 0:
         return
-    try:
-        is_real = root.resolve() == project_root().resolve()
-    except OSError:
-        is_real = False
-    if not is_real:
-        return
-    legacy = _legacy_home_db_path()
-    if not legacy.is_file():
+    from gnom_hub.config.paths import is_real_hub_root
+
+    if not is_real_hub_root(root):
         return
     target.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        shutil.copy2(legacy, target)
-    except OSError:
-        pass
+    for legacy in (
+        project_root() / "User" / "user.db",
+        _legacy_home_db_path(),
+    ):
+        if legacy.is_file() and legacy.stat().st_size > 0:
+            try:
+                shutil.copy2(legacy, target)
+                return
+            except OSError:
+                continue
 
 
 def get_db(root: Path | None = None) -> GnomDatabase:

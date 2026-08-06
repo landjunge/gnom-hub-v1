@@ -86,9 +86,9 @@ if [ -f pyproject.toml ]; then
   GNOM_VER="$(grep -E '^version\s*=' pyproject.toml | head -1 | sed -E 's/.*"([^"]+)".*/\1/' || echo "$GNOM_VER")"
 fi
 echo "OK — Gnom-Hub v${GNOM_VER} ready."
-echo "  Sync unit:  User/  (Key.txt + user.db) — next to code, also on USB"
-echo "  Live DB:    User/user.db only (hub updates it; you sync the folder)"
-echo "  Never push: User/Key.txt · User/user.db"
+echo "  Hub (work):   $ROOT"
+echo "  Personal WS:  sibling WS-gnom-hub-v1 (Key + DB + selected HTML only)"
+echo "  Select HTML:  POST /api/workspace/select/{name}  (not bulk)"
 echo "  source .venv/bin/activate"
 echo "  ./scripts/start.sh"
 echo "  → http://127.0.0.1:8080/"

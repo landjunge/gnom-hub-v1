@@ -60,6 +60,12 @@ class WarmMemory:
         ok = self.db.warm_add(t, source="warm")
         if ok:
             self.db.warm_trim(self.max_facts)
+            try:
+                from gnom_hub.db.sqlite_store import sync_user_db_backup
+
+                sync_user_db_backup(self.root)
+            except Exception:  # noqa: BLE001
+                pass
         return ok
 
     def recent_facts(self, limit: int = 12) -> list[str]:

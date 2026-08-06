@@ -679,6 +679,25 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=404, detail=str(e)) from e
         return {"ok": True, "path": str(path), "workspace": get_hub().workspace.snapshot()}
 
+    @app.post("/api/workspace/select/{name}")
+    def workspace_select(
+        name: str,
+        zone: str = Query("temp"),
+    ) -> dict[str, Any]:
+        """Copy ONE chosen HTML into personal WS selected/ (not bulk)."""
+        try:
+            path = get_hub().workspace.copy_to_selected(name, zone=zone)
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        return {
+            "ok": True,
+            "path": str(path),
+            "name": path.name,
+            "workspace": get_hub().workspace.snapshot(),
+        }
+
     @app.get("/api/workspace/file")
     def workspace_file(
         zone: str = Query("temp"),
