@@ -27,22 +27,25 @@ def _brainstorm_user_payload(user_text: str, hist_block: str) -> str:
 
 def _stub_brainstorm(user_text: str, history: list[dict]) -> str:
     n = len([t for t in history if t.get("role") == "user"]) + 1
+    low = (user_text or "").lower()
+    hard = any(k in low for k in ("baue", "build", "mach mir", "erstelle", "html", "landing"))
     if n <= 1:
-        return (
+        base = (
             f"Ideen zu: {user_text}\n"
             "• Ziel und Nutzerwert in einem Satz schärfen\n"
             "• 3–5 Richtungen skizzieren (MVP vs. später)\n"
             "• Was darf bewusst weglassen werden?\n"
             "• Welches Ergebnis soll am Ende in Box 3 liegen?\n"
-            "→ Was soll ich als Nächstes vertiefen?"
         )
+        if hard:
+            return base + "→ Klare Bau-Anweisung — Umsetzung startet aus dem Kontext."
+        return base + "→ Soll ich das jetzt umsetzen / den Plan erstellen?"
     return (
         f"Weitergedacht (Runde {n}) zu: {user_text}\n"
         "• Vorherige Ideen enger zusammenführen\n"
         "• Eine Richtung priorisieren\n"
-        "• Offene Frage klären, bevor wir ausführen\n"
-        "→ Sag 'Execute' / klick Execute, wenn genug gesammelt ist — "
-        "oder schreib weiter zum Feinschliff."
+        "→ Sag ja / ok / mach das / plan erstellen — dann läuft die Pipeline. "
+        "Oder schreib weiter zum Feinschliff."
     )
 
 

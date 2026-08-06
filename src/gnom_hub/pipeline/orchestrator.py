@@ -663,15 +663,65 @@ class Orchestrator:
 
 def _wants_auto_execute(text: str, turns: list[dict] | None = None) -> bool:
     """
-    True when the user message already means “do it / build it” — Execute
-    should follow from context instead of an extra click.
+    True when the user already said “do it / build it” — either as a clear
+    build order in one shot, or as a short yes after brainstorm asked.
     """
     from gnom_hub.agents.roles_ext import _wants_one_html_page
 
     t = (text or "").strip()
+    if not t:
+        return False
+    low = t.lower().strip(" !.。")
+
+    users = [
+        str(x.get("text") or "").strip()
+        for x in (turns or [])
+        if x.get("role") == "user" and str(x.get("text") or "").strip()
+    ]
+    # Affirmative after brainstorm offered “soll ich umsetzen?”
+    go_words = {
+        "go",
+        "los",
+        "ok",
+        "okay",
+        "ja",
+        "jap",
+        "jo",
+        "yes",
+        "yep",
+        "sure",
+        "machs",
+        "mach das",
+        "mach es",
+        "mach",
+        "execute",
+        "do it",
+        "ja mach",
+        "ja bitte",
+        "bitte",
+        "jetzt",
+        "bau es",
+        "bau das",
+        "umsetzen",
+        "setz um",
+        "plan erstellen",
+        "erstell den plan",
+        "erstelle den plan",
+        "mach den plan",
+        "ja erstell",
+        "ja erstellen",
+        "los gehts",
+        "los geht's",
+        "do the plan",
+        "create the plan",
+        "run it",
+        "tu es",
+    }
+    if len(users) >= 2 and (low in go_words or low.startswith(("ja ", "ok "))):
+        return True
+
     if len(t) < 6:
         return False
-    low = t.lower()
 
     # Pure questions / diagnosis without a deliverable → brainstorm only
     diagnose = (
@@ -687,6 +737,7 @@ def _wants_auto_execute(text: str, turns: list[dict] | None = None) -> bool:
         "nur brainstorm",
         "nur ideen",
         "ideen zu",
+        "soll ich",  # meta — don't treat as build
     )
     buildish = (
         "baue",
@@ -702,10 +753,11 @@ def _wants_auto_execute(text: str, turns: list[dict] | None = None) -> bool:
     )
     if any(d in low for d in diagnose) and not any(b in low for b in buildish):
         return False
+    # Open questions without clear build verb → let brainstorm ask first
     if low.endswith("?") and not any(b in low for b in buildish):
         return False
 
-    # Explicit deliverable / build intent
+    # Hard build order → run without waiting for a second click
     if _wants_one_html_page(t):
         return True
     triggers = (
@@ -732,30 +784,10 @@ def _wants_auto_execute(text: str, turns: list[dict] | None = None) -> bool:
         "umsetzen",
         "deliver",
         "fertig machen",
+        "plan erstellen",
+        "erstell den plan",
     )
-    if any(k in low for k in triggers):
-        return True
-
-    # Short “go” after prior brainstorm turns
-    users = [
-        str(x.get("text") or "").strip()
-        for x in (turns or [])
-        if x.get("role") == "user" and str(x.get("text") or "").strip()
-    ]
-    return len(users) >= 2 and low in (
-        "go",
-        "los",
-        "ok",
-        "machs",
-        "mach das",
-        "mach es",
-        "execute",
-        "do it",
-        "ja mach",
-        "jetzt",
-        "bau es",
-        "bau das",
-    )
+    return any(k in low for k in triggers)
 
 
 def _pick_execute_task(turns: list[dict], fallback: str = "") -> str:
