@@ -26,8 +26,11 @@ def test_ensure_creates_user_key_and_db(tmp_path: Path):
     # example placeholder is not a real key
     assert st.key_has_deepseek is False
     report = format_user_workspace_report(st)
-    assert "User workspace check" in report
+    assert "User/" in report
+    assert "sync" in report.lower()
     assert "Key.txt" in report
+    assert st.sync_unit == "User/"
+    assert st.on_usb is False  # tmp_path is local
 
 
 def test_inspect_missing_user_dir(tmp_path: Path):

@@ -1,15 +1,16 @@
 """
-SQLite store — personal file: {project}/User/user.db (never git-pushed).
+SQLite store — live personal file: {workspace}/User/user.db
 
-Default path: <repo>/User/user.db
-Override: GNOM_USER_DB=/absolute/or/~/path/user.db
+Always under the hub workspace (disk or USB). Hub reads/writes only here.
+You update/sync the whole User/ folder with your workflow — never git-push.
 
-Clean layout with Key.txt:
-  User/
-    Key.txt    # API keys (source of truth)
-    user.db    # this store (WARM/HOT + KV) — sync in your workflow
+  {workspace}/
+    User/
+      Key.txt    # API keys
+      user.db    # THIS store (WARM/HOT + KV) — the only live DB
 
-Legacy: one-time migrate from ~/.local/share/gnom-hub/user.db and data/*.json.
+Override: GNOM_USER_DB=/path/user.db
+Legacy one-shot seed only: ~/.local/share/gnom-hub/user.db if User/user.db missing.
 """
 
 from __future__ import annotations

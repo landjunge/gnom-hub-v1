@@ -1,9 +1,16 @@
 """
 New-install bootstrap for the personal User/ unit.
 
+User/ is the portable personal unit next to the code:
+  {workspace}/User/Key.txt   — keys (you update)
+  {workspace}/User/user.db   — memory (hub updates; you sync the folder)
+
+If the workspace is on a USB stick, User/ is created and kept there.
+Home (~/.local/…) is never the live store — only a one-shot legacy seed.
+
 On install / hub start:
   1. Check workspace (project root) is present
-  2. Ensure User/ exists
+  2. Ensure User/ exists (on that volume: disk / USB)
   3. Ensure Key.txt is inside User/ (seed from example if missing)
   4. Ensure user.db is inside User/ (create empty schema if missing)
 """
@@ -16,7 +23,7 @@ from pathlib import Path
 from typing import Any
 
 from gnom_hub.config.keys import parse_key_file, resolve_key_txt_path
-from gnom_hub.config.paths import project_root, user_dir
+from gnom_hub.config.paths import is_usb_root, project_root, user_dir
 
 
 def _find_key_path(base: Path) -> Path | None:
@@ -43,6 +50,8 @@ class UserWorkspaceStatus:
     key_has_deepseek: bool
     db_path: str
     db_ok: bool
+    on_usb: bool = False
+    sync_unit: str = "User/"  # portable unit to update/sync (not home)
     db_created: bool = False
     key_seeded: bool = False
     actions: list[str] = field(default_factory=list)
@@ -145,6 +154,8 @@ def inspect_user_workspace(root: Path | None = None) -> UserWorkspaceStatus:
         key_has_deepseek=has_ds,
         db_path=str(db_path),
         db_ok=db_ok,
+        on_usb=is_usb_root(base),
+        sync_unit="User/",
         ready=ready,
         warnings=warnings,
     )
@@ -180,6 +191,7 @@ def ensure_user_workspace(
             key_has_deepseek=False,
             db_path=str(user_dir(base) / "user.db"),
             db_ok=False,
+            on_usb=False,
             ready=False,
             warnings=["workspace root missing — cannot bootstrap User/"],
         )
@@ -239,6 +251,8 @@ def ensure_user_workspace(
         key_has_deepseek=has_ds,
         db_path=str(db_path.resolve()),
         db_ok=db_ok,
+        on_usb=is_usb_root(base),
+        sync_unit="User/",
         db_created=db_created,
         key_seeded=any("Key.txt" in a and ("seeded" in a or "created empty" in a) for a in actions),
         actions=actions,
@@ -249,13 +263,16 @@ def ensure_user_workspace(
 
 def format_user_workspace_report(status: UserWorkspaceStatus) -> str:
     """Human-readable install/start report."""
+    where = "USB mount" if status.on_usb else "local disk"
     lines = [
-        "User workspace check",
-        f"  workspace: {'OK' if status.workspace_ok else 'MISSING'}  {status.root}",
+        "User/ unit (portable — update & sync this folder)",
+        f"  workspace: {'OK' if status.workspace_ok else 'MISSING'}  {status.root}  ({where})",
         f"  User/:     {'OK' if status.user_dir_ok else 'MISSING'}  {status.user_dir}",
         f"  Key.txt:   {'OK' if status.key_ok else 'MISSING'}"
         + (f"  (deepseek={'yes' if status.key_has_deepseek else 'no'})" if status.key_ok else ""),
         f"  user.db:   {'OK' if status.db_ok else 'MISSING'}  {status.db_path}",
+        "  live store: User/user.db only (not ~/.local)",
+        "  sync:      copy/update whole User/ with the workspace (USB ok)",
     ]
     if status.actions:
         for a in status.actions:

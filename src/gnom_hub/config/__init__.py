@@ -6,7 +6,7 @@ from gnom_hub.config.keys import (
     load_keys,
     resolve_key_txt_path,
 )
-from gnom_hub.config.paths import project_root, user_dir
+from gnom_hub.config.paths import is_usb_root, project_root, user_dir
 from gnom_hub.config.user_workspace import (
     ensure_user_workspace,
     format_user_workspace_report,
@@ -19,6 +19,7 @@ __all__ = [
     "format_user_workspace_report",
     "has_deepseek_key",
     "inspect_user_workspace",
+    "is_usb_root",
     "load_keys",
     "project_root",
     "resolve_key_txt_path",

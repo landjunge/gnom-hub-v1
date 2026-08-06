@@ -52,7 +52,8 @@ Canonical real-user regression — **Playwright on UI + Gnom Tools**:
 **Single reference:** [`docs/KEYS_AND_MODELS.md`](docs/KEYS_AND_MODELS.md)
 
 - Default model: **`deepseek-v4-flash`** (official DeepSeek API id)
-- **Personal unit:** `User/Key.txt` + `User/user.db` (sync yourself; never push)
+- **Personal unit:** `User/` next to code (disk **or USB**) — `Key.txt` + `user.db`
+- **Sync/update:** whole `User/` folder; live DB is only `User/user.db` (not `~/.local`)
 - **Install/start:** checks workspace + `User/` + Key + DB (`ensure_user_workspace`); seeds missing pieces
 - Keys: `DEEPSEEK_API_KEY` (system) + `WORKER_API_KEY` (workers) + `DEEPSEEK_MODEL`
 - Thinking **off** by default (`DEEPSEEK_THINKING=0`) — empty content with v4-flash was a real issue
