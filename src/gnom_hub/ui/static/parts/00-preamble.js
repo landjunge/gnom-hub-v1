@@ -197,8 +197,6 @@
         "--box-agent-color",
         aid && COLOR_HEX[aid] ? COLOR_HEX[aid] : "var(--border)"
       );
-      // mini-display LED: on when this screen is driven by an agent
-      el.dataset.active = aid ? "true" : "false";
     });
   }
 
