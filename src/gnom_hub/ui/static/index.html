@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=124" />
+  <link rel="stylesheet" href="/static/app.css?v=125" />
 </head>
 <body>
   <div id="app">
@@ -141,30 +141,42 @@
       </div>
     </section>
 
-    <!-- Chat: full width, STT mic -->
-    <section id="chat" class="chat" data-tooltip-id="chat" aria-label="Chat">
-      <div id="chat-log" class="chat-log"></div>
-      <div class="chat-input-row">
-        <button type="button" id="btn-mic" class="btn-mic" title="Speech to text (browser)">Mic</button>
-        <input
-          type="text"
-          id="chat-input"
-          class="chat-input"
-          placeholder="Idee oder Bau-Befehl — sonst fragt Brainstorm: Soll ich umsetzen?"
-          autocomplete="off"
-        />
-        <button type="button" id="btn-send" class="btn-send">Send</button>
-        <button type="button" id="btn-execute" class="btn-execute" title="Run distill + workers from brainstorm (Ctrl+Enter)" disabled>
-          Execute
-        </button>
-        <button type="button" id="btn-send-exec" class="btn-send-exec" title="Send brainstorm turn then Execute">
-          Send+Exec
-        </button>
-        <button type="button" id="btn-cancel" class="btn-cancel" title="Cancel running job (Esc)" hidden>
-          Cancel
-        </button>
+    <!-- Chat row: same 3 columns as boxes — chat under Box 2, side slots under Box 1/3 -->
+    <section class="chat-row" aria-label="Chat and side slots">
+      <div class="chat-side chat-side-left" aria-label="Under Box 1">
+        <button type="button" class="chat-side-btn" disabled title="Platzhalter">·</button>
+        <button type="button" class="chat-side-btn" disabled title="Platzhalter">·</button>
+        <button type="button" class="chat-side-btn" disabled title="Platzhalter">·</button>
       </div>
-      <p class="kbd-hint">Enter = Send (Bau-Auftrag → Auto-Execute) · ↑/↓ History · Ctrl/⌘+Enter = Execute manuell · Ctrl/⌘+S = Save</p>
+      <section id="chat" class="chat" data-tooltip-id="chat" aria-label="Chat">
+        <div id="chat-log" class="chat-log"></div>
+        <div class="chat-input-row">
+          <button type="button" id="btn-mic" class="btn-mic" title="Speech to text (browser)">Mic</button>
+          <input
+            type="text"
+            id="chat-input"
+            class="chat-input"
+            placeholder="Idee oder Bau-Befehl — sonst fragt Brainstorm: Soll ich umsetzen?"
+            autocomplete="off"
+          />
+          <button type="button" id="btn-send" class="btn-send">Send</button>
+          <button type="button" id="btn-execute" class="btn-execute" title="Run distill + workers from brainstorm (Ctrl+Enter)" disabled>
+            Execute
+          </button>
+          <button type="button" id="btn-send-exec" class="btn-send-exec" title="Send brainstorm turn then Execute">
+            Send+Exec
+          </button>
+          <button type="button" id="btn-cancel" class="btn-cancel" title="Cancel running job (Esc)" hidden>
+            Cancel
+          </button>
+        </div>
+        <p class="kbd-hint">Enter = Send · ↑/↓ History · Ctrl/⌘+Enter = Execute · Ctrl/⌘+S = Save</p>
+      </section>
+      <div class="chat-side chat-side-right" aria-label="Under Box 3">
+        <button type="button" class="chat-side-btn" disabled title="Platzhalter">·</button>
+        <button type="button" class="chat-side-btn" disabled title="Platzhalter">·</button>
+        <button type="button" class="chat-side-btn" disabled title="Platzhalter">·</button>
+      </div>
     </section>
   </div>
 
@@ -452,6 +464,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=124"></script>
+  <script src="/static/app.js?v=125"></script>
 </body>
 </html>

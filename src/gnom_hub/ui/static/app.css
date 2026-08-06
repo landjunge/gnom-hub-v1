@@ -1300,12 +1300,52 @@ body.worker-fs-open {
   background: #495057;
 }
 
-/* —— Chat: full width, fixed band at bottom of viewport —— */
-.chat {
+/* —— Chat row: same 3 columns as boxes (chat = Box 2 width) —— */
+.chat-row {
+  display: flex;
+  flex-direction: row;
+  gap: var(--gap);
   width: 100%;
   height: var(--chat-h);
   min-height: 120px;
   flex: 0 0 var(--chat-h);
+  overflow: hidden;
+}
+
+.chat-side {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.chat-side-btn {
+  height: 28px;
+  min-width: 36px;
+  padding: 0 10px;
+  border: 1px dashed var(--border);
+  border-radius: 3px;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 12px;
+  opacity: 0.55;
+  cursor: default;
+}
+
+.chat {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  height: 100%;
   background: var(--bg-panel);
   border: 1px solid var(--border);
   border-radius: 4px;
