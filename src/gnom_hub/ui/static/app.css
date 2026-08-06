@@ -1448,7 +1448,7 @@ body.worker-fs-open {
   background: #495057;
 }
 
-/* —— Chat row: same 1/3 | 2/3 as boxes (stable) —— */
+/* —— Chat row: 1/3 | 1/3 mittig (unter Box 2) | 1/3 —— */
 .chat-row {
   display: flex;
   flex-direction: row;
@@ -1460,21 +1460,14 @@ body.worker-fs-open {
   overflow: hidden;
 }
 
-.chat-side-left {
-  flex: 0 0 calc((100% - var(--gap)) / 3);
-  width: calc((100% - var(--gap)) / 3);
+/* three equal columns, same as visual thirds under boxes */
+.chat-side-left,
+.chat-side-right,
+.chat {
+  flex: 0 0 calc((100% - 2 * var(--gap)) / 3);
+  width: calc((100% - 2 * var(--gap)) / 3);
   min-width: 0;
   max-width: none;
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 6px;
-  padding: 6px;
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: 4px;
 }
 
 .chat-side {
@@ -1491,7 +1484,7 @@ body.worker-fs-open {
 }
 
 .chat-side-right {
-  display: none;
+  display: flex;
 }
 
 .chat-side-btn {
@@ -1508,10 +1501,6 @@ body.worker-fs-open {
 }
 
 .chat {
-  flex: 0 0 calc((100% - var(--gap)) * 2 / 3);
-  width: calc((100% - var(--gap)) * 2 / 3);
-  min-width: 0;
-  max-width: none;
   height: 100%;
   background: var(--bg-panel);
   border: 1px solid var(--border);
@@ -1519,6 +1508,16 @@ body.worker-fs-open {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.chat-input-row {
+  justify-content: center; /* Eingabe-Zeile mittig */
+}
+
+.chat-input {
+  max-width: 100%;
+  flex: 1 1 auto;
+  min-width: 80px;
 }
 
 .chat-log {
