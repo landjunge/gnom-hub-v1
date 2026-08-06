@@ -559,6 +559,8 @@ html, body {
   width: 100%;
   flex: 1 1 auto;
   min-height: 0;
+  /* 10px free between agent cards and box module (#app gap + this) */
+  margin-top: calc(10px - var(--gap));
   margin-bottom: 0;
   position: relative;
 }
