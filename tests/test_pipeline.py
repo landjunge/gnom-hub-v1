@@ -484,3 +484,29 @@ def test_flex_execute_on_hard_build_order():
     st = pipe.brainstorm_turn("Build a landing page for Bean Shop. Full HTML with hero and footer.")
     assert st.stage == PipelineStage.done or st.worker_results
     assert seen or st.mode == "execute" or st.stage == PipelineStage.done
+
+
+def test_flex_contributes_each_brainstorm_turn():
+    bus = EventBus()
+    chat: list = []
+    bus.on("pipeline.flex_chat", lambda d: chat.append(d))
+    pipe = Pipeline(bus)
+    st = pipe.brainstorm_turn("Ideen zu einer Checklisten-App, nur Brainstorm bitte")
+    assert st.stage == PipelineStage.brainstorm
+    flex_turns = [t for t in st.brainstorm_turns if t.get("role") == "flex"]
+    assert flex_turns, "Flex should post a chat line each brainstorm turn"
+    assert "Flex:" in flex_turns[0]["text"] or flex_turns[0]["text"].startswith("Flex")
+    assert chat, "pipeline.flex_chat event expected"
+    # Notes should label Flex, not as Brainstorm dump only
+    assert "Flex:" in (st.brainstorm_notes or "")
+
+
+def test_flex_execute_line_not_double_with_contribute():
+    bus = EventBus()
+    pipe = Pipeline(bus)
+    pipe.brainstorm_turn("Ideen zu einer Checklisten-App, nur Brainstorm bitte")
+    st = pipe.brainstorm_turn("execute")
+    flex_turns = [t for t in st.brainstorm_turns if t.get("role") == "flex"]
+    # Last flex line should be Execute message, not contribute
+    assert flex_turns
+    assert any("Execute" in str(t.get("text") or "") for t in flex_turns)

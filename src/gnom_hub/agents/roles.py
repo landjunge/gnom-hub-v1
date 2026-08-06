@@ -223,6 +223,104 @@ class FlexAgent(BaseAgent):
         )
         return decision
 
+    def brainstorm_contribute(
+        self,
+        user_text: str,
+        brainstorm_reply: str = "",
+        memory_ctx: str = "",
+        *,
+        absorbed: list[str] | None = None,
+    ) -> str | None:
+        """
+        Short chat line each brainstorm turn — Flex as user proxy.
+
+        Not a full essay (that is Flex.run on Execute). One to three short lines:
+        what was remembered, standing wishes to keep, gentle steer toward next step.
+        """
+        if not self.enabled:
+            return None
+        text = (user_text or "").strip()
+        if not text:
+            return None
+        low = text.lower().strip(" !.。")
+        # Bare execute tokens: maybe_request_execute speaks instead
+        if low in {
+            "execute",
+            "ausführen",
+            "ausfuehren",
+            "run it",
+            "run execute",
+            "flex execute",
+            "jetzt ausführen",
+            "jetzt ausfuehren",
+            "pipeline starten",
+            "starte execute",
+            "start execute",
+        }:
+            return None
+
+        parts: list[str] = []
+        facts = list(absorbed or [])
+        if facts:
+            show = facts[:2]
+            parts.append("gemerkt: " + "; ".join(s.replace("User: ", "", 1) for s in show))
+
+        # Standing wishes from memory (User: lines)
+        wishes: list[str] = []
+        for ln in (memory_ctx or "").splitlines():
+            s = ln.strip().lstrip("-•* ")
+            if s.lower().startswith("user:") or s.lower().startswith("wish:"):
+                wishes.append(s)
+            if len(wishes) >= 2:
+                break
+        if wishes and not facts:
+            w = wishes[0].replace("User: ", "").replace("Wish: ", "")[:120]
+            parts.append("bleibend: " + w)
+
+        br = (brainstorm_reply or "").lower()
+        # Brainstorm offered to implement → Flex steers toward Execute
+        if any(
+            k in br
+            for k in (
+                "soll ich",
+                "umsetzen",
+                "plan erstellen",
+                "shall i",
+                "ready to",
+            )
+        ):
+            parts.append("wenn der Auftrag klar ist: Execute sagen / Button drücken.")
+
+        # User is pure diagnosis → Flex stays quiet-ish
+        diagnose = (
+            "warum",
+            "wo hakt",
+            "was ist mit",
+            "erklär",
+            "analys",
+            "only brainstorm",
+            "nur brainstorm",
+            "nur ideen",
+        )
+        if any(d in low for d in diagnose) and not parts:
+            parts.append("Brainstorm zuerst — Execute erst bei klarem Auftrag.")
+
+        if not parts:
+            # Minimal presence so Flex is visible as co-pilot
+            if len(text) >= 12:
+                parts.append("dabei — speichere Wünsche und halte die Linie.")
+            else:
+                return None
+
+        msg = "Flex: " + " · ".join(parts)
+        if len(msg) > 280:
+            msg = msg[:279] + "…"
+        self.bus.emit(
+            "pipeline.flex_chat",
+            {"message": msg, "user_text": text[:200]},
+        )
+        return msg
+
     def nudge_gaps(
         self,
         user_text: str,

@@ -197,11 +197,12 @@ class Orchestrator:
             self._state.brainstorm_turns.append({"role": "brainstorm", "text": notes})
             self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
 
-            # Flex: absorb wishes + may request Execute (user Stellvertreter)
+            # Flex: absorb + chat co-pilot + optional Execute (user Stellvertreter)
             flex_exec: dict | None = None
             if self.flex.enabled:
+                absorbed: list[str] = []
                 try:
-                    self.flex.absorb(text, mem)
+                    absorbed = list(self.flex.absorb(text, mem) or [])
                 except Exception as exc:  # noqa: BLE001
                     self.bus.emit(
                         "pipeline.warning",
@@ -219,10 +220,26 @@ class Orchestrator:
                         {"stage": "flex_execute", "error": str(exc)},
                     )
                     flex_exec = None
+                # Prefer Execute line when firing; else regular brainstorm co-talk
+                flex_line: str | None = None
                 if flex_exec and flex_exec.get("message"):
-                    self._state.brainstorm_turns.append(
-                        {"role": "flex", "text": str(flex_exec["message"])}
-                    )
+                    flex_line = str(flex_exec["message"])
+                else:
+                    try:
+                        flex_line = self.flex.brainstorm_contribute(
+                            text,
+                            notes,
+                            mem,
+                            absorbed=absorbed,
+                        )
+                    except Exception as exc:  # noqa: BLE001
+                        self.bus.emit(
+                            "pipeline.warning",
+                            {"stage": "flex_chat", "error": str(exc)},
+                        )
+                        flex_line = None
+                if flex_line:
+                    self._state.brainstorm_turns.append({"role": "flex", "text": flex_line})
                     self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
             # Pin task to latest real message — bare Execute keeps prior task
             if not _exec_only:
@@ -869,8 +886,12 @@ def _format_turns(turns: list[dict]) -> str:
             continue
         if role == "user":
             lines.append(f"You: {text}")
-        else:
+        elif role == "flex":
+            lines.append(f"Flex:\n{text}")
+        elif role == "brainstorm":
             lines.append(f"Brainstorm:\n{text}")
+        else:
+            lines.append(f"{role}:\n{text}")
         lines.append("")
     return "\n".join(lines).strip()
 
