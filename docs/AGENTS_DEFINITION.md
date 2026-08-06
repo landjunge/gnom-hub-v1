@@ -5,13 +5,13 @@ Dateien: `agents/models.py`, `agents/manager.py`, `agents/roles.py`, `agents/rol
 
 ---
 
-## 1. Registry (8 feste Slots)
+## 1. Registry (8 feste slots)
 
 | # | id | Name | role | Farbe (CSS/UI) | Enabled default | Toggleable | Preset |
 |---|-----|------|------|----------------|-----------------|------------|--------|
 | 1 | brainstorm | Brainstorm | brainstorm | red / `#ff0000` | an | ja | — |
 | 2 | memory | Memory | memory | blue / `#0066ff` | an | nein (locked on) | — |
-| 3 | flex | Flex | flex | yellow / `#ffff00` | an | ja | personal |
+| 3 | flex | Flex | flex | yellow / `#ffff00` | an | **nein (locked on, fixed role)** | — (kein Preset) |
 | 4 | coordinator | Coordinator | coordinator | green / `#00cc44` | an | ja | — |
 | 5 | worker1 | Worker 1 | worker | cyan / `#00d4ff` | an | ja | — |
 | 6 | worker2 | Worker 2 | worker | violet / `#7c3aed` | an | ja | — |
@@ -20,8 +20,10 @@ Dateien: `agents/models.py`, `agents/manager.py`, `agents/roles.py`, `agents/rol
 
 Gebaut in `AgentManager._build_agents()`.
 
-**Tune-Felder** (`AgentState`): `model`, `api_key`, `system_prompt` (nur Extra-Anhang),  
+**Tune-Felder** (`AgentState`): `model`, `api_key`, `system_prompt` (nur Extra-Anhang; **bei Flex ignoriert für Rollen-Logik**),  
 `temperature`, `top_p`, `max_tokens`, `frequency_penalty`, `presence_penalty`, `tts`.
+
+**TTS default:** `tts=true` für **brainstorm** und **flex** (von vornherein an). Gedanken/Chat-Beiträge dieser beiden Agenten werden vorgelesen.
 
 ---
 
@@ -32,7 +34,8 @@ Aus `base.py` → vor jedem Role-System-Prompt:
 > Du bist ein Agent in Gnom-Hub v1 (Pipeline: chat → brainstorm → distill → flex → coordinator → workers → memory).  
 > Kein Notes-App, kein localStorage-Spielzeug. Kein Umdefinieren von Gnom-Hub. Nur User-Task.
 
-User-Extra-Prompt aus der Karte wird **angehängt**, ersetzt die Code-Rolle **nicht**.
+User-Extra-Prompt aus der Karte wird **angehängt**, ersetzt die Code-Rolle **nicht**.  
+**Ausnahme Flex:** Rolle und System-Prompt sind **nur im Code** fest; UI-Tune ändert die Flex-Rolle nicht.
 
 ---
 
@@ -47,13 +50,67 @@ User-Extra-Prompt aus der Karte wird **angehängt**, ersetzt die Code-Rolle **ni
 - Diagnose Hub: echte Failure-Modes, keine Fake-Todo-Apps
 - Bau-Angebot genau eine Zeile: „Soll ich das jetzt umsetzen?“
 - Defaults: temp **0.9** (Diagnose **0.35**), max_tokens **700** / **900**
+- **TTS:** default an
 
-### Flex (`FlexAgent`)
+### Flex (`FlexAgent`) — **FIXED SYSTEM AGENT**
 
-- Personal Companion: Fakten aus User-Zeilen → WARM
-- Presets: `personal` | `security` | `neutral` | `researcher`
-- `nudge_gaps`: fehlende/falsche Worker-Ergebnisse → Korrekturzeilen an worker/coordinator
-- Heuristik + LLM (temp ~0.15)
+Flex ist **kein** freier Companion-Preset mehr. Er ist **fest verdrahtet**, **nicht togglebar**, **kein Preset-Wechsel**, Rolle **nicht über UI änderbar**.
+
+#### Drei unveränderliche Jobs
+
+1. **Wünsche speichern** – nur was der User schreibt, landet dauerhaft in der DB  
+2. **Andere Agenten nachziehen** – wenn Brainstorm/Coordinator/Worker Anweisungen vergessen, schiebt Flex Fakten und offene Aufgaben nach  
+3. **Für den User handeln** – im Brainstorm mitschreiben und Execute anstoßen
+
+#### Was Flex speichern darf
+
+| Speichert | Speichert **nicht** |
+|-----------|---------------------|
+| Explizite User-Wünsche / Regeln | Worker-HTML, Code-Dumps |
+| Gestellte Aufgaben + Status (offen/erledigt) | Brainstorm-Geschwätz ohne User-Intent |
+| Korrekturen („so und nicht anders“) | Pipeline-Meta, Test-Müll |
+
+- **Speicherort:** WARM/dauerhafte Facts + optional `flex_wishes` (HOT/DB)  
+- Nie überschreiben ohne neuen User-Input  
+- Nie „vergessen“ bei Clear von HOT  
+- Clear/Reset löscht **keine** Flex-Wünsche (außer expliziter User-Befehl „Wünsche löschen“)
+
+#### Verhalten im Pipeline-Flow
+
+```
+Chat / Brainstorm
+  → Flex liest User-Text, extrahiert Wünsche, schreibt in DB
+  → Flex darf selbst Chat-Zeilen schreiben (Stellvertreter)
+
+Wenn andere abweichen / vergessen
+  → Flex injectet: gespeicherte Wünsche + offene Aufgaben
+  → an Coordinator / Workers (nudge), klar und kurz
+
+Execute
+  → Flex darf Execute auslösen (oder User sagt „Execute“ = Trigger)
+  → nur wenn: klare Aufgabe + User-Wünsche erfüllt werden sollen
+  → kein wildes Auto-Execute bei jedem Chat
+```
+
+#### Feste Regeln (Code, nicht verhandelbar)
+
+1. Source of truth = geschriebener User-Text, nicht Agent-Fantasie  
+2. Flex-Prompt und Rolle **nur im Code**, nicht aus UI-Tune  
+3. Clear/Reset löscht nicht Flex-Wünsche (außer explizit)  
+4. Execute nur bei klarer Aufgabe + Wünschen  
+5. Sprache DE/EN wie der User schreibt  
+6. **TTS:** default an
+
+#### Code-API (Ziel)
+
+- `store_wish` / `list_open_tasks` / `nudge_context` (Memory, garbage-filter bleibt)  
+- Hooks: nach User-Turn → Flex absorb; vor Worker → Flex nudge; Flex setzt optional `execute` flag  
+- UI: Flex-Karte nur Anzeige — kein Toggle, kein Prompt-Edit, kein Preset
+
+#### Legacy (entfernen / wirkungslos)
+
+- Presets `personal` | `security` | `neutral` | `researcher` → **weg**  
+- Freier Companion-Essay-Output → ersetzt durch wish/store/nudge/act
 
 ### Coordinator (`CoordinatorAgent`)
 
@@ -73,14 +130,16 @@ User-Extra-Prompt aus der Karte wird **angehängt**, ersetzt die Code-Rolle **ni
 - Immer an, nicht togglbar
 - `recall` / Kontext aus HOT+WARM, Garbage-Filter
 - LLM kuratiert Fakten für Pipeline-Context; kein HTML-Müll in WARM
+- Flex-Wünsche bleiben in WARM auch wenn HOT cleared wird
 
 ---
 
 ## 4. Pipeline-Zuordnung
 
 ```
-Send    → Brainstorm (+ Flex absorb facts)
-Execute → Coordinator distill → Flex → Coordinator plan → Workers → Memory/Flex nudge
+Send    → Brainstorm (+ Flex absorb wishes / optional chat write)
+Execute → Coordinator distill → Flex nudge/review → Coordinator plan → Workers → Memory/Flex nudge
+Flex    → may request execute when task + wishes are clear
 ```
 
 Enabled Workers = `enabled_workers()` (bis 4).
@@ -92,6 +151,9 @@ Enabled Workers = `enabled_workers()` (bis 4).
 `parts/00-preamble.js` · `AGENTS[]` + `DEFAULT_PROMPTS` = Hinweise für Box1/Tune.  
 Echte Logik = Python `roles*.py`.
 
+**Flex:** UI darf **nicht** Rolle, Toggle, Preset oder system_prompt der Flex-Rolle ändern.  
+TTS-Checkbox für Flex/Brainstorm: default **on** (User kann stummschalten, Rolle bleibt).
+
 ---
 
 ## 6. Datei-Karte
@@ -99,11 +161,23 @@ Echte Logik = Python `roles*.py`.
 | Was | Datei |
 |-----|--------|
 | IDs, Farben, State | `agents/models.py` |
-| 8er-Registry, Toggle, Flex-Preset | `agents/manager.py` |
-| Brainstorm, Flex | `agents/roles.py` |
+| 8er-Registry, Toggle, Flex **locked** | `agents/manager.py` |
+| Brainstorm, Flex (fixed) | `agents/roles.py` |
 | Coordinator, Worker, Memory | `agents/roles_ext.py` |
 | HUB_IDENTITY, ask(), Tuning-Merge | `agents/base.py` |
 | Persist/Tune API | `agent_ops.py` |
+| Wishes / open tasks | Memory + ggf. `flex_wishes` |
+
+---
+
+## 7. DoD Flex (fixed)
+
+- [ ] Flex-Toggle/Preset weg bzw. wirkungslos
+- [ ] User-Wunsch nach Clear HOT noch da
+- [ ] Worker ignoriert Regel → Flex schiebt nach
+- [ ] Flex schreibt im Brainstorm mit
+- [ ] Flex löst Execute aus (Flag oder „Execute“-Befehl)
+- [ ] TTS default on für Flex + Brainstorm
 
 ---
 
