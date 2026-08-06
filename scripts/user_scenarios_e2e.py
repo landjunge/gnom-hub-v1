@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -70,6 +71,21 @@ def _write(run_dir: Path, report: dict) -> None:
         f"**Overall:** {'PASS' if report.get('ok') else 'FAIL'}",
         f"**Base:** {report.get('base_url')}",
         "",
+        "## Open these (real results)",
+        "",
+    ]
+    res_html = run_dir / "RESULT.html"
+    res_txt = run_dir / "RESULT.txt"
+    if res_html.is_file():
+        lines.append(f"- **HTML deliverable:** `{res_html}` (open in browser)")
+    if res_txt.is_file():
+        lines.append(f"- **Raw worker text:** `{res_txt}`")
+    if (run_dir / "export_last.md").is_file():
+        lines.append(f"- **Export:** `{run_dir / 'export_last.md'}`")
+    if (run_dir / "s1_03_done.png").is_file():
+        lines.append(f"- **UI screenshot:** `{run_dir / 's1_03_done.png'}`")
+    lines += [
+        "",
         "| Scenario | Result | Detail |",
         "|----------|--------|--------|",
     ]
@@ -81,6 +97,13 @@ def _write(run_dir: Path, report: dict) -> None:
         )
     lines.append("")
     (run_dir / "REPORT.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    # symlink-ish latest result folder
+    latest = OUT_ROOT / "LATEST_RESULT"
+    latest.mkdir(parents=True, exist_ok=True)
+    for name in ("RESULT.html", "RESULT.txt", "export_last.md", "REPORT.md", "s1_03_done.png"):
+        src = run_dir / name
+        if src.is_file():
+            (latest / name).write_bytes(src.read_bytes())
 
 
 def _box2(page) -> str:
@@ -98,8 +121,41 @@ def _pipeline_state() -> dict:
         return {}
 
 
+def _save_worker_deliverable(run_dir: Path, outs: list) -> dict:
+    """Write worker HTML/text into the report folder so humans see a real result."""
+    run_dir.mkdir(parents=True, exist_ok=True)
+    best = ""
+    best_name = "deliverable.txt"
+    for o in outs:
+        raw = str(o.get("result") or "")
+        if len(raw) > len(best):
+            best = raw
+            wid = str(o.get("worker") or "worker")
+            best_name = (
+                f"{wid}_deliverable.html" if "<html" in raw.lower() else f"{wid}_deliverable.txt"
+            )
+    if not best.strip():
+        return {"path": None, "chars": 0, "has_html": False}
+    body = best
+    if "```" in body:
+        m = re.search(r"```(?:html)?\s*([\s\S]*?)```", body, re.IGNORECASE)
+        if m:
+            body = m.group(1).strip()
+    path = run_dir / best_name
+    path.write_text(body + ("\n" if not body.endswith("\n") else ""), encoding="utf-8")
+    # also fixed name for “open this”
+    if "<html" in body.lower() or "<!doctype" in body.lower():
+        (run_dir / "RESULT.html").write_text(body + "\n", encoding="utf-8")
+    (run_dir / "RESULT.txt").write_text(best[:50_000], encoding="utf-8")
+    return {
+        "path": path.name,
+        "chars": len(body),
+        "has_html": "<html" in body.lower() or "<!doctype" in body.lower(),
+    }
+
+
 def scenario_s1_landing(page, run_dir: Path, log: StepLog) -> dict:
-    """S1: real keyboard landing page path."""
+    """S1: real keyboard landing page path — must leave a real file artifact."""
     name = "landing_happy_path"
     api_reset(BASE)
     page.goto(BASE + "/?e2e=s1", wait_until="domcontentloaded")
@@ -128,16 +184,33 @@ def scenario_s1_landing(page, run_dir: Path, log: StepLog) -> dict:
     iframes = page.locator(".worker-preview-frame").count()
     outs = pipe.get("worker_outputs") or []
     err = pipe.get("error")
+    # Real content — not just a panel chrome with empty iframe feel
+    max_len = max((len(str(o.get("result") or "")) for o in outs), default=0)
+    art = _save_worker_deliverable(run_dir, outs)
+    # export last into report folder
+    try:
+        exp = http_json(BASE, "GET", "/api/export/last", timeout=15)
+        content = str(exp.get("content") or "")
+        if content:
+            (run_dir / "export_last.md").write_text(content, encoding="utf-8")
+            art["export_chars"] = len(content)
+    except Exception:
+        art["export_chars"] = 0
+
     ok = (
         len(_box2(page)) > 40
         and stage_text(page) in ("done", "clarify")
         and (panels >= 1 or len(outs) >= 1)
         and not err
+        and max_len >= 800  # real deliverable, not chrome-only "PASS"
+        and bool(art.get("chars", 0) >= 800)
     )
     detail = (
         f"stage={stage_text(page)} panels={panels} iframes={iframes} "
-        f"workers_api={len(outs)} err={err!r}"
+        f"result_chars={max_len} file={art.get('path')} "
+        f"RESULT.html={art.get('has_html')} err={err!r}"
     )
+    log.add("s1_artifact", status="ok" if ok else "fail", detail=detail)
     return {
         "id": "S1",
         "name": name,
@@ -145,6 +218,8 @@ def scenario_s1_landing(page, run_dir: Path, log: StepLog) -> dict:
         "detail": detail,
         "panels": panels,
         "iframes": iframes,
+        "result_chars": max_len,
+        "artifact": art,
         "quality": (pipe.get("quality_notes") or "")[:300],
     }
 
