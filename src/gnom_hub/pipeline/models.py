@@ -48,3 +48,7 @@ class PipelineState:
     agent_nudges: list[dict] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     error: str | None = None
+    # Per-stage wall times in milliseconds (prod observability)
+    stage_timings: dict[str, float] = field(default_factory=dict)
+    # Effective plan mode after fast-path resolution (may differ from hub plan_mode)
+    resolved_plan_mode: str = ""
