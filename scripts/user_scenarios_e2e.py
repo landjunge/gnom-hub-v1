@@ -540,11 +540,28 @@ def main() -> int:
     report["steps"] = log.steps
     _write(run_dir, report)
 
+    # Hard rule: if S1 ran, a human-openable deliverable MUST exist.
+    # "PASS" with only panel chrome is a product-test failure we must catch ourselves.
+    if "1" in selected:
+        res_html = run_dir / "RESULT.html"
+        latest = OUT_ROOT / "LATEST_RESULT" / "RESULT.html"
+        if not res_html.is_file() or res_html.stat().st_size < 400:
+            report["ok"] = False
+            print("\nFAIL: S1 produced no usable RESULT.html (need real worker HTML file)")
+        elif not latest.is_file():
+            report["ok"] = False
+            print("\nFAIL: LATEST_RESULT/RESULT.html missing after S1")
+        else:
+            print(f"\n▸ DELIVERABLE (open this): {latest.resolve()}")
+            print(f"▸ screenshot: {(OUT_ROOT / 'LATEST_RESULT' / 's1_03_done.png').resolve()}")
+
     print("\n=== SUMMARY ===")
     for s in report["scenarios"]:
         print(f"  {'PASS' if s.get('ok') else 'FAIL'}  {s.get('id')}  {s.get('detail')}")
     print(f"\nRESULT: {'PASS' if report['ok'] else 'FAIL'}  ({report['seconds']}s)")
     print(f"Report: {run_dir / 'report.json'}")
+    if report["ok"] and "1" in selected:
+        print(f"OPEN: {OUT_ROOT / 'LATEST_RESULT' / 'RESULT.html'}")
     return 0 if report["ok"] else 1
 
 

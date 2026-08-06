@@ -42,6 +42,8 @@ Canonical real-user regression — **Playwright on UI + Gnom Tools**:
 - **Suite:** `python scripts/user_scenarios_e2e.py` (default **S1 landing + S5 tools/computer-use**)
 - **Full:** `python scripts/user_scenarios_e2e.py --all` or `GNOM_E2E_ALL=1 ./scripts/quality_check.sh`
 - **Must pass:** Box 2 brainstorm, Execute after Send, ≥1 worker; S5 tools API + Tools modal + computer-use endpoint
+- **Hard rule:** S1 is **not** PASS without an openable `data/e2e-scenarios/LATEST_RESULT/RESULT.html` (≥800 chars worker body). Panel chrome alone = FAIL. Agents must notice empty/missing deliverables without the user pointing it out.
+- **quality_check:** with server up, user scenarios are a **hard gate** (no `|| true`). Skip only with `GNOM_E2E_SKIP=1`.
 - **Known pitfall:** after brainstorm, Execute must re-enable when `chatBusy` clears (`lastCanExecute`)
 - Re-run when touching chat busy, Execute, Box 3, Tools modal, or computer-use
 

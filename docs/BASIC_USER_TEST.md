@@ -62,7 +62,11 @@ Latest: `data/e2e-scenarios/latest_report.json`.
 | Stage `done` or `clarify` | yes |
 | ≥1 worker panel / outputs | yes |
 | No pipeline.error | yes |
+| Worker body **≥800 chars** | **yes (hard)** |
+| File `LATEST_RESULT/RESULT.html` written | **yes (hard)** |
 | HTML preview preferred | soft |
+
+**Agents:** A green JSON `ok: true` without a human-openable deliverable is a **failed test design**. Fix criteria; do not wait for the user to ask “where is the result?”.
 
 ### S5 (tools — non-negotiable for “tools portfolio”)
 | Check | Required |
