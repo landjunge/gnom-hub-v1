@@ -23,10 +23,16 @@ class CaptureModule:
         path = self.out_dir / safe
         # Prefer mss (fast), then Pillow ImageGrab; never hard-require
         try:
-            import mss  # type: ignore
             from PIL import Image  # type: ignore
 
-            with mss.mss() as sct:
+            try:
+                from mss import MSS  # type: ignore
+            except ImportError:  # older mss
+                import mss as _mss  # type: ignore
+
+                MSS = _mss.mss  # type: ignore[attr-defined]
+
+            with MSS() as sct:
                 mon = sct.monitors[0]  # virtual full desktop
                 shot = sct.grab(mon)
                 img = Image.frombytes("RGB", shot.size, shot.bgra, "raw", "BGRX")

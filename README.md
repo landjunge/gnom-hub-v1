@@ -135,18 +135,20 @@ Details: [docs/TOOLS_PORTFOLIO.md](docs/TOOLS_PORTFOLIO.md).
 ## Architecture
 
 ```
-Browser SPA (app.js)
+Browser SPA (app.js ← parts/* via build_ui_js.py)
        │  REST + job polling
        ▼
-FastAPI  ──►  Hub (composition root)
+FastAPI  ──►  Hub (~180 LOC composition root + mixins)
                  ├── EventBus (sync)
                  ├── Orchestrator (stages)
                  ├── 8 role agents
                  ├── LLM manager (DeepSeek / Ollama)
                  ├── Memory (HOT / WARM / COLD / vector)
-                 ├── Workspace
+                 ├── Workspace · packs · backups · jobs
                  └── Computer-use kit (+ God-Mode)
 ```
+
+Hub public methods live on focused mixins (`pipeline_api`, `jobs`, `session_pack`, `presets`, …). API routes stay thin.
 
 ### Pipeline stages
 
