@@ -124,6 +124,105 @@ class FlexAgent(BaseAgent):
         finally:
             self.emit_active(False)
 
+    def maybe_request_execute(
+        self,
+        user_text: str,
+        turns: list[dict] | None = None,
+        memory_ctx: str = "",
+    ) -> dict | None:
+        """
+        Decide whether Flex should trigger Execute for the user.
+
+        Returns {"execute": True, "reason": str, "message": str} or None.
+        Never auto-fires on pure chat/diagnosis — only clear task + intent.
+        """
+        if not self.enabled:
+            return None
+        text = (user_text or "").strip()
+        if not text:
+            return None
+
+        # Import shared heuristic (context / ja after offer / hard build order)
+        from gnom_hub.pipeline.orchestrator import _wants_auto_execute
+
+        low = text.lower().strip(" !.。")
+        reason = ""
+        # Explicit execute command (Flex presses the button for the user)
+        execute_cmds = {
+            "execute",
+            "ausführen",
+            "ausfuehren",
+            "run it",
+            "run execute",
+            "flex execute",
+            "jetzt ausführen",
+            "jetzt ausfuehren",
+            "pipeline starten",
+            "starte execute",
+            "start execute",
+        }
+        if low in execute_cmds or low.startswith(
+            ("execute ", "ausführen ", "ausfuehren ", "run it")
+        ):
+            reason = "explicit_execute"
+
+        if not reason and _wants_auto_execute(text, turns):
+            reason = "context_intent"
+
+        # Standing wish: always execute on clear build orders
+        if not reason and memory_ctx:
+            mlow = memory_ctx.lower()
+            wish_auto = any(
+                k in mlow
+                for k in (
+                    "always execute",
+                    "immer execute",
+                    "immer ausführen",
+                    "auto-execute",
+                    "auto execute",
+                    "automatisch ausführen",
+                )
+            )
+            if wish_auto and _wants_auto_execute(text, turns):
+                reason = "standing_wish"
+
+        if not reason:
+            return None
+
+        # Need something to execute (prior brainstorm or this turn is a task)
+        turns = turns or []
+        has_task = bool(text) and (
+            len(text) >= 12
+            or any(str(x.get("text") or "").strip() for x in turns if x.get("role") == "user")
+        )
+        if not has_task:
+            return None
+
+        # Pure execute word alone still OK if history has a real task
+        if reason == "explicit_execute":
+            users = [
+                str(x.get("text") or "").strip()
+                for x in turns
+                if x.get("role") == "user" and str(x.get("text") or "").strip()
+            ]
+            # If only "execute" and no prior user task → refuse
+            substantive = [u for u in users if u.lower().strip(" !.。") not in execute_cmds]
+            if not substantive and low in execute_cmds:
+                return None
+
+        msg = {
+            "explicit_execute": "Flex: Execute — Auftrag wird ausgeführt.",
+            "context_intent": "Flex: klarer Bau-Auftrag — starte Execute.",
+            "standing_wish": "Flex: stehender Wunsch Auto-Execute — starte Execute.",
+        }.get(reason, "Flex: Execute.")
+
+        decision = {"execute": True, "reason": reason, "message": msg}
+        self.bus.emit(
+            "pipeline.flex_execute",
+            {"reason": reason, "message": msg, "user_text": text[:200]},
+        )
+        return decision
+
     def nudge_gaps(
         self,
         user_text: str,

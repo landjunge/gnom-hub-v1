@@ -139,8 +139,31 @@ class Orchestrator:
                 and bool(self._state.brainstorm_turns)
                 and not _is_topic_switch(self._state.brainstorm_turns, text)
             )
+            # Explicit Execute after a finished run: keep last task so Flex can re-trigger
+            _exec_only = text.lower().strip(" !.。") in {
+                "execute",
+                "ausführen",
+                "ausfuehren",
+                "run it",
+                "run execute",
+                "flex execute",
+                "jetzt ausführen",
+                "jetzt ausfuehren",
+                "pipeline starten",
+                "starte execute",
+                "start execute",
+            }
             if not continuing:
+                prev_turns = list(self._state.brainstorm_turns or [])
+                prev_notes = self._state.brainstorm_notes or ""
+                prev_task = (self._state.user_text or "").strip()
                 self._state = PipelineState(user_text=text, mode="brainstorm")
+                if _exec_only and prev_turns and prev_task:
+                    # Restore task context; do not append a fake user task line yet
+                    self._state.brainstorm_turns = prev_turns
+                    self._state.brainstorm_notes = prev_notes
+                    self._state.user_text = prev_task
+                    self._state.mode = "brainstorm"
             else:
                 self._state.mode = "brainstorm"
                 self._state.error = None
@@ -149,8 +172,9 @@ class Orchestrator:
                 self._state.distilled_requirements = []
                 self._state.flex_notes = ""
                 self._state.pending_question = None
-                # Latest user message is the task of record (not the first turn)
-                self._state.user_text = text
+                # Latest user message is the task of record (not a bare Execute token)
+                if not _exec_only:
+                    self._state.user_text = text
 
             self._clarified_once = False
 
@@ -173,7 +197,8 @@ class Orchestrator:
             self._state.brainstorm_turns.append({"role": "brainstorm", "text": notes})
             self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
 
-            # Flex: personal companion absorbs every user line (not only on Execute)
+            # Flex: absorb wishes + may request Execute (user Stellvertreter)
+            flex_exec: dict | None = None
             if self.flex.enabled:
                 try:
                     self.flex.absorb(text, mem)
@@ -182,8 +207,26 @@ class Orchestrator:
                         "pipeline.warning",
                         {"stage": "flex_absorb", "error": str(exc)},
                     )
-            # Always pin task to the message that just arrived
-            self._state.user_text = text
+                try:
+                    flex_exec = self.flex.maybe_request_execute(
+                        text,
+                        self._state.brainstorm_turns,
+                        mem,
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    self.bus.emit(
+                        "pipeline.warning",
+                        {"stage": "flex_execute", "error": str(exc)},
+                    )
+                    flex_exec = None
+                if flex_exec and flex_exec.get("message"):
+                    self._state.brainstorm_turns.append(
+                        {"role": "flex", "text": str(flex_exec["message"])}
+                    )
+                    self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
+            # Pin task to latest real message — bare Execute keeps prior task
+            if not _exec_only:
+                self._state.user_text = text
 
             self._set_stage(PipelineStage.brainstorm)
             self.bus.emit(
@@ -201,11 +244,20 @@ class Orchestrator:
                     "turns": len(self._state.brainstorm_turns),
                 },
             )
-            # Execute emerges from context — no forced extra button when intent is clear
-            if _wants_auto_execute(text, self._state.brainstorm_turns):
+            # Flex owns Execute trigger when enabled; else legacy context heuristic
+            should_exec = False
+            exec_reason = "context"
+            if self.flex.enabled:
+                if flex_exec and flex_exec.get("execute"):
+                    should_exec = True
+                    exec_reason = f"flex:{flex_exec.get('reason') or 'request'}"
+            elif _wants_auto_execute(text, self._state.brainstorm_turns):
+                should_exec = True
+                exec_reason = "context"
+            if should_exec and self._state.brainstorm_notes.strip():
                 self.bus.emit(
                     "pipeline.auto_execute",
-                    {"reason": "context", "text": text[:120]},
+                    {"reason": exec_reason, "text": text[:120]},
                 )
                 return self.execute()
         except Exception as exc:  # noqa: BLE001
