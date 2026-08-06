@@ -19,14 +19,14 @@
   const FLEX_PRESETS = ["personal", "security", "neutral", "researcher"];
 
   const COLOR_HEX = {
-    brainstorm: "#ff1a1a",
-    memory: "#1c7ed6",
-    flex: "#ffe066",
-    coordinator: "#37b24d",
-    worker1: "#15aabf",
-    worker2: "#7048e8",
-    worker3: "#f06595",
-    worker4: "#ff6b00",
+    brainstorm: "#ff0000",
+    memory: "#0066ff",
+    flex: "#ffff00",
+    coordinator: "#00cc44",
+    worker1: "#00d4ff",
+    worker2: "#7c3aed",
+    worker3: "#ff2d95",
+    worker4: "#ff6600",
   };
 
   const SLIDER_TIPS = {

@@ -17,16 +17,16 @@
   --card-h: clamp(64px, 8.5vh, 96px);
   --chat-h: clamp(140px, 18vh, 220px);
 
-  /* System agents — sehr kräftig, Flex = reines Gelb (nicht Gold) */
-  --c-brainstorm: #ff1a1a;
-  --c-memory: #1c7ed6;
-  --c-flex: #ffe066;         /* gelb, nicht gold */
-  --c-coordinator: #37b24d;
-  /* Workers — andere Palette, ebenfalls knallig, kein Grau */
-  --c-worker1: #15aabf;
-  --c-worker2: #7048e8;
-  --c-worker3: #f06595;
-  --c-worker4: #ff6b00;
+  /* System agents — max. kräftig, Flex = reines Gelb */
+  --c-brainstorm: #ff0000;
+  --c-memory: #0066ff;
+  --c-flex: #ffff00;
+  --c-coordinator: #00cc44;
+  /* Workers — andere Palette, knallig, kein Grau */
+  --c-worker1: #00d4ff;
+  --c-worker2: #7c3aed;
+  --c-worker3: #ff2d95;
+  --c-worker4: #ff6600;
 }
 
 * {
@@ -181,19 +181,20 @@ html, body {
   border-color: #3f434c;
 }
 
-/* System button — kräftige Basis (einziger farbiger Toolbar-Akzent) */
+/* System button — kräftig (Toolbar) */
 .top-toolbar .btn-system,
 .btn-system {
-  border-color: #4c6ef5;
-  color: #91a7ff;
-  background: #1c1f2e;
+  border-color: #0066ff;
+  color: #fff;
+  background: #0052cc;
+  font-weight: 700;
 }
 
 .top-toolbar .btn-system:hover,
 .btn-system:hover {
-  border-color: #748ffc;
-  color: #bac8ff;
-  background: #252a3d;
+  border-color: #3385ff;
+  color: #fff;
+  background: #0066ff;
 }
 
 .sys-backup-list li {
