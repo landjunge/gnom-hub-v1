@@ -45,10 +45,10 @@ def test_colors_and_defaults():
     assert mgr.get(AgentId.MEMORY).color == "blue"
     assert mgr.get(AgentId.FLEX).color == "yellow"
     assert mgr.get(AgentId.COORDINATOR).color == "green"
-    assert mgr.get(AgentId.WORKER1).color == "orange"
-    assert mgr.get(AgentId.WORKER2).color == "purple"
-    assert mgr.get(AgentId.WORKER3).color == "teal"
-    assert mgr.get(AgentId.WORKER4).color == "gray"
+    assert mgr.get(AgentId.WORKER1).color == "cyan"
+    assert mgr.get(AgentId.WORKER2).color == "violet"
+    assert mgr.get(AgentId.WORKER3).color == "magenta"
+    assert mgr.get(AgentId.WORKER4).color == "orange"
 
     assert mgr.get(AgentId.MEMORY).enabled is True
     assert mgr.get(AgentId.MEMORY).toggleable is False
