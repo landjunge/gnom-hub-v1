@@ -218,6 +218,7 @@ Flex role contract: [docs/AGENTS_DEFINITION.md](docs/AGENTS_DEFINITION.md). Test
 |----------|---------|
 | [README_DE.md](README_DE.md) | German README |
 | [AGENTS.md](AGENTS.md) | Coding rules / push gate |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Short system map |
 | [docs/CODE_ANALYSIS_FOR_AI.md](docs/CODE_ANALYSIS_FOR_AI.md) | Full architecture for external AIs |
 | [docs/KEYS_AND_MODELS.md](docs/KEYS_AND_MODELS.md) | Keys & model IDs |
 | [docs/BASIC_USER_TEST.md](docs/BASIC_USER_TEST.md) | Canonical user E2E |

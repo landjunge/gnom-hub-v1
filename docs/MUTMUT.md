@@ -103,3 +103,11 @@ mutmut imports this automatically. `pre_mutation(context)` can set `context.skip
 - debug `print(...)` lines
 
 Skips are **not** killed/survived — they are excluded from the score.
+
+## Nightly CI
+
+GitHub Actions workflow **Mutation Nightly** (`.github/workflows/mutation-nightly.yml`):
+
+- Cron + manual dispatch
+- Hard: `scripts/mutation_check.py`, `scripts/vector_rank_eval.py`
+- Soft: `./scripts/run_mutmut.sh core` (survivors reported, non-fatal under `--CI`)

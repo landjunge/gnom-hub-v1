@@ -218,6 +218,7 @@ Flex-Vertrag: [docs/AGENTS_DEFINITION.md](docs/AGENTS_DEFINITION.md). Tests: [do
 |----------|--------|
 | [README.md](README.md) | English README |
 | [AGENTS.md](AGENTS.md) | Coding-Regeln / Push-Gate |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Kurze Systemkarte |
 | [docs/CODE_ANALYSIS_FOR_AI.md](docs/CODE_ANALYSIS_FOR_AI.md) | Volle Architektur für externe KIs |
 | [docs/KEYS_AND_MODELS.md](docs/KEYS_AND_MODELS.md) | Keys & Modell-IDs |
 | [docs/BASIC_USER_TEST.md](docs/BASIC_USER_TEST.md) | Canonical User-E2E |
