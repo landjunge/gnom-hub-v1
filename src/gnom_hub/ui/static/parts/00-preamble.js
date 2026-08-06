@@ -338,45 +338,163 @@
     });
   }
 
-  /** Box 1 = Info-Platz: Agent-Tooltip füllt den Raum. */
+  function escHtml(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function paramVal(v, fallback) {
+    if (v == null || v === "" || (typeof v === "number" && isNaN(v))) return fallback;
+    return v;
+  }
+
+  /**
+   * Box 1 = Agent-Erklärung: wer, wofür, wie eingestellt — alle Parameter lesbar.
+   * Übersicht: kurze Rolle + kompakte Param-Zeilen (Wert + 1-Satz-Sinn).
+   */
   function fillBox1AgentInfo(agentId) {
     const tip = TOOLTIPS[agentId];
     const agent = findAgent(agentId);
     if (typeof showInfoLayer === "function") showInfoLayer("live");
     if (els.placeholder) els.placeholder.hidden = true;
     if (els.tipRoot) els.tipRoot.hidden = false;
-    if (tip) {
-      if (els.tipTitle) els.tipTitle.textContent = tip.title || (agent && agent.label) || agentId;
-      if (els.tipHow) els.tipHow.textContent = tip.how_to || "";
-      if (els.tipExample) els.tipExample.textContent = tip.example || "";
-    } else if (agent) {
-      if (els.tipTitle) els.tipTitle.textContent = agent.label || agentId;
-      if (els.tipHow)
-        els.tipHow.textContent =
-          "Layer " +
-          (AGENTS.findIndex(function (a) {
-            return a.id === agentId;
-          }) +
-            1) +
-          " · Klick = Info in Box 1 · Regler in Box 3 · Modulrahmen = Agentenfarbe.";
-      if (els.tipExample)
-        els.tipExample.textContent =
-          "Model: " + (agent.model || "—") + (agent.enabled ? " · on" : " · off");
+
+    const label = (agent && agent.label) || (tip && tip.title) || agentId;
+    const layerIdx =
+      AGENTS.findIndex(function (a) {
+        return a.id === agentId;
+      }) + 1;
+    const role =
+      (tip && tip.how_to) ||
+      (DEFAULT_PROMPTS[agentId] || "").replace(/^\(code default\)\s*/i, "") ||
+      "Agent in der Pipeline.";
+
+    if (els.tipTitle) {
+      els.tipTitle.textContent = label + " — das ist dieser Agent";
     }
-    /* auch in Agent-Layer Body von Box 1 (Platz nutzen) */
+    const roleEl = document.getElementById("tip-role");
+    if (roleEl) {
+      roleEl.textContent =
+        "Layer " +
+        layerIdx +
+        " · " +
+        role +
+        (tip && tip.title && tip.title !== label ? " (" + tip.title + ")" : "");
+    }
+
+    const a = agent || {};
+    const temp = paramVal(a.temperature, 0.5);
+    const topP = paramVal(a.top_p, 1);
+    const maxTok = paramVal(a.max_tokens, 800);
+    const freq = paramVal(a.frequency_penalty, 0);
+    const pres = paramVal(a.presence_penalty, 0);
+    const model = a.model && a.model !== "—" ? a.model : "deepseek-chat (default)";
+    const status =
+      (a.parked ? "geparkt" : a.enabled ? "an" : "aus") +
+      (a.online ? " · online" : " · offline") +
+      (a.tts ? " · TTS an" : " · TTS aus") +
+      (a.preset ? " · Flex-Preset: " + a.preset : "");
+
+    const rows = [
+      { k: "Status", v: status, tip: "An = nimmt an Pipeline teil. Geparkt = später. TTS = spricht Gedanken." },
+      { k: "Model", v: String(model), tip: "Welches LLM dieser Agent nutzt." },
+      {
+        k: "Temperature",
+        v: Number(temp).toFixed(2),
+        tip: SLIDER_TIPS.temperature,
+      },
+      {
+        k: "Top-P",
+        v: Number(topP).toFixed(2),
+        tip: SLIDER_TIPS.top_p,
+      },
+      {
+        k: "Max Tokens",
+        v: String(Math.round(Number(maxTok))),
+        tip: SLIDER_TIPS.max_tokens,
+      },
+      {
+        k: "Frequency",
+        v: Number(freq).toFixed(2),
+        tip: SLIDER_TIPS.frequency,
+      },
+      {
+        k: "Presence",
+        v: Number(pres).toFixed(2),
+        tip: SLIDER_TIPS.presence,
+      },
+    ];
+    if (a.tokens != null && Number(a.tokens) > 0) {
+      rows.push({
+        k: "Tokens (Session)",
+        v: String(a.tokens) + (a.cost_usd != null ? " · $" + Number(a.cost_usd).toFixed(4) : ""),
+        tip: "Verbrauch dieser Session für diesen Agenten.",
+      });
+    }
+
+    const promptRaw =
+      (a.system_prompt && String(a.system_prompt).trim()) ||
+      DEFAULT_PROMPTS[agentId] ||
+      "";
+    const promptShort =
+      promptRaw.length > 160 ? promptRaw.slice(0, 157) + "…" : promptRaw;
+
+    let paramsHtml =
+      '<div class="agent-explain-head">So ist er eingestellt</div><ul class="agent-param-list">';
+    rows.forEach(function (r) {
+      paramsHtml +=
+        '<li class="agent-param-row" title="' +
+        escHtml(r.tip) +
+        '">' +
+        '<span class="agent-param-k">' +
+        escHtml(r.k) +
+        "</span>" +
+        '<span class="agent-param-v">' +
+        escHtml(r.v) +
+        "</span>" +
+        '<span class="agent-param-tip">' +
+        escHtml(r.tip) +
+        "</span>" +
+        "</li>";
+    });
+    paramsHtml += "</ul>";
+    if (promptShort) {
+      paramsHtml +=
+        '<div class="agent-explain-head">Prompt / Rolle</div>' +
+        '<p class="agent-prompt-snip" title="' +
+        escHtml(promptRaw) +
+        '">' +
+        escHtml(promptShort) +
+        "</p>";
+    }
+    paramsHtml +=
+      '<p class="agent-explain-foot">Regler → Box 3 · Chat-Layer = Crux · Modulrahmen = Agentenfarbe</p>';
+
+    if (els.tipHow) {
+      els.tipHow.innerHTML = paramsHtml;
+    }
+    if (els.tipExample) {
+      els.tipExample.textContent =
+        (tip && tip.example) ||
+        "Doppelklick Karte = an/aus · Klick = Info hier + Regler Box 3.";
+    }
+
+    /* Spiegel in Agent-Layer Body Box 1 */
     const body =
       typeof getAgentBoxBody === "function" ? getAgentBoxBody(1, agentId) : null;
     if (body) {
-      const title = (tip && tip.title) || (agent && agent.label) || agentId;
-      const how = (tip && tip.how_to) || "";
-      const ex = (tip && tip.example) || "";
       body.innerHTML =
         '<div class="box1-agent-info">' +
         '<h2 class="tip-title">' +
-        title +
+        escHtml(label) +
         "</h2>" +
-        (how ? '<p class="tip-how">' + how + "</p>" : "") +
-        (ex ? '<p class="tip-example">' + ex + "</p>" : "") +
+        '<p class="tip-role">' +
+        escHtml(role) +
+        "</p>" +
+        paramsHtml +
         "</div>";
     }
   }

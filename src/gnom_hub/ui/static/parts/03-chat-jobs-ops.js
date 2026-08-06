@@ -108,12 +108,25 @@
   }
 
   function showTooltip(id) {
+    /* Agent-IDs → volle Erklärung mit Parametern (Box 1 Überblick) */
+    if (
+      id &&
+      typeof fillBox1AgentInfo === "function" &&
+      AGENTS.some(function (a) {
+        return a.id === id;
+      })
+    ) {
+      fillBox1AgentInfo(id);
+      return;
+    }
     const tip = TOOLTIPS[id];
     if (!tip) return;
     showInfoLayer("live");
     if (els.placeholder) els.placeholder.hidden = true;
     if (els.tipRoot) els.tipRoot.hidden = false;
     if (els.tipTitle) els.tipTitle.textContent = tip.title;
+    const roleEl = document.getElementById("tip-role");
+    if (roleEl) roleEl.textContent = "";
     if (els.tipHow) els.tipHow.textContent = tip.how_to;
     if (els.tipExample) els.tipExample.textContent = tip.example;
   }
