@@ -704,11 +704,11 @@ html, body {
   min-height: 0;
 }
 
-/* L2: website / main content (scrollable, full size) */
+/* L2: website / main content — no scroll, pure frame */
 .layer.layer-website {
   position: absolute;
   z-index: 1;
-  overflow: auto;
+  overflow: hidden;
 }
 
 /* L1: transparent worker overlay (label only, pass clicks through) */
@@ -868,19 +868,19 @@ html, body {
   font-weight: 600;
 }
 
-/* Box 1 Info-Display: Live / Gnom layers */
+/* Box 1 Info-Display: Live / Gnom layers — no scroll */
 .box1-info {
   position: relative;
   display: flex;
   flex-direction: column;
   gap: 0;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .box1-info .info-layer {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .box1-info .info-layer[hidden] {
@@ -905,15 +905,13 @@ html, body {
 .box-body {
   flex: 1 1 auto;
   padding: 8px 10px;
-  /* Fill remaining box height; scroll only when content exceeds (not fixed 300px) */
-  overflow: auto;
+  /* pure frame: no scroll inside boxes */
+  overflow: hidden;
   min-height: 0;
   white-space: pre-wrap;
   word-break: break-word;
   font-size: 12px;
   line-height: 1.4;
-  scrollbar-width: thin;
-  scrollbar-color: #495057 transparent;
   display: flex;
   flex-direction: column;
 }
@@ -993,23 +991,6 @@ html, body {
   background: rgba(0, 0, 0, 0.12);
 }
 
-.box-body::-webkit-scrollbar,
-.worker-panel-body::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-.box-body::-webkit-scrollbar-thumb,
-.worker-panel-body::-webkit-scrollbar-thumb {
-  background: #495057;
-  border-radius: 3px;
-}
-
-.box-body::-webkit-scrollbar-track,
-.worker-panel-body::-webkit-scrollbar-track {
-  background: transparent;
-}
-
 .box-body .result-block {
   white-space: pre-wrap;
   margin: 0;
@@ -1048,7 +1029,7 @@ html, body {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: auto; /* any size content: scroll, never clip */
+  overflow: hidden; /* pure box — no scroll */
 }
 
 .dyn-frame,
@@ -1059,22 +1040,23 @@ html, body {
 }
 
 .dyn-frame {
-  /* large HTML pages scroll inside the frame */
-  min-height: clamp(180px, 32vh, 520px);
+  min-height: 0;
   height: 100%;
   border: 0;
   background: #fff;
+  overflow: hidden;
+  pointer-events: none; /* no iframe internal scroll interaction */
 }
 
 .dyn-source {
-  overflow: auto;
+  overflow: hidden;
   margin: 0;
   padding: 6px;
   font-size: 11px;
   line-height: 1.35;
   white-space: pre-wrap;
   word-break: break-word;
-  max-height: none; /* never cap source length */
+  max-height: none;
 }
 
 .dyn-code {
@@ -1084,8 +1066,8 @@ html, body {
 
 .dyn-note {
   flex: 0 1 auto;
-  max-height: none; /* full text, scroll stage if needed */
-  overflow: auto;
+  max-height: 3em;
+  overflow: hidden;
   border-top: 1px solid var(--border);
   color: var(--text-muted);
   font-size: 10px;
@@ -1198,7 +1180,7 @@ html, body {
 .worker-panel-body {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -1213,7 +1195,7 @@ html, body {
   word-break: break-word;
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   position: static;
 }
 
@@ -1221,11 +1203,13 @@ html, body {
   display: block;
   flex: 1 1 auto;
   width: 100%;
-  min-height: clamp(180px, 32vh, 520px);
+  min-height: 0;
   height: 100%;
   border: 0;
   background: #fff;
   position: static;
+  overflow: hidden;
+  pointer-events: none;
 }
 
 /* Box 3 flash after Execute */
