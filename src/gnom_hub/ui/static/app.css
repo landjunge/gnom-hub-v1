@@ -551,7 +551,7 @@ html, body {
 .agent-card.color-worker3 { --card-color: var(--c-worker3); }
 .agent-card.color-worker4 { --card-color: var(--c-worker4); }
 
-/* —— Three boxes; right pair can host tune layer —— */
+/* —— Fixed layout: Info 1/3 | page (Box 2+3) 2/3 — never reflow size —— */
 .boxes {
   display: flex;
   flex-direction: row;
@@ -563,9 +563,20 @@ html, body {
   position: relative;
 }
 
+/* Box 1 Info — exactly 1 of 3 shares */
+.box-1 {
+  flex: 1 1 0 !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: none !important;
+}
+
+/* Box 2+3 side — exactly 2 of 3 shares */
 .boxes-right {
-  flex: 1 1 auto;
+  flex: 2 1 0;
+  width: 0;
   min-width: 0;
+  max-width: none;
   display: flex;
   flex-direction: row;
   gap: var(--gap);
@@ -576,6 +587,7 @@ html, body {
   flex: 1 1 0;
   width: 0;
   min-width: 0;
+  max-width: none;
 }
 
 /* Layer 3: agent tune over Box 2+3 */
@@ -1436,7 +1448,7 @@ body.worker-fs-open {
   background: #495057;
 }
 
-/* —— Chat row: same 3 columns as boxes (chat = Box 2 width) —— */
+/* —— Chat row: same 1/3 | 2/3 as boxes (stable) —— */
 .chat-row {
   display: flex;
   flex-direction: row;
@@ -1452,6 +1464,7 @@ body.worker-fs-open {
   flex: 1 1 0;
   width: 0;
   min-width: 0;
+  max-width: none;
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
@@ -1462,6 +1475,10 @@ body.worker-fs-open {
   background: var(--bg-panel);
   border: 1px solid var(--border);
   border-radius: 4px;
+}
+
+.chat-side-right {
+  display: none; /* right side is part of 2/3 chat width under page */
 }
 
 .chat-side-btn {
@@ -1478,9 +1495,10 @@ body.worker-fs-open {
 }
 
 .chat {
-  flex: 1 1 0;
+  flex: 2 1 0; /* under Box 2+3 / page = 2/3 */
   width: 0;
   min-width: 0;
+  max-width: none;
   height: 100%;
   background: var(--bg-panel);
   border: 1px solid var(--border);
