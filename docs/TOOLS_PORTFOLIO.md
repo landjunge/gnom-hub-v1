@@ -58,3 +58,15 @@ python -m playwright install chromium
 5. Click / Type / Shell (allowlist)
 
 Without God-Mode: dry-run only (safe).
+
+## Automated proof (not docs-only)
+
+Playwright scenario **S5** exercises Tools + computer-use so the portfolio is not dead:
+
+```bash
+python scripts/user_scenarios_e2e.py --only 5
+# or default suite (S1 + S5):
+python scripts/user_scenarios_e2e.py
+```
+
+See [`BASIC_USER_TEST.md`](BASIC_USER_TEST.md).

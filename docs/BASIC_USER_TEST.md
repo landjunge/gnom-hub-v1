@@ -1,71 +1,82 @@
 # Basic User Test (canonical)
 
-**Purpose:** Real user-position smoke — browser + keyboard, not API-only stubs.
+**Purpose:** Real user-position tests — **Playwright on the desktop UI**, plus **Gnom Tools / computer-use** so the Tools portfolio is not dead weight.
 
-**Script:** `scripts/user_landing_e2e.py`  
-**Last live PASS:** `data/e2e-user/20260805T204324Z/` (v3.7.1, DeepSeek v4-flash; full-page task, 4 panels, export ~55k)
+## Suite (preferred)
 
----
+| Script | What |
+|--------|------|
+| **`scripts/user_scenarios_e2e.py`** | **Main** multi-scenario runner |
+| `scripts/e2e_lib.py` | Shared HTTP + Playwright waits |
+| `scripts/user_landing_e2e.py` | Thin wrapper → S1 only |
+| `scripts/basic_tests.py` | B1–B3 API + light UI (no full Tools path) |
 
-## Scenario (human path)
+### Scenarios
 
-1. Open `http://127.0.0.1:8080/`
-2. **Type** (keyboard) into chat:
-   > Build a modern landing page for a coffee shop called Bean & Bloom. Include hero with headline and CTA, three feature cards, and a simple footer. Output full HTML with inline CSS.
-3. Press **Enter** → Brainstorm (Box 2 fills)
-4. Press **Execute** (or Ctrl+Enter) → Distill → Workers → Box 3
-5. Expect **Worker 1 / Worker 2** panels; ideally HTML **Preview** iframe
+| ID | Name | How it uses Gnom |
+|----|------|------------------|
+| **S1** | Landing happy path | Real keyboard → Box 2 brainstorm → Execute → Box 3 HTML |
+| **S2** | Topic switch | TTS brainstorm → todo task → Execute must pick todo |
+| **S3** | Clarify | Vague request → clarify or done without hang |
+| **S4** | Clean then task | `/api/clean` then small HTML pricing section |
+| **S5** | **Tools + computer-use** | UI Tools modal + `/api/tools/call` + `/api/computer-use/*` |
 
----
-
-## Pass criteria
-
-| Check | Required |
-|-------|----------|
-| Brainstorm Box 2 non-empty | yes (>40 chars) |
-| Stage ends `done` (or clarify with content) | yes |
-| ≥1 worker panel or API `worker_outputs` | yes |
-| No `pipeline.error` | yes |
-| HTML-ish content or preview iframe | preferred (not hard-fail) |
+**Default (optimized):** `S1 + S5` — product path + why Tools exist.  
+**Full:** `--all` or `GNOM_E2E_ALL=1` in quality_check.
 
 ---
 
 ## How to run
 
 ```bash
-# server must be up with LLM key
 ./scripts/start.sh
 source .venv/bin/activate
-# first time: pip install playwright && python -m playwright install chromium
-python scripts/user_landing_e2e.py
-# optional: watch browser
-GNOM_E2E_HEADED=1 python scripts/user_landing_e2e.py
+# first time:
+# pip install playwright && python -m playwright install chromium
+
+# Quick (recommended): landing + tools
+python scripts/user_scenarios_e2e.py
+
+# All five scenarios
+python scripts/user_scenarios_e2e.py --all
+
+# Watch browser
+GNOM_E2E_HEADED=1 python scripts/user_scenarios_e2e.py --only 5
+
+# quality_check includes S1+S5 when server is up
+./scripts/quality_check.sh
+GNOM_E2E_ALL=1 ./scripts/quality_check.sh
 ```
 
-Artifacts: `data/e2e-user/<timestamp>/` — screenshots, `report.json`, `REPORT.md`, `export_last.md`.  
-Latest summary: `data/e2e-user/latest_report.json`.
+Artifacts: `data/e2e-scenarios/<timestamp>/` — screenshots, `report.json`, `REPORT.md`.  
+Latest: `data/e2e-scenarios/latest_report.json`.
 
 ---
 
-## Findings from first real runs (2026-08-05)
+## Pass criteria
 
-| What worked | What failed / fixed |
-|-------------|---------------------|
-| Keyboard type into `#chat-input` | — |
-| Enter → live Brainstorm (Box 2 ~2–3k chars) | — |
-| Cost badge updates | — |
-| API Execute produced 2 workers | **UI Execute stayed disabled after brainstorm** |
-| After fix: full path PASS, 2 panels, HTML preview, export ~15k chars | **Root cause:** `applySnapshot` set Execute disabled while `chatBusy=true`; `setChatBusy(false)` did not restore `can_execute` |
+### S1 (landing)
+| Check | Required |
+|-------|----------|
+| Box 2 brainstorm non-empty | yes |
+| Stage `done` or `clarify` | yes |
+| ≥1 worker panel / outputs | yes |
+| No pipeline.error | yes |
+| HTML preview preferred | soft |
 
-**Fix:** `lastCanExecute` flag; `setChatBusy` always sets  
-`btnExecute.disabled = !lastCanExecute || chatBusy`.
+### S5 (tools — non-negotiable for “tools portfolio”)
+| Check | Required |
+|-------|----------|
+| `POST /api/tools/call` hub_status works | yes |
+| `GET/POST /api/computer-use` responds | yes |
+| Tools modal opens in UI | yes |
+
+God-Mode may stay **off** (dry-run inspect is enough for CI).
 
 ---
 
-## Agent rule
+## Why this shape
 
-When changing chat busy, Execute enable, brainstorm/execute pipeline, or Box 3 rendering:
-
-1. Re-run `python scripts/user_landing_e2e.py` if a live key is available.
-2. Do not claim “chat UX OK” from unit tests alone.
-3. Keep this document and the script as the **basic regression for user chat → landing page**.
+- **Playwright** = real frontend (keyboard, buttons, boxes) — not API-only “user”.  
+- **Tools/computer-use APIs + Tools modal** = portfolio is exercised, not only documented.  
+- **Default S1+S5** = fast enough for quality_check; full S1–S5 when you care about topic/clarify/clean.

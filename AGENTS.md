@@ -36,13 +36,14 @@ Chat → Brainstorm → Distillation → [Execute] → Coordinator → Worker(s)
 
 ## Basic user test (remember)
 
-Canonical real-user regression (keyboard chat → landing page):
+Canonical real-user regression — **Playwright on UI + Gnom Tools**:
 
 - **Doc:** [`docs/BASIC_USER_TEST.md`](docs/BASIC_USER_TEST.md)
-- **Script:** `python scripts/user_landing_e2e.py` (Playwright + live server + LLM key)
-- **Must pass criteria:** brainstorm Box 2 non-empty, Execute works after Send, ≥1 worker panel, no pipeline error
-- **Known pitfall fixed in 3.7.1:** after brainstorm, Execute must re-enable when `chatBusy` clears (`lastCanExecute`)
-- Re-run this script when touching chat busy, Execute button, pipeline stages, or Box 3
+- **Suite:** `python scripts/user_scenarios_e2e.py` (default **S1 landing + S5 tools/computer-use**)
+- **Full:** `python scripts/user_scenarios_e2e.py --all` or `GNOM_E2E_ALL=1 ./scripts/quality_check.sh`
+- **Must pass:** Box 2 brainstorm, Execute after Send, ≥1 worker; S5 tools API + Tools modal + computer-use endpoint
+- **Known pitfall:** after brainstorm, Execute must re-enable when `chatBusy` clears (`lastCanExecute`)
+- Re-run when touching chat busy, Execute, Box 3, Tools modal, or computer-use
 
 ## Keys & models (do not re-research)
 
