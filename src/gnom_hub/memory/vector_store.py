@@ -1,4 +1,4 @@
-"""Vector lite: BM25 + bag-of-words cosine (no heavy deps)."""
+"""Vector lite: BM25 (short-doc tuned) + bag-of-words cosine (no heavy deps)."""
 
 from __future__ import annotations
 
@@ -42,17 +42,19 @@ _STOP = frozenset(
     }
 )
 
-# Okapi BM25 defaults
-_K1 = 1.5
-_B = 0.75
+# Short-document Okapi BM25 (WARM/Flex facts ≈ 5–20 tokens, not web pages).
+# k1 lower → less double-count on repeated tokens in one line.
+# b lower → length normalization mild when all docs are short and similar.
+_K1 = 1.2
+_B = 0.3
 
-# Hybrid blend + filters
-_BM25_WEIGHT = 0.75
-_COSINE_WEIGHT = 0.25
-_MIN_SCORE = 0.02
+# Hybrid: BM25 carries lexical intent; cosine is a light tie-breaker on BoW vec.
+_BM25_WEIGHT = 0.85
+_COSINE_WEIGHT = 0.15
+_MIN_SCORE = 0.03
 
 _SOURCE_BOOST = {
-    "flex_wish": 1.15,
+    "flex_wish": 1.18,
     "flex_personal": 1.15,
     "warm": 1.08,
     "memory_agent": 1.05,
@@ -60,17 +62,26 @@ _SOURCE_BOOST = {
 }
 
 
-def _tokenize(text: str, *, drop_stop: bool = False) -> list[str]:
+def _unigrams(text: str, *, drop_stop: bool = False) -> list[str]:
     toks = [t.lower() for t in _TOKEN.findall(text or "")]
     if drop_stop:
         toks = [t for t in toks if t not in _STOP]
     return toks
 
 
+def _tokenize(text: str, *, drop_stop: bool = False, bigrams: bool = True) -> list[str]:
+    """Unigrams + adjacent bigrams (helps 'dark theme', 'bean bloom', 'hot clear')."""
+    uni = _unigrams(text, drop_stop=drop_stop)
+    if not bigrams or len(uni) < 2:
+        return uni
+    bi = [f"{uni[i]}_{uni[i + 1]}" for i in range(len(uni) - 1)]
+    return uni + bi
+
+
 def _embed(text: str) -> dict[str, float]:
-    """L2-normalized bag-of-words (stored for cosine / backward compat)."""
+    """L2-normalized bag-of-words on unigrams only (stable stored vec)."""
     counts: dict[str, float] = {}
-    for t in _tokenize(text, drop_stop=True):
+    for t in _unigrams(text, drop_stop=True):
         counts[t] = counts.get(t, 0.0) + 1.0
     norm = math.sqrt(sum(v * v for v in counts.values())) or 1.0
     return {k: v / norm for k, v in counts.items()}
@@ -94,7 +105,7 @@ def _bm25_scores(
     """Standard BM25 over in-memory token lists."""
     n = len(docs_tokens)
     if n == 0 or not query_tokens:
-        return []
+        return [0.0] * n if n else []
     df: dict[str, int] = {}
     for toks in docs_tokens:
         for t in set(toks):
@@ -112,7 +123,6 @@ def _bm25_scores(
             if f <= 0:
                 continue
             n_q = df.get(q, 0)
-            # IDF as in Okapi BM25 (positive for rare terms)
             idf = math.log(1.0 + (n - n_q + 0.5) / (n_q + 0.5))
             denom = f + k1 * (1.0 - b + b * dl / (avgdl or 1.0))
             s += idf * (f * (k1 + 1.0)) / (denom or 1.0)
@@ -131,14 +141,28 @@ class VectorStore:
     """
     data/vector/docs.jsonl — {id, text, meta, vec}
 
-    Search = hybrid BM25 (primary) + cosine on stored BoW vec (secondary).
+    Search = hybrid BM25 (short-doc k1/b + bigrams) + cosine on unigram BoW.
     Zero heavy deps; USB / offline friendly.
     """
 
-    def __init__(self, root: Path | None = None) -> None:
+    def __init__(
+        self,
+        root: Path | None = None,
+        *,
+        k1: float = _K1,
+        b: float = _B,
+        bm25_weight: float = _BM25_WEIGHT,
+        cosine_weight: float = _COSINE_WEIGHT,
+        min_score: float = _MIN_SCORE,
+    ) -> None:
         self.root = Path(root) if root is not None else project_root()
         self.dir = self.root / "data" / "vector"
         self.path = self.dir / "docs.jsonl"
+        self.k1 = float(k1)
+        self.b = float(b)
+        self.bm25_weight = float(bm25_weight)
+        self.cosine_weight = float(cosine_weight)
+        self.min_score = float(min_score)
         self._docs: list[dict[str, Any]] = []
         self.load()
 
@@ -218,22 +242,27 @@ class VectorStore:
         query: str,
         *,
         limit: int = 5,
-        min_score: float = _MIN_SCORE,
+        min_score: float | None = None,
+        k1: float | None = None,
+        b: float | None = None,
     ) -> list[dict[str, Any]]:
-        """Hybrid BM25 + cosine; rare terms beat raw token overlap."""
+        """Hybrid BM25 + cosine; params override store defaults per call."""
         q = (query or "").strip()
         if not q or not self._docs:
             return []
-        q_toks = _tokenize(q, drop_stop=True)
+        thr = self.min_score if min_score is None else float(min_score)
+        use_k1 = self.k1 if k1 is None else float(k1)
+        use_b = self.b if b is None else float(b)
+
+        q_toks = _tokenize(q, drop_stop=True, bigrams=True)
         if not q_toks:
-            q_toks = _tokenize(q, drop_stop=False)
+            q_toks = _tokenize(q, drop_stop=False, bigrams=True)
         docs_toks = [
-            _tokenize(str(d.get("text") or ""), drop_stop=True)
-            or _tokenize(str(d.get("text") or ""))
+            _tokenize(str(d.get("text") or ""), drop_stop=True, bigrams=True)
+            or _tokenize(str(d.get("text") or ""), drop_stop=False, bigrams=True)
             for d in self._docs
         ]
-        bm25 = _bm25_scores(q_toks, docs_toks)
-        # Normalize BM25 to ~0..1 for blend (relative to max in this query)
+        bm25 = _bm25_scores(q_toks, docs_toks, k1=use_k1, b=use_b)
         max_b = max(bm25) if bm25 else 0.0
         qv = _embed(q)
         scored: list[tuple[float, dict[str, Any]]] = []
@@ -245,13 +274,13 @@ class VectorStore:
                 c = _cosine(qv, {str(k): float(v) for k, v in vec.items()})
             else:
                 c = _cosine(qv, _embed(str(d.get("text") or "")))
-            hybrid = _BM25_WEIGHT * b_norm + _COSINE_WEIGHT * c
+            hybrid = self.bm25_weight * b_norm + self.cosine_weight * c
             hybrid *= _source_boost(d.get("meta") if isinstance(d.get("meta"), dict) else None)
             scored.append((hybrid, d))
         scored.sort(key=lambda x: x[0], reverse=True)
         out: list[dict[str, Any]] = []
         for score, d in scored[:limit]:
-            if score < min_score:
+            if score < thr:
                 continue
             out.append(
                 {
