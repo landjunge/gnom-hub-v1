@@ -251,9 +251,8 @@
         body.className = "agent-layer-body box-body";
         if (n === 3) body.classList.add("box3-dynamic");
         body.id = "box" + n + "-" + agent.id;
-        /* compat aliases for primary content hosts */
+        /* box2 brainstorm alias only — box3-content stays on dual-layer slot in HTML */
         if (n === 2 && agent.id === "brainstorm") body.id = "box2-content";
-        if (n === 3 && agent.id === "worker1") body.id = "box3-content";
         body.dataset.agentBody = agent.id;
         body.dataset.box = String(n);
         const empty = document.createElement("p");
