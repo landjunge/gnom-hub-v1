@@ -13,20 +13,20 @@ from __future__ import annotations
 
 import pytest
 
-from gnom_hub.agents.plan_fast_path import _wants_one_html_page, resolve_plan_mode
+from gnom_hub.agents.plan_fast_path import resolve_plan_mode
 from gnom_hub.agents.roles_ext import _html_full_page_plan
 from gnom_hub.agents.roles_helpers import _needs_clarify
 from gnom_hub.core.event_bus import EventBus
 from gnom_hub.pipeline.models import PipelineStage, PipelineState
 from gnom_hub.pipeline.orchestrator import (
     Orchestrator,
-    _html_complete,
     _has_interaction,
+    _html_complete,
     _wants_auto_execute,
 )
 
-
 # ── R1: Plan fast-path ──────────────────────────────────────────────
+
 
 @pytest.mark.parametrize(
     "text,reqs,expect_fast",
@@ -61,6 +61,7 @@ def test_r1_html_plan_single_worker():
 
 # ── R2: Clarify / auto-execute gates ────────────────────────────────
 
+
 def test_r2_clarify_vague():
     assert _needs_clarify(
         "Maybe build something cool with dark mode, not sure yet",
@@ -73,9 +74,7 @@ def test_r2_no_auto_execute_pure_question():
 
 
 def test_r2_auto_execute_clear_build():
-    assert _wants_auto_execute(
-        "Build a modern landing page for a coffee shop called Bean & Bloom"
-    )
+    assert _wants_auto_execute("Build a modern landing page for a coffee shop called Bean & Bloom")
 
 
 # ── R3: HTML quality gates ──────────────────────────────────────────
@@ -99,6 +98,7 @@ def test_r3_html_incomplete():
 
 
 # ── R4: Stage timing helpers ────────────────────────────────────────
+
 
 def test_r4_stage_timing_records_ms():
     bus = EventBus()
@@ -128,6 +128,7 @@ def test_r4_pipeline_state_fields():
 
 
 # ── R5: Coordinator plan meta (stub, no LLM) ────────────────────────
+
 
 def test_r5_coordinator_sets_last_plan_meta():
     bus = EventBus()

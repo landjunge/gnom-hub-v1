@@ -27,9 +27,8 @@ class WorkerAgent(BaseAgent):
         try:
             if self.has_llm():
                 try:
-                    body = (
-                        f"Aufgabe: {task}\nOriginal: {user_text}\nAnforderungen:\n"
-                        + "\n".join(f"- {r}" for r in requirements[:5])
+                    body = f"Aufgabe: {task}\nOriginal: {user_text}\nAnforderungen:\n" + "\n".join(
+                        f"- {r}" for r in requirements[:5]
                     )
                     blob = f"{task}\n{user_text}".lower()
                     wants_html = any(

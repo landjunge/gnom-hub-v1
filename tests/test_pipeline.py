@@ -536,7 +536,7 @@ def test_flex_pipeline_injects_wishes_into_requirements():
 
 
 def test_flex_binding_wishes_helper():
-    from gnom_hub.agents import AgentManager, FlexAgent, AgentId
+    from gnom_hub.agents import AgentId, AgentManager, FlexAgent
     from gnom_hub.core.event_bus import EventBus
 
     bus = EventBus()
