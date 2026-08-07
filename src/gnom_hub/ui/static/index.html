@@ -1,1 +1,350 @@
-PLACEHOLDER
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gnom-Hub</title>
+  <link rel="stylesheet" href="/static/app.css?v=149" />
+</head>
+<body>
+  <div id="app">
+    <header class="top-bar">
+      <div class="top-bar-head">
+        <h1 class="app-title">Gnom-Hub <span id="ver-badge" class="ver-badge">v3.7.1</span></h1>
+        <div class="top-meta top-meta-badges">
+          <span id="llm-badge" class="llm-badge" title="LLM key status">LLM: —</span>
+          <span id="cost-badge" class="cost-badge" title="Click: usage & jobs" role="button" tabindex="0">$0.00</span>
+          <span id="mem-badge" class="mem-badge" title="HOT memory">Mem: —</span>
+          <span id="vec-badge" class="vec-badge" title="Open vector store (click)" role="button" tabindex="0">Vec: —</span>
+          <span id="god-badge" class="god-badge" title="God-Mode — click to toggle" role="button" tabindex="0">God: off</span>
+          <span id="cold-badge" class="cold-badge" title="COLD archives — click to browse" role="button" tabindex="0">Cold: —</span>
+          <span id="stage-badge" class="stage-badge" title="Pipeline stage">idle</span>
+        </div>
+      </div>
+      <div class="top-toolbar" role="toolbar" aria-label="Main actions">
+        <label class="flex-preset-label" title="Flex is fixed (personal companion)" data-tooltip-id="flex">
+          Flex
+          <select id="flex-preset-select" class="flex-preset-select" aria-label="Flex fixed personal" disabled>
+            <option value="personal" selected>Personal (fixed)</option>
+          </select>
+        </label>
+        <button type="button" id="btn-workspace" class="btn-workspace" data-tooltip-id="workspace" title="Temp / permanent workspace">Workspace</button>
+        <button type="button" id="btn-tools" class="btn-workspace" title="List and call registered tools">Tools</button>
+        <button type="button" id="btn-clear-chat" class="btn-clear-chat" title="Clear chat log (this browser)">Clear chat</button>
+        <button type="button" id="btn-system" class="btn-system" data-tooltip-id="system" title="System settings">System</button>
+        <button type="button" id="btn-help" class="btn-help" data-tooltip-id="help" title="Help">Help</button>
+        <button type="button" id="btn-archive" class="btn-archive" data-tooltip-id="archive" title="Archive HOT to COLD">Archive</button>
+        <button type="button" id="btn-reset" class="btn-reset" data-tooltip-id="reset" title="Reset session (archives HOT first)">Reset</button>
+        <button type="button" id="btn-save" class="btn-save" data-tooltip-id="save" title="Save">Save</button>
+      </div>
+    </header>
+    <section id="agent-cards" class="agent-cards" aria-label="Agents"></section>
+    <section class="boxes" aria-label="Main panels">
+      <div id="box1" class="box box-1" data-tooltip-id="box1" aria-label="Box 1">
+        <div class="agent-layer-stack" data-box="box1" id="box1-layers"></div>
+        <div id="box1-content" class="box1-overlay box-body box1-info">
+          <div class="info-layer is-active" data-info-layer="live" id="box1-layer-live">
+            <p class="box1-placeholder">Agent-Klick → Info hier (Box 1). Rahmenfarbe = Modul.</p>
+            <div id="box1-tooltip" class="box1-tooltip" hidden>
+              <h2 id="tip-title" class="tip-title"></h2>
+              <p id="tip-role" class="tip-role"></p>
+              <div id="tip-how" class="tip-how tip-params"></div>
+              <p id="tip-example" class="tip-example"></p>
+            </div>
+            <div id="cold-browser" class="cold-browser" hidden>
+              <h2 class="tip-title">COLD archives</h2>
+              <ul id="cold-list" class="cold-list"></ul>
+              <pre id="cold-detail" class="cold-detail"></pre>
+              <div class="cold-actions" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+                <button type="button" id="btn-cold-restore" class="btn-ws-sm" title="Restore selected into HOT">Restore to HOT</button>
+                <button type="button" id="btn-cold-delete" class="btn-ws-sm" title="Delete selected archive">Delete</button>
+                <button type="button" id="btn-cold-close" class="btn-cold-close">Close</button>
+              </div>
+            </div>
+            <div id="clarify" class="clarify" hidden>
+              <p id="clarify-question" class="clarify-question"></p>
+              <div class="clarify-actions">
+                <button type="button" class="btn-clarify" data-answer="Yes">Yes</button>
+                <button type="button" class="btn-clarify" data-answer="No">No</button>
+                <button type="button" class="btn-clarify" data-answer="Whatever">Whatever</button>
+                <button type="button" class="btn-clarify" data-answer="Later">Later</button>
+              </div>
+            </div>
+          </div>
+          <div class="info-layer" data-info-layer="tune" id="box1-layer-tune" hidden>
+            <p class="box1-placeholder">Schieber bewegen → Info hier.</p>
+            <div id="box1-tune-tip" class="box1-tooltip">
+              <h2 id="tune-tip-title" class="tip-title">Regler</h2>
+              <p id="tune-tip-how" class="tip-how"></p>
+              <p id="tune-tip-example" class="tip-example"></p>
+              <p id="tune-tip-value" class="tip-value"></p>
+            </div>
+          </div>
+          <div class="info-layer" data-info-layer="gnom" id="box1-layer-gnom" hidden>
+            <h2 class="tip-title">Gnom-Hub — Überblick</h2>
+            <div class="info-gnom-body">
+              <p><strong>Pipeline:</strong> Chat → Brainstorm → Distill → Flex → Coordinator → Worker(s) → Memory.</p>
+              <p><strong>Agent-Layer:</strong> Jeder Agent hat Layer in Box 1/2/3. Klick → Layer + 1px Rahmenfarbe.</p>
+              <p><strong>Memory:</strong> HOT / WARM (user.db) / COLD.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="boxes-right">
+      <div id="box2" class="box box-2" data-tooltip-id="box2" aria-label="Box 2">
+        <div class="agent-layer-stack" data-box="box2" id="box2-layers"></div>
+      </div>
+      <div id="box3" class="box box-3" data-tooltip-id="box3" aria-label="Box 3">
+        <div class="agent-layer-stack" data-box="box3" id="box3-layers"></div>
+        <div id="box3-dual" class="dual-layers" aria-label="Worker results">
+          <div class="layer-slot is-front" data-slot="a" id="box3-content"></div>
+          <div class="layer-slot is-back" data-slot="b"></div>
+        </div>
+        <div id="tune-layer" class="tune-layer" hidden>
+          <div class="tune-layer-bar">
+            <span id="tune-title" class="tune-layer-title">Agent tuning</span>
+            <button type="button" id="tune-close" class="layer-btn" title="Close">×</button>
+          </div>
+          <div class="tune-layer-body">
+            <div class="tune-sliders-col">
+              <div class="tune-slider" data-tip="temperature">
+                <label>Temperature <span id="tune-temp-val">0.50</span></label>
+                <input id="tune-temp" type="range" min="0" max="2" step="0.05" value="0.5" />
+              </div>
+              <div class="tune-slider" data-tip="top_p">
+                <label>Top-P <span id="tune-topp-val">1.00</span></label>
+                <input id="tune-topp" type="range" min="0" max="1" step="0.01" value="1" />
+              </div>
+              <div class="tune-slider" data-tip="max_tokens">
+                <label>Max Tokens <span id="tune-maxtok-val">800</span></label>
+                <input id="tune-maxtok" type="range" min="64" max="4096" step="32" value="800" />
+              </div>
+              <div class="tune-slider" data-tip="frequency">
+                <label>Frequency Penalty <span id="tune-freq-val">0.00</span></label>
+                <input id="tune-freq" type="range" min="0" max="2" step="0.05" value="0" />
+              </div>
+              <div class="tune-slider" data-tip="presence">
+                <label>Presence Penalty <span id="tune-pres-val">0.00</span></label>
+                <input id="tune-pres" type="range" min="0" max="2" step="0.05" value="0" />
+              </div>
+              <label class="tune-tts-row">
+                <input id="tune-tts" type="checkbox" /> TTS
+              </label>
+            </div>
+            <div class="tune-prompt-col">
+              <label for="tune-model">Model</label>
+              <input id="tune-model" class="tune-input" type="text" placeholder="deepseek-chat" />
+              <label for="tune-key">API key (optional)</label>
+              <input id="tune-key" class="tune-input" type="password" placeholder="empty = global" />
+              <label for="tune-prompt">Extra prompt</label>
+              <textarea id="tune-prompt" class="tune-prompt" rows="5" spellcheck="false"></textarea>
+            </div>
+          </div>
+          <div class="tune-layer-actions">
+            <button type="button" id="tune-preset-save" class="btn-ws-sm">Preset</button>
+            <button type="button" id="tune-save" class="btn-save">Apply</button>
+          </div>
+        </div>
+      </div>
+      </div>
+    </section>
+    <section id="chat-mod" class="chat-mod" aria-label="Chat module">
+      <div class="chat-mod-platz chat-mod-platz-l" aria-label="Platzhalter unter Box 1">
+        <button type="button" class="chat-mod-slot-btn" disabled title="Platzhalter">·</button>
+        <button type="button" class="chat-mod-slot-btn" disabled title="Platzhalter">·</button>
+        <button type="button" class="chat-mod-slot-btn" disabled title="Platzhalter">·</button>
+      </div>
+      <section id="chat" class="chat-mod-chat chat" data-tooltip-id="chat" aria-label="Chat layer">
+        <div id="chat-layers" class="chat-layer-stack" aria-label="Per-agent chat layers"></div>
+        <div class="chat-input-row">
+          <button type="button" id="btn-mic" class="btn-mic" title="Speech to text (browser)">Mic</button>
+          <input type="text" id="chat-input" class="chat-input" placeholder="Chat-Layer (Crux) — Agent-Klick wechselt Layer" autocomplete="off" />
+          <button type="button" id="btn-send" class="btn-send">Send</button>
+          <button type="button" id="btn-execute" class="btn-execute" title="Run distill + workers from brainstorm (Ctrl+Enter)" disabled>Execute</button>
+          <button type="button" id="btn-send-exec" class="btn-send-exec" title="Send brainstorm turn then Execute">Send+Exec</button>
+          <button type="button" id="btn-cancel" class="btn-cancel" title="Cancel running job (Esc)" hidden>Cancel</button>
+        </div>
+        <p class="kbd-hint">Chat-Layer = Crux · Agent-Klick wechselt · Enter = Send</p>
+      </section>
+      <div class="chat-mod-platz chat-mod-platz-r" aria-label="Platzhalter unter Box 3">
+        <button type="button" class="chat-mod-slot-btn" disabled title="Platzhalter">·</button>
+        <button type="button" class="chat-mod-slot-btn" disabled title="Platzhalter">·</button>
+        <button type="button" class="chat-mod-slot-btn" disabled title="Platzhalter">·</button>
+      </div>
+    </section>
+  </div>
+  <div id="workspace-modal" class="modal" hidden>
+    <div class="modal-panel workspace-panel">
+      <div class="modal-head">
+        <h2 class="modal-title">Workspace</h2>
+        <button type="button" id="workspace-close" class="modal-close" title="Close">×</button>
+      </div>
+      <div class="workspace-grid">
+        <div class="workspace-col">
+          <div class="workspace-col-head"><h3>Temp (scratch)</h3>
+            <button type="button" id="ws-clear-temp" class="btn-ws-sm">Clear temp</button>
+            <button type="button" id="ws-dl-temp" class="btn-ws-sm" title="Download temp as zip">↓ zip</button>
+          </div>
+          <ul id="ws-temp-list" class="ws-list"></ul>
+        </div>
+        <div class="workspace-col">
+          <div class="workspace-col-head"><h3>Permanent</h3>
+            <button type="button" id="ws-dl-perm" class="btn-ws-sm" title="Download perm as zip">↓ zip</button>
+            <button type="button" id="ws-dl-all" class="btn-ws-sm" title="Download temp+perm zip">↓ all</button>
+          </div>
+          <ul id="ws-perm-list" class="ws-list"></ul>
+        </div>
+      </div>
+      <div class="workspace-preview-wrap">
+        <div class="workspace-col-head"><h3 id="ws-preview-title">Preview</h3></div>
+        <pre id="ws-preview" class="ws-preview muted">Select a file to preview.</pre>
+      </div>
+    </div>
+  </div>
+  <div id="system-modal" class="modal" hidden>
+    <div class="modal-panel system-panel">
+      <div class="modal-head">
+        <h2 class="modal-title">System</h2>
+        <button type="button" id="system-close" class="modal-close" title="Close">×</button>
+      </div>
+      <div class="system-body">
+        <p id="system-llm" class="system-line">DeepSeek: —</p>
+        <label class="system-row"><input id="sys-free-only" type="checkbox" /> Free models only</label>
+        <label class="system-row">Max budget USD<input id="sys-budget" class="tune-input" type="number" min="0" step="0.01" placeholder="unlimited" /></label>
+        <label class="system-row">Default model<input id="sys-model" class="tune-input" type="text" list="ollama-models-list" placeholder="deepseek-chat or ollama/llama3.2" /><datalist id="ollama-models-list"></datalist></label>
+        <p id="sys-ollama-models" class="system-line muted">Ollama models: —</p>
+        <p id="system-spend" class="system-line muted">Spent: —</p>
+        <label class="system-row">UI language<select id="sys-lang" class="tune-input"><option value="en">English</option><option value="de">Deutsch</option></select></label>
+        <div class="system-row system-row-actions">
+          <button type="button" id="sys-ckpt-save" class="btn-ws-sm">Save checkpoint</button>
+          <button type="button" id="sys-ckpt-load" class="btn-ws-sm">Load checkpoint</button>
+          <button type="button" id="sys-backup" class="btn-ws-sm">Backup zip</button>
+          <button type="button" id="sys-pack-export" class="btn-ws-sm" title="Save + download session pack">Pack ↓</button>
+          <button type="button" id="sys-pack-import" class="btn-ws-sm" title="Import session JSON file">Pack ↑</button>
+          <input type="file" id="sys-pack-file" accept="application/json,.json" hidden />
+          <button type="button" id="sys-clean" class="btn-ws-sm">Clean state</button>
+        </div>
+        <label class="system-row"><input id="sys-auto-pack" type="checkbox" /> Auto-pack after Execute</label>
+        <label class="system-row">Max packs kept<input id="sys-pack-max" class="tune-input" type="number" min="5" max="100" step="1" title="Oldest packs pruned after save (5–100)" /></label>
+        <p id="system-ckpt" class="system-line muted">Checkpoint: —</p>
+        <div class="system-row"><span>HOT facts (session)</span>
+          <div class="system-row-actions">
+            <input id="sys-hot-input" class="tune-input" type="text" placeholder="Add session fact…" style="max-width:220px" />
+            <button type="button" id="sys-hot-add" class="btn-ws-sm">Add</button>
+            <button type="button" id="sys-hot-clear" class="btn-ws-sm" title="Clear HOT facts only">Clear</button>
+          </div>
+          <ul id="sys-hot-list" class="ws-list" style="max-height:90px"></ul>
+        </div>
+        <div class="system-row"><span>WARM facts</span>
+          <div class="system-row-actions">
+            <input id="sys-warm-input" class="tune-input" type="text" placeholder="Add durable fact…" style="max-width:220px" />
+            <button type="button" id="sys-warm-add" class="btn-ws-sm">Add</button>
+            <button type="button" id="sys-warm-clear" class="btn-ws-sm" title="Clear all WARM facts">Clear</button>
+          </div>
+          <ul id="sys-warm-list" class="ws-list" style="max-height:90px"></ul>
+        </div>
+        <div class="system-row"><span>Session packs</span>
+          <input id="sys-pack-filter" class="tune-input" type="search" placeholder="Filter packs…" style="max-width:160px" />
+          <ul id="sys-pack-list" class="ws-list" style="max-height:100px"></ul>
+        </div>
+        <div class="system-row"><span>Worker presets</span>
+          <div class="system-row-actions">
+            <select id="sys-preset-select" class="tune-input" style="max-width:180px"><option value="">— select preset —</option></select>
+            <select id="sys-preset-agent" class="tune-input" style="max-width:110px"><option value="worker1">Worker 1</option><option value="worker2">Worker 2</option><option value="worker3">Worker 3</option><option value="worker4">Worker 4</option></select>
+            <button type="button" id="sys-preset-apply" class="btn-ws-sm">Apply</button>
+            <button type="button" id="sys-preset-delete" class="btn-ws-sm">Delete</button>
+          </div>
+        </div>
+        <div class="system-row"><span>Team presets</span>
+          <div class="system-row-actions">
+            <select id="sys-team-select" class="tune-input" style="max-width:160px" title="Team = enables + flex + plan_mode + worker tunes"><option value="">— select team —</option></select>
+            <button type="button" id="sys-team-apply" class="btn-ws-sm">Apply</button>
+            <button type="button" id="sys-team-save" class="btn-ws-sm" title="Save current team setup">Save</button>
+            <button type="button" id="sys-team-delete" class="btn-ws-sm">Delete</button>
+          </div>
+          <div class="system-row-actions" style="margin-top:4px">
+            <label class="muted" style="font-size:0.85em">plan_mode
+              <select id="sys-plan-mode" class="tune-input" style="max-width:140px">
+                <option value="default">default</option>
+                <option value="full_page_html">full_page_html</option>
+                <option value="plan_qa">plan_qa</option>
+                <option value="diagnosis">diagnosis</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="system-row"><span>Backups</span><ul id="sys-backup-list" class="ws-list" style="max-height:100px"></ul></div>
+        <p class="system-hint muted">Keys: Key.txt → DEEPSEEK_API_KEY. Model ollama/…. Worker 3/4: double-click to enable. Chat log persists in this browser.</p>
+      </div>
+      <div class="modal-actions"><button type="button" id="system-save" class="btn-save">Apply</button></div>
+    </div>
+  </div>
+  <div id="vector-modal" class="modal" hidden>
+    <div class="modal-panel trace-panel">
+      <div class="modal-head"><h2 class="modal-title">Vector store (lite)</h2><button type="button" id="vector-close" class="modal-close" title="Close">×</button></div>
+      <p id="vector-count" class="system-line muted">Docs: 0</p>
+      <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <input id="vector-query" class="tune-input" type="search" placeholder="Search…" style="flex:1;min-width:140px" />
+        <button type="button" id="vector-search-btn" class="btn-ws-sm">Search</button>
+        <button type="button" id="vector-refresh" class="btn-ws-sm">List</button>
+        <button type="button" id="vector-clear" class="btn-ws-sm">Clear</button>
+      </div>
+      <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <input id="vector-add-input" class="tune-input" type="text" placeholder="Add doc text…" style="flex:1;min-width:140px" />
+        <button type="button" id="vector-add-btn" class="btn-ws-sm">Add</button>
+      </div>
+      <ul id="vector-list" class="ws-list" style="max-height:220px"></ul>
+      <pre id="vector-hits" class="trace-body muted" style="max-height:140px;margin-top:8px">Search hits appear here.</pre>
+    </div>
+  </div>
+  <div id="tools-modal" class="modal" hidden>
+    <div class="modal-panel trace-panel">
+      <div class="modal-head"><h2 class="modal-title">Tools</h2><button type="button" id="tools-close" class="modal-close" title="Close">×</button></div>
+      <p id="tools-count" class="system-line muted">Tools: 0</p>
+      <ul id="tools-list" class="ws-list" style="max-height:140px"></ul>
+      <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">
+        <select id="tools-select" class="tune-input" style="min-width:140px"></select>
+        <input id="tools-args" class="tune-input" type="text" placeholder="Args JSON or plain text" style="flex:1;min-width:160px" />
+        <button type="button" id="tools-run" class="btn-ws-sm">Run</button>
+        <button type="button" id="tools-refresh" class="btn-ws-sm">Refresh</button>
+      </div>
+      <p class="system-line muted">Quick fetch</p>
+      <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <input id="tools-fetch-url" class="tune-input" type="url" placeholder="https://…" style="flex:1;min-width:160px" />
+        <button type="button" id="tools-fetch-btn" class="btn-ws-sm">Fetch</button>
+      </div>
+      <p class="system-line muted" style="margin-top:10px">Computer use (screen / mouse / keyboard / shell)</p>
+      <p id="cu-god-line" class="system-line muted">God-Mode: off — click God badge in header to enable real control</p>
+      <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+        <button type="button" id="cu-inspect" class="btn-ws-sm" title="Screenshot + OCR">Inspect screen</button>
+        <button type="button" id="cu-click" class="btn-ws-sm" title="Click at x,y">Click</button>
+        <input id="cu-x" class="tune-input" type="number" placeholder="x" style="width:64px" value="100" />
+        <input id="cu-y" class="tune-input" type="number" placeholder="y" style="width:64px" value="100" />
+      </div>
+      <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+        <input id="cu-type" class="tune-input" type="text" placeholder="Type text…" style="flex:1;min-width:140px" />
+        <button type="button" id="cu-type-btn" class="btn-ws-sm">Type</button>
+      </div>
+      <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <input id="cu-shell" class="tune-input" type="text" placeholder="Shell (allowlist: ls pwd date …)" style="flex:1;min-width:140px" value="pwd" />
+        <button type="button" id="cu-shell-btn" class="btn-ws-sm">Shell</button>
+      </div>
+      <pre id="tools-result" class="trace-body muted" style="max-height:200px">Tools + Computer use. Without God-Mode actions are dry-run only. Real mouse/keyboard needs God on + pyautogui.</pre>
+    </div>
+  </div>
+  <div id="usage-modal" class="modal" hidden>
+    <div class="modal-panel trace-panel">
+      <div class="modal-head"><h2 class="modal-title">Usage & Jobs</h2><button type="button" id="usage-close" class="modal-close" title="Close">×</button></div>
+      <pre id="usage-body" class="trace-body muted">Loading…</pre>
+      <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">
+        <button type="button" id="usage-refresh" class="btn-ws-sm">Refresh</button>
+        <button type="button" id="usage-reset" class="btn-ws-sm" title="Zero session spend counters">Reset usage</button>
+      </div>
+      <p class="system-line muted">Recent jobs</p>
+      <ul id="usage-jobs" class="ws-list" style="max-height:160px"></ul>
+    </div>
+  </div>
+  <div id="toast-host" class="toast-host" aria-live="polite"></div>
+  <script src="/static/app.js?v=149"></script>
+</body>
+</html>
