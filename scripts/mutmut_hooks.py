@@ -82,7 +82,9 @@ def pre() -> int:
     n_bak = _clean_orphan_backups()
     # Hint for humans / CI logs
     os.environ.setdefault("PYTHONPATH", str(SRC))
-    _log(f"pre ok pycache_cleared={n_py} bak_removed={n_bak} PYTHONPATH={os.environ.get('PYTHONPATH')}")
+    _log(
+        f"pre ok pycache_cleared={n_py} bak_removed={n_bak} PYTHONPATH={os.environ.get('PYTHONPATH')}"
+    )
     return 0
 
 

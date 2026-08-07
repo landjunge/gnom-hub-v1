@@ -98,7 +98,7 @@ def test_enable_all_turns_workers_on():
 
 
 def test_flex_preset_locked_personal():
-    _, mgr, events = _manager()
+    _, mgr, _events = _manager()
     assert mgr.get(AgentId.FLEX).preset == DEFAULT_FLEX_PRESET
     assert mgr.get(AgentId.FLEX).toggleable is False
     # preset changes ignored — stays personal

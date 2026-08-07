@@ -284,13 +284,25 @@ def main() -> int:
 
     print("\nResults:", flush=True)
     line("COUNT items", b1["ms_count"], b2["ms_count"], f"  n={b1['n_items']}")
-    line("SUM nbytes", b1["ms_sum_nbytes"], b2["ms_sum_nbytes"], f"  {human_bytes(b1['sum_nbytes'])}")
+    line(
+        "SUM nbytes", b1["ms_sum_nbytes"], b2["ms_sum_nbytes"], f"  {human_bytes(b1['sum_nbytes'])}"
+    )
     line("point meta ×1000", b1["ms_point_meta_x1000"], b2["ms_point_meta_x1000"])
-    line("random 50 payload", b1["ms_random_50_payload"], b2["ms_random_50_payload"], f"  {human_bytes(b1['bytes_random_50'])}")
+    line(
+        "random 50 payload",
+        b1["ms_random_50_payload"],
+        b2["ms_random_50_payload"],
+        f"  {human_bytes(b1['bytes_random_50'])}",
+    )
     line("name LIKE limit 100", b1["ms_name_like"], b2["ms_name_like"], f"  n={b1['n_like']}")
     line("COUNT name LIKE all", b1["ms_count_like_all"], b2["ms_count_like_all"])
     line("headers 20", b1["ms_headers_20"], b2["ms_headers_20"])
-    line("FULL read 20 items", b1["ms_full_read_20_items"], b2["ms_full_read_20_items"], f"  {human_bytes(b1['bytes_full_20'])}")
+    line(
+        "FULL read 20 items",
+        b1["ms_full_read_20_items"],
+        b2["ms_full_read_20_items"],
+        f"  {human_bytes(b1['bytes_full_20'])}",
+    )
     line("4× COUNT(*)", b1["ms_four_full_counts"], b2["ms_four_full_counts"])
     line("prefix COUNT", b1["ms_name_prefix_count"], b2["ms_name_prefix_count"])
 
