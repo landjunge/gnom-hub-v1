@@ -404,10 +404,10 @@ def test_execute_uses_latest_user_turn():
 def test_coordinator_html_plan_prefers_full_page():
     """HTML/landing tasks always get deterministic full-page plan (no section splits)."""
     from gnom_hub.agents.models import COLORS, AgentId, AgentState
+    from gnom_hub.agents.plan_fast_path import _wants_one_html_page
     from gnom_hub.agents.roles_ext import (
         CoordinatorAgent,
         _html_full_page_plan,
-        _wants_one_html_page,
     )
     from gnom_hub.core.event_bus import EventBus
 
@@ -536,7 +536,7 @@ def test_flex_pipeline_injects_wishes_into_requirements():
 
 
 def test_flex_binding_wishes_helper():
-    from gnom_hub.agents import AgentManager, FlexAgent, AgentId
+    from gnom_hub.agents import AgentId, AgentManager, FlexAgent
     from gnom_hub.core.event_bus import EventBus
 
     bus = EventBus()

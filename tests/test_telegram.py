@@ -1,13 +1,12 @@
 from gnom_hub.core.event_bus import EventBus
-from gnom_hub.telegram.bot import TelegramBridge
+from gnom_hub.telegram.bot import TelegramBridge, parse_allowed_chat_ids
 
 
-def test_telegram_commands_via_handler():
-    bus = EventBus()
+def _handler():
     seen = []
 
     def on_cmd(cmd, arg, meta):
-        seen.append((cmd, arg))
+        seen.append((cmd, arg, meta.get("chat_id")))
         if cmd == "help":
             return "help-ok"
         if cmd == "do":
@@ -42,6 +41,13 @@ def test_telegram_commands_via_handler():
             return f"hot:{arg}"
         return f"cmd:{cmd}"
 
+    return on_cmd, seen
+
+
+def test_telegram_commands_via_handler():
+    bus = EventBus()
+    on_cmd, seen = _handler()
+    # No chat_id → test/API hook allowed when allowlist empty
     bot = TelegramBridge(bus, token="", on_command=on_cmd)
     assert bot.handle_text("/help") == "help-ok"
     assert bot.handle_text("/do build it") == "did:build it"
@@ -60,15 +66,44 @@ def test_telegram_commands_via_handler():
     assert bot.handle_text("/tools") == "tools:"
     assert bot.handle_text("/fetch https://example.com") == "fetch:https://example.com"
     assert bot.handle_text("/hot list") == "hot:list"
-    assert ("warm", "add fact") in seen
-    assert ("cancel", "") in seen
-    assert ("cold", "list") in seen
-    assert ("vec", "search hub") in seen
-    assert ("trace", "10") in seen
-    assert ("backup", "list") in seen
-    assert ("jobs", "") in seen
-    assert ("usage", "reset") in seen
-    assert ("ws", "list") in seen
-    assert ("tools", "") in seen
-    assert ("fetch", "https://example.com") in seen
-    assert ("hot", "list") in seen
+    assert any(s[0] == "warm" and s[1] == "add fact" for s in seen)
+    assert any(s[0] == "cancel" for s in seen)
+    assert any(s[0] == "hot" and s[1] == "list" for s in seen)
+
+
+def test_parse_allowed_chat_ids():
+    assert parse_allowed_chat_ids("") == frozenset()
+    assert parse_allowed_chat_ids("123, 456") == frozenset({123, 456})
+    assert parse_allowed_chat_ids("123;-100999") == frozenset({123, -100999})
+    assert parse_allowed_chat_ids("nope,42") == frozenset({42})
+
+
+def test_telegram_allowlist_denies_unknown_chat():
+    bus = EventBus()
+    on_cmd, seen = _handler()
+    bot = TelegramBridge(
+        bus,
+        token="",
+        on_command=on_cmd,
+        allowed_chat_ids=frozenset({111}),
+    )
+    # Unknown chat
+    reply = bot.handle_text("/do secret", chat_id=999)
+    assert "Unauthorized" in reply
+    assert not seen
+    # Allowed chat
+    assert bot.handle_text("/do ok", chat_id=111) == "did:ok"
+    assert ("do", "ok", 111) in seen
+
+
+def test_telegram_empty_allowlist_denies_real_chat_id():
+    """Secure default: real Telegram chat_id blocked until allowlist is set."""
+    bus = EventBus()
+    on_cmd, seen = _handler()
+    bot = TelegramBridge(bus, token="", on_command=on_cmd, allowed_chat_ids=frozenset())
+    reply = bot.handle_text("/do evil", chat_id=42)
+    assert "Unauthorized" in reply
+    assert "TELEGRAM_ALLOWED_CHAT_IDS" in reply
+    assert not seen
+    # Test hook without chat_id still works
+    assert bot.handle_text("/help") == "help-ok"

@@ -27,6 +27,23 @@ def test_web_fetch_blocks_localhost():
     assert "private" in r.get("error", "").lower() or "local" in r.get("error", "").lower()
 
 
+def test_web_fetch_blocks_ipv4_mapped_loopback():
+    """IPv4-mapped IPv6 loopback must be treated as private (SSRF)."""
+    import ipaddress
+
+    assert wf._is_private_host("::ffff:127.0.0.1") is True
+    assert wf._is_private_host("::ffff:10.0.0.1") is True
+    assert wf._ip_is_blocked(ipaddress.ip_address("::ffff:192.168.1.1")) is True
+    r = web_fetch("http://[::ffff:127.0.0.1]/")
+    assert r["ok"] is False
+
+
+def test_web_fetch_blocks_link_local_metadata():
+    assert wf._is_private_host("169.254.169.254") is True
+    r = web_fetch("http://169.254.169.254/latest/meta-data/")
+    assert r["ok"] is False
+
+
 def test_web_fetch_blocks_redirect_to_private():
     """A hop that 302s to 127.0.0.1 must be rejected (SSRF)."""
 

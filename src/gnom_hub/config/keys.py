@@ -126,6 +126,7 @@ def ensure_env_from_key_txt(
         "WORKER_API_KEY",
         "DEEPSEEK_MODEL",
         "TELEGRAM_BOT_TOKEN",
+        "TELEGRAM_ALLOWED_CHAT_IDS",
     }
     if env_path.is_file() and not force:
         existing = parse_key_file(env_path.read_text(encoding="utf-8"))

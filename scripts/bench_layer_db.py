@@ -16,7 +16,6 @@ Schema (conceptual Y×X×Z cell store):
 from __future__ import annotations
 
 import argparse
-import os
 import random
 import sqlite3
 import struct
@@ -139,9 +138,7 @@ def fill_db(
             tier = "COLD"
         else:
             tier = "WS"
-        layers_rows.append(
-            (i, f"layer-{i:05d}", agent, module, tier, now)
-        )
+        layers_rows.append((i, f"layer-{i:05d}", agent, module, tier, now))
     conn.executemany(
         "INSERT INTO layers(id, name, agent, module, tier, created_at) VALUES (?,?,?,?,?,?)",
         layers_rows,
@@ -171,8 +168,7 @@ def fill_db(
             elapsed = time.perf_counter() - t1
             rate = written / elapsed / (1024 * 1024) if elapsed > 0 else 0
             print(
-                f"  fill {lid}/{n_layers} layers  {human_bytes(written)}  "
-                f"{rate:.1f} MiB/s",
+                f"  fill {lid}/{n_layers} layers  {human_bytes(written)}  {rate:.1f} MiB/s",
                 flush=True,
             )
     if batch:
@@ -264,9 +260,7 @@ def bench_ops(conn: sqlite3.Connection, n_layers: int) -> dict:
 
     # sequential scan one tier
     t0 = time.perf_counter()
-    rows = conn.execute(
-        "SELECT id, agent, module FROM layers WHERE tier='WARM'"
-    ).fetchall()
+    rows = conn.execute("SELECT id, agent, module FROM layers WHERE tier='WARM'").fetchall()
     out["ms_filter_tier_warm"] = ms(t0)
     out["n_warm_layers"] = len(rows)
 
@@ -307,9 +301,7 @@ def bench_ops(conn: sqlite3.Connection, n_layers: int) -> dict:
 
     # agent filter
     t0 = time.perf_counter()
-    conn.execute(
-        "SELECT COUNT(*) FROM layers WHERE agent='worker1'"
-    ).fetchone()
+    conn.execute("SELECT COUNT(*) FROM layers WHERE agent='worker1'").fetchone()
     out["ms_count_agent_worker1"] = ms(t0)
 
     return out
@@ -389,12 +381,29 @@ def main() -> int:
     print("\nResults (1st pass ~cold cache, 2nd ~warm):", flush=True)
     line("COUNT layers", b1["ms_count_layers"], b2["ms_count_layers"], f"  n={b1['n_layers_db']}")
     line("COUNT chunks", b1["ms_count_chunks"], b2["ms_count_chunks"], f"  n={b1['n_chunks']}")
-    line("SUM nbytes", b1["ms_sum_nbytes"], b2["ms_sum_nbytes"], f"  {human_bytes(b1['sum_nbytes'])}")
+    line(
+        "SUM nbytes", b1["ms_sum_nbytes"], b2["ms_sum_nbytes"], f"  {human_bytes(b1['sum_nbytes'])}"
+    )
     line("point layer ×1000", b1["ms_point_layer_x1000"], b2["ms_point_layer_x1000"])
-    line("random 50 × chunk0", b1["ms_random_50_chunk0"], b2["ms_random_50_chunk0"], f"  {human_bytes(b1['bytes_random_50'])}")
-    line("filter tier=WARM", b1["ms_filter_tier_warm"], b2["ms_filter_tier_warm"], f"  n={b1['n_warm_layers']}")
+    line(
+        "random 50 × chunk0",
+        b1["ms_random_50_chunk0"],
+        b2["ms_random_50_chunk0"],
+        f"  {human_bytes(b1['bytes_random_50'])}",
+    )
+    line(
+        "filter tier=WARM",
+        b1["ms_filter_tier_warm"],
+        b2["ms_filter_tier_warm"],
+        f"  n={b1['n_warm_layers']}",
+    )
     line("headers 20 layers", b1["ms_headers_20_layers"], b2["ms_headers_20_layers"])
-    line("FULL read 5 layers", b1["ms_full_read_5_layers"], b2["ms_full_read_5_layers"], f"  {human_bytes(b1['bytes_full_5'])}")
+    line(
+        "FULL read 5 layers",
+        b1["ms_full_read_5_layers"],
+        b2["ms_full_read_5_layers"],
+        f"  {human_bytes(b1['bytes_full_5'])}",
+    )
     line("tier walk counts×4", b1["ms_tier_walk_counts"], b2["ms_tier_walk_counts"])
     line("count agent=worker1", b1["ms_count_agent_worker1"], b2["ms_count_agent_worker1"])
 
@@ -410,7 +419,7 @@ def main() -> int:
         ("50 random chunks", b2["ms_random_50_chunk0"]),
     ]:
         if m > 0:
-            print(f"  {label}: {1000.0/m:.0f}× faster than 1s LLM", flush=True)
+            print(f"  {label}: {1000.0 / m:.0f}× faster than 1s LLM", flush=True)
 
     # write report next to db
     report = db_path.with_suffix(".bench.txt")

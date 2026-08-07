@@ -37,21 +37,58 @@ class _TextExtractor(HTMLParser):
         return "\n".join(self._chunks)
 
 
-def _is_private_host(host: str) -> bool:
-    host = host.strip("[]").lower()
-    if host in ("localhost", "0.0.0.0"):
+def _ip_is_blocked(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    """True if address must not be fetched (SSRF). Handles IPv4-mapped IPv6."""
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        return _ip_is_blocked(ip.ipv4_mapped)
+    if (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_reserved
+        or ip.is_multicast
+        or ip.is_unspecified
+    ):
         return True
+    # 0.0.0.0/8 (beyond bare unspecified)
+    return isinstance(ip, ipaddress.IPv4Address) and ip in ipaddress.ip_network("0.0.0.0/8")
+
+
+def _is_private_host(host: str) -> bool:
+    """
+    Resolve host and block if any address is private/loopback/link-local/etc.
+    Literal IPs and IPv4-mapped forms (::ffff:127.0.0.1) are checked the same way.
+    Unresolvable → blocked.
+    """
+    host = host.strip("[]").lower()
+    if not host:
+        return True
+    if host in ("localhost", "0.0.0.0", "::", "::1"):
+        return True
+    # mDNS / local TLD often map to link-local
+    if host.endswith((".local", ".localhost")):
+        return True
+
+    # Literal IP (incl. IPv4-mapped like ::ffff:127.0.0.1)
+    try:
+        ip = ipaddress.ip_address(host)
+        return _ip_is_blocked(ip)
+    except ValueError:
+        pass
+
     try:
         infos = socket.getaddrinfo(host, None)
     except socket.gaierror:
         return True  # unresolvable → block
+    if not infos:
+        return True
     for info in infos:
         ip_str = info[4][0]
         try:
             ip = ipaddress.ip_address(ip_str)
         except ValueError:
             continue
-        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
+        if _ip_is_blocked(ip):
             return True
     return False
 
@@ -65,6 +102,12 @@ def web_fetch(
     """
     Fetch a public HTTP(S) URL and return plain text.
     Blocks private/localhost unless GNOM_WEB_ALLOW_LOCAL=1.
+
+    SSRF defenses:
+      - scheme allowlist (http/https only)
+      - resolve + block private/loopback/link-local/reserved/multicast
+      - IPv4-mapped IPv6 (::ffff:x.x.x.x)
+      - re-check every redirect hop and final URL
     """
     raw = (url or "").strip()
     if not raw:
@@ -77,7 +120,7 @@ def web_fetch(
     if not host:
         return {"ok": False, "error": "missing host"}
 
-    allow_local = os.getenv("GNOM_WEB_ALLOW_LOCAL", "0").strip() in ("1", "true", "yes")
+    allow_local = os.getenv("GNOM_WEB_ALLOW_LOCAL", "0").strip().lower() in ("1", "true", "yes")
     if not allow_local and _is_private_host(host):
         return {"ok": False, "error": "private/local hosts blocked (set GNOM_WEB_ALLOW_LOCAL=1)"}
 
@@ -114,7 +157,7 @@ def web_fetch(
             status = resp.getcode()
     except urllib.error.HTTPError as e:
         err = str(e.reason) if e.reason else f"HTTP {e.code}"
-        if e.code == 403 and "private" in err.lower():
+        if e.code == 403 and ("private" in err.lower() or "blocked" in err.lower()):
             return {"ok": False, "error": err, "url": raw}
         return {"ok": False, "error": f"HTTP {e.code}" + (f" ({err})" if err else ""), "url": raw}
     except Exception as exc:  # noqa: BLE001

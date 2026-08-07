@@ -852,7 +852,12 @@ def create_app() -> FastAPI:
 
     @app.post("/api/computer-use/inspect")
     def computer_inspect() -> dict[str, Any]:
-        return get_hub().computer.inspect_screen()
+        """Inspect/OCR requires God-Mode (screen content is sensitive)."""
+        hub = get_hub()
+        if not hub.god_mode.enabled:
+            # Keep kit gate as source of truth; ensure flag is synced
+            hub.computer.set_god_mode(False)
+        return hub.computer.inspect_screen()
 
     @app.post("/api/computer-use/click")
     def computer_click(body: ActionClickBody) -> dict[str, Any]:

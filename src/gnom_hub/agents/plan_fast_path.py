@@ -93,6 +93,4 @@ def _wants_one_html_page(
         x in blob for x in ("html", "web", "landing", "bau", "erstell", "page", "ui")
     ):
         return True
-    if " page" in blob or "page " in blob or blob.startswith("page") or "page." in blob:
-        return True
-    return False
+    return bool(" page" in blob or "page " in blob or blob.startswith("page") or "page." in blob)

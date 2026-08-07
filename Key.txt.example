@@ -19,3 +19,5 @@ WORKER_API_KEY=sk-your-worker-deepseek-key
 
 # Optional Telegram bot (set GNOM_TELEGRAM_POLL=1 to auto long-poll)
 # TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
+# Required for real chats: comma-separated chat ids (secure default denies unknown)
+# TELEGRAM_ALLOWED_CHAT_IDS=123456789
