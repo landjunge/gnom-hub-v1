@@ -886,7 +886,12 @@ def create_app() -> FastAPI:
     @app.get("/api/plugins")
     def plugins() -> dict[str, Any]:
         hub = get_hub()
-        return {"plugins": hub.plugin_list, "tools": hub.tools.list_tools()}
+        errs = getattr(hub.plugins, "errors", None) or []
+        return {
+            "plugins": hub.plugin_list,
+            "tools": hub.tools.list_tools(),
+            "errors": errs,
+        }
 
     @app.get("/api/mcp/tools")
     def mcp_tools() -> dict[str, Any]:
