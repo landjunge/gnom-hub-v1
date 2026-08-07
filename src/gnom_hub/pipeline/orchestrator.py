@@ -479,17 +479,19 @@ class Orchestrator:
                 },
             )
             if notes:
+                lines = [ln.strip() for ln in notes.strip().splitlines() if ln.strip()]
                 first = ""
-                for ln in notes.strip().splitlines():
-                    s = ln.strip().lstrip("-•* ")
-                    if len(s) >= 12 and not s.endswith(":"):
-                        first = s[:160]
+                for s in lines:
+                    s2 = s.lstrip("-•* ")
+                    if len(s2) >= 12 and not s2.endswith(":"):
+                        first = s2[:160]
                         break
-                if not first:
-                    first = notes.strip().splitlines()[0][:160]
-                line = f"Flex/personal: {first}"
-                if line not in self._state.distilled_requirements:
-                    self._state.distilled_requirements.append(line)
+                if not first and lines:
+                    first = lines[0][:160]
+                if first:
+                    line = f"Flex/personal: {first}"
+                    if line not in self._state.distilled_requirements:
+                        self._state.distilled_requirements.append(line)
 
         self._check_cancel()
         if not self.coordinator.enabled:
@@ -511,9 +513,7 @@ class Orchestrator:
             plan_mode=getattr(self, "plan_mode", "default") or "default",
         )
         meta = getattr(self.coordinator, "last_plan_meta", None) or {}
-        resolved = str(
-            meta.get("plan_mode") or getattr(self, "plan_mode", "default") or "default"
-        )
+        resolved = str(meta.get("plan_mode") or getattr(self, "plan_mode", "default") or "default")
         self._state.resolved_plan_mode = resolved
         self.bus.emit(
             "pipeline.coordinate",
@@ -804,13 +804,42 @@ def _wants_auto_execute(text: str, turns: list[dict] | None = None) -> bool:
         if x.get("role") == "user" and str(x.get("text") or "").strip()
     ]
     go_words = {
-        "go", "los", "ok", "okay", "ja", "jap", "jo", "yes", "yep", "sure",
-        "machs", "mach das", "mach es", "mach", "execute", "do it",
-        "ja mach", "ja bitte", "bitte", "jetzt", "bau es", "bau das",
-        "umsetzen", "setz um", "plan erstellen", "erstell den plan",
-        "erstelle den plan", "mach den plan", "ja erstell", "ja erstellen",
-        "los gehts", "los geht's", "do the plan", "create the plan",
-        "run it", "tu es",
+        "go",
+        "los",
+        "ok",
+        "okay",
+        "ja",
+        "jap",
+        "jo",
+        "yes",
+        "yep",
+        "sure",
+        "machs",
+        "mach das",
+        "mach es",
+        "mach",
+        "execute",
+        "do it",
+        "ja mach",
+        "ja bitte",
+        "bitte",
+        "jetzt",
+        "bau es",
+        "bau das",
+        "umsetzen",
+        "setz um",
+        "plan erstellen",
+        "erstell den plan",
+        "erstelle den plan",
+        "mach den plan",
+        "ja erstell",
+        "ja erstellen",
+        "los gehts",
+        "los geht's",
+        "do the plan",
+        "create the plan",
+        "run it",
+        "tu es",
     }
     if len(users) >= 2 and (low in go_words or low.startswith(("ja ", "ok "))):
         return True
@@ -819,13 +848,31 @@ def _wants_auto_execute(text: str, turns: list[dict] | None = None) -> bool:
         return False
 
     diagnose = (
-        "wo hakt", "wo es hakt", "wo ist der fehler", "was ist mit", "warum",
-        "erklär", "analys", "prüfe die pipeline", "only brainstorm",
-        "nur brainstorm", "nur ideen", "ideen zu", "soll ich",
+        "wo hakt",
+        "wo es hakt",
+        "wo ist der fehler",
+        "was ist mit",
+        "warum",
+        "erklär",
+        "analys",
+        "prüfe die pipeline",
+        "only brainstorm",
+        "nur brainstorm",
+        "nur ideen",
+        "ideen zu",
+        "soll ich",
     )
     buildish = (
-        "baue", "build", "html", "landing", "seite", "page",
-        "implement", "erstelle", "mach mir", "todo",
+        "baue",
+        "build",
+        "html",
+        "landing",
+        "seite",
+        "page",
+        "implement",
+        "erstelle",
+        "mach mir",
+        "todo",
     )
     if any(d in low for d in diagnose) and not any(b in low for b in buildish):
         return False
@@ -835,12 +882,31 @@ def _wants_auto_execute(text: str, turns: list[dict] | None = None) -> bool:
     if _wants_one_html_page(t):
         return True
     triggers = (
-        "baue ", "baue eine", "baue mir", "build a", "build me",
-        "erstelle ", "create a", "implement ", "mach mir", "mach eine",
-        "schreibe ", "schreib eine", "single-file", "single file",
-        "landingpage", "landing page", "website", "todo app",
-        "ausführen", "setz um", "umsetzen", "deliver", "fertig machen",
-        "plan erstellen", "erstell den plan",
+        "baue ",
+        "baue eine",
+        "baue mir",
+        "build a",
+        "build me",
+        "erstelle ",
+        "create a",
+        "implement ",
+        "mach mir",
+        "mach eine",
+        "schreibe ",
+        "schreib eine",
+        "single-file",
+        "single file",
+        "landingpage",
+        "landing page",
+        "website",
+        "todo app",
+        "ausführen",
+        "setz um",
+        "umsetzen",
+        "deliver",
+        "fertig machen",
+        "plan erstellen",
+        "erstell den plan",
     )
     return any(k in low for k in triggers)
 
@@ -901,8 +967,16 @@ def _is_topic_switch(turns: list[dict], new_text: str) -> bool:
     if len(new) >= 80 and overlap < 0.28:
         return True
     deliverable = (
-        "html", "landing", "website", "webpage", "web page",
-        "build ", "create ", "make ", "implement ", "seite",
+        "html",
+        "landing",
+        "website",
+        "webpage",
+        "web page",
+        "build ",
+        "create ",
+        "make ",
+        "implement ",
+        "seite",
     )
     return (
         any(k in new_l for k in deliverable)
@@ -994,8 +1068,13 @@ def _html_complete(body: str) -> bool:
 def _has_interaction(body: str) -> bool:
     low = (body or "").lower()
     keys = (
-        "onclick=", "onchange=", "onsubmit=", "addEventListener",
-        "addeventlistener", "oninput=", "ontoggle=",
+        "onclick=",
+        "onchange=",
+        "onsubmit=",
+        "addEventListener",
+        "addeventlistener",
+        "oninput=",
+        "ontoggle=",
     )
     return any(k.lower() in low for k in keys)
 
@@ -1033,8 +1112,15 @@ def _validate_worker_draft(body: str, *, user_text: str = "", task: str = "") ->
             if any(
                 k in blob
                 for k in (
-                    "interact", "click", "demo", "nav", "todo",
-                    "filter", "state", "klick", "dom",
+                    "interact",
+                    "click",
+                    "demo",
+                    "nav",
+                    "todo",
+                    "filter",
+                    "state",
+                    "klick",
+                    "dom",
                 )
             ):
                 ok = False
