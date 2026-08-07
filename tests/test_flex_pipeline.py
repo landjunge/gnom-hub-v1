@@ -198,9 +198,7 @@ def test_execute_injects_flex_wish_requirements(tmp_path: Path):
     pipe = Pipeline(bus)
     # Seed WARM via facade path used by absorb wiring — set memory_context directly
     pipe.brainstorm_turn("Plan small utility app, nur ideen")
-    pipe.state.memory_context = (
-        "User: always enable dark theme\nUser: never wipe wishes on clear\n"
-    )
+    pipe.state.memory_context = "User: always enable dark theme\nUser: never wipe wishes on clear\n"
     st = pipe.execute()
     if st.stage == PipelineStage.clarify:
         st = pipe.answer_clarify("MVP/schnell")
@@ -268,9 +266,7 @@ def test_full_flex_chat_to_done_smoke():
     ):
         bus.on(name, lambda d, n=name: events.append(n))
     pipe = Pipeline(bus)
-    st = pipe.brainstorm_turn(
-        "Build a landing page for Bean Shop. Full HTML with hero and footer."
-    )
+    st = pipe.brainstorm_turn("Build a landing page for Bean Shop. Full HTML with hero and footer.")
     assert st.stage in (PipelineStage.done, PipelineStage.clarify, PipelineStage.work)
     if st.stage == PipelineStage.clarify:
         st = pipe.answer_clarify("MVP/schnell")
