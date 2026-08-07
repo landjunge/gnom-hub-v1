@@ -144,8 +144,12 @@ class Pipeline:
             )
             # One short constraint line only — never dump whole flex essay into reqs
             if notes:
-                first = notes.strip().splitlines()[0][:160]
-                self._state.distilled_requirements.append(f"Flex/{self._flex_preset()}: {first}")
+                lines = [ln.strip() for ln in notes.strip().splitlines() if ln.strip()]
+                if lines:
+                    first = lines[0][:160]
+                    self._state.distilled_requirements.append(
+                        f"Flex/{self._flex_preset()}: {first}"
+                    )
 
         self._run_coordinate_and_work()
 
