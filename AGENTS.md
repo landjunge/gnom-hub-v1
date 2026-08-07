@@ -5,21 +5,90 @@
 1. **ALWAYS run `ruff format .` before every commit.** No exceptions.
    CI runs `ruff format --check .` and will fail on unformatted files.
    - **UI JS:** edit `src/gnom_hub/ui/static/parts/*.js`, then run `python scripts/build_ui_js.py` (rebuilds `app.js`).
-2. **After every completed step: commit AND push** to `origin/main`.
-   - Do not wait for an explicit “push” request.
+2. **After every completed step: commit AND push** to `origin/main`
+   (or open a PR when the user asks for a branch/PR).
+   - Do not wait for an explicit “push” request unless the user wants a PR workflow.
    - Message style: `feat(0.x): …` / `fix: …` / `docs: …`
 3. **Stay inside `docs/V1_SCOPE.md`.** Do not implement pre-plan features.
 4. **YAGNI + KISS** — no overengineering.
 5. **line-length = 100** (see `pyproject.toml`). Break long assert/expressions accordingly.
-6. **Run before every commit/push (do not skip):**
-   ```bash
-   ruff check .
-   ruff format .
-   ruff format --check .
-   pytest tests/ -q --tb=short
-   # if server up: python scripts/basic_tests.py   # B1–B3
-   ```
-   Never push with ruff/format/pytest red. Never commit `Key.txt` / `.env` / real secrets.
+6. **Ruff + tests before every commit/push (do not skip)** — see [Ruff gate](#ruff-gate-mandatory) below.
+7. Never commit `Key.txt` / `.env` / real secrets / `User/user.db`.
+
+## Ruff gate (mandatory)
+
+Pinned: **`ruff==0.16.1`** (`pyproject.toml` → optional-dependencies `dev`).
+
+### Identify errors
+
+```bash
+# Activate venv if present
+source .venv/bin/activate   # or: .venv/bin/ruff …
+
+# Which files have issues (names only)
+ruff check . --show-files
+
+# Full diagnostics
+ruff check .
+
+# Counts by rule
+ruff check . --statistics
+
+# Format drift (CI fails on this)
+ruff format --check .
+```
+
+### Auto-fix
+
+```bash
+# Safe auto-fixes (imports, unused, etc.)
+ruff check . --fix
+
+# Also apply “unsafe” fixes when remaining count is small and reviewable
+ruff check . --fix --unsafe-fixes
+
+# Format entire tree (always after fixes)
+ruff format .
+
+# Must be clean before push
+ruff check .
+ruff format --check .
+```
+
+### Full pre-push checklist
+
+```bash
+ruff check .
+ruff format .
+ruff format --check .
+pytest tests/ -q --tb=short
+# if server up: python scripts/basic_tests.py   # B1–B3
+# full gate:    ./scripts/quality_check.sh
+```
+
+Never push with ruff/format/pytest red.
+
+### Git pre-push hook (local)
+
+Versioned hooks live in **`.githooks/`**. Install once per clone:
+
+```bash
+./scripts/install_git_hooks.sh
+# equivalent: git config core.hooksPath .githooks
+```
+
+What runs on `git push`:
+
+```text
+ruff check .
+ruff format --check .
+```
+
+- **Fail** → push aborted (fix, then push again).
+- **Emergency skip only:** `git push --no-verify` (do not use as normal workflow).
+- Hook does **not** replace pytest; still run `pytest` / `quality_check.sh` before claiming done.
+
+CI mirrors the same ruff commands (`.github/workflows/ci.yml` → job `lint`).
 
 ## Product rules
 

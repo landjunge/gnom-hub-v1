@@ -25,10 +25,33 @@ class ComputerUseKit:
         self.action.set_god_mode(enabled)
 
     def inspect_screen(self) -> dict[str, Any]:
+        """
+        Capture → Vision → OCR. Requires God-Mode (H9): screen content is sensitive.
+        Without God-Mode returns blocked payload (no screenshot / OCR).
+        """
+        if not self.action.god_mode_enabled:
+            return {
+                "ok": False,
+                "blocked": True,
+                "error": "Inspect/OCR requires God-Mode",
+                "capture": {
+                    "ok": False,
+                    "path": None,
+                    "note": "god-mode required",
+                },
+                "vision": {
+                    "ok": False,
+                    "description": "",
+                    "teaching": "Enable God-Mode for Inspect/OCR",
+                },
+                "ocr": {"ok": False, "text": "", "note": "god-mode required"},
+            }
         cap = self.capture.screenshot("last.png")
         vis = self.vision.describe(cap.path or "")
         ocr = self.ocr.read_image(cap.path or "") if cap.path else None
         return {
+            "ok": bool(cap.ok),
+            "blocked": False,
             "capture": {"ok": cap.ok, "path": cap.path, "note": cap.note},
             "vision": {"ok": vis.ok, "description": vis.description, "teaching": vis.teaching},
             "ocr": {
@@ -42,5 +65,6 @@ class ComputerUseKit:
         return {
             "modules": ["capture", "vision", "ocr", "action", "workflow"],
             "action": self.action.snapshot(),
+            "inspect_requires_god_mode": True,
             "out_dir": str(self.root / "data" / "computer_use"),
         }

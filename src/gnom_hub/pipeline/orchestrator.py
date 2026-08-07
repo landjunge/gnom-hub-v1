@@ -791,7 +791,7 @@ class Orchestrator:
 
 
 def _wants_auto_execute(text: str, turns: list[dict] | None = None) -> bool:
-    from gnom_hub.agents.roles_ext import _wants_one_html_page
+    from gnom_hub.agents.plan_fast_path import _wants_one_html_page
 
     t = (text or "").strip()
     if not t:
@@ -912,7 +912,7 @@ def _wants_auto_execute(text: str, turns: list[dict] | None = None) -> bool:
 
 
 def _pick_execute_task(turns: list[dict], fallback: str = "") -> str:
-    from gnom_hub.agents.roles_ext import _wants_one_html_page
+    from gnom_hub.agents.plan_fast_path import _wants_one_html_page
 
     users = [
         str(t.get("text") or "").strip()
@@ -1038,7 +1038,7 @@ def _definition_of_done(user_text: str, requirements: list[str]) -> str:
 
 
 def _wants_html_artifact(user_text: str, task: str = "") -> bool:
-    from gnom_hub.agents.roles_ext import _wants_one_html_page
+    from gnom_hub.agents.plan_fast_path import _wants_one_html_page
 
     return _wants_one_html_page(f"{user_text or ''} {task or ''}")
 

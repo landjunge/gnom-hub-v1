@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
 import urllib.error
@@ -17,10 +18,36 @@ from gnom_hub.core.event_bus import EventBus
 # /status /bs /exec /hot /tools /fetch /ws /jobs /usage /pack /warm …
 
 
+def parse_allowed_chat_ids(raw: str | None = None) -> frozenset[int]:
+    """
+    Parse TELEGRAM_ALLOWED_CHAT_IDS (comma/space separated).
+    Empty → no IDs configured (secure default: real chats denied).
+    """
+    text = (raw if raw is not None else os.getenv("TELEGRAM_ALLOWED_CHAT_IDS", "")).strip()
+    if not text:
+        return frozenset()
+    out: set[int] = set()
+    for part in text.replace(";", ",").replace(" ", ",").split(","):
+        p = part.strip()
+        if not p:
+            continue
+        try:
+            out.add(int(p))
+        except ValueError:
+            continue
+    return frozenset(out)
+
+
 class TelegramBridge:
     """
     Long-poll getUpdates when enabled + token present.
     Does not start unless start() is called.
+
+    Chat allowlist (C1):
+      TELEGRAM_ALLOWED_CHAT_IDS=123,-100456
+      - Non-empty: only those chat_ids may run commands.
+      - Empty: only messages without chat_id (test/API hook) are allowed;
+        real Telegram updates always carry chat_id → denied until configured.
     """
 
     def __init__(
@@ -30,6 +57,7 @@ class TelegramBridge:
         *,
         on_command: Callable[[str, str, dict[str, Any]], str] | None = None,
         poll_seconds: float = 2.0,
+        allowed_chat_ids: frozenset[int] | None = None,
     ) -> None:
         self.bus = bus
         self.token = token.strip()
@@ -41,10 +69,22 @@ class TelegramBridge:
         self._last_chat_id: int | None = None
         self._last_text: str = ""
         self.enabled = bool(self.token)
+        self.allowed_chat_ids: frozenset[int] = (
+            allowed_chat_ids if allowed_chat_ids is not None else parse_allowed_chat_ids()
+        )
 
     @property
     def running(self) -> bool:
         return self._thread is not None and self._thread.is_alive()
+
+    def is_chat_allowed(self, chat_id: int | None) -> bool:
+        """True if this chat may run commands / free-text pipeline."""
+        if not self.allowed_chat_ids:
+            # No allowlist configured: permit test hook (no chat_id) only.
+            return chat_id is None
+        if chat_id is None:
+            return False
+        return int(chat_id) in self.allowed_chat_ids
 
     def start(self) -> bool:
         if not self.enabled or self.running:
@@ -52,7 +92,13 @@ class TelegramBridge:
         self._stop.clear()
         self._thread = threading.Thread(target=self._loop, name="telegram-poll", daemon=True)
         self._thread.start()
-        self.bus.emit("telegram.status", {"running": True})
+        self.bus.emit(
+            "telegram.status",
+            {
+                "running": True,
+                "allowlist_size": len(self.allowed_chat_ids),
+            },
+        )
         return True
 
     def stop(self) -> None:
@@ -69,6 +115,18 @@ class TelegramBridge:
         raw = (text or "").strip()
         self._last_text = raw
         self.bus.emit("telegram.message", {"text": raw, "chat_id": chat_id})
+
+        if not self.is_chat_allowed(chat_id):
+            self.bus.emit(
+                "telegram.denied",
+                {"chat_id": chat_id, "text": raw[:80]},
+            )
+            if not self.allowed_chat_ids:
+                return (
+                    "Unauthorized: set TELEGRAM_ALLOWED_CHAT_IDS to your chat id "
+                    f"(got chat_id={chat_id})."
+                )
+            return f"Unauthorized chat_id={chat_id} (not in TELEGRAM_ALLOWED_CHAT_IDS)."
 
         if not raw.startswith("/"):
             # free text = brainstorm turn (desktop-aligned); use /do for one-shot

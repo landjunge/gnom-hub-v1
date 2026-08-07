@@ -80,6 +80,8 @@ class SnapshotOpsMixin:
             "telegram": {
                 "configured": self.telegram.enabled,
                 "running": self.telegram.running,
+                "allowlist_size": len(getattr(self.telegram, "allowed_chat_ids", ()) or ()),
+                "allowlist_configured": bool(getattr(self.telegram, "allowed_chat_ids", None)),
             },
             "god_mode": self.god_mode.snapshot(),
             "vectors": {"count": self.vectors.count()},

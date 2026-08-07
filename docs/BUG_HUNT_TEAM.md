@@ -72,6 +72,15 @@ No classic `eval` / bare `except:` / SQL f-string injection in core scan.
 3. **Data integrity:** C2 · H11 · M10 · transactions on multi-step DB ops  
 4. **UX edge:** H2 · H3 · H4 · M8  
 
+### Wave 1 status (2026-08-07)
+
+| ID | Status | Notes |
+|----|--------|-------|
+| C1 | **Fixed** | `TELEGRAM_ALLOWED_CHAT_IDS`; empty allowlist denies real `chat_id`, allows test hook |
+| H9 | **Fixed** | `inspect_screen` / OCR require God-Mode |
+| H10 | **Fixed** | IPv4-mapped, link-local/metadata, `.local`, redirect+final re-check |
+| H8 | Partial | Default bind 127.0.0.1 still primary; God-Mode explicit; Inspect gated |
+
 ---
 
 ## Not a full dynamic audit

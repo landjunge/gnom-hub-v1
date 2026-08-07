@@ -72,6 +72,20 @@ def test_shell_allowlist():
     assert pipe.ok is False
 
 
+def test_inspect_requires_god_mode(tmp_path: Path):
+    from gnom_hub.computer_use.workflow import ComputerUseKit
+
+    kit = ComputerUseKit(tmp_path, god_mode=False)
+    blocked = kit.inspect_screen()
+    assert blocked.get("blocked") is True
+    assert blocked["capture"]["path"] is None
+    kit.set_god_mode(True)
+    # May fail capture without display; must not be God-Mode blocked
+    open_ = kit.inspect_screen()
+    assert open_.get("blocked") is not True
+    assert "capture" in open_
+
+
 def test_vector_in_pipeline_context(tmp_path: Path):
     from gnom_hub.memory.facade import MemoryFacade
     from gnom_hub.memory.hot import HotMemory
@@ -111,15 +125,24 @@ def test_api_phase5(tmp_path, monkeypatch):
         assert r.status_code == 200
         assert r.json()["hits"]
 
+        # Inspect blocked without God-Mode
+        r = c.post("/api/computer-use/inspect")
+        assert r.status_code == 200
+        body = r.json()
+        assert body.get("blocked") is True or body.get("ok") is False
+        assert "god" in (body.get("error") or "").lower() or body.get("blocked")
+
         r = c.post("/api/god-mode", json={"enabled": True, "reason": "test"})
         assert r.status_code == 200
         assert r.json()["enabled"] is True
-        r = c.post("/api/god-mode", json={"enabled": False})
-        assert r.json()["enabled"] is False
 
         r = c.post("/api/computer-use/inspect")
         assert r.status_code == 200
         assert "capture" in r.json()
+        assert r.json().get("blocked") is not True
+
+        r = c.post("/api/god-mode", json={"enabled": False})
+        assert r.json()["enabled"] is False
 
         r = c.post("/api/computer-use/click", json={"x": 1, "y": 2})
         assert r.status_code == 200

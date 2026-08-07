@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from gnom_hub.agents.base import BaseAgent
+from gnom_hub.agents.plan_fast_path import resolve_plan_mode
 from gnom_hub.agents.roles_helpers import (
     _is_flex_meta_requirement,
-    _is_garbage_fact,
     _lines,
     _needs_clarify,
     _with_memory,
 )
-from gnom_hub.core.event_bus import EventBus
-from gnom_hub.agents.plan_fast_path import _wants_one_html_page, resolve_plan_mode
 from gnom_hub.pipeline.models import DistillQuestion
 
 
@@ -195,4 +191,4 @@ def _simple_task_plan(
     return [(wid, templates[i % len(templates)]) for i, wid in enumerate(worker_ids[:4])]
 
 
-from gnom_hub.agents.roles_workers import MemoryAgent, WorkerAgent  # noqa: E402,F401
+from gnom_hub.agents.roles_workers import MemoryAgent, WorkerAgent  # noqa: F401

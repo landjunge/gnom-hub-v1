@@ -19,7 +19,6 @@ else builds with bench_layer_db fill logic (slow).
 from __future__ import annotations
 
 import argparse
-import os
 import random
 import sqlite3
 import struct
@@ -312,8 +311,7 @@ def main() -> int:
         n = stats.n[op]
         avg = stats.ms[op] / n if n else 0
         print(
-            f"  {op:12s}  n={n:7d}  avg={avg:7.2f} ms  "
-            f"rate={n / wall:7.1f} /s",
+            f"  {op:12s}  n={n:7d}  avg={avg:7.2f} ms  rate={n / wall:7.1f} /s",
             flush=True,
         )
 
@@ -363,7 +361,7 @@ def main() -> int:
 
     report = db_path.with_name(db_path.stem + ".server_sim.txt")
     with report.open("w", encoding="utf-8") as f:
-        f.write(f"wall={wall}\nops={total_ops}\nops_s={total_ops/wall}\n")
+        f.write(f"wall={wall}\nops={total_ops}\nops_s={total_ops / wall}\n")
         f.write(f"bytes_r={stats.bytes_r}\nbytes_w={stats.bytes_w}\n")
         f.write(f"errors={stats.errors}\nn={dict(stats.n)}\nms={dict(stats.ms)}\n")
     print(f"\nreport: {report}", flush=True)
