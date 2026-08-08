@@ -122,6 +122,9 @@
   let lastSpokenKey = "";
   let pendingSpeech = ""; // spoken on next click if browser blocked autoplay
   let ttsUnlocked = false; // true after speak started from a real click
+  /** Sequential TTS queue — one utterance fully finishes before the next (no cut-off). */
+  let ttsQueue = [];
+  let ttsPumping = false;
   let lastAgentThoughts = {}; // reasoning streams for TTS (not Box text)
   let lastNudgeKey = ""; // avoid re-spamming Flex corrections in chat
   let currentJobId = null;
@@ -906,10 +909,32 @@
     s = s.replace(/<[^>]+>/g, " ");
     s = s.replace(/&[a-z]+;/gi, " ");
     s = s.replace(/\s+/g, " ").trim();
-    return s.slice(0, 400);
+    // Do not hard-cut here — chunkForSpeech splits so nothing is "abgeschnitten"
+    return s.slice(0, 2400);
+  }
+
+  /** Split into speakable pieces (~sentence boundaries, max ~320 chars). */
+  function chunkForSpeech(text) {
+    const clean = stripForSpeech(text);
+    if (!clean) return [];
+    const max = 320;
+    if (clean.length <= max) return [clean];
+    const parts = [];
+    let rest = clean;
+    while (rest.length > max) {
+      let cut = rest.lastIndexOf(". ", max);
+      if (cut < max * 0.4) cut = rest.lastIndexOf(" ", max);
+      if (cut < max * 0.3) cut = max;
+      parts.push(rest.slice(0, cut + 1).trim());
+      rest = rest.slice(cut + 1).trim();
+    }
+    if (rest) parts.push(rest);
+    return parts.filter(Boolean);
   }
 
   function stopSpeech() {
+    ttsQueue = [];
+    ttsPumping = false;
     try {
       if (window.speechSynthesis) window.speechSynthesis.cancel();
     } catch (_e) {
@@ -918,56 +943,75 @@
     pendingSpeech = "";
   }
 
-  /** Prefer German TTS (ui_lang or German text). */
+  /**
+   * Prefer German TTS.
+   * Default de-DE unless UI is explicitly English and text looks English-only.
+   */
   function pickTtsLang(text) {
     const clean = String(text || "");
     if (uiLang === "de" || /[äöüÄÖÜß]/.test(clean)) return "de-DE";
-    // Default spoken thoughts in DE when UI is German-first desk
-    if (uiLang !== "en") return "de-DE";
-    return "en-US";
+    if (/\b(der|die|das|und|ich|nicht|eine|für|mit)\b/i.test(clean)) return "de-DE";
+    if (uiLang === "en") return "en-US";
+    return "de-DE";
   }
 
-  /** Must run inside a click/change handler — not after await. */
-  function speakNow(text) {
-    if (!window.speechSynthesis) {
-      toast("TTS not available in this browser", "info");
+  function pickGermanVoice(lang) {
+    const voices = window.speechSynthesis.getVoices() || [];
+    if (!voices.length) return null;
+    const want = (lang || "de-DE").slice(0, 2).toLowerCase();
+    return (
+      voices.find(function (v) {
+        return (v.lang || "").toLowerCase().indexOf(want) === 0;
+      }) ||
+      voices.find(function (v) {
+        return (v.lang || "").toLowerCase().indexOf("de") === 0;
+      }) ||
+      voices[0]
+    );
+  }
+
+  /**
+   * Speak exactly one queue item. Never cancels a previous utterance mid-stream
+   * unless stopSpeech() was called. Next item starts only on onend.
+   */
+  function speakChunkNow(clean) {
+    if (!window.speechSynthesis || !clean) {
+      ttsPumping = false;
+      pumpTtsQueue();
       return false;
     }
-    const clean = stripForSpeech(text);
-    if (!clean) return false;
     try {
-      // Do not cancel+speak in a broken way: cancel only if busy
-      if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
-        window.speechSynthesis.cancel();
-      }
       const u = new SpeechSynthesisUtterance(clean);
       u.lang = pickTtsLang(clean);
-      u.rate = 1.05;
-      const voices = window.speechSynthesis.getVoices() || [];
-      if (voices.length) {
-        const want = u.lang.slice(0, 2).toLowerCase();
-        const match =
-          voices.find(function (v) {
-            return (v.lang || "").toLowerCase().indexOf(want) === 0;
-          }) ||
-          voices.find(function (v) {
-            return (v.lang || "").toLowerCase().indexOf("de") === 0;
-          }) ||
-          voices[0];
-        if (match) u.voice = match;
-      }
+      u.rate = 1.0;
+      const match = pickGermanVoice(u.lang);
+      if (match) u.voice = match;
       u.onstart = function () {
         ttsUnlocked = true;
       };
+      u.onend = function () {
+        ttsPumping = false;
+        // Small pause between agents so speech does not blend
+        setTimeout(function () {
+          pumpTtsQueue();
+        }, 180);
+      };
       u.onerror = function (ev) {
         const err = (ev && ev.error) || "error";
+        ttsPumping = false;
         if (err !== "interrupted" && err !== "canceled") {
-          pendingSpeech = clean;
-          toast("TTS blocked — click page once, then enable TTS again", "info");
+          toast(
+            uiLang === "de"
+              ? "TTS blockiert — einmal in die Seite klicken"
+              : "TTS blocked — click page once",
+            "info"
+          );
         }
+        setTimeout(function () {
+          pumpTtsQueue();
+        }, 120);
       };
       window.speechSynthesis.speak(u);
-      // Some Chrome builds need resume after speak
       try {
         window.speechSynthesis.resume();
       } catch (_r) {
@@ -975,21 +1019,78 @@
       }
       return true;
     } catch (_e) {
-      pendingSpeech = clean;
-      toast("TTS failed — click page and try again", "info");
+      ttsPumping = false;
+      toast(
+        uiLang === "de" ? "TTS fehlgeschlagen — Seite anklicken" : "TTS failed — click page",
+        "info"
+      );
+      setTimeout(function () {
+        pumpTtsQueue();
+      }, 120);
       return false;
     }
   }
 
-  function speakOrQueue(text) {
-    const clean = stripForSpeech(text);
-    if (!clean) return;
-    if (ttsUnlocked) {
-      speakNow(clean);
-    } else {
-      pendingSpeech = clean;
-      toast("TTS: click anywhere to hear", "info");
+  /** Drain ttsQueue one utterance at a time (full finish before next). */
+  function pumpTtsQueue() {
+    if (ttsPumping) return;
+    if (!window.speechSynthesis) return;
+    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) return;
+    if (!ttsQueue.length) return;
+    if (!ttsUnlocked) {
+      pendingSpeech = ttsQueue[0] || pendingSpeech;
+      toast(
+        uiLang === "de" ? "TTS: einmal klicken zum Hören" : "TTS: click anywhere to hear",
+        "info"
+      );
+      return;
     }
+    const next = ttsQueue.shift();
+    if (!next) return;
+    ttsPumping = true;
+    speakChunkNow(next);
+  }
+
+  /**
+   * Enqueue text (split into chunks). Does NOT cancel current speech.
+   * Must have unlocked TTS (user click) to start pumping.
+   */
+  function speakOrQueue(text) {
+    const pieces = chunkForSpeech(text);
+    if (!pieces.length) return;
+    pieces.forEach(function (p) {
+      ttsQueue.push(p);
+    });
+    if (ttsUnlocked) {
+      pumpTtsQueue();
+    } else {
+      pendingSpeech = pieces[0];
+      toast(
+        uiLang === "de" ? "TTS: einmal klicken zum Hören" : "TTS: click anywhere to hear",
+        "info"
+      );
+    }
+  }
+
+  /** Immediate speak from a real click handler (unlock + optional text). */
+  function speakNow(text) {
+    ttsUnlocked = true;
+    if (text) {
+      const pieces = chunkForSpeech(text);
+      pieces.forEach(function (p) {
+        ttsQueue.push(p);
+      });
+    }
+    // If something is pending from autoplay block, enqueue it
+    if (pendingSpeech) {
+      const p = pendingSpeech;
+      pendingSpeech = "";
+      chunkForSpeech(p).forEach(function (c) {
+        ttsQueue.push(c);
+      });
+    }
+    pumpTtsQueue();
+    return true;
   }
 
   if (typeof window !== "undefined" && window.speechSynthesis) {
@@ -1004,11 +1105,15 @@
     document.addEventListener(
       "click",
       function () {
+        ttsUnlocked = true;
         if (pendingSpeech) {
           const t = pendingSpeech;
           pendingSpeech = "";
-          speakNow(t);
+          chunkForSpeech(t).forEach(function (c) {
+            ttsQueue.push(c);
+          });
         }
+        pumpTtsQueue();
       },
       true
     );
@@ -1016,8 +1121,7 @@
 
   /**
    * TTS speaks agent *thoughts* (reasoning), not the written Box text / HTML.
-   * Thoughts come from snapshot.agent_thoughts when the agent has TTS on
-   * (backend enables DeepSeek thinking for that call).
+   * Each agent is a separate queue item so speech finishes fully before the next.
    */
   function maybeSpeakPipeline(p, snap) {
     const thoughts =
@@ -1037,26 +1141,38 @@
       "|" +
       ((p.worker_outputs && p.worker_outputs.length) || 0);
     if (key === lastSpokenKey) return;
-    const chunks = [];
-    function pushThought(agentId, label) {
+    const de = uiLang === "de";
+    const labels = {
+      brainstorm: de ? "Brainstorm" : "Brainstorm",
+      memory: de ? "Memory" : "Memory",
+      flex: "Flex",
+      coordinator: de ? "Koordinator" : "Coordinator",
+      worker1: de ? "Worker 1" : "Worker 1",
+      worker2: "Worker 2",
+      worker3: "Worker 3",
+      worker4: "Worker 4",
+    };
+    const order = [
+      "brainstorm",
+      "memory",
+      "flex",
+      "coordinator",
+      "worker1",
+      "worker2",
+      "worker3",
+      "worker4",
+    ];
+    let any = false;
+    order.forEach(function (agentId) {
       const a = findAgent(agentId);
       if (!a || !a.tts) return;
       const t = thoughts[agentId];
-      if (t && String(t).trim()) {
-        chunks.push((label || a.label || agentId) + ". " + stripForSpeech(t));
-      }
-    }
-    pushThought("brainstorm", "Brainstorm");
-    pushThought("memory", "Memory");
-    pushThought("flex", "Flex");
-    pushThought("coordinator", "Coordinator");
-    ["worker1", "worker2", "worker3", "worker4"].forEach(function (wid) {
-      pushThought(wid, null);
+      if (!t || !String(t).trim()) return;
+      any = true;
+      // One agent = one or more queue chunks; next agent only after full finish
+      speakOrQueue((labels[agentId] || a.label || agentId) + ". " + String(t));
     });
-    if (chunks.length) {
-      lastSpokenKey = key;
-      speakOrQueue(chunks.join(" "));
-    }
+    if (any) lastSpokenKey = key;
   }
 
   async function setAgentTts(id, on) {

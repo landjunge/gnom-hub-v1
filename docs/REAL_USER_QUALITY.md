@@ -2,6 +2,8 @@
 
 Three **absolute real** frontend journeys. The runner **is the user** (mouse + keyboard on the live Web UI). You watch in real time when headed mode is on.
 
+**Language:** All prompts and UI preference are **German** (`ui_lang=de`). TTS prefers **de-DE** and speaks **one agent fully before the next** (queue, no cut-off).
+
 ## What is measured
 
 | Dimension | What “good” means |

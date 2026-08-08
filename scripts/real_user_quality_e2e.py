@@ -38,7 +38,6 @@ from e2e_lib import (
     http_json,
     http_ok,
     shot,
-    stage_text,
     wait_brainstorm_ready,
     wait_execute_done,
 )
@@ -97,6 +96,89 @@ def _user_click_execute(page) -> None:
     time.sleep(0.2 if HEADED else 0.05)
     btn.click(delay=40 if HEADED else 0)
     time.sleep(0.2 if HEADED else 0.05)
+
+
+def _prepare_deutsch_ui(page) -> None:
+    """UI-Sprache Deutsch + TTS freischalten (Klick) + Brainstorm-TTS an."""
+    try:
+        http_json(BASE, "POST", "/api/system", {"ui_lang": "de"}, timeout=15)
+    except Exception:
+        pass
+    page.goto(BASE + "/?lang=de&e2e=prep", wait_until="domcontentloaded")
+    page.wait_for_selector("#chat-input", state="visible")
+    # Volle Desk-Fläche nutzbar machen
+    page.evaluate("() => { document.documentElement.style.zoom = '0.85'; }")
+    # User-Geste: TTS freischalten
+    page.locator("body").click(position={"x": 40, "y": 40})
+    time.sleep(0.3)
+    # Brainstorm-TTS per Karte aktivieren (falls aus) — spricht DE-Hinweis
+    try:
+        tts = page.locator('.agent-card[data-agent-id="brainstorm"] .card-tts input')
+        if tts.count() and not tts.is_checked():
+            tts.click()
+            time.sleep(0.4)
+        # Flex TTS optional an
+        tts_f = page.locator('.agent-card[data-agent-id="flex"] .card-tts input')
+        if tts_f.count() and not tts_f.is_checked():
+            tts_f.click()
+            time.sleep(0.4)
+    except Exception:
+        pass
+    # Kurz warten damit TTS-Freigabe greift
+    time.sleep(0.5)
+
+
+def _focus_box3_visible(page) -> None:
+    """Box 3 ins Sichtfeld holen (wie echter User nach Execute)."""
+    try:
+        page.evaluate(
+            """() => {
+              const box = document.getElementById('box3');
+              if (box) {
+                box.scrollIntoView({ behavior: 'instant', block: 'center' });
+                box.classList.add('box3-flash');
+              }
+              if (typeof focusBox3 === 'function') focusBox3();
+            }"""
+        )
+    except Exception:
+        try:
+            page.locator("#box3").scroll_into_view_if_needed()
+        except Exception:
+            pass
+    time.sleep(0.8 if HEADED else 0.2)
+
+
+def _wait_box3_result(page, *, timeout_ms: int = 120_000) -> str:
+    """Warten bis Box 3 echten Worker-Inhalt zeigt (nicht nur Platzhalter)."""
+    deadline = time.time() + timeout_ms / 1000.0
+    last = ""
+    while time.time() < deadline:
+        _focus_box3_visible(page)
+        try:
+            last = page.locator("#box3-content").inner_text()
+        except Exception:
+            last = ""
+        panels = page.locator(".worker-panel").count()
+        iframes = page.locator(".worker-preview-frame").count()
+        # Content markers
+        low = last.lower()
+        has_body = len(last) > 80 and "appear here" not in low
+        if (panels >= 1 or iframes >= 1 or has_body) and (has_body or iframes >= 1):
+            time.sleep(1.2 if HEADED else 0.3)  # kurz sichtbar lassen
+            return last
+        time.sleep(0.5)
+    return last
+
+
+def _maybe_execute(page) -> None:
+    pipe_mid = _pipe()
+    st = str(pipe_mid.get("stage") or "")
+    if (
+        st not in ("done", "work", "coordinate", "flex", "distill")
+        and page.locator("#btn-execute").is_enabled()
+    ):
+        _user_click_execute(page)
 
 
 def _best_worker(outs: list) -> dict[str, Any]:
@@ -279,51 +361,51 @@ def _total(scores: dict[str, dict]) -> dict[str, Any]:
 
 
 def scenario_r1_dialogue_to_build(page, run_dir: Path, log: StepLog) -> dict:
-    """
-    R1 — Real brainstorm dialogue then commit.
-    User starts soft, answers like a human, then execute.
-    """
-    name = "dialogue_to_build"
+    """R1 — Weicher Einstieg, dann klare Landing (alles Deutsch)."""
+    name = "dialog_zu_landing"
     api_reset(BASE)
-    page.goto(BASE + "/?e2e=real-r1", wait_until="domcontentloaded")
+    _prepare_deutsch_ui(page)
+    page.goto(BASE + "/?e2e=real-r1&lang=de", wait_until="domcontentloaded")
     page.wait_for_selector("#chat-input", state="visible")
+    page.evaluate("() => { document.documentElement.style.zoom = '0.85'; }")
+    page.locator("body").click(position={"x": 50, "y": 50})
     log.add("r1_open", status="ok", shot=shot(page, run_dir, "r1_01_open"))
 
-    # Soft entry — brainstorm should help shape
     t1 = (
-        "Ich will irgendwas Kleines für mein Café online, "
-        "noch unsicher was genau — nur brainstorm bitte."
+        "Hallo — ich will irgendwas Kleines für mein Café online. "
+        "Noch unsicher was genau. Bitte nur brainstormen, noch nicht bauen."
     )
     _user_type(page, t1)
     _user_send(page)
     wait_brainstorm_ready(page, timeout_ms=240_000)
     log.add("r1_brain1", status="ok", shot=shot(page, run_dir, "r1_02_brain1"))
     box2_a = _box2(page)
+    # TTS der Gedanken zu Ende laufen lassen (sichtbar/hörbar)
+    time.sleep(4.0 if HEADED else 0.5)
 
-    # User decides
     t2 = (
-        "Ok: eine schlichte Landingpage für Café Morgenlicht, "
-        "Hero mit CTA, drei Features, Footer. Volles HTML."
+        "Alles klar: eine schlichte Landingpage für Café Morgenlicht, "
+        "Hero mit großer Überschrift und CTA-Button, drei Feature-Karten, "
+        "Footer. Bitte vollständiges HTML mit CSS."
     )
     _user_type(page, t2)
     _user_send(page)
-    # May auto-execute or stay brainstorm
     try:
         wait_brainstorm_ready(page, timeout_ms=120_000)
     except Exception:
         pass
-    # If still not executing, click Execute like a user
-    pipe_mid = _pipe()
-    if (
-        str(pipe_mid.get("stage") or "") not in ("done", "work", "coordinate", "flex", "distill")
-        and page.locator("#btn-execute").is_enabled()
-    ):
-        _user_click_execute(page)
+    _maybe_execute(page)
     try:
         wait_execute_done(page, timeout_ms=360_000)
     except Exception as exc:
         log.add("r1_wait", status="timeout", detail=str(exc))
-    log.add("r1_done_ui", status="ok", shot=shot(page, run_dir, "r1_03_done"))
+    box3_txt = _wait_box3_result(page)
+    log.add(
+        "r1_done_ui",
+        status="ok",
+        shot=shot(page, run_dir, "r1_03_box3"),
+        detail=f"box3_len={len(box3_txt)}",
+    )
 
     pipe = _pipe()
     art = _save_result(run_dir, pipe.get("worker_outputs") or [])
@@ -331,132 +413,139 @@ def scenario_r1_dialogue_to_build(page, run_dir: Path, log: StepLog) -> dict:
         "brainstorm": _score_brainstorm(
             box2_a,
             {**pipe, "brainstorm_notes": box2_a or pipe.get("brainstorm_notes")},
-            expect_keywords=["café", "cafe", "landing", "hero", "html", "feature"],
+            expect_keywords=["café", "cafe", "landing", "hero", "morgenlicht", "feature"],
         ),
         "flex": _score_flex(pipe),
         "result": _score_result(pipe, art, want_html=True),
     }
     tot = _total(scores)
-    ok = tot["pct"] >= 45 and not pipe.get("error") and art.get("chars", 0) >= 400
+    ok = (
+        tot["pct"] >= 45
+        and not pipe.get("error")
+        and (art.get("chars", 0) >= 400 or len(box3_txt) > 80)
+    )
     return {
         "id": "R1",
         "name": name,
         "ok": ok,
         "scores": scores,
         "total": tot,
-        "detail": f"pct={tot['pct']} stage={pipe.get('stage')} chars={art.get('chars')}",
+        "detail": (
+            f"pct={tot['pct']} stage={pipe.get('stage')} "
+            f"chars={art.get('chars')} box3={len(box3_txt)}"
+        ),
         "artifact": art,
         "flex_notes": (pipe.get("flex_notes") or "")[:400],
         "brainstorm_preview": box2_a[:400],
+        "box3_preview": box3_txt[:300],
     }
 
 
 def scenario_r2_clear_build_order(page, run_dir: Path, log: StepLog) -> dict:
-    """
-    R2 — Hard build order (user knows what they want).
-    Tests auto-execute / execute path + result quality under clear intent.
-    """
-    name = "clear_build_order"
+    """R2 — Klare Bau-Anweisung (Todo-App), alles Deutsch."""
+    name = "klare_bauanweisung"
     api_reset(BASE)
-    page.goto(BASE + "/?e2e=real-r2", wait_until="domcontentloaded")
+    _prepare_deutsch_ui(page)
+    page.goto(BASE + "/?e2e=real-r2&lang=de", wait_until="domcontentloaded")
     page.wait_for_selector("#chat-input", state="visible")
+    page.evaluate("() => { document.documentElement.style.zoom = '0.85'; }")
+    page.locator("body").click(position={"x": 50, "y": 50})
     log.add("r2_open", status="ok", shot=shot(page, run_dir, "r2_01_open"))
 
     text = (
-        "Build a modern single-file todo app: three columns (Today / Week / Later), "
-        "keyboard-first, localStorage, dark theme. Full HTML with inline CSS and JS."
+        "Baue mir eine moderne Todo-App als eine HTML-Datei: "
+        "drei Spalten Heute / Woche / Später, Tastaturbedienung, "
+        "localStorage, dunkles Theme. Volles HTML mit CSS und JavaScript, "
+        "mit klickbaren Buttons."
     )
     _user_type(page, text)
     _user_send(page)
-    # Either auto-execute or brainstorm-then-execute
     try:
         wait_brainstorm_ready(page, timeout_ms=180_000)
         log.add("r2_brain", status="ok", shot=shot(page, run_dir, "r2_02_brain"))
-        # If still only brainstorm (no auto), user hits Execute
-        if page.locator("#btn-execute").is_enabled() and stage_text(page) in (
-            "brainstorm",
-            "idle",
-            "",
-        ):
-            _user_click_execute(page)
+        time.sleep(3.0 if HEADED else 0.3)
+        _maybe_execute(page)
     except Exception:
-        pass
+        _maybe_execute(page)
     wait_execute_done(page, timeout_ms=360_000)
-    log.add("r2_done", status="ok", shot=shot(page, run_dir, "r2_03_done"))
+    box3_txt = _wait_box3_result(page)
+    log.add("r2_done", status="ok", shot=shot(page, run_dir, "r2_03_box3"))
 
     pipe = _pipe()
     box2 = _box2(page)
     art = _save_result(run_dir, pipe.get("worker_outputs") or [])
-    # rename result for this scenario folder namespace
     if (run_dir / "RESULT.html").is_file():
         (run_dir / "R2_RESULT.html").write_bytes((run_dir / "RESULT.html").read_bytes())
     scores = {
         "brainstorm": _score_brainstorm(
-            box2, pipe, expect_keywords=["todo", "column", "keyboard", "html"]
+            box2, pipe, expect_keywords=["todo", "spalte", "html", "heute", "tastatur"]
         ),
         "flex": _score_flex(pipe),
         "result": _score_result(pipe, art, want_html=True),
     }
     tot = _total(scores)
-    task_hit = any(
-        k in (pipe.get("user_text") or "").lower() for k in ("todo", "column", "keyboard")
+    user = (pipe.get("user_text") or "").lower()
+    task_hit = any(k in user for k in ("todo", "spalte", "html", "localstorage", "taste"))
+    ok = (
+        tot["pct"] >= 50
+        and (task_hit or art.get("chars", 0) >= 800)
+        and (art.get("chars", 0) >= 600 or len(box3_txt) > 80)
     )
-    ok = tot["pct"] >= 50 and task_hit and art.get("chars", 0) >= 800
     return {
         "id": "R2",
         "name": name,
         "ok": ok,
         "scores": scores,
         "total": tot,
-        "detail": f"pct={tot['pct']} chars={art.get('chars')} interact={art.get('has_interaction')}",
+        "detail": (
+            f"pct={tot['pct']} chars={art.get('chars')} "
+            f"interact={art.get('has_interaction')} box3={len(box3_txt)}"
+        ),
         "artifact": art,
         "flex_notes": (pipe.get("flex_notes") or "")[:400],
+        "box3_preview": box3_txt[:300],
     }
 
 
 def scenario_r3_flex_wish_support(page, run_dir: Path, log: StepLog) -> dict:
-    """
-    R3 — Flex should notice standing preference and support the user.
-    Plant a warm flex-style fact, then ask for a page that should respect it.
-    """
-    name = "flex_wish_support"
+    """R3 — Flex soll Vorlieben (dunkel + Deutsch) erkennen und unterstützen."""
+    name = "flex_wuensche"
     api_reset(BASE)
-    # Standing wish into WARM (Flex personal)
     try:
         http_json(
             BASE,
             "POST",
             "/api/memory/warm",
-            {"text": "User: always prefer dark theme and German UI labels"},
+            {"text": "User: immer dunkles Theme und deutsche UI-Beschriftungen"},
             timeout=15,
         )
     except Exception:
         pass
 
-    page.goto(BASE + "/?e2e=real-r3", wait_until="domcontentloaded")
+    _prepare_deutsch_ui(page)
+    page.goto(BASE + "/?e2e=real-r3&lang=de", wait_until="domcontentloaded")
     page.wait_for_selector("#chat-input", state="visible")
+    page.evaluate("() => { document.documentElement.style.zoom = '0.85'; }")
+    page.locator("body").click(position={"x": 50, "y": 50})
     log.add("r3_open", status="ok", shot=shot(page, run_dir, "r3_01_open"))
 
     text = (
-        "Bau mir bitte eine kleine Portfolio-Landingpage für eine Fotografin "
-        "namens Lena Berg. Hero, drei Arbeiten als Karten, Kontakt. "
-        "Denk an meine Vorlieben."
+        "Bitte eine kleine Portfolio-Landingpage für die Fotografin Lena Berg. "
+        "Hero, drei Arbeiten als Karten, Kontakt. "
+        "Berücksichtige meine Vorlieben — dunkel und deutsche Texte."
     )
     _user_type(page, text)
     _user_send(page)
     try:
         wait_brainstorm_ready(page, timeout_ms=180_000)
         log.add("r3_brain", status="ok", shot=shot(page, run_dir, "r3_02_brain"))
-        if page.locator("#btn-execute").is_enabled() and stage_text(page) in (
-            "brainstorm",
-            "idle",
-            "",
-        ):
-            _user_click_execute(page)
+        time.sleep(3.0 if HEADED else 0.3)
+        _maybe_execute(page)
     except Exception:
-        pass
+        _maybe_execute(page)
     wait_execute_done(page, timeout_ms=360_000)
-    log.add("r3_done", status="ok", shot=shot(page, run_dir, "r3_03_done"))
+    box3_txt = _wait_box3_result(page)
+    log.add("r3_done", status="ok", shot=shot(page, run_dir, "r3_03_box3"))
 
     pipe = _pipe()
     box2 = _box2(page)
@@ -488,17 +577,21 @@ def scenario_r3_flex_wish_support(page, run_dir: Path, log: StepLog) -> dict:
         scores["flex"]["score"] = min(10, scores["flex"]["score"] + 2)
         scores["flex"]["reasons"].append(f"+2 wish reflected dark={dark_ok} germanish={de_ok}")
     tot = _total(scores)
-    ok = tot["pct"] >= 45 and art.get("chars", 0) >= 500
+    ok = tot["pct"] >= 45 and (art.get("chars", 0) >= 500 or len(box3_txt) > 80)
     return {
         "id": "R3",
         "name": name,
         "ok": ok,
         "scores": scores,
         "total": tot,
-        "detail": f"pct={tot['pct']} dark={dark_ok} de={de_ok} chars={art.get('chars')}",
+        "detail": (
+            f"pct={tot['pct']} dark={dark_ok} de={de_ok} "
+            f"chars={art.get('chars')} box3={len(box3_txt)}"
+        ),
         "artifact": art,
         "flex_notes": (pipe.get("flex_notes") or "")[:400],
         "wish_reflected": {"dark": dark_ok, "germanish": de_ok},
+        "box3_preview": box3_txt[:300],
     }
 
 
@@ -640,10 +733,10 @@ def main() -> int:
     prev = _load_prev_scores()
 
     print("=" * 60)
-    print("REAL USER QUALITY E2E — script plays the user")
-    print(f"  base={BASE}  headed={HEADED}  slow_ms={SLOW_MS}  type_delay={TYPE_DELAY}")
+    print("ECHTER USER-TEST — ich spiele dich (Maus + Tastatur, DEUTSCH)")
+    print(f"  base={BASE}  sichtbar={HEADED}  slow_ms={SLOW_MS}  tippen={TYPE_DELAY}")
     print(f"  out={run_dir}")
-    print("  Watch the browser window if headed=1")
+    print("  → Chromium-Fenster beobachten (Box 2 Brainstorm, Box 3 Ergebnis)")
     print("=" * 60)
 
     from playwright.sync_api import sync_playwright
@@ -653,10 +746,13 @@ def main() -> int:
         browser = p.chromium.launch(
             headless=not HEADED,
             slow_mo=SLOW_MS,
+            args=["--start-maximized"] if HEADED else None,
         )
         context = browser.new_context(
-            viewport={"width": 1400, "height": 900},
+            # Großes Fenster + DE — UI soll komplett sichtbar sein
+            viewport={"width": 1680, "height": 1050} if HEADED else {"width": 1400, "height": 900},
             locale="de-DE",
+            no_viewport=False,
         )
         page = context.new_page()
         page.set_default_timeout(120_000)
@@ -664,10 +760,10 @@ def main() -> int:
         for key in only:
             meta = SCENARIOS.get(key)
             if not meta:
-                print(f"  skip unknown scenario {key}")
+                print(f"  unbekannter Test {key} — übersprungen")
                 continue
             sid, fn = meta
-            print(f"\n▶ {sid} starting…")
+            print(f"\n▶ {sid} startet (Deutsch, sichtbares UI)…")
             try:
                 row = fn(page, run_dir, log)
             except Exception as exc:

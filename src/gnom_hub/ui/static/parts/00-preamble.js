@@ -122,6 +122,9 @@
   let lastSpokenKey = "";
   let pendingSpeech = ""; // spoken on next click if browser blocked autoplay
   let ttsUnlocked = false; // true after speak started from a real click
+  /** Sequential TTS queue — one utterance fully finishes before the next (no cut-off). */
+  let ttsQueue = [];
+  let ttsPumping = false;
   let lastAgentThoughts = {}; // reasoning streams for TTS (not Box text)
   let lastNudgeKey = ""; // avoid re-spamming Flex corrections in chat
   let currentJobId = null;
