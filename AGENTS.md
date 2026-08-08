@@ -103,6 +103,16 @@ Chat → Brainstorm → Distillation → [Execute] → Coordinator → Worker(s)
 
 - **Presets freeze:** Team/Worker presets + `plan_mode` only. No workflow engine, skill files, or second orchestrator. See [`docs/WORKFLOWS_AND_PRESETS.md`](docs/WORKFLOWS_AND_PRESETS.md).
 
+## Real-user quality (fixed — agent plays the user)
+
+**Primary product feel gate** — visible UI, mouse + keyboard, score Brainstorm / Flex / Result + trend:
+
+- **Doc:** [`docs/REAL_USER_QUALITY.md`](docs/REAL_USER_QUALITY.md)
+- **Suite:** `python scripts/real_user_quality_e2e.py` (**headed by default** — watch the browser)
+- **Artifacts:** `data/e2e-real/LATEST/SCORECARD.md` + `TREND.md` + `scores.json`
+- **When:** after pipeline / Flex / brainstorm / Box 2–3 / chat-busy changes; before claiming quality improved
+- **Rule:** compare TREND to previous LATEST — document ↑/↓, do not claim better without a run
+
 ## Basic user test (remember)
 
 Canonical real-user regression — **Playwright on UI + Gnom Tools**:
