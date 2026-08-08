@@ -1071,10 +1071,10 @@
   }
 
   /**
-   * Enqueue text (split into chunks). Does NOT cancel current speech.
-   * Must have unlocked TTS (user click) to start pumping.
+   * Enqueue already-prepared text (must be German when desk is DE).
+   * Does NOT cancel current speech.
    */
-  function speakOrQueue(text) {
+  function speakOrQueuePrepared(text) {
     const pieces = chunkForSpeech(text);
     if (!pieces.length) return;
     pieces.forEach(function (p) {
@@ -1089,6 +1089,29 @@
         "info"
       );
     }
+  }
+
+  /**
+   * Translate via hub (EN→DE) then enqueue. Always translate-before-TTS on DE desk.
+   */
+  function speakOrQueue(text) {
+    const raw = String(text || "").trim();
+    if (!raw) return;
+    const wantDe = uiLang !== "en";
+    if (!wantDe) {
+      speakOrQueuePrepared(raw);
+      return;
+    }
+    // Server: English agent thoughts → German, then speech
+    api("POST", "/api/tts/prepare", { text: raw, lang: "de" })
+      .then(function (r) {
+        const de = (r && r.text) || raw;
+        speakOrQueuePrepared(de);
+      })
+      .catch(function () {
+        // Offline fallback: short DE shell if still looks English
+        speakOrQueuePrepared(germanizeThoughtForSpeech(raw, "Agent") || raw);
+      });
   }
 
   /** Immediate speak from a real click handler (unlock + optional text). */

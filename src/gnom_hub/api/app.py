@@ -93,6 +93,11 @@ class TelegramInBody(BaseModel):
     chat_id: int | None = None
 
 
+class TtsPrepareBody(BaseModel):
+    text: str = ""
+    lang: str | None = "de"
+
+
 class GodModeBody(BaseModel):
     enabled: bool
     reason: str = "api"
@@ -236,6 +241,11 @@ def create_app() -> FastAPI:
             return get_hub().set_agent_tune(agent_id, body.model_dump(exclude_unset=True))
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
+
+    @app.post("/api/tts/prepare")
+    def tts_prepare(body: TtsPrepareBody) -> dict[str, Any]:
+        """Translate agent thoughts to German before browser TTS speaks."""
+        return get_hub().prepare_tts_text(body.text or "", lang=body.lang or "de")
 
     @app.get("/api/system")
     def system_get() -> dict[str, Any]:

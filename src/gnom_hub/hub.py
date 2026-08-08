@@ -39,6 +39,7 @@ from gnom_hub.telegram.commands import TelegramCommandMixin
 from gnom_hub.telegram.lifecycle import TelegramLifecycleMixin
 from gnom_hub.tools_ops import ToolsOpsMixin
 from gnom_hub.trace_ops import TraceOpsMixin
+from gnom_hub.tts_ops import TtsOpsMixin
 
 
 class Hub(
@@ -48,6 +49,7 @@ class Hub(
     JobsMixin,
     MemoryWiringMixin,
     PresetsMixin,
+    TtsOpsMixin,
     SessionOpsMixin,
     TraceOpsMixin,
     ColdOpsMixin,
@@ -171,10 +173,22 @@ class Hub(
             thought = str(data.get("thought") or "").strip()
             if not aid or not thought:
                 return
-            self._agent_thoughts[aid] = thought[:2500]
+            # Agents often think in English — translate BEFORE speech (DE desk)
+            spoken = thought
+            translated = False
+            if (getattr(self, "ui_lang", "de") or "de") != "en":
+                prep = self.prepare_tts_text(thought, lang="de")
+                spoken = str(prep.get("text") or thought)
+                translated = bool(prep.get("translated"))
+            self._agent_thoughts[aid] = spoken[:2500]
             self._append_trace(
                 "agent.thought",
-                {"id": aid, "chars": len(thought)},
+                {
+                    "id": aid,
+                    "chars": len(thought),
+                    "spoken_chars": len(spoken),
+                    "translated": translated,
+                },
             )
 
         self.bus.on("agent.thought", on_thought)
