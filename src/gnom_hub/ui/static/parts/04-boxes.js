@@ -206,6 +206,54 @@
     // Box 3 toolbar intentionally minimal (no history/diff chrome)
   }
 
+  function showBox3ResultStage(out, idx) {
+    const stage = document.getElementById("box3-result-stage");
+    const body = document.getElementById("box3-result-body");
+    const label = document.getElementById("box3-result-label");
+    if (!stage || !body) return false;
+    const raw = (out && out.result) != null ? String(out.result) : "";
+    if (!raw.trim()) {
+      stage.hidden = true;
+      stage.classList.remove("is-open");
+      return false;
+    }
+    body.innerHTML = "";
+    body.classList.add("box3-dynamic");
+    const name = (out && (out.name || out.worker)) || "Worker";
+    if (label) {
+      label.textContent =
+        name + " · " + raw.length + " Zeichen" + (lastWorkerOutputs.length > 1
+          ? " · " + lastWorkerOutputs.length + " Worker"
+          : "");
+    }
+    renderDynamicContent(body, raw, { title: name + " Ergebnis" });
+    stage.hidden = false;
+    stage.classList.add("is-open");
+    // Fullscreen button
+    const fs = document.getElementById("box3-result-fs");
+    if (fs && !fs._bound) {
+      fs._bound = true;
+      fs.addEventListener("click", function () {
+        const cur = lastWorkerOutputs[box3FocusIdx] || out;
+        const html = extractHtml((cur && cur.result) || "") || "";
+        if (typeof openWorkerFullscreen === "function") {
+          openWorkerFullscreen(cur, (cur && cur.result) || "", html);
+        }
+      });
+    }
+    return true;
+  }
+
+  function hideBox3ResultStage() {
+    const stage = document.getElementById("box3-result-stage");
+    const body = document.getElementById("box3-result-body");
+    if (body) body.innerHTML = "";
+    if (stage) {
+      stage.hidden = true;
+      stage.classList.remove("is-open");
+    }
+  }
+
   function renderBox3Workers(pipeline) {
     const outputs = normalizeWorkerOutputs(pipeline);
     lastWorkerOutputs = outputs;
@@ -215,33 +263,29 @@
     ["worker1", "worker2", "worker3", "worker4"].forEach(function (wid) {
       const body =
         (typeof getAgentBoxBody === "function" && getAgentBoxBody(3, wid)) ||
-        document.getElementById("box3-" + wid) ||
-        (wid === "worker1" ? document.getElementById("box3-content") : null);
+        document.getElementById("box3-" + wid);
       if (!body) return;
       body.innerHTML = "";
       body.classList.add("box3-dynamic");
       const empty = document.createElement("p");
       empty.className = "muted empty-hint";
       if (pipeline && pipeline.stage === "work") {
-        empty.textContent = "Workers running…";
+        empty.textContent = "Workers laufen…";
       } else {
-        empty.textContent = wid + " result";
+        empty.textContent = wid + " — noch kein Ergebnis";
       }
       body.appendChild(empty);
     });
 
-    const dual = document.getElementById("box3-dual");
     if (!outputs.length) {
-      if (dual) {
-        dual.hidden = true;
-        dual.setAttribute("aria-hidden", "true");
-        dual.classList.remove("is-showing");
-      }
+      hideBox3ResultStage();
       return;
     }
 
-    /* each worker output → that agent’s layer body (box3-workerN), never #box3-content */
+    /* each worker → agent layer body */
     let firstAgentId = "worker1";
+    let best = outputs[0];
+    let bestLen = 0;
     outputs.forEach(function (out, idx) {
       const wid =
         (out && (out.worker || out.id || out.name) || "").toString().toLowerCase();
@@ -252,6 +296,12 @@
       else if (/worker\s*4|w4/.test(wid) || wid === "worker4") agentId = "worker4";
       else agentId = "worker" + Math.min(idx + 1, 4);
       if (idx === 0) firstAgentId = agentId;
+      const raw = String((out && out.result) || "");
+      if (raw.length > bestLen) {
+        bestLen = raw.length;
+        best = out;
+        firstAgentId = agentId;
+      }
 
       const body =
         (typeof getAgentBoxBody === "function" && getAgentBoxBody(3, agentId)) ||
@@ -259,34 +309,28 @@
       if (!body) return;
       body.innerHTML = "";
       body.classList.add("box3-dynamic");
-      renderDynamicContent(body, (out && out.result) || "", {
+      renderDynamicContent(body, raw, {
         title: ((out && out.name) || agentId) + " preview",
       });
     });
 
-    /*
-     * Primary visible surface: dual stage ON TOP of agent stack.
-     * User must see result without clicking a worker card.
-     */
-    if (dual) {
-      dual.hidden = false;
-      dual.setAttribute("aria-hidden", "false");
-      dual.classList.add("is-showing");
-      const front = dual.querySelector(".layer-slot-a") || dual.querySelector(".layer-slot");
-      const back = dual.querySelector(".layer-slot-b");
-      if (front) {
-        front.classList.add("is-front");
-        front.classList.remove("is-back");
-        paintWorkerIntoSlot(front, outputs[0], 0);
-      }
-      if (back) {
-        back.classList.remove("is-front");
-        back.classList.add("is-back");
-        back.innerHTML = "";
+    // PRIMARY: always-open result stage (what the user looks at)
+    const shown = showBox3ResultStage(best, 0);
+    if (!shown) {
+      // Fallback text if renderDynamicContent failed somehow
+      const body = document.getElementById("box3-result-body");
+      const stage = document.getElementById("box3-result-stage");
+      if (body && stage && best) {
+        body.innerHTML = "";
+        const pre = document.createElement("pre");
+        pre.className = "result-block";
+        pre.textContent = String(best.result || "").slice(0, 20000);
+        body.appendChild(pre);
+        stage.hidden = false;
+        stage.classList.add("is-open");
       }
     }
 
-    // Also switch agent stack to first worker (behind dual, for card-sync)
     if (typeof activateAgentLayer === "function") {
       try {
         activateAgentLayer(firstAgentId, false);
