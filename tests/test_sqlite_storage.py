@@ -85,6 +85,58 @@ def test_maintain_vacuum_flag(db: GnomDatabase) -> None:
     assert info["freelist"] == 0 or info["page_count"] >= 0
 
 
+def test_hot_replace_session_atomic(db: GnomDatabase) -> None:
+    """C2: replace is one transaction — full new session visible after call."""
+    db.hot_add_message("user", "old")
+    db.hot_add_fact("old fact")
+    db.hot_replace_session(
+        [{"role": "assistant", "content": "new msg"}],
+        ["new fact a", "new fact b", "new fact a"],  # de-dupe
+        updated_at="2026-01-01T00:00:00",
+    )
+    assert db.hot_message_count() == 1
+    assert db.hot_messages()[0]["content"] == "new msg"
+    assert db.hot_facts() == ["new fact a", "new fact b"]
+    assert db.kv_get("hot_updated_at") == "2026-01-01T00:00:00"
+
+
+def test_close_removes_instance_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """M10: close() must drop dead entry from _instances."""
+    from gnom_hub.db import sqlite_store as store
+
+    monkeypatch.setenv("GNOM_USER_DB", str(tmp_path / "User" / "user.db"))
+    (tmp_path / "User").mkdir(parents=True, exist_ok=True)
+    # Clear cache for this test path
+    with store._lock:
+        store._instances.clear()
+    d1 = store.get_db(tmp_path)
+    key = str(d1.path)
+    assert key in store._instances or str(d1.path.resolve()) in {
+        str(Path(k).resolve()) for k in store._instances
+    }
+    d1.close()
+    with store._lock:
+        assert d1 not in store._instances.values()
+    d2 = store.get_db(tmp_path)
+    assert d2 is not d1
+
+
+def test_export_consistent_copy(db: GnomDatabase, tmp_path: Path) -> None:
+    """H11 helper: online backup produces a readable independent file."""
+    db.hot_add_message("user", "export me")
+    db.hot_add_fact("export fact")
+    dest = tmp_path / "snap" / "copy.db"
+    out = db.export_consistent_copy(dest)
+    assert out.is_file()
+    assert out.stat().st_size > 0
+    other = GnomDatabase(tmp_path, db_path=out)
+    try:
+        assert other.hot_message_count() == 1
+        assert "export fact" in other.hot_facts()
+    finally:
+        other.close()
+
+
 def test_compress_mirrors_hot_trim_caps(tmp_path: Path) -> None:
     """DB hard caps fire even when session was loaded over limit without collapse path."""
     from gnom_hub.memory.hot import HotMemory

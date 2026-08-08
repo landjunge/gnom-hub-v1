@@ -119,8 +119,19 @@ class GnomDatabase:
             self._ensure_indexes()
 
     def close(self) -> None:
+        """Close connection and drop cache entry (M10)."""
         with _lock:
-            self._conn.close()
+            key = str(self.path.resolve()) if self.path else str(self.path)
+            try:
+                self._conn.close()
+            finally:
+                # Remove only our instance (avoid clobbering a reopened path)
+                if _instances.get(key) is self:
+                    _instances.pop(key, None)
+                # Also try un-resolved key variants used at get_db time
+                for k, inst in list(_instances.items()):
+                    if inst is self:
+                        _instances.pop(k, None)
 
     def _meta_get(self, key: str) -> str | None:
         row = self._conn.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
@@ -410,21 +421,141 @@ class GnomDatabase:
 
     def hot_clear_session(self) -> None:
         with _lock:
-            self._conn.execute("DELETE FROM hot_messages")
-            self._conn.execute("DELETE FROM hot_facts")
-        self.kv_set("hot_updated_at", _utc_now_iso())
+            try:
+                self._conn.execute("BEGIN IMMEDIATE")
+                self._conn.execute("DELETE FROM hot_messages")
+                self._conn.execute("DELETE FROM hot_facts")
+                self._conn.execute(
+                    "INSERT INTO kv(key, value) VALUES(?, ?) "
+                    "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                    ("hot_updated_at", _utc_now_iso()),
+                )
+                self._conn.execute("COMMIT")
+            except Exception:
+                try:
+                    self._conn.execute("ROLLBACK")
+                except sqlite3.Error:
+                    pass
+                raise
 
     def hot_set_facts(self, facts: list[str]) -> None:
+        """Replace HOT facts in one transaction."""
+        ts = _utc_now_iso()
         with _lock:
-            self._conn.execute("DELETE FROM hot_facts")
-            for f in facts:
-                t = " ".join(str(f).split()).strip()
-                if t:
+            try:
+                self._conn.execute("BEGIN IMMEDIATE")
+                self._conn.execute("DELETE FROM hot_facts")
+                seen: set[str] = set()
+                for f in facts:
+                    t = " ".join(str(f).split()).strip()
+                    if not t:
+                        continue
+                    key = t.lower()
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    try:
+                        self._conn.execute(
+                            "INSERT INTO hot_facts(text, ts) VALUES (?, ?)",
+                            (t, ts),
+                        )
+                    except sqlite3.IntegrityError:
+                        continue
+                self._conn.execute(
+                    "INSERT INTO kv(key, value) VALUES(?, ?) "
+                    "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                    ("hot_updated_at", ts),
+                )
+                self._conn.execute("COMMIT")
+            except Exception:
+                try:
+                    self._conn.execute("ROLLBACK")
+                except sqlite3.Error:
+                    pass
+                raise
+
+    def hot_replace_session(
+        self,
+        messages: list[dict[str, Any]],
+        facts: list[str],
+        *,
+        updated_at: str | None = None,
+    ) -> None:
+        """
+        Atomic HOT clear + rebuild (C2).
+
+        clear-then-insert without a transaction left empty HOT if the process
+        died mid-save; one IMMEDIATE transaction keeps the previous session
+        until commit succeeds.
+        """
+        ts = updated_at or _utc_now_iso()
+        with _lock:
+            try:
+                self._conn.execute("BEGIN IMMEDIATE")
+                self._conn.execute("DELETE FROM hot_messages")
+                self._conn.execute("DELETE FROM hot_facts")
+                for m in messages or []:
+                    if not isinstance(m, dict):
+                        continue
                     self._conn.execute(
-                        "INSERT INTO hot_facts(text, ts) VALUES (?, ?)",
-                        (t, _utc_now_iso()),
+                        "INSERT INTO hot_messages(role, content, ts) VALUES (?, ?, ?)",
+                        (
+                            str(m.get("role") or "?"),
+                            str(m.get("content") or ""),
+                            str(m.get("ts") or ts),
+                        ),
                     )
-        self.kv_set("hot_updated_at", _utc_now_iso())
+                seen: set[str] = set()
+                for f in facts or []:
+                    t = " ".join(str(f).split()).strip()
+                    if not t:
+                        continue
+                    key = t.lower()
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    try:
+                        self._conn.execute(
+                            "INSERT INTO hot_facts(text, ts) VALUES (?, ?)",
+                            (t, ts),
+                        )
+                    except sqlite3.IntegrityError:
+                        continue
+                self._conn.execute(
+                    "INSERT INTO kv(key, value) VALUES(?, ?) "
+                    "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                    ("hot_updated_at", ts),
+                )
+                self._conn.execute("COMMIT")
+            except Exception:
+                try:
+                    self._conn.execute("ROLLBACK")
+                except sqlite3.Error:
+                    pass
+                raise
+
+    def export_consistent_copy(self, dest: Path) -> Path:
+        """
+        Online backup API → single consistent file (WAL-safe, H11).
+        Prefer this over shutil.copy2 of user.db (+ missing WAL).
+        """
+        dest = Path(dest)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        if dest.exists():
+            dest.unlink()
+        with _lock:
+            # Ensure WAL frames are visible to backup API
+            try:
+                self._conn.execute("PRAGMA wal_checkpoint(PASSIVE)")
+            except sqlite3.Error:
+                pass
+            dst = sqlite3.connect(str(dest))
+            try:
+                self._conn.backup(dst)
+                dst.commit()
+            finally:
+                dst.close()
+        return dest
 
     # ── KV ────────────────────────────────────────────────────────────
 

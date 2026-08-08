@@ -92,6 +92,14 @@ No classic `eval` / bare `except:` / SQL f-string injection in core scan.
 | M1 | Partial | cancel checks in start / brainstorm / rerun / auto-exec path |
 | M2 | **Fixed** | `cancel_job` only flags cancel + `cancelling`; status terminal on thread finalize |
 
+### Wave 3 status (2026-08-08)
+
+| ID | Status | Notes |
+|----|--------|-------|
+| C2 | **Fixed** | `hot_replace_session` BEGIN IMMEDIATE + clear+insert + COMMIT; `HotMemory.save` uses it |
+| H11 | **Fixed** | Backup zip includes `user/user.db` via SQLite online backup API; mirror uses same |
+| M10 | **Fixed** | `GnomDatabase.close()` drops self from `_instances` |
+
 ---
 
 ## Not a full dynamic audit

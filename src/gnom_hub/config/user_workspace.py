@@ -105,7 +105,12 @@ def _ensure_key_file(ud: Path, hub: Path, actions: list[str], warnings: list[str
 
 
 def backup_user_db(root: Path | None = None) -> Path | None:
-    """One latest mirror: backups/user.db (+ keep 3 dated)."""
+    """
+    One latest mirror: backups/user.db (+ keep 3 dated).
+
+    Prefer SQLite online backup API (WAL-safe). Falls back to shutil.copy2
+    of the main file only if the DB is not open via our store.
+    """
     r = Path(root) if root is not None else project_root()
     live = user_dir(r) / "user.db"
     if not live.is_file() or live.stat().st_size == 0:
@@ -113,10 +118,25 @@ def backup_user_db(root: Path | None = None) -> Path | None:
     bdir = backups_dir(r)
     bdir.mkdir(parents=True, exist_ok=True)
     latest = bdir / "user.db"
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamped_path = bdir / f"user-{stamp}.db"
     try:
-        shutil.copy2(live, latest)
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        shutil.copy2(live, bdir / f"user-{stamp}.db")
+        # WAL-safe consistent snapshot
+        import sqlite3
+
+        from gnom_hub.db.sqlite_store import get_db
+
+        db = get_db(r)
+        db.export_consistent_copy(latest)
+        shutil.copy2(latest, stamped_path)
+    except (OSError, sqlite3.Error, ValueError, ImportError):
+        # Fallback: copy main file (may miss uncheckpointed WAL frames)
+        try:
+            shutil.copy2(live, latest)
+            shutil.copy2(live, stamped_path)
+        except OSError:
+            return None
+    try:
         stamped = sorted(bdir.glob("user-*.db"), key=lambda p: p.stat().st_mtime, reverse=True)
         for old in stamped[3:]:
             try:
@@ -125,7 +145,7 @@ def backup_user_db(root: Path | None = None) -> Path | None:
                 pass
         return latest
     except OSError:
-        return None
+        return latest if latest.is_file() else None
 
 
 def copy_selected_html(

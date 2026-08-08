@@ -151,23 +151,19 @@ class HotMemory:
         """Persist HOT to personal user.db + optional JSON mirror for COLD export tools."""
         self.hot_dir.mkdir(parents=True, exist_ok=True)
         self._touch()
-        # Source of truth: user.db
-        self.db.hot_clear_session()
-        for m in self.session.get("messages") or []:
-            if isinstance(m, dict):
-                self.db.hot_add_message(
-                    str(m.get("role") or "?"),
-                    str(m.get("content") or ""),
-                )
-        for f in self.session.get("facts") or []:
-            if str(f).strip():
-                self.db.hot_add_fact(str(f).strip())
-        self.db.kv_set("hot_updated_at", str(self.session.get("updated_at") or _utc_now_iso()))
+        # Source of truth: user.db — one transaction (C2), not clear-then-insert
+        msgs = [m for m in (self.session.get("messages") or []) if isinstance(m, dict)]
+        facts = [str(f).strip() for f in (self.session.get("facts") or []) if str(f).strip()]
+        self.db.hot_replace_session(
+            msgs,
+            facts,
+            updated_at=str(self.session.get("updated_at") or _utc_now_iso()),
+        )
         # Mirror JSON (gitignored) for backups / older scripts
         payload = json.dumps(self.session, ensure_ascii=False, indent=2) + "\n"
         atomic_write_text(self.session_path, payload)
         self.canvas.save(self.canvas_path)
-        # Keep personal WS backup of user.db on latest
+        # Keep personal WS backup of user.db on latest (WAL-safe)
         try:
             from gnom_hub.db.sqlite_store import sync_user_db_backup
 
