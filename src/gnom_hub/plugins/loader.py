@@ -107,7 +107,7 @@ class PluginLoader:
                 schema = t.get("input_schema") or {}
                 if not isinstance(schema, dict):
                     schema = {}
-                self.registry.register(
+                ok = self.registry.register(
                     ToolSpec(
                         name=name,
                         description=str(t.get("description") or name),
@@ -116,6 +116,11 @@ class PluginLoader:
                         plugin=info["id"],
                     )
                 )
+                if not ok:
+                    msg = f"tool name reserved by core: {name}"
+                    logger.warning("Plugin %s: %s", info["id"], msg)
+                    self.errors.append({"path": str(child), "error": msg, "tool": name})
+                    continue
                 registered += 1
 
             if registered == 0 and tools:

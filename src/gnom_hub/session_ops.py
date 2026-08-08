@@ -15,39 +15,40 @@ class SessionOpsMixin:
 
     def save_checkpoint(self) -> dict[str, Any]:
         """Persist pipeline state for resume (plan §8.1 light checkpoint)."""
-        st = self.pipeline.state
-        payload = {
-            "version": 1,
-            "stage": st.stage.value,
-            "mode": st.mode,
-            "user_text": st.user_text,
-            "memory_context": st.memory_context,
-            "brainstorm_notes": st.brainstorm_notes,
-            "brainstorm_turns": list(st.brainstorm_turns or []),
-            "distilled_requirements": list(st.distilled_requirements),
-            "flex_notes": st.flex_notes,
-            "worker_results": list(st.worker_results),
-            "worker_outputs": list(st.worker_outputs or []),
-            "quality_notes": st.quality_notes,
-            "warnings": list(st.warnings),
-            "error": st.error,
-            "pending_question": (
-                {
-                    "id": st.pending_question.id,
-                    "text": st.pending_question.text,
-                    "options": list(st.pending_question.options),
-                }
-                if st.pending_question
-                else None
-            ),
-        }
-        self._checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
-        atomic_write_text(
-            self._checkpoint_path,
-            json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
-        )
-        self._append_trace("checkpoint.save", {"path": str(self._checkpoint_path)})
-        return {"ok": True, "path": str(self._checkpoint_path)}
+        with self._pipeline_lock_obj():
+            st = self.pipeline.state
+            payload = {
+                "version": 1,
+                "stage": st.stage.value,
+                "mode": st.mode,
+                "user_text": st.user_text,
+                "memory_context": st.memory_context,
+                "brainstorm_notes": st.brainstorm_notes,
+                "brainstorm_turns": list(st.brainstorm_turns or []),
+                "distilled_requirements": list(st.distilled_requirements),
+                "flex_notes": st.flex_notes,
+                "worker_results": list(st.worker_results),
+                "worker_outputs": list(st.worker_outputs or []),
+                "quality_notes": st.quality_notes,
+                "warnings": list(st.warnings),
+                "error": st.error,
+                "pending_question": (
+                    {
+                        "id": st.pending_question.id,
+                        "text": st.pending_question.text,
+                        "options": list(st.pending_question.options),
+                    }
+                    if st.pending_question
+                    else None
+                ),
+            }
+            self._checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+            atomic_write_text(
+                self._checkpoint_path,
+                json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+            )
+            self._append_trace("checkpoint.save", {"path": str(self._checkpoint_path)})
+            return {"ok": True, "path": str(self._checkpoint_path)}
 
     def load_checkpoint(self) -> dict[str, Any]:
         """Restore pipeline state from checkpoint file."""
@@ -70,24 +71,26 @@ class SessionOpsMixin:
             stage = PipelineStage(stage_raw)
         except ValueError:
             stage = PipelineStage.idle
-        self.pipeline._state = PipelineState(
-            stage=stage,
-            user_text=str(data.get("user_text") or ""),
-            memory_context=str(data.get("memory_context") or ""),
-            brainstorm_notes=str(data.get("brainstorm_notes") or ""),
-            brainstorm_turns=list(data.get("brainstorm_turns") or []),
-            mode=str(data.get("mode") or "brainstorm"),
-            distilled_requirements=list(data.get("distilled_requirements") or []),
-            flex_notes=str(data.get("flex_notes") or ""),
-            pending_question=q,
-            worker_results=list(data.get("worker_results") or []),
-            worker_outputs=list(data.get("worker_outputs") or []),
-            quality_notes=str(data.get("quality_notes") or ""),
-            warnings=list(data.get("warnings") or []),
-            error=data.get("error"),
-        )
-        self._append_trace("checkpoint.load", {"stage": stage.value})
-        return self.snapshot()
+        # H6: do not clobber pipeline mid-job
+        with self._pipeline_lock_obj():
+            self.pipeline._state = PipelineState(
+                stage=stage,
+                user_text=str(data.get("user_text") or ""),
+                memory_context=str(data.get("memory_context") or ""),
+                brainstorm_notes=str(data.get("brainstorm_notes") or ""),
+                brainstorm_turns=list(data.get("brainstorm_turns") or []),
+                mode=str(data.get("mode") or "brainstorm"),
+                distilled_requirements=list(data.get("distilled_requirements") or []),
+                flex_notes=str(data.get("flex_notes") or ""),
+                pending_question=q,
+                worker_results=list(data.get("worker_results") or []),
+                worker_outputs=list(data.get("worker_outputs") or []),
+                quality_notes=str(data.get("quality_notes") or ""),
+                warnings=list(data.get("warnings") or []),
+                error=data.get("error"),
+            )
+            self._append_trace("checkpoint.load", {"stage": stage.value})
+            return self.snapshot()
 
     def save(self) -> dict[str, Any]:
         self.hot.save()

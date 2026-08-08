@@ -462,115 +462,118 @@ class SessionPackMixin:
             raise ValueError("not a gnom-hub-session-pack")
         if store:
             self.store_session_pack(pack)
-        hot = pack.get("hot") if isinstance(pack.get("hot"), dict) else {}
-        self.hot.session = {
-            "messages": list(hot.get("messages") or []),
-            "facts": list(hot.get("facts") or []),
-            "updated_at": hot.get("updated_at") or "",
-        }
-        canvas_mmd = str(pack.get("canvas_mmd") or "")
-        if canvas_mmd.strip():
-            self.hot.canvas_path.parent.mkdir(parents=True, exist_ok=True)
-            if not canvas_mmd.endswith("\n"):
-                canvas_mmd = canvas_mmd + "\n"
-            atomic_write_text(self.hot.canvas_path, canvas_mmd)
-            self.hot.canvas.load(self.hot.canvas_path)
-        else:
-            self.hot.canvas.clear()
-        self.hot.save()
 
-        if isinstance(pack.get("workspace"), dict):
-            self._restore_workspace_from_pack(pack.get("workspace"))
+        # H6: pack import mutates pipeline + memory — hold pipeline lock
+        with self._pipeline_lock_obj():
+            hot = pack.get("hot") if isinstance(pack.get("hot"), dict) else {}
+            self.hot.session = {
+                "messages": list(hot.get("messages") or []),
+                "facts": list(hot.get("facts") or []),
+                "updated_at": hot.get("updated_at") or "",
+            }
+            canvas_mmd = str(pack.get("canvas_mmd") or "")
+            if canvas_mmd.strip():
+                self.hot.canvas_path.parent.mkdir(parents=True, exist_ok=True)
+                if not canvas_mmd.endswith("\n"):
+                    canvas_mmd = canvas_mmd + "\n"
+                atomic_write_text(self.hot.canvas_path, canvas_mmd)
+                self.hot.canvas.load(self.hot.canvas_path)
+            else:
+                self.hot.canvas.clear()
+            self.hot.save()
 
-        if include_warm:
-            for fact in pack.get("warm_facts") or []:
-                text = str(fact).strip()
-                if text:
-                    self.warm.add_fact(text)
+            if isinstance(pack.get("workspace"), dict):
+                self._restore_workspace_from_pack(pack.get("workspace"))
 
-        if include_agents and isinstance(pack.get("agents"), list):
-            for item in pack["agents"]:
-                if not isinstance(item, dict) or not item.get("id"):
-                    continue
-                try:
-                    agent = self.agents.get(str(item["id"]))
-                except ValueError:
-                    continue
-                if agent.toggleable and "enabled" in item:
-                    agent.enabled = bool(item["enabled"])
-                if str(getattr(agent.id, "value", agent.id)) == "flex" and item.get("preset"):
+            if include_warm:
+                for fact in pack.get("warm_facts") or []:
+                    text = str(fact).strip()
+                    if text:
+                        self.warm.add_fact(text)
+
+            if include_agents and isinstance(pack.get("agents"), list):
+                for item in pack["agents"]:
+                    if not isinstance(item, dict) or not item.get("id"):
+                        continue
                     try:
-                        self.agents.set_flex_preset(str(item["preset"]))
+                        agent = self.agents.get(str(item["id"]))
                     except ValueError:
-                        pass
-                if item.get("model"):
-                    agent.model = str(item["model"])
-                if "tts" in item:
-                    agent.tts = bool(item["tts"])
-                if item.get("system_prompt") is not None:
-                    agent.system_prompt = str(item["system_prompt"]) or None
-                for key in ("temperature", "top_p", "frequency_penalty", "presence_penalty"):
-                    if item.get(key) is not None:
+                        continue
+                    if agent.toggleable and "enabled" in item:
+                        agent.enabled = bool(item["enabled"])
+                    if str(getattr(agent.id, "value", agent.id)) == "flex" and item.get("preset"):
                         try:
-                            setattr(agent, key, float(item[key]))
+                            self.agents.set_flex_preset(str(item["preset"]))
+                        except ValueError:
+                            pass
+                    if item.get("model"):
+                        agent.model = str(item["model"])
+                    if "tts" in item:
+                        agent.tts = bool(item["tts"])
+                    if item.get("system_prompt") is not None:
+                        agent.system_prompt = str(item["system_prompt"]) or None
+                    for key in ("temperature", "top_p", "frequency_penalty", "presence_penalty"):
+                        if item.get(key) is not None:
+                            try:
+                                setattr(agent, key, float(item[key]))
+                            except (TypeError, ValueError):
+                                pass
+                    if item.get("max_tokens") is not None:
+                        try:
+                            agent.max_tokens = int(item["max_tokens"])
                         except (TypeError, ValueError):
                             pass
-                if item.get("max_tokens") is not None:
-                    try:
-                        agent.max_tokens = int(item["max_tokens"])
-                    except (TypeError, ValueError):
-                        pass
-            self._save_agent_state()
+                self._save_agent_state()
 
-        data = pack.get("pipeline") if isinstance(pack.get("pipeline"), dict) else {}
-        q = None
-        pq = data.get("pending_question")
-        if isinstance(pq, dict) and pq.get("text"):
-            q = DistillQuestion(
-                id=str(pq.get("id") or "q1"),
-                text=str(pq["text"]),
-                options=list(pq.get("options") or ["Yes", "No", "Whatever", "Later"]),
+            data = pack.get("pipeline") if isinstance(pack.get("pipeline"), dict) else {}
+            q = None
+            pq = data.get("pending_question")
+            if isinstance(pq, dict) and pq.get("text"):
+                q = DistillQuestion(
+                    id=str(pq.get("id") or "q1"),
+                    text=str(pq["text"]),
+                    options=list(pq.get("options") or ["Yes", "No", "Whatever", "Later"]),
+                )
+            stage_raw = str(data.get("stage") or "brainstorm")
+            try:
+                stage = PipelineStage(stage_raw)
+            except ValueError:
+                stage = PipelineStage.brainstorm
+            self.pipeline._state = PipelineState(
+                stage=stage,
+                user_text=str(data.get("user_text") or ""),
+                memory_context=str(data.get("memory_context") or ""),
+                brainstorm_notes=str(data.get("brainstorm_notes") or ""),
+                brainstorm_turns=list(data.get("brainstorm_turns") or []),
+                mode=str(data.get("mode") or "brainstorm"),
+                distilled_requirements=list(data.get("distilled_requirements") or []),
+                flex_notes=str(data.get("flex_notes") or ""),
+                pending_question=q,
+                worker_results=list(data.get("worker_results") or []),
+                worker_outputs=list(data.get("worker_outputs") or []),
+                quality_notes=str(data.get("quality_notes") or ""),
+                warnings=list(data.get("warnings") or []),
+                error=data.get("error"),
             )
-        stage_raw = str(data.get("stage") or "brainstorm")
-        try:
-            stage = PipelineStage(stage_raw)
-        except ValueError:
-            stage = PipelineStage.brainstorm
-        self.pipeline._state = PipelineState(
-            stage=stage,
-            user_text=str(data.get("user_text") or ""),
-            memory_context=str(data.get("memory_context") or ""),
-            brainstorm_notes=str(data.get("brainstorm_notes") or ""),
-            brainstorm_turns=list(data.get("brainstorm_turns") or []),
-            mode=str(data.get("mode") or "brainstorm"),
-            distilled_requirements=list(data.get("distilled_requirements") or []),
-            flex_notes=str(data.get("flex_notes") or ""),
-            pending_question=q,
-            worker_results=list(data.get("worker_results") or []),
-            worker_outputs=list(data.get("worker_outputs") or []),
-            quality_notes=str(data.get("quality_notes") or ""),
-            warnings=list(data.get("warnings") or []),
-            error=data.get("error"),
-        )
-        self.last_error = None
-        self._append_trace(
-            "session.pack.import",
-            {"label": pack.get("label"), "stage": stage.value},
-        )
-        if isinstance(pack.get("ui_prefs"), dict):
-            prefs = self._sanitize_ui_prefs(pack.get("ui_prefs"))
-            lang = prefs.get("ui_lang")
-            if lang in ("en", "de"):
-                self.ui_lang = lang
-        snap = self.snapshot()
-        if "ui_chat_log" in pack:
-            snap["ui_chat_log"] = self._sanitize_ui_chat_log(pack.get("ui_chat_log"))
-        if "ui_result_history" in pack:
-            snap["ui_result_history"] = self._sanitize_ui_result_history(
-                pack.get("ui_result_history")
+            self.last_error = None
+            self._append_trace(
+                "session.pack.import",
+                {"label": pack.get("label"), "stage": stage.value},
             )
-        if isinstance(pack.get("ui_prefs"), dict):
-            snap["ui_prefs"] = self._sanitize_ui_prefs(pack.get("ui_prefs"))
-        if pack.get("notes") is not None:
-            snap["pack_notes"] = str(pack.get("notes") or "")[:200]
-        return snap
+            if isinstance(pack.get("ui_prefs"), dict):
+                prefs = self._sanitize_ui_prefs(pack.get("ui_prefs"))
+                lang = prefs.get("ui_lang")
+                if lang in ("en", "de"):
+                    self.ui_lang = lang
+            snap = self.snapshot()
+            if "ui_chat_log" in pack:
+                snap["ui_chat_log"] = self._sanitize_ui_chat_log(pack.get("ui_chat_log"))
+            if "ui_result_history" in pack:
+                snap["ui_result_history"] = self._sanitize_ui_result_history(
+                    pack.get("ui_result_history")
+                )
+            if isinstance(pack.get("ui_prefs"), dict):
+                snap["ui_prefs"] = self._sanitize_ui_prefs(pack.get("ui_prefs"))
+            if pack.get("notes") is not None:
+                snap["pack_notes"] = str(pack.get("notes") or "")[:200]
+            return snap

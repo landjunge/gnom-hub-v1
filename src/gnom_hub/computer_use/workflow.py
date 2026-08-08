@@ -19,7 +19,7 @@ class ComputerUseKit:
         self.capture = CaptureModule(out)
         self.vision = VisionModule()
         self.ocr = OcrModule()
-        self.action = ActionModule(god_mode_enabled=god_mode)
+        self.action = ActionModule(god_mode_enabled=god_mode, root=self.root)
 
     def set_god_mode(self, enabled: bool) -> None:
         self.action.set_god_mode(enabled)

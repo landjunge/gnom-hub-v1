@@ -254,17 +254,17 @@ class JobsMixin:
             "cancel": bool(job.get("cancel")),
             "finished": bool(job.get("finished")),
         }
-        if job.get("snapshot"):
+        # M3: never attach live pipeline snapshot unless this job owns the lock
+        if job.get("snapshot") is not None:
             out["snapshot"] = job["snapshot"]
-        elif job.get("status") in ("running", "queued") and job.get("stage") in (
-            "queued",
-            "idle",
-            "running",
+        elif (
+            job.get("status") in ("running", "queued")
+            and getattr(self, "_active_job_id", None) == job_id
         ):
-            # Do not leak another job's live pipeline into a queued job poll
-            out["snapshot"] = None
-        else:
             out["snapshot"] = self.snapshot()
+        else:
+            # Queued / waiting / foreign job — no live leak
+            out["snapshot"] = None
         return out
 
     def cancel_job(self, job_id: str) -> dict[str, Any]:

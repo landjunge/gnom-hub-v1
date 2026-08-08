@@ -20,8 +20,22 @@ class ToolRegistry:
     def __init__(self) -> None:
         self._tools: dict[str, ToolSpec] = {}
 
-    def register(self, spec: ToolSpec) -> None:
+    def register(self, spec: ToolSpec, *, overwrite: bool = False) -> bool:
+        """
+        Register a tool. Returns False if registration was refused (M5).
+
+        Core tools cannot be overwritten by plugins unless overwrite=True.
+        """
+        existing = self._tools.get(spec.name)
+        if (
+            existing is not None
+            and existing.plugin == "core"
+            and (spec.plugin or "") != "core"
+            and not overwrite
+        ):
+            return False
         self._tools[spec.name] = spec
+        return True
 
     def list_tools(self) -> list[dict[str, Any]]:
         return [

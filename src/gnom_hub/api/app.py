@@ -641,9 +641,19 @@ def create_app() -> FastAPI:
 
     @app.post("/api/memory/warm/clear")
     def warm_clear() -> dict[str, Any]:
-        n = len(get_hub().warm.all_facts())
-        get_hub().warm.clear()
-        return {"ok": True, "cleared": n, "warm_facts": []}
+        """Clear WARM facts; Flex wishes (source=flex) kept by default (M9)."""
+        hub = get_hub()
+        before = len(hub.warm.all_facts())
+        removed = hub.warm.clear(keep_flex=True)
+        remaining = hub.warm.all_facts()
+        return {
+            "ok": True,
+            "cleared": removed,
+            "before": before,
+            "kept_flex": len(remaining),
+            "keep_flex": True,
+            "warm_facts": remaining[-12:],
+        }
 
     @app.get("/api/workspace")
     def workspace() -> dict[str, Any]:

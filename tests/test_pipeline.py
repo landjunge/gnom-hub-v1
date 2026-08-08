@@ -452,6 +452,15 @@ def test_html_gates_and_dod():
     assert "DEFINITION OF DONE" in _definition_of_done("landing", ["complete HTML"])
     assert _html_complete("<!DOCTYPE html><html><body>x</body></html>")
     assert not _html_complete("<html><body>open")
+    # M11: </html> too early / junk after close must fail
+    early = "<!DOCTYPE html><html></html>" + (" padding" * 40)
+    assert not _html_complete(early)
+    after_junk = (
+        "<!DOCTYPE html><html><body>" + ("x" * 80) + "</body></html>\n<script>alert(1)</script>"
+    )
+    assert not _html_complete(after_junk)
+    unclosed_script = "<!DOCTYPE html><html><body><script>var x=1;" + ("y" * 50) + "</body></html>"
+    assert not _html_complete(unclosed_script)
     bad = _validate_worker_draft("<html>partial", user_text="landing html page", task="html")
     assert bad["ok"] is False
     notes = _quality_check(

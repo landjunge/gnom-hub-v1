@@ -1144,6 +1144,11 @@ def _wants_html_artifact(user_text: str, task: str = "") -> bool:
 
 
 def _html_complete(body: str) -> bool:
+    """
+    True when body looks like a finished single-file HTML document.
+
+    M11: a lone ``</html>`` mid-stream (truncated doc) must not pass.
+    """
     import re
 
     s = (body or "").strip()
@@ -1156,9 +1161,28 @@ def _html_complete(body: str) -> bool:
     low = s.lower()
     if "<!doctype" not in low and "<html" not in low:
         return False
-    if "</html>" not in low:
+    # Prefer last closing tag; reject if significant junk after it
+    close_idx = low.rfind("</html>")
+    if close_idx < 0:
+        return False
+    after = low[close_idx + len("</html>") :].strip()
+    # Allow only whitespace / trivial trailing commentary after </html>
+    if (
+        after
+        and not re.fullmatch(r"(<!--.*?-->|\s)*", after, flags=re.DOTALL)
+        and (len(after) > 40 or "<" in after)
+    ):
+        return False
+    # Closing tag must not appear too early relative to document size
+    # (very short docs that fully close are still OK)
+    if close_idx < max(40, int(len(low) * 0.35)) and len(low) > 120 and close_idx < len(low) * 0.5:
         return False
     if low.rstrip().endswith(("...", "…", "<!--", "<style", "<script", "{", "(")):
+        return False
+    # Unclosed style/script often means truncation before </html> was faked
+    if low.count("<script") > low.count("</script>"):
+        return False
+    if low.count("<style") > low.count("</style>"):
         return False
     open_tags = low.count("<")
     close_tags = low.count(">")

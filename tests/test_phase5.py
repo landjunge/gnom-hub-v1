@@ -38,7 +38,12 @@ def test_god_mode_paths():
     gm = GodMode()
     assert not gm.allow_path("/etc/passwd")
     assert gm.allow_path("data/hot/session.json")
+    # M7: traversal must lose even under data/ prefix
+    assert not gm.allow_path("data/../../../etc/passwd")
+    assert not gm.allow_path("data/hot/../../secret")
     gm.enable("test")
+    # God mode still rejects .. (path jail is separate from elevation)
+    assert not gm.allow_path("data/../../../etc/passwd")
     assert gm.allow_path("/etc/passwd")
     gm.disable("test")
     assert not gm.allow_path("/etc/passwd")
@@ -56,10 +61,10 @@ def test_plugin_echo_loads(tmp_path: Path):
     assert out["echo"] == "hi"
 
 
-def test_shell_allowlist():
+def test_shell_allowlist(tmp_path: Path):
     from gnom_hub.computer_use.action import ActionModule
 
-    a = ActionModule(god_mode_enabled=False)
+    a = ActionModule(god_mode_enabled=False, root=tmp_path)
     r = a.run_shell("pwd")
     assert r.dry_run is True
     a.set_god_mode(True)
@@ -70,6 +75,15 @@ def test_shell_allowlist():
     assert bad.ok is False
     pipe = a.run_shell("ls | wc")
     assert pipe.ok is False
+    # M6: path jail — even God-Mode cannot cat outside workspace
+    jail = a.run_shell("cat /etc/passwd")
+    assert jail.ok is False
+    assert "jail" in (jail.detail or "").lower() or "path" in (jail.detail or "").lower()
+    (tmp_path / "data").mkdir(parents=True, exist_ok=True)
+    safe = tmp_path / "data" / "ok.txt"
+    safe.write_text("hi", encoding="utf-8")
+    ok_cat = a.run_shell(f"cat {safe}")
+    assert ok_cat.ok is True
 
 
 def test_inspect_requires_god_mode(tmp_path: Path):

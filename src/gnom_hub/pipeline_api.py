@@ -84,7 +84,6 @@ class PipelineApiMixin:
         brainstorm_turns: list[dict] | None = None,
     ) -> dict[str, Any]:
         """Restore brainstorm context so a subsequent Execute re-runs workers."""
-
         text = (user_text or "").strip()
         notes = (brainstorm_notes or "").strip()
         if not text and not notes:
@@ -109,13 +108,15 @@ class PipelineApiMixin:
                 if t.get("role") == "user" and str(t.get("text") or "").strip():
                     text = str(t["text"]).strip()
                     break
-        self.pipeline._state = PipelineState(
-            stage=PipelineStage.brainstorm,
-            mode="brainstorm",
-            user_text=text,
-            brainstorm_notes=notes,
-            brainstorm_turns=turns,
-        )
-        self.last_error = None
-        self._append_trace("session.reexecute.restore", {"user": text[:80]})
-        return self.snapshot()
+        # H6: serialize against in-flight pipeline jobs
+        with self._pipeline_lock_obj():
+            self.pipeline._state = PipelineState(
+                stage=PipelineStage.brainstorm,
+                mode="brainstorm",
+                user_text=text,
+                brainstorm_notes=notes,
+                brainstorm_turns=turns,
+            )
+            self.last_error = None
+            self._append_trace("session.reexecute.restore", {"user": text[:80]})
+            return self.snapshot()

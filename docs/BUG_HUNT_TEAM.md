@@ -109,6 +109,18 @@ No classic `eval` / bare `except:` / SQL f-string injection in core scan.
 | H4 | **Fixed** | `worker_outputs` / `worker_results` updated after each worker in the loop |
 | M8 | **Fixed** | Empty plan with workers → fail; no workers / coord off → done + quality warning |
 
+### Wave 5 status (2026-08-08)
+
+| ID | Status | Notes |
+|----|--------|-------|
+| H6 | **Fixed** | pipeline lock on restore_for_reexecute, checkpoint save/load, pack import |
+| M3 | **Fixed** | `get_job` live snapshot only when `_active_job_id` matches |
+| M5 | **Fixed** | `ToolRegistry.register` refuses plugin overwrite of core tools |
+| M6 | **Fixed** | shell `cat`/`head`/… path jail under project root/data |
+| M7 | **Fixed** | `allow_path` rejects `..` before prefix allow |
+| M9 | **Fixed** | warm clear API reports `cleared` + `kept_flex` (not fake full wipe) |
+| M11 | **Fixed** | `_html_complete` rejects early `</html>`, junk after close, unclosed script/style |
+
 ---
 
 ## Not a full dynamic audit

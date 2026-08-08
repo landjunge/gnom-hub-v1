@@ -1,4 +1,4 @@
-"""Action executor — blocked unless God-Mode; shell uses strict allowlist."""
+"""Action executor — blocked unless God-Mode; shell uses strict allowlist + path jail."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import re
 import shlex
 import subprocess
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 # Only these bare commands may run under God-Mode (no pipes/redirects).
@@ -25,6 +26,8 @@ _SHELL_ALLOW = frozenset(
         "du",
     }
 )
+# Commands whose non-flag args are treated as filesystem paths (M6 jail)
+_PATH_CMDS = frozenset({"cat", "head", "tail", "wc", "du", "ls"})
 _SAFE_ARG = re.compile(r"^[A-Za-z0-9_./@%+=:,-]+$")
 
 
@@ -38,8 +41,14 @@ class ActionResult:
 
 
 class ActionModule:
-    def __init__(self, *, god_mode_enabled: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        god_mode_enabled: bool = False,
+        root: Path | None = None,
+    ) -> None:
         self.god_mode_enabled = god_mode_enabled
+        self.root = Path(root) if root is not None else Path.cwd()
 
     def set_god_mode(self, enabled: bool) -> None:
         self.god_mode_enabled = enabled
@@ -65,6 +74,33 @@ class ActionModule:
             return ActionResult(True, False, "typed")
         except Exception as exc:  # noqa: BLE001
             return ActionResult(False, False, f"type failed: {exc}")
+
+    def _path_in_jail(self, arg: str) -> bool:
+        """True if path stays under project root / data / gnom_workspace."""
+        raw = (arg or "").strip()
+        if not raw or raw.startswith("-"):
+            return True  # flags / empty
+        # Reject traversal tokens early
+        if ".." in Path(raw).parts or ".." in raw.replace("\\", "/").split("/"):
+            return False
+        root = self.root.resolve()
+        candidates = [
+            root,
+            (root / "data").resolve(),
+            (root / "gnom_workspace").resolve(),
+        ]
+        try:
+            p = Path(raw)
+            resolved = p.resolve() if p.is_absolute() else (root / raw).resolve()
+        except (OSError, RuntimeError, ValueError):
+            return False
+        for base in candidates:
+            try:
+                resolved.relative_to(base)
+                return True
+            except ValueError:
+                continue
+        return False
 
     def run_shell(self, cmd: str) -> ActionResult:
         raw = (cmd or "").strip()
@@ -94,6 +130,13 @@ class ActionModule:
         for arg in parts[1:]:
             if not _SAFE_ARG.match(arg):
                 return ActionResult(False, False, f"unsafe argument blocked: {arg!r}")
+            # M6: path jail for file-reading commands
+            if binary in _PATH_CMDS and not arg.startswith("-") and not self._path_in_jail(arg):
+                return ActionResult(
+                    False,
+                    False,
+                    f"path outside workspace jail: {arg!r}",
+                )
 
         try:
             proc = subprocess.run(
@@ -102,6 +145,7 @@ class ActionModule:
                 text=True,
                 timeout=8,
                 check=False,
+                cwd=str(self.root),
             )
             return ActionResult(
                 ok=proc.returncode == 0,
@@ -117,4 +161,5 @@ class ActionModule:
         return {
             "god_mode": self.god_mode_enabled,
             "shell_allow": sorted(_SHELL_ALLOW),
+            "path_jail_root": str(self.root),
         }

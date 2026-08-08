@@ -35,13 +35,14 @@ class GodMode:
     def allow_path(self, path: str) -> bool:
         """In normal mode only relative workspace/data; god mode allows absolute."""
         p = path.replace("\\", "/")
-        if self.enabled:
-            return True
-        # safe defaults
-        if p.startswith(("data/", "gnom_workspace/")) or "/data/" in p:
-            return True
+        # M7: always reject traversal before any allowlist prefix match
         if ".." in p.split("/"):
             return False
+        if self.enabled:
+            return True
+        # safe defaults (no .. left)
+        if p.startswith(("data/", "gnom_workspace/")) or "/data/" in p:
+            return True
         return not p.startswith("/")
 
     def snapshot(self) -> dict:
