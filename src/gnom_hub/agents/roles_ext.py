@@ -53,10 +53,16 @@ class CoordinatorAgent(BaseAgent):
                 ]
             question = None
             if _needs_clarify(user_text, brainstorm):
+                # Plain German — Box 1 must be understandable without jargon
                 question = DistillQuestion(
                     id="q1",
-                    text="MVP/schnell oder gründlich/robust?",
-                    options=["MVP/schnell", "Gründlich/robust", "Egal", "Später"],
+                    text="Wie soll ich vorgehen?",
+                    options=[
+                        "Schnell und einfach",
+                        "Gründlich und robust",
+                        "Egal — du entscheidest",
+                        "Später entscheiden",
+                    ],
                 )
             return reqs[:8], question
         finally:

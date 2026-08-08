@@ -201,7 +201,7 @@ def test_execute_injects_flex_wish_requirements(tmp_path: Path):
     pipe.state.memory_context = "User: always enable dark theme\nUser: never wipe wishes on clear\n"
     st = pipe.execute()
     if st.stage == PipelineStage.clarify:
-        st = pipe.answer_clarify("MVP/schnell")
+        st = pipe.answer_clarify("Schnell und einfach")
     reqs = "\n".join(st.distilled_requirements)
     assert "Flex-wish:" in reqs
     assert "dark theme" in reqs.lower()
@@ -269,7 +269,7 @@ def test_full_flex_chat_to_done_smoke():
     st = pipe.brainstorm_turn("Build a landing page for Bean Shop. Full HTML with hero and footer.")
     assert st.stage in (PipelineStage.done, PipelineStage.clarify, PipelineStage.work)
     if st.stage == PipelineStage.clarify:
-        st = pipe.answer_clarify("MVP/schnell")
+        st = pipe.answer_clarify("Schnell und einfach")
     assert st.stage == PipelineStage.done
     assert "pipeline.done" in events
     # flex stage notes or execute path

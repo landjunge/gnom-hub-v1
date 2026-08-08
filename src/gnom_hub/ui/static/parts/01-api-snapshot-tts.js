@@ -243,8 +243,27 @@
     s = s.replace(/<[^>]+>/g, " ");
     s = s.replace(/&[a-z]+;/gi, " ");
     s = s.replace(/\s+/g, " ").trim();
-    // Do not hard-cut here — chunkForSpeech splits so nothing is "abgeschnitten"
-    return s.slice(0, 2400);
+    // Keep spoken Gedanken short (product: not a lecture)
+    return s.slice(0, 520);
+  }
+
+  /** If model still emits English thoughts, prefer a short German fallback for voice. */
+  function germanizeThoughtForSpeech(text, label) {
+    const clean = stripForSpeech(text);
+    if (!clean) return "";
+    const looksEn =
+      /\b(the|and|with|for|this|that|should|would|build|page|user)\b/i.test(clean) &&
+      !/[äöüÄÖÜß]/.test(clean) &&
+      !/\b(der|die|das|und|ich|nicht|eine|für|mit|soll)\b/i.test(clean);
+    if (looksEn && (uiLang === "de" || uiLang !== "en")) {
+      const who = label || "Agent";
+      return (
+        who +
+        ". Kurzer Gedanke: ich priorisiere die User-Anfrage und bleibe knapp. " +
+        "Details stehen in Box 2 und Box 3."
+      );
+    }
+    return clean;
   }
 
   /** Split into speakable pieces (~sentence boundaries, max ~320 chars). */
@@ -503,8 +522,10 @@
       const t = thoughts[agentId];
       if (!t || !String(t).trim()) return;
       any = true;
-      // One agent = one or more queue chunks; next agent only after full finish
-      speakOrQueue((labels[agentId] || a.label || agentId) + ". " + String(t));
+      const label = labels[agentId] || a.label || agentId;
+      // One agent = queue item(s); never speak English monologues on a DE desk
+      const spoken = germanizeThoughtForSpeech(String(t), label);
+      if (spoken) speakOrQueue(spoken);
     });
     if (any) lastSpokenKey = key;
   }

@@ -74,8 +74,9 @@ class BaseAgent:
         # TTS wants the thinking stream, not the written deliverable.
         # Enable DeepSeek thinking only when this agent has TTS on.
         want_thoughts = bool(getattr(self.state, "tts", False))
-        if want_thoughts and mt < 1800:
-            mt = 1800
+        # TTS thinking stream: keep moderate so voice stays short; still need headroom
+        if want_thoughts and mt < 900:
+            mt = min(1200, max(mt, 900))
         kwargs: dict[str, Any] = {
             "agent": self.id,
             "max_tokens": mt,
@@ -100,6 +101,15 @@ class BaseAgent:
             role_system = f"{system.strip()}\n\n# Extra agent tuning (user):\n{custom}"
         else:
             role_system = system
+        # Spoken Gedanken (reasoning) must be German + short — English TTS was a product bug
+        if want_thoughts:
+            role_system = (
+                f"{role_system.strip()}\n\n"
+                "# TTS / thinking stream (mandatory):\n"
+                "- Write ALL internal reasoning ONLY in German (Deutsch).\n"
+                "- Spoken style, short sentences, max ~50 words of reasoning.\n"
+                "- Never English thoughts. Content for the box stays as the role rules say.\n"
+            )
         sys_full = f"{HUB_IDENTITY}\n\n{role_system}".strip()
         messages: list[LLMMessage] = [LLMMessage(role="system", content=sys_full)]
         for item in (prior or [])[-16:]:

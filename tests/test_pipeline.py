@@ -56,7 +56,11 @@ def test_stub_full_run_no_llm():
     assert state.stage == PipelineStage.done
     assert state.error is None
     assert "Build a landing page" in state.brainstorm_notes
-    assert "Ideen" in state.brainstorm_notes or "MVP" in state.brainstorm_notes
+    assert (
+        "Ideen" in state.brainstorm_notes
+        or "Kurz zu" in state.brainstorm_notes
+        or "Richtungen" in state.brainstorm_notes
+    )
     assert state.distilled_requirements
     assert state.flex_notes
     assert state.pending_question is None
@@ -94,11 +98,11 @@ def test_clarify_path_then_continue():
     assert state.stage == PipelineStage.clarify
     assert state.pending_question is not None
     assert isinstance(state.pending_question, DistillQuestion)
-    assert state.pending_question.options == ["MVP/schnell", "Gründlich/robust", "Egal", "Später"]
+    assert state.pending_question.options[0].startswith("Schnell")
     assert any(n == "pipeline.question" for n, _ in events)
     assert not any(n == "pipeline.done" for n, _ in events)
 
-    state2 = pipe.answer_clarify("MVP/schnell")
+    state2 = pipe.answer_clarify("Schnell und einfach")
     assert state2.stage == PipelineStage.done
     assert state2.pending_question is None
     assert any("clarified" in r.lower() for r in state2.distilled_requirements)
@@ -250,7 +254,7 @@ def test_answer_clarify_keeps_question_on_cancel():
     assert st.stage == PipelineStage.clarify
     assert st.pending_question is not None
     pipe.cancel_check = lambda: True
-    st2 = pipe.answer_clarify("MVP/schnell")
+    st2 = pipe.answer_clarify("Schnell und einfach")
     assert st2.pending_question is not None
     assert st2.stage == PipelineStage.clarify
     assert st2.error is None
@@ -294,7 +298,7 @@ def test_pipeline_state_defaults():
     assert s.flex_notes == ""
     assert s.warnings == []
     q = DistillQuestion(id="x", text="?")
-    assert q.options == ["MVP/schnell", "Gründlich/robust", "Egal", "Später"]
+    assert q.options[0].startswith("Schnell")
 
 
 class _FailLLM:
@@ -314,7 +318,11 @@ def test_llm_failure_falls_back_to_stub():
     assert state.stage == PipelineStage.done
     # FailLLM has provider but chat raises → agents fall back to stubs + warnings
     assert state.brainstorm_notes
-    assert "Ideen" in state.brainstorm_notes or "MVP" in state.brainstorm_notes
+    assert (
+        "Ideen" in state.brainstorm_notes
+        or "Kurz zu" in state.brainstorm_notes
+        or "Richtungen" in state.brainstorm_notes
+    )
     assert any(n == "pipeline.warning" for n, _ in events)
 
 

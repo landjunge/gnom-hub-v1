@@ -256,8 +256,13 @@ class Pipeline:
         if self._needs_clarify(text, notes) and not self._clarified_once:
             question = DistillQuestion(
                 id="q1",
-                text="Soll das eher schnell/MVP oder gründlich/robust werden?",
-                options=["MVP/schnell", "Gründlich/robust", "Egal", "Später"],
+                text="Wie soll ich vorgehen?",
+                options=[
+                    "Schnell und einfach",
+                    "Gründlich und robust",
+                    "Egal — du entscheidest",
+                    "Später entscheiden",
+                ],
             )
         return requirements, question
 
@@ -392,8 +397,13 @@ class Pipeline:
         if self._needs_clarify(text, notes) and not self._clarified_once:
             question = DistillQuestion(
                 id="q1",
-                text="MVP/schnell oder gründlich/robust?",
-                options=["MVP/schnell", "Gründlich/robust", "Egal", "Später"],
+                text="Wie soll ich vorgehen?",
+                options=[
+                    "Schnell und einfach",
+                    "Gründlich und robust",
+                    "Egal — du entscheidest",
+                    "Später entscheiden",
+                ],
             )
         return requirements, question
 

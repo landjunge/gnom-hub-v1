@@ -102,7 +102,8 @@ class Hub(
         self._checkpoint_path = self.root / "data" / "hot" / "checkpoint.json"
         # Light tracing (plan §8.2) — ring buffer of pipeline events
         self.trace: list[dict[str, Any]] = []
-        self.ui_lang: str = os.getenv("GNOM_UI_LANG", "en").strip().lower() or "en"
+        # Default German desk (TTS + tooltips); override with GNOM_UI_LANG=en
+        self.ui_lang: str = os.getenv("GNOM_UI_LANG", "de").strip().lower() or "de"
         self.auto_pack_after_execute: bool = os.getenv("GNOM_AUTO_PACK", "").strip().lower() in (
             "1",
             "true",

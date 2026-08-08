@@ -23,7 +23,12 @@ class DistillQuestion:
     id: str
     text: str
     options: list[str] = field(
-        default_factory=lambda: ["MVP/schnell", "Gründlich/robust", "Egal", "Später"]
+        default_factory=lambda: [
+            "Schnell und einfach",
+            "Gründlich und robust",
+            "Egal — du entscheidest",
+            "Später entscheiden",
+        ]
     )
 
 

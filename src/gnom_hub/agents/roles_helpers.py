@@ -29,23 +29,21 @@ def _stub_brainstorm(user_text: str, history: list[dict]) -> str:
     n = len([t for t in history if t.get("role") == "user"]) + 1
     low = (user_text or "").lower()
     hard = any(k in low for k in ("baue", "build", "mach mir", "erstelle", "html", "landing"))
+    topic = " ".join((user_text or "").split())[:80]
     if n <= 1:
         base = (
-            f"Ideen zu: {user_text}\n"
-            "• Ziel und Nutzerwert in einem Satz schärfen\n"
-            "• 3–5 Richtungen skizzieren (MVP vs. später)\n"
-            "• Was darf bewusst weglassen werden?\n"
-            "• Welches Ergebnis soll am Ende in Box 3 liegen?\n"
+            f"Kurz zu: {topic}\n"
+            "• Ziel in einem Satz\n"
+            "• 2–3 Richtungen (einfach vs. gründlich)\n"
+            "• Was weglassen?\n"
         )
         if hard:
-            return base + "→ Klare Bau-Anweisung — Umsetzung startet aus dem Kontext."
-        return base + "→ Soll ich das jetzt umsetzen / den Plan erstellen?"
+            return base + "→ Klare Bau-Anweisung — Umsetzung startet."
+        return base + "→ Soll ich das jetzt umsetzen?"
     return (
-        f"Weitergedacht (Runde {n}) zu: {user_text}\n"
-        "• Vorherige Ideen enger zusammenführen\n"
+        f"Runde {n}: {topic}\n"
         "• Eine Richtung priorisieren\n"
-        "→ Sag ja / ok / mach das / plan erstellen — dann läuft die Pipeline. "
-        "Oder schreib weiter zum Feinschliff."
+        "→ ja / ok / mach das — dann Pipeline. Oder kurz nachschärfen."
     )
 
 
