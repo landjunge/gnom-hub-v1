@@ -73,9 +73,11 @@ class WorkerAgent(BaseAgent):
                         "pipeline.warning",
                         {"stage": self.id, "error": str(exc)},
                     )
+            task_lines = [ln.strip() for ln in (task or "").splitlines() if ln.strip()]
+            task_head = task_lines[0][:140] if task_lines else "(empty task)"
             return (
                 f"{self.state.name} Ergebnis\n"
-                f"Aufgabe: {task.splitlines()[0][:140]}\n"
+                f"Aufgabe: {task_head}\n"
                 "• Schritt 1: Anforderungen klären\n"
                 "• Schritt 2: MVP skizzieren\n"
                 "• Schritt 3: Nächsten Schritt vorschlagen\n"

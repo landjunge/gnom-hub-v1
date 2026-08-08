@@ -81,14 +81,23 @@ class Pipeline:
 
         answer = option.strip()
         q = self._state.pending_question
-        self._state.distilled_requirements.append(f"User clarified ({q.id}): {answer}")
-        self._state.pending_question = None
+        line = f"User clarified ({q.id}): {answer}"
+        if line not in self._state.distilled_requirements:
+            self._state.distilled_requirements.append(line)
         self._clarified_once = True
+        # Keep pending until done (H2 parity with orchestrator)
 
         try:
             self._run_flex_then_work()
         except Exception as exc:  # noqa: BLE001
             self._fail(str(exc))
+            self._state.pending_question = q
+            self._state.stage = PipelineStage.clarify
+            return self._state
+        if self._state.stage == PipelineStage.done:
+            self._state.pending_question = None
+        else:
+            self._state.pending_question = q
         return self._state
 
     # ── stages ───────────────────────────────────────────────────────
@@ -290,9 +299,11 @@ class Pipeline:
 
     @staticmethod
     def _stub_worker(n: int, task: str) -> str:
+        lines = [ln.strip() for ln in (task or "").splitlines() if ln.strip()]
+        head = lines[0][:120] if lines else "(empty task)"
         return (
             f"Worker {n} Ergebnis\n"
-            f"Aufgabe: {task.splitlines()[0][:120]}\n"
+            f"Aufgabe: {head}\n"
             f"• Schritt 1: Anforderungen lesen\n"
             f"• Schritt 2: MVP skizzieren\n"
             f"• Schritt 3: Nächster sinnvoller Schritt vorschlagen\n"

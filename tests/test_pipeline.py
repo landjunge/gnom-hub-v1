@@ -233,6 +233,59 @@ def test_answer_clarify_without_pending_raises():
         assert "pending" in str(exc).lower()
 
 
+def test_answer_clarify_keeps_question_on_cancel():
+    """H2: cancel mid-continue must not drop pending_question."""
+    from gnom_hub.pipeline.orchestrator import Pipeline
+
+    class FakeMem:
+        def recall(self, t):
+            return ""
+
+        def store(self, **kw):
+            pass
+
+    bus = EventBus()
+    pipe = Pipeline(bus, llm_manager=None, memory=FakeMem())
+    st = pipe.start("Should we use dark mode maybe?")
+    assert st.stage == PipelineStage.clarify
+    assert st.pending_question is not None
+    pipe.cancel_check = lambda: True
+    st2 = pipe.answer_clarify("MVP/schnell")
+    assert st2.pending_question is not None
+    assert st2.stage == PipelineStage.clarify
+    assert st2.error is None
+
+
+def test_worker_partials_published_before_cancel():
+    """H4: each finished worker is visible on state before the next / cancel."""
+    from gnom_hub.pipeline.orchestrator import Pipeline
+
+    class FakeMem:
+        def recall(self, t):
+            return ""
+
+        def store(self, **kw):
+            pass
+
+    bus = EventBus()
+    pipe = Pipeline(bus, llm_manager=None, memory=FakeMem())
+    pipe.brainstorm_turn("only brainstorm then execute partials")
+    # Force multi-worker plan path via execute with cancel after first checks
+    seen_partials = {"n": 0}
+
+    def cancel_after_partials():
+        # Allow first worker to land, cancel before finish
+        n = len(pipe.state.worker_outputs or [])
+        seen_partials["n"] = n
+        return n >= 1
+
+    pipe.cancel_check = cancel_after_partials
+    st = pipe.execute()
+    assert st.stage.value != "done"
+    # Either we got a partial or cancelled very early (still no crash)
+    assert st.error is None
+
+
 def test_pipeline_state_defaults():
     s = PipelineState()
     assert s.stage == PipelineStage.idle

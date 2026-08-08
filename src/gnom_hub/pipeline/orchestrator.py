@@ -385,19 +385,43 @@ class Orchestrator:
         return self._state
 
     def answer_clarify(self, option: str) -> PipelineState:
+        """
+        Apply clarify answer then run workers.
+
+        H2: keep ``pending_question`` until work reaches a terminal success
+        (done). On cancel/error the question stays so the user can re-answer.
+        """
         if self._state.stage != PipelineStage.clarify or self._state.pending_question is None:
             raise ValueError("No pending clarification question")
         answer = option.strip()
         q = self._state.pending_question
-        self._state.distilled_requirements.append(f"User clarified ({q.id}): {answer}")
-        self._state.pending_question = None
+        clarify_line = f"User clarified ({q.id}): {answer}"
+        if clarify_line not in self._state.distilled_requirements:
+            self._state.distilled_requirements.append(clarify_line)
+        # Prevent re-asking on a later distill, but do not drop the question yet
         self._clarified_once = True
         try:
             self._run_flex_coord_workers()
         except PipelineCancelled:
+            # Soft-cancel may restore brainstorm — put user back on clarify if needed
+            self._state.pending_question = q
+            if self._state.stage != PipelineStage.done:
+                self._state.stage = PipelineStage.clarify
             return self._state
         except Exception as exc:  # noqa: BLE001
             self._fail(str(exc))
+            self._state.pending_question = q
+            self._state.stage = PipelineStage.clarify
+            return self._state
+
+        if self._state.stage == PipelineStage.done:
+            self._state.pending_question = None
+        elif self._state.stage == PipelineStage.error:
+            self._state.pending_question = q
+            self._state.stage = PipelineStage.clarify
+        else:
+            # Cancel restored brainstorm / mid-stage abort — keep question
+            self._state.pending_question = q
         return self._state
 
     def rerun_worker(self, worker_id: str) -> PipelineState:
@@ -537,6 +561,11 @@ class Orchestrator:
             )
             self._state.worker_results = []
             self._state.worker_outputs = []
+            # Intentional skip path (tests): finish with explicit quality note (M8)
+            self._state.quality_notes = (
+                self._state.quality_notes or ""
+            ).strip() or "Coordinator disabled — no workers ran."
+            self._state.warnings = list(self._state.warnings or []) + ["coordinator_disabled_skip"]
             self._finish()
             return
 
@@ -562,10 +591,29 @@ class Orchestrator:
             },
         )
 
+        # All workers off or empty plan with no workers → soft success + note (tests)
+        if not worker_ids:
+            self._state.worker_results = []
+            self._state.worker_outputs = []
+            self._state.quality_notes = "No workers enabled — nothing to execute."
+            self._state.warnings = list(self._state.warnings or []) + ["no_workers_enabled"]
+            self._finish()
+            return
+
+        # Coordinator returned no tasks despite enabled workers (M8)
+        if not tasks:
+            self._state.worker_results = []
+            self._state.worker_outputs = []
+            self._fail("Coordinator produced no worker tasks")
+            return
+
         self._check_cancel()
         self._set_stage(PipelineStage.work)
         results: list[str] = []
         outputs: list[dict] = []
+        # H4: clear then publish incrementally so cancel keeps partials
+        self._state.worker_results = []
+        self._state.worker_outputs = []
         web_ctx = _prefetch_urls(f"{text}\n" + "\n".join(t for _, t in tasks))
         if web_ctx:
             mem = (mem or "").rstrip() + "\n\nWeb fetch (auto):\n" + web_ctx
@@ -645,6 +693,9 @@ class Orchestrator:
                     "validation": gate,
                 }
             )
+            # H4: publish partials after each worker (cancel keeps what ran)
+            self._state.worker_results = list(results)
+            self._state.worker_outputs = list(outputs)
             self.bus.emit(
                 "pipeline.worker",
                 {
@@ -656,6 +707,10 @@ class Orchestrator:
                 },
             )
         self._check_cancel()
+        # M8: planned tasks but nothing ran (workers vanished mid-plan)
+        if tasks and not outputs:
+            self._fail("Planned worker tasks produced no output")
+            return
         self._state.worker_results = results
         self._state.worker_outputs = outputs
         self._state.quality_notes = _quality_check(
@@ -663,6 +718,11 @@ class Orchestrator:
             self._state.distilled_requirements,
             outputs,
         )
+        # Empty body results: still done but warn (M8 soft)
+        if outputs and all(not str(o.get("result") or "").strip() for o in outputs):
+            warn = "All worker results were empty."
+            self._state.quality_notes = ((self._state.quality_notes or "") + "\n" + warn).strip()
+            self._state.warnings = list(self._state.warnings or []) + ["empty_worker_results"]
         self.bus.emit(
             "pipeline.quality",
             {"notes": self._state.quality_notes, "workers": len(outputs)},

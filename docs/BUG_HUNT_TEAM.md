@@ -100,6 +100,15 @@ No classic `eval` / bare `except:` / SQL f-string injection in core scan.
 | H11 | **Fixed** | Backup zip includes `user/user.db` via SQLite online backup API; mirror uses same |
 | M10 | **Fixed** | `GnomDatabase.close()` drops self from `_instances` |
 
+### Wave 4 status (2026-08-08)
+
+| ID | Status | Notes |
+|----|--------|-------|
+| H2 | **Fixed** | `answer_clarify` keeps `pending_question` until done; restore on cancel/error |
+| H3 | **Fixed** | Flex notes already safe; stub workers no longer use bare `splitlines()[0]` |
+| H4 | **Fixed** | `worker_outputs` / `worker_results` updated after each worker in the loop |
+| M8 | **Fixed** | Empty plan with workers → fail; no workers / coord off → done + quality warning |
+
 ---
 
 ## Not a full dynamic audit
