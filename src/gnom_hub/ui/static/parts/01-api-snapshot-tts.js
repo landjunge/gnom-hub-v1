@@ -144,6 +144,11 @@
       }
     }
 
+    // Right Platzhalter: Flex feedback panel (dynamic buttons)
+    if (typeof applyFlexReview === "function") {
+      applyFlexReview(snap.flex_review || null, p);
+    }
+
     // Mermaid canvas preview under Box 3 when nodes exist
     if (snap.canvas && snap.canvas.mermaid && snap.canvas.nodes > 0) {
       const box3 = document.getElementById("box3-content");
@@ -551,6 +556,99 @@
       if (spoken) speakOrQueue(spoken);
     });
     if (any) lastSpokenKey = key;
+  }
+
+  /**
+   * Flex panel in right Platzhalter (chat-mod-platz-r).
+   * After done: quality feedback + learn / re-brainstorm / re-build.
+   */
+  function applyFlexReview(panel, pipeline) {
+    const root = document.getElementById("flex-review");
+    const titleEl = document.getElementById("flex-review-title");
+    const badgeEl = document.getElementById("flex-review-badge");
+    const qEl = document.getElementById("flex-review-q");
+    const btnsEl = document.getElementById("flex-review-btns");
+    const hintEl = document.getElementById("flex-review-hint");
+    if (!root || !btnsEl) return;
+
+    const p = panel || {};
+    const active = !!p.active;
+    root.classList.toggle("is-active", active);
+    if (titleEl) titleEl.textContent = p.title || "Flex";
+    if (badgeEl) {
+      badgeEl.hidden = !active;
+      badgeEl.textContent = active ? "Feedback" : "";
+    }
+    if (qEl) {
+      qEl.textContent =
+        p.question ||
+        "Nach einem Ergebnis fragt Flex hier nach Feedback.";
+    }
+    if (hintEl) {
+      hintEl.textContent =
+        p.hint || "Rechts = Flex lernt & steuert den nächsten Schritt";
+    }
+
+    btnsEl.innerHTML = "";
+    const buttons = active ? p.buttons || [] : [];
+    if (!active || !buttons.length) {
+      return;
+    }
+    buttons.forEach(function (b) {
+      if (!b || !b.id) return;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "flex-review-btn";
+      btn.dataset.id = String(b.id);
+      btn.dataset.action = String(b.action || "learn");
+      btn.textContent = String(b.label || b.id);
+      btn.title = String(b.learn || b.prompt || b.label || "");
+      btn.addEventListener("click", function () {
+        onFlexFeedbackClick(b);
+      });
+      btnsEl.appendChild(btn);
+    });
+  }
+
+  async function onFlexFeedbackClick(btnSpec) {
+    const id = (btnSpec && btnSpec.id) || "";
+    const label = (btnSpec && btnSpec.label) || id;
+    try {
+      toast("Flex… " + label, "info");
+      const res = await api("POST", "/api/flex/feedback", {
+        button_id: id,
+        label: label,
+      });
+      if (res.message) appendChat("system", res.message);
+      if (res.learned && res.learn_text) {
+        toast("Gelernt: " + String(res.learn_text).slice(0, 80), "ok");
+      } else if (res.action === "learn") {
+        toast(res.message || "Flex Feedback", "ok");
+      }
+      if (res.snapshot) {
+        applySnapshot(res.snapshot);
+      } else if (res.flex_review) {
+        applyFlexReview(res.flex_review, null);
+      }
+      // Rebuild started as job
+      if (res.job && res.job.job_id && typeof pollJob === "function") {
+        setChatBusy(true);
+        try {
+          const job = await pollJob(res.job.job_id, 360000);
+          const snap = job.snapshot || (await api("GET", "/api/state"));
+          applySnapshot(snap);
+          if (typeof focusBox3 === "function") focusBox3();
+        } finally {
+          setChatBusy(false);
+        }
+      }
+      if (res.action === "brainstorm" && typeof focusBox3 === "function") {
+        // Box 2 has new notes; user may hit Execute next via Flex rebuild
+        toast("Brainstorm aktualisiert — bei Bedarf „Nochmal bauen“", "ok");
+      }
+    } catch (err) {
+      toast("Flex Feedback: " + (err.message || err), "error");
+    }
   }
 
   async function setAgentTts(id, on) {

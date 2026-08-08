@@ -231,6 +231,11 @@
     });
 
     if (!outputs.length) {
+      const dualEmpty = document.getElementById("box3-dual");
+      if (dualEmpty) {
+        dualEmpty.hidden = true;
+        dualEmpty.setAttribute("aria-hidden", "true");
+      }
       return;
     }
 
@@ -256,8 +261,27 @@
       });
     });
 
+    // Always surface first result in dual layer so Box 3 is visible without agent click
+    const dual = document.getElementById("box3-dual");
+    if (dual) {
+      dual.hidden = false;
+      dual.setAttribute("aria-hidden", "false");
+      const front =
+        dual.querySelector(".layer-slot.is-front") || dual.querySelector(".layer-slot");
+      if (front) {
+        paintWorkerIntoSlot(front, outputs[0], 0);
+      }
+    }
+
     box3FocusIdx = 0;
     bindBoxLayerControls();
+    if (typeof focusBox3 === "function") {
+      try {
+        focusBox3();
+      } catch (_e) {
+        /* ignore */
+      }
+    }
   }
 
   /** Save one worker HTML into personal WS (WS-gnom-hub-v1/selected/). */

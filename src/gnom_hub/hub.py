@@ -15,6 +15,7 @@ from gnom_hub.config.paths import project_root
 from gnom_hub.config.user_workspace import ensure_user_workspace
 from gnom_hub.core.event_bus import EventBus
 from gnom_hub.export_ops import ExportOpsMixin
+from gnom_hub.flex_ops import FlexOpsMixin
 from gnom_hub.hot_facts import HotFactsMixin
 from gnom_hub.jobs import JobsMixin
 from gnom_hub.llm.manager import LLMManager
@@ -50,6 +51,7 @@ class Hub(
     MemoryWiringMixin,
     PresetsMixin,
     TtsOpsMixin,
+    FlexOpsMixin,
     SessionOpsMixin,
     TraceOpsMixin,
     ColdOpsMixin,

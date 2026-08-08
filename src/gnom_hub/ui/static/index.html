@@ -206,11 +206,25 @@
         </div>
         <p class="kbd-hint">Chat-Layer = Crux · Agent-Klick wechselt · Enter = Send</p>
       </section>
-      <div class="chat-mod-platz chat-mod-platz-r" aria-label="Platzhalter unter Box 3">
-        <button type="button" class="chat-mod-slot-btn" disabled title="Platzhalter">·</button>
-        <button type="button" class="chat-mod-slot-btn" disabled title="Platzhalter">·</button>
-        <button type="button" class="chat-mod-slot-btn" disabled title="Platzhalter">·</button>
-      </div>
+      <aside
+        id="flex-review"
+        class="chat-mod-platz chat-mod-platz-r flex-review"
+        aria-label="Flex Feedback rechts neben Chat"
+      >
+        <div class="flex-review-head">
+          <span class="flex-review-title" id="flex-review-title">Flex</span>
+          <span class="flex-review-badge" id="flex-review-badge" hidden>Feedback</span>
+        </div>
+        <p class="flex-review-q" id="flex-review-q">
+          Nach einem Ergebnis fragt Flex hier nach Feedback.
+        </p>
+        <div class="flex-review-btns" id="flex-review-btns" role="group" aria-label="Flex Aktionen">
+          <!-- dynamic buttons after Execute done -->
+        </div>
+        <p class="flex-review-hint muted" id="flex-review-hint">
+          Rechts = Flex lernt &amp; steuert den nächsten Schritt
+        </p>
+      </aside>
     </section>
   </div>
 

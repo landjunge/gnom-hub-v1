@@ -98,6 +98,12 @@ class TtsPrepareBody(BaseModel):
     lang: str | None = "de"
 
 
+class FlexFeedbackBody(BaseModel):
+    button_id: str = ""
+    label: str = ""
+    note: str = ""
+
+
 class GodModeBody(BaseModel):
     enabled: bool
     reason: str = "api"
@@ -246,6 +252,23 @@ def create_app() -> FastAPI:
     def tts_prepare(body: TtsPrepareBody) -> dict[str, Any]:
         """Translate agent thoughts to German before browser TTS speaks."""
         return get_hub().prepare_tts_text(body.text or "", lang=body.lang or "de")
+
+    @app.get("/api/flex/review")
+    def flex_review() -> dict[str, Any]:
+        """Right Platzhalter panel: Flex feedback after result."""
+        return get_hub().flex_review_panel()
+
+    @app.post("/api/flex/feedback")
+    def flex_feedback(body: FlexFeedbackBody) -> dict[str, Any]:
+        """Learn from user click and optionally re-brainstorm / re-build."""
+        try:
+            return get_hub().apply_flex_feedback(
+                body.button_id or "",
+                label=body.label or "",
+                note=body.note or "",
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
     @app.get("/api/system")
     def system_get() -> dict[str, Any]:

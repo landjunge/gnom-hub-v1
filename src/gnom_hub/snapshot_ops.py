@@ -111,6 +111,11 @@ class SnapshotOpsMixin:
             "last_error": self.last_error,
             # Reasoning streams for TTS (Gedanken) — not the written Box 2/3 text
             "agent_thoughts": dict(getattr(self, "_agent_thoughts", {}) or {}),
+            "flex_review": (
+                self.flex_review_panel()
+                if hasattr(self, "flex_review_panel")
+                else {"active": False, "buttons": []}
+            ),
             "trace": list(self.trace[-40:]),
             "ui_lang": self.ui_lang,
             "checkpoint": {
