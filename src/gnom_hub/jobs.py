@@ -37,11 +37,36 @@ class JobsMixin:
         self.last_error = None
 
         def _finalize_job(stage_val: str | None = None) -> None:
-            """Terminal status — cancel always wins (including vs exception)."""
+            """
+            Terminal status — cancel always wins (H5).
+            Never overwrite cancelled with done/error after cancel flag is set.
+            """
+            # Re-read cancel under lock with pipeline (caller holds lock)
             if job.get("cancel"):
                 job["status"] = "cancelled"
                 job["error"] = job.get("error") or "cancelled by user"
                 job["stage"] = "cancelled"
+                job["finished"] = True
+                # Ensure pipeline is not left mid-stage (thread may not have raised)
+                try:
+                    st = self.pipeline.state
+                    mid = st.stage.value in (
+                        "distill",
+                        "flex",
+                        "coordinate",
+                        "work",
+                        "clarify",
+                    )
+                    if mid or st.stage.value not in ("brainstorm", "idle", "done", "error"):
+                        abort = getattr(self.pipeline, "_abort_cancelled", None)
+                        if callable(abort):
+                            abort()
+                except Exception:  # noqa: BLE001
+                    pass
+                return
+            # If status was already cancelled (race with cancel_job finalize), keep it
+            if job.get("status") == "cancelled":
+                job["finished"] = True
                 return
             sv = stage_val or "error"
             if sv == "error":
@@ -62,6 +87,7 @@ class JobsMixin:
                         self._remember_execute_export()
                     if name in ("execute", "pipeline"):
                         self.maybe_auto_pack()
+            job["finished"] = True
 
         def _run() -> None:
             with lock:
@@ -73,6 +99,9 @@ class JobsMixin:
                     if getattr(self, "_active_job_id", None) != job_id:
                         return
                     if isinstance(data, dict) and data.get("stage"):
+                        # Do not clobber cancelling stage label mid-flight
+                        if job.get("cancel"):
+                            return
                         job["stage"] = str(data["stage"])
                         try:
                             job["snapshot"] = self.snapshot()
@@ -109,6 +138,7 @@ class JobsMixin:
                         return
                     self._active_job_id = job_id
                     job["stage"] = "running"
+                    job["finished"] = False
                     # Handlers only while this job owns the pipeline lock
                     self.bus.on("pipeline.stage", _on_stage)
                     self.bus.on("pipeline.brainstorm", _on_brainstorm)
@@ -122,8 +152,12 @@ class JobsMixin:
                         runner()
                     finally:
                         self.pipeline.cancel_check = None
-                    _finalize_job(self.pipeline.state.stage.value)
-                    if not job.get("stage"):
+                    # H5: cancel may land after runner returns without exception
+                    if job.get("cancel"):
+                        _finalize_job("cancelled")
+                    else:
+                        _finalize_job(self.pipeline.state.stage.value)
+                    if job.get("status") != "cancelled" and not job.get("stage"):
                         job["stage"] = self.pipeline.state.stage.value
                     job["snapshot"] = self.snapshot()
                 except Exception as exc:  # noqa: BLE001
@@ -133,10 +167,14 @@ class JobsMixin:
                     if job.get("cancel") or isinstance(exc, PipelineCancelled):
                         job["cancel"] = True
                         _finalize_job("cancelled")
+                    elif job.get("status") == "cancelled":
+                        # Already terminal from cancel_job + concurrent finalize
+                        job["finished"] = True
                     else:
                         job["status"] = "error"
                         job["error"] = str(exc)
                         job["stage"] = "error"
+                        job["finished"] = True
                         self.last_error = str(exc)
                     try:
                         job["snapshot"] = self.snapshot()
@@ -151,6 +189,15 @@ class JobsMixin:
                         _cleanup_handlers()
                     if getattr(self, "_active_job_id", None) == job_id:
                         self._active_job_id = None
+                    if not job.get("finished"):
+                        # Safety: thread exit must always terminal-ize
+                        if job.get("cancel"):
+                            _finalize_job("cancelled")
+                        elif job.get("status") == "running":
+                            job["status"] = "error"
+                            job["error"] = job.get("error") or "job ended without finalize"
+                            job["stage"] = "error"
+                            job["finished"] = True
 
         t = threading.Thread(target=_run, name=f"{name}-{job_id}", daemon=True)
         t.start()
@@ -204,6 +251,8 @@ class JobsMixin:
             "stage": job.get("stage"),
             "error": job.get("error"),
             "started_at": job.get("started_at") or "",
+            "cancel": bool(job.get("cancel")),
+            "finished": bool(job.get("finished")),
         }
         if job.get("snapshot"):
             out["snapshot"] = job["snapshot"]
@@ -219,23 +268,39 @@ class JobsMixin:
         return out
 
     def cancel_job(self, job_id: str) -> dict[str, Any]:
-        """Soft-cancel: mark job cancelled (running thread may still finish)."""
+        """
+        Soft-cancel request (M2/H5).
+
+        Sets cancel flag immediately so cancel_check trips, but keeps status
+        ``running`` until the worker thread finalizes — so UI poll stays busy
+        while the pipeline lock is still held.
+        """
         jobs = getattr(self, "_jobs", {})
         job = jobs.get(job_id)
         if not job:
             raise FileNotFoundError("unknown job")
+        if job.get("finished"):
+            return {
+                "id": job["id"],
+                "name": job.get("name"),
+                "status": job["status"],
+                "stage": job.get("stage"),
+                "error": job.get("error"),
+                "cancel": bool(job.get("cancel")),
+            }
         if job.get("status") in ("running", "queued") or job.get("stage") == "queued":
             job["cancel"] = True
-            job["status"] = "cancelled"
-            job["error"] = "cancelled by user"
-            job["stage"] = "cancelled"
-            self._append_trace("job.cancel", {"id": job_id})
+            job["stage"] = "cancelling"
+            job["error"] = job.get("error") or "cancelled by user"
+            # Do NOT set status=cancelled here — finalize owns terminal status (M2)
+            self._append_trace("job.cancel", {"id": job_id, "phase": "request"})
         return {
             "id": job["id"],
             "name": job.get("name"),
             "status": job["status"],
             "stage": job.get("stage"),
             "error": job.get("error"),
+            "cancel": bool(job.get("cancel")),
         }
 
     def list_jobs(self, limit: int = 20) -> list[dict[str, Any]]:

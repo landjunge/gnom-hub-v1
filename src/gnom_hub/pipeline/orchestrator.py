@@ -52,9 +52,30 @@ class Orchestrator:
     def _check_cancel(self) -> None:
         fn = self.cancel_check
         if callable(fn) and fn():
-            self._close_stage_timing()
-            self.bus.emit("pipeline.cancelled", {"stage": self._state.stage.value})
+            self._abort_cancelled()
             raise PipelineCancelled("cancelled by user")
+
+    def _abort_cancelled(self) -> None:
+        """
+        Soft-cancel: leave pipeline re-executable (H1).
+        Keep brainstorm notes; do not mark error or call memory store (H7).
+        """
+        self._close_stage_timing()
+        had_notes = bool((self._state.brainstorm_notes or "").strip())
+        self._state.error = None
+        # Mid-run stages (distill/flex/work) blocked can_execute — restore brainstorm
+        if had_notes:
+            self._state.stage = PipelineStage.brainstorm
+            self._state.mode = "brainstorm"
+        else:
+            self._state.stage = PipelineStage.idle
+        self.bus.emit(
+            "pipeline.cancelled",
+            {
+                "restored_stage": self._state.stage.value,
+                "can_execute": had_notes,
+            },
+        )
 
     def _close_stage_timing(self) -> None:
         if self._stage_t0 is None or not self._stage_name:
@@ -106,6 +127,7 @@ class Orchestrator:
 
             self._stage_t0 = None
             self._stage_name = None
+            self._check_cancel()
             self._begin_stage_timing("memory")
             self.bus.emit("pipeline.stage", {"stage": "memory"})
             mem = self.memory.recall(text)
@@ -114,6 +136,7 @@ class Orchestrator:
                 self.bus.emit("pipeline.memory_context", {"context": mem})
             self._close_stage_timing()
 
+            self._check_cancel()
             if self.brainstorm.enabled:
                 self._set_stage(PipelineStage.brainstorm)
                 notes = self.brainstorm.run(text, mem, history=[])
@@ -124,11 +147,13 @@ class Orchestrator:
                 ]
                 self.bus.emit("pipeline.brainstorm", {"notes": notes, "mode": "full"})
 
+            self._check_cancel()
             self._set_stage(PipelineStage.distill)
             reqs, question = self.coordinator.distill(text, self._state.brainstorm_notes, mem)
             self._state.distilled_requirements = reqs
             self.bus.emit("pipeline.distill", {"requirements": list(reqs)})
 
+            self._check_cancel()
             if question is not None and not self._clarified_once:
                 self._state.pending_question = question
                 self._set_stage(PipelineStage.clarify)
@@ -142,7 +167,10 @@ class Orchestrator:
                 )
                 return self._state
 
+            self._check_cancel()
             self._run_flex_coord_workers()
+        except PipelineCancelled:
+            return self._state
         except Exception as exc:  # noqa: BLE001
             self._fail(str(exc))
         return self._state
@@ -196,6 +224,7 @@ class Orchestrator:
 
             self._clarified_once = False
 
+            self._check_cancel()
             self.bus.emit("pipeline.stage", {"stage": "memory"})
             topic = self._state.user_text or text
             mem = self.memory.recall(topic)
@@ -206,6 +235,7 @@ class Orchestrator:
             history = list(self._state.brainstorm_turns)
             self._state.brainstorm_turns.append({"role": "user", "text": text})
 
+            self._check_cancel()
             if not self.brainstorm.enabled:
                 notes = "(Brainstorm agent is off — enable it to collect ideas.)"
             else:
@@ -286,11 +316,14 @@ class Orchestrator:
                 should_exec = True
                 exec_reason = "context"
             if should_exec and self._state.brainstorm_notes.strip():
+                self._check_cancel()
                 self.bus.emit(
                     "pipeline.auto_execute",
                     {"reason": exec_reason, "text": text[:120]},
                 )
                 return self.execute()
+        except PipelineCancelled:
+            return self._state
         except Exception as exc:  # noqa: BLE001
             self._fail(str(exc))
         return self._state
@@ -450,7 +483,10 @@ class Orchestrator:
                 "pipeline.quality",
                 {"notes": self._state.quality_notes, "workers": len(outputs)},
             )
+            self._check_cancel()
             self._finish()
+        except PipelineCancelled:
+            return self._state
         except Exception as exc:  # noqa: BLE001
             self._fail(str(exc))
         return self._state
@@ -631,7 +667,9 @@ class Orchestrator:
             "pipeline.quality",
             {"notes": self._state.quality_notes, "workers": len(outputs)},
         )
+        self._check_cancel()
         self._flex_nudge_and_fix(text, mem, dod)
+        self._check_cancel()
         self._finish()
 
     def _flex_nudge_and_fix(self, text: str, mem: str, dod: str) -> None:
@@ -728,6 +766,8 @@ class Orchestrator:
         )
 
     def _finish(self) -> None:
+        # Last chance: never store memory / mark done after soft-cancel (H7)
+        self._check_cancel()
         self._close_stage_timing()
         self.memory.store(
             user_text=self._state.user_text,

@@ -317,7 +317,7 @@ def test_cooperative_cancel_mid_execute():
             return ""
 
         def store(self, **kw):
-            pass
+            raise AssertionError("memory.store must not run after cancel")
 
     bus = EventBus()
     pipe = Pipeline(bus, llm_manager=None, memory=FakeMem())
@@ -332,7 +332,60 @@ def test_cooperative_cancel_mid_execute():
     st = pipe.execute()
     # Should not complete full worker run when cancelled early
     assert n["c"] >= 2
-    assert st.stage.value != "done" or not (st.worker_outputs or [])
+    assert st.stage.value != "done"
+    # H1: re-executable — notes kept, not stuck mid-stage
+    assert st.stage.value == "brainstorm"
+    assert (st.brainstorm_notes or "").strip()
+    assert st.error is None
+
+
+def test_start_cancel_is_not_hard_error():
+    """C3: PipelineCancelled must not become stage=error via start()."""
+    from gnom_hub.pipeline.orchestrator import Pipeline
+
+    class FakeMem:
+        def recall(self, t):
+            return ""
+
+        def store(self, **kw):
+            raise AssertionError("no store on cancel")
+
+    bus = EventBus()
+    pipe = Pipeline(bus, llm_manager=None, memory=FakeMem())
+    pipe.cancel_check = lambda: True
+    st = pipe.start("full one-shot should cancel")
+    assert st.stage.value in ("idle", "brainstorm")
+    assert st.error is None
+    assert st.stage.value != "error"
+
+
+def test_abort_cancelled_restores_can_execute_snapshot():
+    """H1: after cancel, pipeline_dict can_execute is true when notes exist."""
+    from gnom_hub.pipeline.orchestrator import Pipeline
+
+    class FakeMem:
+        def recall(self, t):
+            return ""
+
+        def store(self, **kw):
+            pass
+
+    bus = EventBus()
+    pipe = Pipeline(bus, llm_manager=None, memory=FakeMem())
+    pipe.brainstorm_turn("only brainstorm ideas for cancel restore")
+    assert (pipe.state.brainstorm_notes or "").strip()
+    pipe.cancel_check = lambda: True
+    pipe.execute()
+    assert pipe.state.stage.value == "brainstorm"
+    # Mimic snapshot rule
+    st = pipe.state
+    can_execute = bool((st.brainstorm_notes or "").strip()) and st.stage.value in (
+        "brainstorm",
+        "idle",
+        "done",
+        "error",
+    )
+    assert can_execute is True
 
 
 def test_html_gates_and_dod():

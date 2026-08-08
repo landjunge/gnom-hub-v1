@@ -81,6 +81,17 @@ No classic `eval` / bare `except:` / SQL f-string injection in core scan.
 | H10 | **Fixed** | IPv4-mapped, link-local/metadata, `.local`, redirect+final re-check |
 | H8 | Partial | Default bind 127.0.0.1 still primary; God-Mode explicit; Inspect gated |
 
+### Wave 2 status (2026-08-08)
+
+| ID | Status | Notes |
+|----|--------|-------|
+| C3 | **Fixed** | `start()` / `brainstorm_turn` catch `PipelineCancelled` (not hard `_fail`) |
+| H1 | **Fixed** | `_abort_cancelled()` restores `brainstorm` when notes exist → `can_execute` |
+| H5 | **Fixed** | `_finalize_job`: cancel always wins; re-check after runner; never done over cancelled |
+| H7 | **Fixed** | `_check_cancel` before memory store in `_finish` + more mid-run checks |
+| M1 | Partial | cancel checks in start / brainstorm / rerun / auto-exec path |
+| M2 | **Fixed** | `cancel_job` only flags cancel + `cancelling`; status terminal on thread finalize |
+
 ---
 
 ## Not a full dynamic audit
