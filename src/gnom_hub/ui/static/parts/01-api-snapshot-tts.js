@@ -562,6 +562,8 @@
    * Flex panel in right Platzhalter (chat-mod-platz-r).
    * After done: quality feedback + learn / re-brainstorm / re-build.
    */
+  let lastFlexReviewKey = "";
+
   function applyFlexReview(panel, pipeline) {
     const root = document.getElementById("flex-review");
     const titleEl = document.getElementById("flex-review-title");
@@ -579,11 +581,10 @@
       badgeEl.hidden = !active;
       badgeEl.textContent = active ? "Feedback" : "";
     }
-    if (qEl) {
-      qEl.textContent =
-        p.question ||
-        "Nach einem Ergebnis fragt Flex hier nach Feedback.";
-    }
+    const qText =
+      p.question ||
+      "Nach einem Ergebnis fragt Flex hier nach Feedback.";
+    if (qEl) qEl.textContent = qText;
     if (hintEl) {
       hintEl.textContent =
         p.hint || "Rechts = Flex lernt & steuert den nächsten Schritt";
@@ -592,6 +593,7 @@
     btnsEl.innerHTML = "";
     const buttons = active ? p.buttons || [] : [];
     if (!active || !buttons.length) {
+      lastFlexReviewKey = "";
       return;
     }
     buttons.forEach(function (b) {
@@ -608,6 +610,33 @@
       });
       btnsEl.appendChild(btn);
     });
+
+    // Flex speaks the review question once (German, after translate pipeline)
+    const speakKey =
+      "flex|" +
+      String(p.question || "").slice(0, 80) +
+      "|" +
+      buttons.map(function (b) {
+        return b.id;
+      }).join(",");
+    if (speakKey !== lastFlexReviewKey) {
+      lastFlexReviewKey = speakKey;
+      const labels = buttons
+        .slice(0, 5)
+        .map(function (b) {
+          return b.label;
+        })
+        .join(", ");
+      const spoken =
+        "Flex. " +
+        String(qText).replace(/\n/g, " ") +
+        " Wähle: " +
+        labels +
+        ".";
+      if (typeof speakOrQueue === "function") {
+        speakOrQueue(spoken);
+      }
+    }
   }
 
   async function onFlexFeedbackClick(btnSpec) {
@@ -620,6 +649,10 @@
         label: label,
       });
       if (res.message) appendChat("system", res.message);
+      // Flex answers by voice (DE) after each button
+      if (res.message && typeof speakOrQueue === "function") {
+        speakOrQueue("Flex. " + String(res.message));
+      }
       if (res.learned && res.learn_text) {
         toast("Gelernt: " + String(res.learn_text).slice(0, 80), "ok");
       } else if (res.action === "learn") {

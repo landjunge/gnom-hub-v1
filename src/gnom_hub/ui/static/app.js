@@ -276,10 +276,7 @@
       const b = document.getElementById("box2-content");
       if (b) return b;
     }
-    if (boxNum === 3 && aid === "worker1") {
-      const b = document.getElementById("box3-content");
-      if (b) return b;
-    }
+    // Never use #box3-content here — that node is the dual-layer stage for previews
     return document.getElementById("box" + boxNum + "-" + aid) ||
       document.querySelector(
         "#box" + boxNum + "-layers .agent-layer[data-agent=\"" + aid + "\"] .agent-layer-body"
@@ -1228,6 +1225,8 @@
    * Flex panel in right Platzhalter (chat-mod-platz-r).
    * After done: quality feedback + learn / re-brainstorm / re-build.
    */
+  let lastFlexReviewKey = "";
+
   function applyFlexReview(panel, pipeline) {
     const root = document.getElementById("flex-review");
     const titleEl = document.getElementById("flex-review-title");
@@ -1245,11 +1244,10 @@
       badgeEl.hidden = !active;
       badgeEl.textContent = active ? "Feedback" : "";
     }
-    if (qEl) {
-      qEl.textContent =
-        p.question ||
-        "Nach einem Ergebnis fragt Flex hier nach Feedback.";
-    }
+    const qText =
+      p.question ||
+      "Nach einem Ergebnis fragt Flex hier nach Feedback.";
+    if (qEl) qEl.textContent = qText;
     if (hintEl) {
       hintEl.textContent =
         p.hint || "Rechts = Flex lernt & steuert den nächsten Schritt";
@@ -1258,6 +1256,7 @@
     btnsEl.innerHTML = "";
     const buttons = active ? p.buttons || [] : [];
     if (!active || !buttons.length) {
+      lastFlexReviewKey = "";
       return;
     }
     buttons.forEach(function (b) {
@@ -1274,6 +1273,33 @@
       });
       btnsEl.appendChild(btn);
     });
+
+    // Flex speaks the review question once (German, after translate pipeline)
+    const speakKey =
+      "flex|" +
+      String(p.question || "").slice(0, 80) +
+      "|" +
+      buttons.map(function (b) {
+        return b.id;
+      }).join(",");
+    if (speakKey !== lastFlexReviewKey) {
+      lastFlexReviewKey = speakKey;
+      const labels = buttons
+        .slice(0, 5)
+        .map(function (b) {
+          return b.label;
+        })
+        .join(", ");
+      const spoken =
+        "Flex. " +
+        String(qText).replace(/\n/g, " ") +
+        " Wähle: " +
+        labels +
+        ".";
+      if (typeof speakOrQueue === "function") {
+        speakOrQueue(spoken);
+      }
+    }
   }
 
   async function onFlexFeedbackClick(btnSpec) {
@@ -1286,6 +1312,10 @@
         label: label,
       });
       if (res.message) appendChat("system", res.message);
+      // Flex answers by voice (DE) after each button
+      if (res.message && typeof speakOrQueue === "function") {
+        speakOrQueue("Flex. " + String(res.message));
+      }
       if (res.learned && res.learn_text) {
         toast("Gelernt: " + String(res.learn_text).slice(0, 80), "ok");
       } else if (res.action === "learn") {
@@ -4684,16 +4714,18 @@
       body.appendChild(empty);
     });
 
+    const dual = document.getElementById("box3-dual");
     if (!outputs.length) {
-      const dualEmpty = document.getElementById("box3-dual");
-      if (dualEmpty) {
-        dualEmpty.hidden = true;
-        dualEmpty.setAttribute("aria-hidden", "true");
+      if (dual) {
+        dual.hidden = true;
+        dual.setAttribute("aria-hidden", "true");
+        dual.classList.remove("is-showing");
       }
       return;
     }
 
-    /* each worker output → that agent’s layer in box 3 */
+    /* each worker output → that agent’s layer body (box3-workerN), never #box3-content */
+    let firstAgentId = "worker1";
     outputs.forEach(function (out, idx) {
       const wid =
         (out && (out.worker || out.id || out.name) || "").toString().toLowerCase();
@@ -4703,10 +4735,11 @@
       else if (/worker\s*3|w3/.test(wid) || wid === "worker3") agentId = "worker3";
       else if (/worker\s*4|w4/.test(wid) || wid === "worker4") agentId = "worker4";
       else agentId = "worker" + Math.min(idx + 1, 4);
+      if (idx === 0) firstAgentId = agentId;
 
       const body =
         (typeof getAgentBoxBody === "function" && getAgentBoxBody(3, agentId)) ||
-        document.getElementById(agentId === "worker1" ? "box3-content" : "box3-" + agentId);
+        document.getElementById("box3-" + agentId);
       if (!body) return;
       body.innerHTML = "";
       body.classList.add("box3-dynamic");
@@ -4715,15 +4748,34 @@
       });
     });
 
-    // Always surface first result in dual layer so Box 3 is visible without agent click
-    const dual = document.getElementById("box3-dual");
+    /*
+     * Primary visible surface: dual stage ON TOP of agent stack.
+     * User must see result without clicking a worker card.
+     */
     if (dual) {
       dual.hidden = false;
       dual.setAttribute("aria-hidden", "false");
-      const front =
-        dual.querySelector(".layer-slot.is-front") || dual.querySelector(".layer-slot");
+      dual.classList.add("is-showing");
+      const front = dual.querySelector(".layer-slot-a") || dual.querySelector(".layer-slot");
+      const back = dual.querySelector(".layer-slot-b");
       if (front) {
+        front.classList.add("is-front");
+        front.classList.remove("is-back");
         paintWorkerIntoSlot(front, outputs[0], 0);
+      }
+      if (back) {
+        back.classList.remove("is-front");
+        back.classList.add("is-back");
+        back.innerHTML = "";
+      }
+    }
+
+    // Also switch agent stack to first worker (behind dual, for card-sync)
+    if (typeof activateAgentLayer === "function") {
+      try {
+        activateAgentLayer(firstAgentId, false);
+      } catch (_e) {
+        /* ignore */
       }
     }
 

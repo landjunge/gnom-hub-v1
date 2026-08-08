@@ -1723,14 +1723,45 @@ body.worker-fs-open {
   font-size: 11px;
 }
 
-/* Box 3: show dual layer with live preview after Execute (user must see result) */
+/* Box 3: dual stage sits above agent layers so result is always visible */
 .box-3 {
   position: relative;
 }
+
+#box3-dual {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: none;
+  min-height: 120px;
+  background: #0b0c0e;
+}
+
+#box3-dual.is-showing,
 #box3-dual:not([hidden]) {
-  display: block;
-  z-index: 3;
+  display: block !important;
   pointer-events: auto;
+}
+
+#box3-dual .layer-slot.is-front {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  z-index: 2;
+}
+
+#box3-dual .dyn-host,
+#box3-dual .dyn-stage,
+#box3-dual .worker-preview-frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  background: #0b0c0e;
+}
+
+#box3-dual .worker-preview-frame {
+  border: 0;
+  background: #fff;
 }
 
 .chat-mod-chat,

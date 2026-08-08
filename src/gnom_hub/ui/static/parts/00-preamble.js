@@ -276,10 +276,7 @@
       const b = document.getElementById("box2-content");
       if (b) return b;
     }
-    if (boxNum === 3 && aid === "worker1") {
-      const b = document.getElementById("box3-content");
-      if (b) return b;
-    }
+    // Never use #box3-content here — that node is the dual-layer stage for previews
     return document.getElementById("box" + boxNum + "-" + aid) ||
       document.querySelector(
         "#box" + boxNum + "-layers .agent-layer[data-agent=\"" + aid + "\"] .agent-layer-body"

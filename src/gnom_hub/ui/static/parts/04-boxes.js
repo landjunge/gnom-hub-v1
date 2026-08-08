@@ -230,16 +230,18 @@
       body.appendChild(empty);
     });
 
+    const dual = document.getElementById("box3-dual");
     if (!outputs.length) {
-      const dualEmpty = document.getElementById("box3-dual");
-      if (dualEmpty) {
-        dualEmpty.hidden = true;
-        dualEmpty.setAttribute("aria-hidden", "true");
+      if (dual) {
+        dual.hidden = true;
+        dual.setAttribute("aria-hidden", "true");
+        dual.classList.remove("is-showing");
       }
       return;
     }
 
-    /* each worker output → that agent’s layer in box 3 */
+    /* each worker output → that agent’s layer body (box3-workerN), never #box3-content */
+    let firstAgentId = "worker1";
     outputs.forEach(function (out, idx) {
       const wid =
         (out && (out.worker || out.id || out.name) || "").toString().toLowerCase();
@@ -249,10 +251,11 @@
       else if (/worker\s*3|w3/.test(wid) || wid === "worker3") agentId = "worker3";
       else if (/worker\s*4|w4/.test(wid) || wid === "worker4") agentId = "worker4";
       else agentId = "worker" + Math.min(idx + 1, 4);
+      if (idx === 0) firstAgentId = agentId;
 
       const body =
         (typeof getAgentBoxBody === "function" && getAgentBoxBody(3, agentId)) ||
-        document.getElementById(agentId === "worker1" ? "box3-content" : "box3-" + agentId);
+        document.getElementById("box3-" + agentId);
       if (!body) return;
       body.innerHTML = "";
       body.classList.add("box3-dynamic");
@@ -261,15 +264,34 @@
       });
     });
 
-    // Always surface first result in dual layer so Box 3 is visible without agent click
-    const dual = document.getElementById("box3-dual");
+    /*
+     * Primary visible surface: dual stage ON TOP of agent stack.
+     * User must see result without clicking a worker card.
+     */
     if (dual) {
       dual.hidden = false;
       dual.setAttribute("aria-hidden", "false");
-      const front =
-        dual.querySelector(".layer-slot.is-front") || dual.querySelector(".layer-slot");
+      dual.classList.add("is-showing");
+      const front = dual.querySelector(".layer-slot-a") || dual.querySelector(".layer-slot");
+      const back = dual.querySelector(".layer-slot-b");
       if (front) {
+        front.classList.add("is-front");
+        front.classList.remove("is-back");
         paintWorkerIntoSlot(front, outputs[0], 0);
+      }
+      if (back) {
+        back.classList.remove("is-front");
+        back.classList.add("is-back");
+        back.innerHTML = "";
+      }
+    }
+
+    // Also switch agent stack to first worker (behind dual, for card-sync)
+    if (typeof activateAgentLayer === "function") {
+      try {
+        activateAgentLayer(firstAgentId, false);
+      } catch (_e) {
+        /* ignore */
       }
     }
 
