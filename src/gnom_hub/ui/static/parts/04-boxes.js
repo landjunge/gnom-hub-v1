@@ -218,26 +218,80 @@
       return false;
     }
     body.innerHTML = "";
-    body.classList.add("box3-dynamic");
+    body.classList.add("box3-dynamic", "box3-result-split");
     const name = (out && (out.name || out.worker)) || "Worker";
+    const html = extractHtml(raw);
     if (label) {
       label.textContent =
-        name + " · " + raw.length + " Zeichen" + (lastWorkerOutputs.length > 1
+        name +
+        " · " +
+        raw.length +
+        " Zeichen" +
+        (html ? " · HTML-Preview" : " · Text") +
+        (lastWorkerOutputs.length > 1
           ? " · " + lastWorkerOutputs.length + " Worker"
           : "");
     }
-    renderDynamicContent(body, raw, { title: name + " Ergebnis" });
+
+    /*
+     * Split view: ALWAYS show readable source + optional live preview.
+     * iframe-only looked "only white" when CSS was broken / height collapsed.
+     */
+    const split = document.createElement("div");
+    split.className = "box3-split";
+
+    if (html) {
+      const prevWrap = document.createElement("div");
+      prevWrap.className = "box3-split-preview";
+      const frame = document.createElement("iframe");
+      frame.className = "worker-preview-frame box3-live-frame";
+      frame.setAttribute("title", name + " Preview");
+      frame.setAttribute(
+        "sandbox",
+        "allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
+      );
+      // blob URL is more reliable than srcdoc on some Chromium builds
+      try {
+        const blob = new Blob([wrapHtmlDocument(html)], {
+          type: "text/html;charset=utf-8",
+        });
+        frame.src = URL.createObjectURL(blob);
+        frame._blobUrl = frame.src;
+      } catch (_e) {
+        frame.srcdoc = wrapHtmlDocument(html);
+      }
+      prevWrap.appendChild(frame);
+      split.appendChild(prevWrap);
+    }
+
+    const srcWrap = document.createElement("div");
+    srcWrap.className = "box3-split-source";
+    const srcHead = document.createElement("div");
+    srcHead.className = "box3-split-source-h";
+    srcHead.textContent = html ? "Quelltext (Worker-Ausgabe)" : "Worker-Ausgabe";
+    const pre = document.createElement("pre");
+    pre.className = "result-block box3-result-pre";
+    pre.textContent = raw.slice(0, 30000);
+    srcWrap.appendChild(srcHead);
+    srcWrap.appendChild(pre);
+    split.appendChild(srcWrap);
+
+    body.appendChild(split);
     stage.hidden = false;
+    stage.removeAttribute("hidden");
     stage.classList.add("is-open");
-    // Fullscreen button
+
     const fs = document.getElementById("box3-result-fs");
     if (fs && !fs._bound) {
       fs._bound = true;
       fs.addEventListener("click", function () {
         const cur = lastWorkerOutputs[box3FocusIdx] || out;
-        const html = extractHtml((cur && cur.result) || "") || "";
+        const raw2 = (cur && cur.result) || "";
+        const html2 = extractHtml(raw2) || "";
         if (typeof openWorkerFullscreen === "function") {
-          openWorkerFullscreen(cur, (cur && cur.result) || "", html);
+          openWorkerFullscreen(cur, raw2, html2);
+        } else if (html2) {
+          openWorkerInTab(html2);
         }
       });
     }

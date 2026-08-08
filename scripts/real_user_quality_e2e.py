@@ -70,7 +70,30 @@ def _box2(page) -> str:
 
 
 def _box3(page) -> str:
-    return page.locator("#box3-content").inner_text()
+    """Prefer dedicated result stage; fall back to dual / agent layers."""
+    for sel in (
+        "#box3-result-body",
+        "#box3-result-label",
+        "#box3-content",
+        "#box3-worker1",
+        "#box3",
+    ):
+        try:
+            loc = page.locator(sel)
+            if loc.count() == 0:
+                continue
+            # result stage must be open
+            if sel.startswith("#box3-result"):
+                stage = page.locator("#box3-result-stage")
+                if stage.count() and not stage.is_visible():
+                    continue
+            t = loc.inner_text(timeout=2000)
+            if t and t.strip():
+                return t
+        except Exception as _exc:
+            _ = _exc
+            continue
+    return ""
 
 
 def _user_type(page, text: str) -> str:
@@ -129,7 +152,7 @@ def _prepare_deutsch_ui(page) -> None:
 
 
 def _focus_box3_visible(page) -> None:
-    """Box 3 ins Sichtfeld holen (wie echter User nach Execute)."""
+    """Box 3 + result-stage ins Sichtfeld holen."""
     try:
         page.evaluate(
             """() => {
@@ -137,6 +160,10 @@ def _focus_box3_visible(page) -> None:
               if (box) {
                 box.scrollIntoView({ behavior: 'instant', block: 'center' });
                 box.classList.add('box3-flash');
+              }
+              const st = document.getElementById('box3-result-stage');
+              if (st && st.classList.contains('is-open')) {
+                st.scrollIntoView({ behavior: 'instant', block: 'nearest' });
               }
               if (typeof focusBox3 === 'function') focusBox3();
             }"""
@@ -150,22 +177,46 @@ def _focus_box3_visible(page) -> None:
 
 
 def _wait_box3_result(page, *, timeout_ms: int = 120_000) -> str:
-    """Warten bis Box 3 echten Worker-Inhalt zeigt (nicht nur Platzhalter)."""
+    """Warten bis Box 3 echten Worker-Inhalt zeigt (result-stage / iframe / text)."""
     deadline = time.time() + timeout_ms / 1000.0
     last = ""
     while time.time() < deadline:
         _focus_box3_visible(page)
         try:
-            last = page.locator("#box3-content").inner_text()
+            # Force UI to open result stage if API already has workers
+            page.evaluate(
+                """() => {
+                  const st = document.getElementById('box3-result-stage');
+                  const body = document.getElementById('box3-result-body');
+                  if (st && body && body.innerText && body.innerText.length > 40) {
+                    st.hidden = false;
+                    st.classList.add('is-open');
+                  }
+                }"""
+            )
         except Exception:
-            last = ""
-        panels = page.locator(".worker-panel").count()
+            pass
+        try:
+            stage = page.locator("#box3-result-stage")
+            if stage.count() and stage.is_visible():
+                last = page.locator("#box3-result-body").inner_text(timeout=1500)
+                label = ""
+                try:
+                    label = page.locator("#box3-result-label").inner_text(timeout=500)
+                except Exception:
+                    pass
+                iframes = page.locator("#box3-result-body .worker-preview-frame").count()
+                if iframes >= 1 or (last and len(last) > 40) or (label and "Zeichen" in label):
+                    time.sleep(1.5 if HEADED else 0.3)
+                    return (label + "\n" + last).strip()
+        except Exception:
+            pass
+        last = _box3(page)
         iframes = page.locator(".worker-preview-frame").count()
-        # Content markers
         low = last.lower()
-        has_body = len(last) > 80 and "appear here" not in low
-        if (panels >= 1 or iframes >= 1 or has_body) and (has_body or iframes >= 1):
-            time.sleep(1.2 if HEADED else 0.3)  # kurz sichtbar lassen
+        has_body = len(last) > 80 and "appear here" not in low and "noch kein" not in low
+        if has_body or iframes >= 1:
+            time.sleep(1.2 if HEADED else 0.3)
             return last
         time.sleep(0.5)
     return last
@@ -765,6 +816,10 @@ def main() -> int:
             sid, fn = meta
             print(f"\n▶ {sid} startet (Deutsch, sichtbares UI)…")
             try:
+                # Recover page if previous scenario closed the browser
+                if page.is_closed():
+                    page = context.new_page()
+                    page.set_default_timeout(120_000)
                 row = fn(page, run_dir, log)
             except Exception as exc:
                 print(f"  ✗ {sid} exception: {exc}")
@@ -780,6 +835,12 @@ def main() -> int:
                     },
                     "total": {"score": 0, "max": 30, "pct": 0.0},
                 }
+                try:
+                    if page.is_closed():
+                        page = context.new_page()
+                        page.set_default_timeout(120_000)
+                except Exception:
+                    pass
             scenarios_out.append(row)
             print(
                 f"  {'✓' if row.get('ok') else '✗'} {sid} "
@@ -787,7 +848,10 @@ def main() -> int:
             )
             time.sleep(0.8 if HEADED else 0.1)
 
-        browser.close()
+        try:
+            browser.close()
+        except Exception:
+            pass
 
     score_sum = sum(int((s.get("total") or {}).get("score") or 0) for s in scenarios_out)
     score_max = sum(int((s.get("total") or {}).get("max") or 0) for s in scenarios_out) or 1
