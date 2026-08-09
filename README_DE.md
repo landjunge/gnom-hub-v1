@@ -379,7 +379,7 @@ Flex-Vertrag: [docs/AGENTS_DEFINITION.md](docs/AGENTS_DEFINITION.md) · Tests: [
 | [README.md](README.md) | English README |
 | [AGENTS.md](AGENTS.md) | Coding-Regeln · Push-Gate |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Systemkarte |
-| [docs/MERMAID.md](docs/MERMAID.md) | Mermaid-Konventionen |
+| [docs/MERMAID.md](docs/MERMAID.md) | Mermaid-Syntax-Referenz · Klassen-Palette |
 | [docs/CODE_ANALYSIS_FOR_AI.md](docs/CODE_ANALYSIS_FOR_AI.md) | Voller KI-Handoff |
 | [docs/KEYS_AND_MODELS.md](docs/KEYS_AND_MODELS.md) | Keys & Modelle |
 | [docs/PLUGIN_SECURITY.md](docs/PLUGIN_SECURITY.md) | Plugin-Trust & Authoring |

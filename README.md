@@ -379,7 +379,7 @@ Flex contract: [docs/AGENTS_DEFINITION.md](docs/AGENTS_DEFINITION.md) · Tests: 
 | [README_DE.md](README_DE.md) | German README |
 | [AGENTS.md](AGENTS.md) | Coding rules · push gate |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System map |
-| [docs/MERMAID.md](docs/MERMAID.md) | Mermaid diagram conventions |
+| [docs/MERMAID.md](docs/MERMAID.md) | Mermaid syntax reference · class palette |
 | [docs/CODE_ANALYSIS_FOR_AI.md](docs/CODE_ANALYSIS_FOR_AI.md) | Full AI handoff |
 | [docs/KEYS_AND_MODELS.md](docs/KEYS_AND_MODELS.md) | Keys & models |
 | [docs/PLUGIN_SECURITY.md](docs/PLUGIN_SECURITY.md) | Plugin trust & authoring |
