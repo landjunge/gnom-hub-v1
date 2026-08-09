@@ -208,6 +208,27 @@ def test_execute_injects_flex_wish_requirements(tmp_path: Path):
     assert st.flex_notes
 
 
+def test_execute_dedupes_flex_wish_inject(tmp_path: Path):
+    """Same core wish must not appear twice (User: + Flex-wish: User:)."""
+    from gnom_hub.memory.dedupe import core_key
+
+    bus = EventBus()
+    pipe = Pipeline(bus)
+    pipe.brainstorm_turn("Landing page ideas only")
+    # Already in requirements-like memory AND as User line
+    pipe.state.memory_context = "User: always enable dark theme\n"
+    pipe.state.distilled_requirements = [
+        "Ziel: landing",
+        "User: always enable dark theme",
+    ]
+    st = pipe.execute()
+    if st.stage == PipelineStage.clarify:
+        st = pipe.answer_clarify("Schnell und einfach")
+    keys = [core_key(r) for r in st.distilled_requirements]
+    dark_hits = [k for k in keys if k == "always enable dark theme"]
+    assert len(dark_hits) == 1, st.distilled_requirements
+
+
 def test_coordinator_html_plan_embeds_flex_wish():
     bus = EventBus()
     coord = CoordinatorAgent(AgentManager(bus).get(AgentId.COORDINATOR), bus, llm=None)

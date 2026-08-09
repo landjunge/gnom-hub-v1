@@ -23,6 +23,11 @@ Workflow: `.github/workflows/mutation-nightly.yml`
 PYTHONPATH=src python scripts/vector_rank_eval.py
 ```
 
+Rank-eval includes **phrase distractors** (same adjacent phrase, wrong sense),
+`source_ok@1`, and **avg margin** (top1−top2). Defaults must stay above the
+script thresholds — do not weaken the gold set to green CI.
+
+
 ## Smoke
 
 ```bash

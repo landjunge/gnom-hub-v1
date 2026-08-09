@@ -23,6 +23,7 @@ def test_vector_rank_eval_script_passes():
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "PASS" in proc.stdout
+    assert "phrase_trap" in proc.stdout or "phrase_trap P@1" in proc.stdout
 
 
 def test_vector_rank_eval_json_metrics():
@@ -40,4 +41,8 @@ def test_vector_rank_eval_json_metrics():
     assert report["pass"] is True
     assert report["p_at_1"] >= 0.85
     assert report["mrr"] >= 0.90
-    assert report["n"] >= 6
+    assert report["source_ok_at_1"] >= 0.75
+    assert report["avg_margin"] >= 0.05
+    assert report["n"] >= 8
+    assert report["phrase_trap_n"] >= 3
+    assert "phrase_trap_p_at_1" in report
