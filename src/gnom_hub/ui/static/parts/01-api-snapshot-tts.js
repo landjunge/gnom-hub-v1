@@ -138,6 +138,37 @@
     if (els.coldBadge && snap.cold) {
       els.coldBadge.textContent = "Cold: " + (snap.cold.count || 0);
     }
+    if (els.toolsBadge) {
+      const calls = (p && p.tool_calls) || [];
+      const n = calls.length;
+      const names = calls
+        .map(function (c) {
+          return (c && c.name) || "?";
+        })
+        .slice(0, 8);
+      const uniq = [];
+      names.forEach(function (nm) {
+        if (uniq.indexOf(nm) < 0) uniq.push(nm);
+      });
+      els.toolsBadge.textContent = n ? "Tools: " + n : "Tools: 0";
+      els.toolsBadge.classList.toggle("has-calls", n > 0);
+      els.toolsBadge.title =
+        n > 0
+          ? "This run: " +
+            uniq.join(", ") +
+            (n > uniq.length ? " (+)" : "") +
+            " · " +
+            n +
+            " call(s) · pipeline.tool_calls"
+          : "No tool calls this pipeline run (web_fetch / install_tool / memory_search)";
+      if (n > 0 && (p.stage === "done" || p.stage === "work")) {
+        const tk = uniq.join(",") + "|" + n;
+        if (tk !== lastToolsKey) {
+          lastToolsKey = tk;
+          toast("Tools: " + uniq.join(", ") + " (" + n + ")", "ok");
+        }
+      }
+    }
 
     // Only toast fresh pipeline warnings/errors (avoid re-firing on every poll/bootstrap)
     if (snap.last_error && p.stage === "error") {

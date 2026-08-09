@@ -91,6 +91,7 @@
     btnReset: document.getElementById("btn-reset"),
     stageBadge: document.getElementById("stage-badge"),
     llmBadge: document.getElementById("llm-badge"),
+    toolsBadge: document.getElementById("tools-badge"),
     costBadge: document.getElementById("cost-badge"),
     usageModal: document.getElementById("usage-modal"),
     memBadge: document.getElementById("mem-badge"),
@@ -127,6 +128,7 @@
   let ttsPumping = false;
   let lastAgentThoughts = {}; // reasoning streams for TTS (not Box text)
   let lastNudgeKey = ""; // avoid re-spamming Flex corrections in chat
+  let lastToolsKey = ""; // avoid re-toasting tool_calls
   let currentJobId = null;
   let lastWorkerOutputs = [];
   let jobTimerStart = null;

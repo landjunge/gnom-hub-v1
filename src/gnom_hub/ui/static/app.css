@@ -328,6 +328,7 @@ html, body {
 }
 
 .stage-badge,
+.tools-badge,
 .llm-badge,
 .cost-badge,
 .mem-badge,
@@ -470,7 +471,13 @@ html, body {
   color: #f88;
   background: rgba(204, 68, 68, 0.12);
 }
+.tools-badge.has-calls {
+  border-color: #3a8f6e;
+  color: #7dcea0;
+  background: rgba(58, 143, 110, 0.12);
+}
 .llm-badge.has-key {
+
 
   color: var(--text);
   border-color: #3f434c;
