@@ -97,3 +97,89 @@ def test_prefetch_respects_max_tool_calls(tmp_path: Path):
     blob = " ".join(f"https://example.com/p{i}" for i in range(10))
     prefetch_for_workers(blob, bus=bus, tools=tools, max_tool_calls=2, max_urls=10)
     assert n["c"] == 2
+
+
+def test_packages_needed_playwright():
+    from gnom_hub.tools.worker_prefetch import packages_needed, tool_calls_needed
+
+    assert "playwright" in packages_needed("use playwright for browser e2e")
+    assert "install_tool:playwright" in tool_calls_needed("need playwright chromium")
+
+
+def test_prefetch_install_tool_dry_then_install():
+    bus = EventBus()
+    events: list[dict] = []
+    bus.on("pipeline.tool_call", lambda d: events.append(d if isinstance(d, dict) else {}))
+
+    calls: list[dict] = []
+
+    def fake_install(package: str = "", dry_run: bool = False):
+        calls.append({"package": package, "dry_run": dry_run})
+        if dry_run:
+            return {
+                "ok": True,
+                "package": package,
+                "already_installed": False,
+                "dry_run": True,
+                "message": f"would install {package}",
+            }
+        return {
+            "ok": True,
+            "package": package,
+            "already_installed": True,
+            "dry_run": False,
+            "message": f"installed {package}",
+        }
+
+    tools = ToolRegistry()
+    tools.register(
+        ToolSpec(
+            name="install_tool",
+            description="install",
+            handler=fake_install,
+            plugin="core",
+        )
+    )
+    ctx = prefetch_for_workers(
+        "Please install playwright for e2e checks",
+        bus=bus,
+        tools=tools,
+        memory=None,
+        max_tool_calls=5,
+    )
+    assert "install_tool" in ctx or "playwright" in ctx
+    assert any(c["dry_run"] is True for c in calls)
+    assert any(c["dry_run"] is False for c in calls)
+    names = [e.get("name") for e in events]
+    assert names.count("install_tool") >= 2
+
+
+def test_prefetch_skips_install_if_already_there():
+    bus = EventBus()
+    events: list[dict] = []
+    bus.on("pipeline.tool_call", lambda d: events.append(d if isinstance(d, dict) else {}))
+    installs = {"n": 0}
+
+    def fake_install(package: str = "", dry_run: bool = False):
+        if not dry_run:
+            installs["n"] += 1
+        return {
+            "ok": True,
+            "package": package,
+            "already_installed": True,
+            "dry_run": dry_run,
+            "message": "already",
+        }
+
+    tools = ToolRegistry()
+    tools.register(
+        ToolSpec(name="install_tool", description="i", handler=fake_install, plugin="core")
+    )
+    prefetch_for_workers(
+        "playwright browser e2e",
+        bus=bus,
+        tools=tools,
+        max_tool_calls=5,
+    )
+    assert installs["n"] == 0
+    assert any(e.get("name") == "install_tool" for e in events)

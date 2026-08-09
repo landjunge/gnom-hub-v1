@@ -1,4 +1,4 @@
-"""Prefetch tools for worker stage — URLs + memory_search (KISS, budget-capped)."""
+"""Prefetch tools for worker stage — URLs + memory + install_tool (KISS, budget-capped)."""
 
 from __future__ import annotations
 
@@ -23,6 +23,31 @@ _MEMORY_HINTS = (
     "warm",
 )
 
+# Task keywords → allowlisted install_tool package key
+# Keep aligned with plugins/install_tool/main.py _ALLOW
+_PACKAGE_HINTS: list[tuple[str, tuple[str, ...]]] = [
+    ("playwright", ("playwright", "chromium", "browser e2e", "headed browser")),
+    ("beautifulsoup4", ("beautifulsoup", "beautifulsoup4", " bs4 ", "bs4.", "html soup")),
+    ("lxml", ("lxml",)),
+    ("pillow", ("pillow", " PIL", "screenshot png", "image screenshot")),
+    ("pytesseract", ("pytesseract", "ocr ", "tesseract")),
+    ("pyautogui", ("pyautogui", "mouse click", "gui automation")),
+    ("mss", (" mss", "screen capture", "monitor capture")),
+    ("pynput", ("pynput", "keyboard control", "mouse control")),
+]
+
+
+def packages_needed(blob: str) -> list[str]:
+    """Allowlisted package keys implied by task text (order preserved)."""
+    low = f" {(blob or '').lower()} "
+    out: list[str] = []
+    seen: set[str] = set()
+    for pkg, keys in _PACKAGE_HINTS:
+        if pkg not in seen and any(k in low for k in keys):
+            seen.add(pkg)
+            out.append(pkg)
+    return out
+
 
 def _emit_tool_call(bus: Any, name: str, args: dict[str, Any], result: Any) -> None:
     if bus is None:
@@ -34,7 +59,18 @@ def _emit_tool_call(bus: Any, name: str, args: dict[str, Any], result: Any) -> N
         ok = bool(result.get("ok", True))
         err = result.get("error")
         # keep trace small
-        summary = {k: result[k] for k in ("ok", "error", "url", "status") if k in result}
+        keys = (
+            "ok",
+            "error",
+            "url",
+            "status",
+            "package",
+            "installed",
+            "already_installed",
+            "message",
+            "dry_run",
+        )
+        summary = {k: result[k] for k in keys if k in result}
         if "text" in result:
             summary["text_len"] = len(str(result.get("text") or ""))
         if not summary and result:
@@ -76,6 +112,66 @@ def _call_tool(
     return {"ok": False, "error": f"tool {name!r} unavailable"}
 
 
+def _registry_has(tools: Any | None, name: str) -> bool:
+    if tools is None:
+        return False
+    if hasattr(tools, "list_tools"):
+        try:
+            return any(str(t.get("name")) == name for t in (tools.list_tools() or []))
+        except Exception:  # noqa: BLE001
+            pass
+    # ToolRegistry stores in _tools
+    inner = getattr(tools, "_tools", None)
+    return isinstance(inner, dict) and name in inner
+
+
+def _ensure_packages(
+    blob: str,
+    *,
+    bus: Any,
+    tools: Any | None,
+    calls: int,
+    max_tool_calls: int,
+) -> tuple[list[str], int]:
+    """install_tool dry_run → install if missing. Returns (context lines, calls_used)."""
+    chunks: list[str] = []
+    if not _registry_has(tools, "install_tool"):
+        return chunks, calls
+
+    for pkg in packages_needed(blob):
+        if calls >= max_tool_calls:
+            break
+        # 1) status (dry_run)
+        args_dry = {"package": pkg, "dry_run": True}
+        st = _call_tool(tools, "install_tool", args_dry)
+        calls += 1
+        _emit_tool_call(bus, "install_tool", args_dry, st)
+
+        # install_tool shape: already_installed + dry_run
+        installed = bool(isinstance(st, dict) and st.get("already_installed"))
+
+        if installed:
+            chunks.append(f"install_tool: {pkg} already installed")
+            continue
+
+        if calls >= max_tool_calls:
+            chunks.append(f"install_tool: {pkg} missing (budget exhausted, not installed)")
+            break
+
+        # 2) real install
+        args_inst = {"package": pkg, "dry_run": False}
+        res = _call_tool(tools, "install_tool", args_inst)
+        calls += 1
+        _emit_tool_call(bus, "install_tool", args_inst, res)
+        if isinstance(res, dict) and res.get("ok"):
+            chunks.append(f"install_tool: installed {pkg}")
+        else:
+            err = res.get("error") if isinstance(res, dict) else "install failed"
+            chunks.append(f"install_tool: failed {pkg} ({err})")
+
+    return chunks, calls
+
+
 def prefetch_for_workers(
     blob: str,
     *,
@@ -88,6 +184,7 @@ def prefetch_for_workers(
     """
     Run allowlisted prefetches and return a context block for workers.
 
+    - install_tool for missing allowlisted packages named in the task
     - http(s) URLs → web_fetch (via ToolRegistry when present)
     - memory_search when hints match and vectors available
     Emits pipeline.tool_call per invocation. Caps at max_tool_calls.
@@ -95,6 +192,12 @@ def prefetch_for_workers(
     text = blob or ""
     chunks: list[str] = []
     calls = 0
+
+    # ── install missing deps (allowlist) ──────────────────────────────
+    inst_lines, calls = _ensure_packages(
+        text, bus=bus, tools=tools, calls=calls, max_tool_calls=max_tool_calls
+    )
+    chunks.extend(inst_lines)
 
     # ── URLs ──────────────────────────────────────────────────────────
     urls: list[str] = []
@@ -133,7 +236,6 @@ def prefetch_for_workers(
     want_mem = any(h in low for h in _MEMORY_HINTS)
     vectors = getattr(memory, "vectors", None) if memory is not None else None
     if want_mem and vectors is not None and calls < max_tool_calls:
-        # Prefer first user-looking line / head of blob as query
         query = " ".join(text.split())[:180]
         args = {"query": query, "limit": 3}
         if tools is not None and hasattr(tools, "call"):
@@ -167,6 +269,8 @@ def tool_calls_needed(blob: str) -> list[str]:
     """Which tools would prefetch attempt (for tests / planning)."""
     text = blob or ""
     out: list[str] = []
+    for pkg in packages_needed(text):
+        out.append(f"install_tool:{pkg}")
     if _URL_RE.search(text):
         out.append("web_fetch")
     low = text.lower()
