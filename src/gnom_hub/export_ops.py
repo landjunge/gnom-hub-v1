@@ -128,6 +128,8 @@ class ExportOpsMixin:
             "flex_notes": st.flex_notes or "",
             "quality_notes": st.quality_notes or "",
             "worker_outputs": list(st.worker_outputs or []),
+            "tool_log": list(getattr(st, "tool_log", None) or [])[-40:],
+            "resolved_plan_mode": getattr(st, "resolved_plan_mode", "") or "",
             "saved_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         }
 
@@ -147,6 +149,8 @@ class ExportOpsMixin:
                 "flex_notes": st.flex_notes or "",
                 "quality_notes": st.quality_notes or "",
                 "worker_outputs": list(st.worker_outputs or []),
+                "tool_log": list(getattr(st, "tool_log", None) or [])[-40:],
+                "resolved_plan_mode": getattr(st, "resolved_plan_mode", "") or "",
                 "source": "live",
             }
         elif isinstance(pinned, dict) and (
@@ -163,6 +167,7 @@ class ExportOpsMixin:
                 "flex_notes": st.flex_notes or "",
                 "quality_notes": st.quality_notes or "",
                 "worker_outputs": list(st.worker_outputs or []),
+                "tool_log": list(getattr(st, "tool_log", None) or [])[-40:],
                 "source": "empty",
             }
         parts = [
@@ -170,6 +175,7 @@ class ExportOpsMixin:
             f"stage={src.get('stage')}",
             f"user={src.get('user_text')}",
             f"source={src.get('source')}",
+            f"plan_mode={src.get('resolved_plan_mode') or ''}",
             "",
             "## Brainstorm",
             str(src.get("brainstorm_notes") or "(none)"),
@@ -183,7 +189,17 @@ class ExportOpsMixin:
             "## Quality",
             str(src.get("quality_notes") or "(none)"),
             "",
+            "## Tools",
         ]
+        tlog = src.get("tool_log") or []
+        if tlog:
+            for e in tlog:
+                if not isinstance(e, dict):
+                    continue
+                parts.append(f"- {e.get('tool')} ok={e.get('ok')} mode={e.get('mode')}")
+        else:
+            parts.append("(none)")
+        parts.append("")
         for out in src.get("worker_outputs") or []:
             if not isinstance(out, dict):
                 continue
@@ -199,6 +215,7 @@ class ExportOpsMixin:
             "chars": len(text),
             "source": src.get("source"),
             "saved_at": src.get("saved_at"),
+            "tool_log": list(tlog)[-40:],
         }
 
     def _capture_workspace_outputs(self) -> None:

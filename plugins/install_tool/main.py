@@ -1,155 +1,228 @@
-"""install_tool plugin – allowlisted package check + pip install.
+"""
+Plugin install_tool — agents self-heal missing deps (pip allowlist only).
 
-Only packages needed for computer-use / tools may be installed.
-Runs with hub privileges; keep the allowlist tight.
-
-Transient pip failures raise ToolRetry so the registry retry shell
-can re-attempt; permanent errors return ok=False (or ToolFailed).
+API (agents):
+  install_tool(package|name, dry_run=False, install_browsers=True for playwright)
+  install_tool_check(package|name)
+  install_tool_stack(which=all|browser|gui)
 """
 
 from __future__ import annotations
 
-import importlib.util
+import importlib
 import subprocess
 import sys
 from typing import Any
 
-from gnom_hub.plugins.retry import ToolFailed, ToolRetry
-
-# Short name → (pip name, import name)
-_ALLOW: dict[str, tuple[str, str]] = {
-    "playwright": ("playwright", "playwright"),
-    "pyautogui": ("pyautogui", "pyautogui"),
-    "mss": ("mss", "mss"),
-    "pillow": ("Pillow", "PIL"),
-    "pil": ("Pillow", "PIL"),
-    "pytesseract": ("pytesseract", "pytesseract"),
-    "pynput": ("pynput", "pynput"),
-    "beautifulsoup4": ("beautifulsoup4", "bs4"),
-    "bs4": ("beautifulsoup4", "bs4"),
-    "lxml": ("lxml", "lxml"),
+# Tight allowlist (user/product rule)
+ALLOWED: dict[str, dict[str, str]] = {
+    "playwright": {"import": "playwright", "pip": "playwright"},
+    "pyautogui": {"import": "pyautogui", "pip": "pyautogui"},
+    "mss": {"import": "mss", "pip": "mss"},
+    "pillow": {"import": "PIL", "pip": "Pillow"},
+    "pytesseract": {"import": "pytesseract", "pip": "pytesseract"},
+    "pynput": {"import": "pynput", "pip": "pynput"},
+    "beautifulsoup4": {"import": "bs4", "pip": "beautifulsoup4"},
+    "bs4": {"import": "bs4", "pip": "beautifulsoup4"},
+    "lxml": {"import": "lxml", "pip": "lxml"},
 }
 
-_TRANSIENT_MARKERS = (
-    "timeout",
-    "timed out",
-    "temporarily unavailable",
-    "connection reset",
-    "connection refused",
-    "network is unreachable",
-    "temporary failure",
-    "could not find a version that satisfies",  # often mirror blip — allow one retry
-)
+_ALIASES = {
+    "pil": "pillow",
+    "bs4": "beautifulsoup4",
+    "beautiful_soup": "beautifulsoup4",
+    "pw": "playwright",
+    "browser": "playwright",
+    "mouse": "pyautogui",
+    "gui": "pyautogui",
+    "ocr": "pytesseract",
+    "tesseract": "pytesseract",
+}
 
 
-def _is_installed(import_name: str) -> bool:
-    return importlib.util.find_spec(import_name) is not None
+def _norm(name: str) -> str:
+    n = (name or "").strip().lower().replace("-", "_")
+    if n in _ALIASES:
+        n = _ALIASES[n]
+    if n == "pillow":
+        return "pillow"
+    if n == "beautifulsoup4" or n == "bs4":
+        return "beautifulsoup4"
+    return n
 
 
-def _looks_transient(msg: str) -> bool:
-    low = (msg or "").lower()
-    return any(m in low for m in _TRANSIENT_MARKERS)
+def _meta(key: str) -> dict[str, str] | None:
+    k = _norm(key)
+    if k in ALLOWED:
+        return ALLOWED[k]
+    # also try original with hyphen for pip name keys
+    for ak, meta in ALLOWED.items():
+        if ak.replace("_", "") == k.replace("_", ""):
+            return meta
+    return None
 
 
-def _pip_install(pip_name: str) -> dict[str, Any]:
-    cmd = [sys.executable, "-m", "pip", "install", "--quiet", pip_name]
+def _check(key: str) -> dict[str, Any]:
+    meta = _meta(key)
+    if not meta:
+        return {
+            "ok": False,
+            "installed": False,
+            "error": f"package not allowlisted: {key!r}",
+            "allowed": sorted(set(ALLOWED) - {"bs4"}),
+        }
+    try:
+        importlib.import_module(meta["import"])
+        return {
+            "ok": True,
+            "installed": True,
+            "package": _norm(key),
+            "import": meta["import"],
+            "pip": meta["pip"],
+        }
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "ok": True,
+            "installed": False,
+            "package": _norm(key),
+            "import": meta["import"],
+            "pip": meta["pip"],
+            "error": str(exc),
+        }
+
+
+def _playwright_chromium() -> dict[str, Any]:
     try:
         proc = subprocess.run(
-            cmd,
+            [sys.executable, "-m", "playwright", "install", "chromium"],
             capture_output=True,
             text=True,
-            timeout=180,
+            timeout=600,
             check=False,
         )
         return {
             "ok": proc.returncode == 0,
-            "returncode": proc.returncode,
-            "stdout": (proc.stdout or "")[-1500:],
-            "stderr": (proc.stderr or "")[-1000:],
+            "exit": proc.returncode,
+            "stdout_tail": (proc.stdout or "")[-800:],
+            "stderr_tail": (proc.stderr or "")[-400:],
         }
-    except subprocess.TimeoutExpired as exc:
-        return {"ok": False, "error": f"timeout: {exc}", "transient": True}
     except Exception as exc:  # noqa: BLE001
         return {"ok": False, "error": str(exc)}
 
 
-def _playwright_install_browsers() -> dict[str, Any]:
-    cmd = [sys.executable, "-m", "playwright", "install", "chromium"]
+def install_tool_check(name: str = "", package: str = "") -> dict[str, Any]:
+    """Check only — never install."""
+    pkg = (package or name or "").strip()
+    if not pkg:
+        return {"ok": False, "error": "package (or name) required"}
+    return _check(pkg)
+
+
+def install_tool(
+    name: str = "",
+    package: str = "",
+    dry_run: bool = False,
+    install_browsers: bool = False,
+) -> dict[str, Any]:
+    """
+    Ensure allowlisted package is importable.
+
+    dry_run=True → only report would_install / already installed, no pip.
+    package preferred; name kept for older callers.
+    """
+    pkg = (package or name or "").strip()
+    if not pkg:
+        return {"ok": False, "error": "package (or name) required"}
+    meta = _meta(pkg)
+    if not meta:
+        return {
+            "ok": False,
+            "error": f"refused: {pkg!r} not in allowlist",
+            "allowed": sorted(set(ALLOWED) - {"bs4"}),
+        }
+    key = _norm(pkg)
+    pre = _check(key)
+    if pre.get("installed"):
+        out: dict[str, Any] = {
+            "ok": True,
+            "already": True,
+            "dry_run": bool(dry_run),
+            "package": key,
+            "detail": f"{key} already importable",
+        }
+        if key == "playwright" and install_browsers and not dry_run:
+            out["browsers"] = _playwright_chromium()
+        return out
+
+    if dry_run:
+        return {
+            "ok": True,
+            "already": False,
+            "dry_run": True,
+            "would_install": meta["pip"],
+            "package": key,
+            "detail": f"would pip install {meta['pip']}",
+            "install_browsers": bool(install_browsers) and key == "playwright",
+        }
+
     try:
         proc = subprocess.run(
-            cmd,
+            [sys.executable, "-m", "pip", "install", "--upgrade", meta["pip"]],
             capture_output=True,
             text=True,
             timeout=300,
             check=False,
         )
-        return {
-            "ok": proc.returncode == 0,
-            "returncode": proc.returncode,
-            "stdout": (proc.stdout or "")[-1500:],
-            "stderr": (proc.stderr or "")[-1000:],
-        }
-    except subprocess.TimeoutExpired as exc:
-        return {"ok": False, "error": f"timeout: {exc}", "transient": True}
     except Exception as exc:  # noqa: BLE001
-        return {"ok": False, "error": str(exc)}
+        return {"ok": False, "package": key, "error": f"pip failed: {exc}"}
 
-
-def run(package: str = "", dry_run: bool = False) -> dict[str, Any]:
-    """Check and optionally install an allowlisted package.
-
-    Parameters
-    ----------
-    package :
-        Short name or pip name (playwright, pyautogui, mss, …).
-    dry_run :
-        If True, only report whether the package is present.
-    """
-    key = (package or "").strip().lower()
-    if not key:
-        raise ToolFailed("package is required")
-
-    if key not in _ALLOW:
-        raise ToolFailed(f"package not allowlisted: {package!r}; allowed={sorted(_ALLOW.keys())}")
-
-    pip_name, import_name = _ALLOW[key]
-    already = _is_installed(import_name)
-
+    post = _check(key)
     result: dict[str, Any] = {
-        "ok": True,
+        "ok": bool(post.get("installed")),
+        "already": False,
+        "dry_run": False,
         "package": key,
-        "pip_name": pip_name,
-        "import_name": import_name,
-        "already_installed": already,
-        "dry_run": bool(dry_run),
+        "pip": meta["pip"],
+        "pip_exit": proc.returncode,
+        "stdout_tail": (proc.stdout or "")[-1200:],
+        "stderr_tail": (proc.stderr or "")[-600:],
+        "installed": bool(post.get("installed")),
     }
-
-    if already:
-        result["message"] = f"{pip_name} already installed"
-        return result
-
-    if dry_run:
-        result["message"] = f"would install {pip_name}"
-        return result
-
-    install = _pip_install(pip_name)
-    result["install"] = install
-    if not install.get("ok"):
-        err = str(install.get("error") or install.get("stderr") or "pip failed")
-        if install.get("transient") or _looks_transient(err):
-            raise ToolRetry(f"transient install failure for {pip_name}: {err[:400]}")
-        raise ToolFailed(f"failed to install {pip_name}: {err[:400]}")
-
-    result["already_installed"] = _is_installed(import_name)
-    result["message"] = f"installed {pip_name}"
-
-    if key == "playwright":
-        browsers = _playwright_install_browsers()
-        result["playwright_browsers"] = browsers
-        if not browsers.get("ok"):
-            err = str(browsers.get("error") or browsers.get("stderr") or "browser install failed")
-            if browsers.get("transient") or _looks_transient(err):
-                raise ToolRetry(f"playwright package ok, chromium install transient: {err[:400]}")
-            raise ToolFailed(f"playwright package ok, chromium install failed: {err[:400]}")
-
+    if key == "playwright" and result["ok"] and install_browsers:
+        result["browsers"] = _playwright_chromium()
+    if not result["ok"]:
+        result["error"] = post.get("error") or "import still failing after pip"
     return result
+
+
+def install_tool_stack(which: str = "all", dry_run: bool = False) -> dict[str, Any]:
+    w = (which or "all").strip().lower()
+    if w in ("browser", "playwright", "pw"):
+        wanted = ["playwright"]
+    elif w in ("gui", "mouse", "pyautogui"):
+        wanted = ["pyautogui", "pillow", "mss", "pynput"]
+    elif w in ("ocr",):
+        wanted = ["pytesseract", "pillow"]
+    elif w in ("scrape", "html"):
+        wanted = ["beautifulsoup4", "lxml"]
+    else:
+        wanted = ["playwright", "pyautogui", "pillow", "mss"]
+
+    results = []
+    all_ok = True
+    for pkg in wanted:
+        r = install_tool(
+            package=pkg,
+            dry_run=bool(dry_run),
+            install_browsers=(pkg == "playwright" and not dry_run),
+        )
+        results.append(r)
+        if not r.get("ok"):
+            all_ok = False
+    return {
+        "ok": all_ok,
+        "which": w,
+        "dry_run": bool(dry_run),
+        "packages": results,
+        "note": "pip allowlist only — no free apt",
+    }

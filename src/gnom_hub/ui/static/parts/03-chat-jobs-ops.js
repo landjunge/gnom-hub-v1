@@ -140,6 +140,51 @@
   }
 
   let chatBusy = false;
+  let busyJobId = null; // job holding pipeline (may differ from currentJobId after 409)
+
+  function godModeLabel() {
+    const b = els.godBadge || document.getElementById("god-badge");
+    if (b && b.classList.contains("on")) return "God:ON";
+    return "God:off";
+  }
+
+  function showBusyBanner(info) {
+    const ban = document.getElementById("pipeline-busy-banner");
+    const txt = document.getElementById("pipeline-busy-text");
+    if (!ban) return;
+    const id = (info && (info.busy_job_id || info.id)) || busyJobId || currentJobId || "?";
+    const stage = (info && (info.busy_stage || info.stage)) || "?";
+    const name = (info && (info.busy_name || info.name)) || "job";
+    const cancelling = !!(info && info.cancel);
+    busyJobId = id !== "?" ? id : busyJobId;
+    const god = godModeLabel();
+    if (txt) {
+      txt.textContent = cancelling
+        ? "Pipeline cancel… (" +
+          name +
+          " @ " +
+          stage +
+          ") · " +
+          god +
+          " · warte auf Stage-Ende"
+        : "Pipeline busy: " +
+          name +
+          " @ " +
+          stage +
+          " · job " +
+          id +
+          " · " +
+          god +
+          (god === "God:off" ? " (Shell/GUI oft dry-run)" : "");
+    }
+    ban.hidden = false;
+  }
+
+  function hideBusyBanner() {
+    const ban = document.getElementById("pipeline-busy-banner");
+    if (ban) ban.hidden = true;
+    busyJobId = null;
+  }
 
   function formatDuration(sec) {
     if (sec < 60) return sec.toFixed(1) + "s";
@@ -208,6 +253,7 @@
       btnCancel.hidden = !chatBusy;
       btnCancel.disabled = !chatBusy;
     }
+    // Keep chat input usable when only foreign busy (409) — allow Cancel banner
     if (els.btnMic) els.btnMic.disabled = chatBusy;
     if (els.chatInput) els.chatInput.disabled = chatBusy;
     if (els.stageBadge) {
@@ -218,6 +264,7 @@
         els.stageBadge.textContent = activeStage;
       }
     }
+    if (!chatBusy && !busyJobId) hideBusyBanner();
   }
 
   function updateCostBadge(llm) {
@@ -1239,8 +1286,11 @@
 
   async function pollJob(jobId, maxMs) {
     currentJobId = jobId;
+    busyJobId = jobId;
+    showBusyBanner({ busy_job_id: jobId, busy_name: "job", busy_stage: "queued" });
     const deadline = Date.now() + (maxMs || 180000);
     let lastStage = "";
+    let lastToolLogLen = 0;
     try {
       while (Date.now() < deadline) {
         let job;
@@ -1257,6 +1307,26 @@
           job.stage ||
           (job.snapshot && job.snapshot.pipeline && job.snapshot.pipeline.stage) ||
           "";
+        showBusyBanner({
+          busy_job_id: jobId,
+          busy_name: job.name || "job",
+          busy_stage: stage || job.status,
+          cancel: job.cancel,
+        });
+        // Live tool log → chat (so desk sees real tool use, not only final box)
+        const tlog = Array.isArray(job.tool_log) ? job.tool_log : [];
+        if (tlog.length > lastToolLogLen) {
+          for (let ti = lastToolLogLen; ti < tlog.length; ti++) {
+            const e = tlog[ti] || {};
+            const mode = e.mode ? " · " + e.mode : "";
+            const ok = e.ok === false ? "FAIL" : "ok";
+            appendChat(
+              "system",
+              "Tool: " + (e.tool || "?") + " " + ok + mode
+            );
+          }
+          lastToolLogLen = tlog.length;
+        }
         if (stage && stage !== lastStage) {
           lastStage = stage;
           if (els.stageBadge) els.stageBadge.textContent = stage;
@@ -1305,6 +1375,7 @@
         const st = job.status;
         if (st === "done" || st === "error" || st === "clarify" || st === "cancelled") {
           // Always resync so can_execute / stage match server after soft-cancel
+          hideBusyBanner();
           await resyncState();
           return job;
         }
@@ -1319,6 +1390,7 @@
       } catch (_c) {
         /* ignore */
       }
+      hideBusyBanner();
       await resyncState();
       throw new Error("Pipeline timeout");
     } finally {
@@ -1326,20 +1398,103 @@
     }
   }
 
+  async function waitPipelineFree(maxMs) {
+    const deadline = Date.now() + (maxMs || 45000);
+    while (Date.now() < deadline) {
+      try {
+        const b = await api("GET", "/api/jobs/busy");
+        if (!b || !b.busy) {
+          hideBusyBanner();
+          busyJobId = null;
+          currentJobId = null;
+          if (typeof setChatBusy === "function") setChatBusy(false);
+          await resyncState();
+          return true;
+        }
+        showBusyBanner({
+          busy_job_id: b.busy_job_id,
+          busy_name: b.busy_name || "job",
+          busy_stage: b.busy_stage || "cancelling",
+          cancel: true,
+        });
+      } catch (_e) {
+        /* ignore */
+      }
+      await new Promise(function (r) {
+        setTimeout(r, 500);
+      });
+    }
+    return false;
+  }
+
   async function cancelCurrentJob() {
-    if (!currentJobId) {
-      toast("No running job", "info");
+    const jid = currentJobId || busyJobId;
+    if (!jid) {
+      // one-shot: cancel whatever server says is busy
+      try {
+        const r = await api("POST", "/api/jobs/cancel-busy");
+        if (r && r.busy) {
+          toast("Cancel requested — warte bis Pipeline frei…", "info");
+          appendChat("system", "Cancel busy job " + ((r.cancelled && r.cancelled.id) || ""));
+          showBusyBanner({
+            busy_job_id: (r.cancelled && r.cancelled.id) || "?",
+            busy_stage: "cancelling",
+            busy_name: "job",
+            cancel: true,
+          });
+          const free = await waitPipelineFree(45000);
+          toast(
+            free ? "Pipeline frei" : "Cancel läuft noch (LLM kann warten)",
+            free ? "ok" : "info"
+          );
+          if (free) appendChat("system", "Pipeline free — ready.");
+        } else {
+          toast("No running job", "info");
+          hideBusyBanner();
+        }
+        await resyncState();
+      } catch (err) {
+        toast("Cancel failed: " + err.message, "error");
+      }
       return;
     }
-    const jid = currentJobId;
     try {
       await api("POST", "/api/jobs/" + encodeURIComponent(jid) + "/cancel");
-      toast("Cancel requested", "info");
+      toast("Cancel requested — warte bis Pipeline frei…", "info");
       appendChat("system", "Cancel requested for job " + jid);
+      showBusyBanner({
+        busy_job_id: jid,
+        busy_stage: "cancelling",
+        busy_name: "job",
+        cancel: true,
+      });
+      const free = await waitPipelineFree(45000);
+      toast(
+        free ? "Pipeline frei" : "Cancel läuft noch (LLM kann warten)",
+        free ? "ok" : "info"
+      );
+      if (free) appendChat("system", "Pipeline free — ready.");
       await resyncState();
     } catch (err) {
       toast("Cancel failed: " + err.message, "error");
     }
+  }
+
+  function handleBusyError(err, userText) {
+    const d = err && err.detail;
+    const obj = d && typeof d === "object" ? d : null;
+    const msg =
+      (obj && (obj.message || obj.hint)) ||
+      (err && err.message) ||
+      "Pipeline busy";
+    if (obj && obj.busy_job_id) {
+      busyJobId = obj.busy_job_id;
+      showBusyBanner(obj);
+    } else {
+      showBusyBanner({ busy_job_id: busyJobId || "?", busy_stage: "busy", busy_name: "pipeline" });
+    }
+    appendChat("system", msg + (userText ? " (deine Nachricht wurde nicht gestartet)" : ""));
+    toast(msg, "error");
   }
 
   function loadChatHist() {
@@ -1537,6 +1692,14 @@
     try {
       const start = await api("POST", "/api/chat", { text: text });
       let snap = start;
+      // Pipeline already busy — do not poll forever
+      if (start.busy || start.status === "busy") {
+        handleBusyError(
+          { message: start.message || start.error, detail: start },
+          text
+        );
+        return;
+      }
       if (start.job_id) {
         const job = await pollJob(start.job_id, pollMs);
         snap = job.snapshot || (await api("GET", "/api/state"));
@@ -1549,6 +1712,7 @@
         if (job.status === "cancelled") {
           appendChat("system", "Job cancelled.");
           toast("Cancelled", "info");
+          hideBusyBanner();
           applySnapshot(snap);
           return;
         }
@@ -1578,8 +1742,12 @@
         toast("Cancelled", "info");
       }
     } catch (err) {
-      appendChat("system", "Chat failed: " + err.message);
-      toast("Chat failed: " + err.message, "error");
+      if (err && (err.status === 409 || (err.detail && err.detail.busy))) {
+        handleBusyError(err, text);
+      } else {
+        appendChat("system", "Chat failed: " + err.message);
+        toast("Chat failed: " + err.message, "error");
+      }
     } finally {
       setChatBusy(false);
       currentJobId = null;

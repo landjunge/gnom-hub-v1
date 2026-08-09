@@ -161,6 +161,7 @@ class Hub(
             llm_manager=self.llm,
             agent_manager=self.agents,
             memory=self.memory,
+            tools=self.tools,
         )
         pipe.plan_mode = getattr(self, "plan_mode", "default") or "default"
         pipe.tools = self.tools  # web_fetch / memory_search for worker prefetch

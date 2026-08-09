@@ -15,24 +15,39 @@ Three **absolute real** frontend journeys. The runner **is the user** (mouse + k
 Each scenario scores **0–10** per dimension → **% overall**.  
 Each run is compared to `data/e2e-real/LATEST/scores.json` → **↑ better / ↓ worse / → same**.
 
-## Scenarios (fixed)
+## Scenarios
 
 | ID | Role-play | Intent |
 |----|-----------|--------|
-| **R1** | Soft café idea → decide landing → execute | Brainstorm dialogue + commit |
-| **R2** | Clear todo-app build order | Hard intent → strong result |
-| **R3** | Warm wish (dark + German) + portfolio page | Flex notices preference |
+| **G1** (`g`, **default**) | User tippt nur: **Landingpage Gnom-Hub v1** | Pipeline macht den Rest (Brainstorm/Flex/Execute/Worker) |
+| **R1** | Soft café idea → decide landing → execute | Legacy |
+| **R2** | Clear todo-app build order | Legacy |
+| **R3** | Warm wish (dark + German) + portfolio page | Legacy |
 
-## Run (watchable)
+```bash
+python scripts/real_user_quality_e2e.py           # G1 only
+python scripts/real_user_quality_e2e.py --only 1,2,3   # legacy suite
+```
+
+## Run (watchable — your Chrome tab)
 
 ```bash
 ./scripts/start.sh          # hub :8080, real LLM preferred
 source .venv/bin/activate
+
+# Optional once: real Chrome with CDP so the test reuses your Gnom tab
+# /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222
+# open http://127.0.0.1:8080  (or let the script open a tab)
+
+python scripts/gnom_chrome_tab.py   # find tab with Gnom IP, else new tab
 python scripts/real_user_quality_e2e.py
 ```
 
-- **Headed by default** (`GNOM_E2E_HEADED=1`) — Chromium window, slow typing.
-- Headless: `GNOM_E2E_HEADED=0 python scripts/real_user_quality_e2e.py`
+**Tab rule (user):** search Chrome for a tab whose URL has the Gnom IP (`127.0.0.1:8080`); **reuse** it; **only** open a new tab if none exists. No separate «Chrome for Testing» when CDP/Chrome is available.
+
+- **Headed by default** (`GNOM_E2E_HEADED=1`) — live, slow typing.
+- Prefer CDP: `GNOM_E2E_CDP=http://127.0.0.1:9222`
+- Headless (CI only): `GNOM_E2E_HEADED=0 python scripts/real_user_quality_e2e.py`
 - One scenario: `python scripts/real_user_quality_e2e.py --only 2`
 - Slower/faster: `GNOM_E2E_SLOW_MS=120 GNOM_E2E_TYPE_DELAY=25 …`
 

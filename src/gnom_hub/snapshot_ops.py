@@ -45,6 +45,8 @@ class SnapshotOpsMixin:
             "agent_nudges": list(getattr(st, "agent_nudges", None) or []),
             "warnings": list(st.warnings),
             "error": st.error,
+            "tool_log": list(getattr(st, "tool_log", None) or [])[-40:],
+            "resolved_plan_mode": getattr(st, "resolved_plan_mode", "") or "",
         }
 
     def memory_dict(self) -> dict[str, Any]:

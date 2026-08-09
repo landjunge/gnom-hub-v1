@@ -19,18 +19,36 @@ class CoordinatorAgent(BaseAgent):
     ) -> tuple[list[str], DistillQuestion | None]:
         self.emit_active(True)
         try:
+            from gnom_hub.agents.chat_policy import (
+                coordinator_distill_system,
+                coordinator_should_skip_clarify,
+                task_kind,
+            )
+
+            kind = task_kind(user_text)
             reqs: list[str] | None = None
-            if self.has_llm():
+
+            # Deterministic reqs for tool/browser — no LLM inventing HTML DoD
+            if kind == "tool_drill":
+                reqs = [
+                    f"Ziel: {user_text}",
+                    "Echte Tools aufrufen (kein HTML-Ersatz)",
+                    "tool_ensure wenn Deps fehlen",
+                    "Playwright und/oder Shell und/oder GUI je nach Szenario",
+                    "Ergebnisse der Tools wörtlich berichten",
+                ]
+            elif kind == "browser_nav":
+                reqs = [
+                    f"Ziel: {user_text}",
+                    "Live-Browser öffnen/navigieren",
+                    "URL sichtbar, Methode + Status melden",
+                    "Kein HTML-Artefakt erzeugen",
+                ]
+
+            if reqs is None and self.has_llm():
                 try:
                     raw = self.ask(
-                        system=(
-                            "You are the Coordinator distilling the USER TASK into requirements. "
-                            "Use the brainstorm dialogue as input. "
-                            "Output ONLY 4–7 requirement lines for that task. No intro. "
-                            "Prefer testable Definition-of-Done lines (observable behavior or "
-                            "complete deliverable, e.g. full HTML with </html>). "
-                            "Do not redefine Gnom-Hub. Match user language."
-                        ),
+                        system=coordinator_distill_system(kind),
                         user=_with_memory(
                             f"{user_text}\n\nBrainstorm dialogue:\n{brainstorm[:2500]}",
                             memory_ctx,
@@ -52,7 +70,7 @@ class CoordinatorAgent(BaseAgent):
                     "Fehler- und Leerzustände behandeln",
                 ]
             question = None
-            if _needs_clarify(user_text, brainstorm):
+            if not coordinator_should_skip_clarify(kind) and _needs_clarify(user_text, brainstorm):
                 # Plain German — Box 1 must be understandable without jargon
                 question = DistillQuestion(
                     id="q1",
@@ -79,16 +97,33 @@ class CoordinatorAgent(BaseAgent):
             return []
         self.emit_active(True)
         try:
+            from gnom_hub.agents.chat_policy import task_kind, tool_plan
+
+            kind = task_kind(user_text)
             mode = (plan_mode or "default").strip().lower()
             clean = [r for r in requirements if not _is_flex_meta_requirement(r)]
+            # Tool/browser never go through HTML team plans
+            if kind in ("tool_drill", "browser_nav"):
+                planned = tool_plan(user_text, worker_ids, clean, kind)
+                self.last_plan_meta = {
+                    "plan_mode": kind,
+                    "fast_path": True,
+                    "requested_mode": mode,
+                    "task_kind": kind,
+                }
+                return planned
             effective, fast_path = resolve_plan_mode(mode, user_text, clean)
             self.last_plan_meta = {
                 "plan_mode": effective,
                 "fast_path": fast_path,
                 "requested_mode": mode,
+                "task_kind": kind,
             }
             if effective == "full_page_html":
                 return _html_full_page_plan(user_text, worker_ids, clean)
+            if effective == "team":
+                # Multi-agent: research / plan / implement — never single-worker shortcut
+                return _team_html_landing_plan(user_text, worker_ids, clean)
             if effective == "plan_qa":
                 return _simple_task_plan(
                     user_text,
@@ -115,20 +150,32 @@ class CoordinatorAgent(BaseAgent):
                 )
             if self.has_llm():
                 try:
+                    teamish = effective == "team" or len(worker_ids) >= 2
+                    sys = (
+                        "You are the Coordinator designing a TEAM plan. "
+                        "Output exactly one line per worker: workerN | task. "
+                        "No other text. "
+                    )
+                    if teamish:
+                        sys += (
+                            "MUST use at least 2 different workers when available. "
+                            "Split: (1) research+IA+effects brief, "
+                            "(2) full single-file HTML with modern effects, "
+                            "(3) optional polish/a11y. "
+                            "Never assign only one worker for a full landing page."
+                        )
+                    else:
+                        sys += "Assign clear concrete tasks."
                     raw = self.ask(
-                        system=(
-                            "You are the Coordinator assigning tasks. "
-                            "Output exactly one line per worker: workerN | task. "
-                            "No other text."
-                        ),
+                        system=sys,
                         user=(
                             f"User: {user_text}\n"
                             f"Requirements:\n"
-                            + "\n".join(f"- {r}" for r in requirements[:6])
+                            + "\n".join(f"- {r}" for r in requirements[:8])
                             + f"\nWorkers: {', '.join(worker_ids)}"
                         ),
-                        max_tokens=300,
-                        temperature=0.3,
+                        max_tokens=500,
+                        temperature=0.35,
                     )
                     tasks: list[tuple[str, str]] = []
                     for ln in raw.splitlines():
@@ -146,6 +193,8 @@ class CoordinatorAgent(BaseAgent):
                         "pipeline.warning",
                         {"stage": "coordinate", "error": str(exc)},
                     )
+            if effective == "team":
+                return _team_html_landing_plan(user_text, worker_ids, clean)
             return _simple_task_plan(
                 user_text,
                 worker_ids,
@@ -174,13 +223,82 @@ def _html_full_page_plan(
         f"ONE complete single-file HTML page for: {topic}. "
         "Include ALL requested sections in the SAME file "
         "(hero/features/footer as applicable). "
-        "<!DOCTYPE html> … </html>. Functions first, minimal CSS. "
+        "<!DOCTYPE html> … </html>. "
+        "Strong visual design (dark product UI, CSS grid, gradients, "
+        "at least one motion/effect with prefers-reduced-motion). "
         "At least one real interaction (onclick or addEventListener). "
-        "You are the only worker for this deliverable — deliver the full page."
+        "Never truncate — always close </html>."
     )
     if clean:
-        primary += "\nDoD:\n" + "\n".join(f"- {r}" for r in clean[:4])
+        primary += "\nDoD:\n" + "\n".join(f"- {r}" for r in clean[:6])
     return [(worker_ids[0], primary)]
+
+
+def _team_html_landing_plan(
+    user_text: str,
+    worker_ids: list[str],
+    clean: list[str],
+) -> list[tuple[str, str]]:
+    """
+    Explicit multi-worker plan for high-quality landings:
+    research/IA → full HTML with modern effects → optional polish.
+    """
+    topic = (user_text or "").strip().rstrip(".")
+    if not worker_ids:
+        return []
+    dod = "\n".join(f"- {r}" for r in (clean or [])[:8])
+    wids = list(worker_ids[:3])
+    tasks: list[tuple[str, str]] = []
+    # Worker A: research + team brief (structure + effects checklist)
+    tasks.append(
+        (
+            wids[0],
+            (
+                f"TEAM PLAN / RESEARCH brief for: {topic}\n"
+                "Output a structured German markdown brief (no full HTML file):\n"
+                "1) Information architecture (6 sections max)\n"
+                "2) Core message (1 sentence)\n"
+                "3) Content bullets from product facts (README)\n"
+                "4) Modern single-file effects checklist 2025/26 "
+                "(gradient mesh, glass header backdrop-filter, scroll-reveal "
+                "IntersectionObserver, CSS grid, micro-interactions, "
+                "prefers-reduced-motion)\n"
+                "5) Acceptance criteria for the implementer\n"
+                + (f"\nRequirements:\n{dod}" if dod else "")
+            ),
+        )
+    )
+    # Worker B: implement the full page using the brief intent
+    implementer = wids[1] if len(wids) > 1 else wids[0]
+    tasks.append(
+        (
+            implementer,
+            (
+                f"IMPLEMENT complete single-file HTML landing for: {topic}\n"
+                "Use product facts + a modern effects stack (not a bare dark box).\n"
+                "MUST include: sticky glass header, hero with CTA, feature cards grid, "
+                "pipeline section, audience section, quickstart, footer with version.\n"
+                "MUST include CSS: gradients, backdrop-filter or soft blur, "
+                "@keyframes or scroll-reveal via IntersectionObserver, "
+                "prefers-reduced-motion media query.\n"
+                "MUST include JS interaction (tabs/copy/theme/nav).\n"
+                "DE UI texts. ONE file <!DOCTYPE html> … </html>. Never truncate.\n"
+                + (f"\nDoD:\n{dod}" if dod else "")
+            ),
+        )
+    )
+    if len(wids) > 2 and implementer != wids[0]:
+        tasks.append(
+            (
+                wids[2],
+                (
+                    f"POLISH / QA pass notes for the landing about: {topic}\n"
+                    "List visual upgrades and a11y checks; if you produce HTML, "
+                    "it must be a complete improved single file ending with </html>."
+                ),
+            )
+        )
+    return tasks
 
 
 def _simple_task_plan(

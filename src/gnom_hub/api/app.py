@@ -540,15 +540,74 @@ def create_app() -> FastAPI:
         """Default: brainstorm turn only. full=1 runs whole pipeline (tests/Telegram)."""
         text = body.text.strip()
         if sync:
+            # Sync path also blocks on lock — refuse if another job holds it
+            busy = get_hub()._find_busy_job()
+            if busy is not None:
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "message": (
+                            f"Pipeline busy (job {busy.get('id')} @ {busy.get('stage')}). "
+                            "Cancel it first."
+                        ),
+                        "busy": True,
+                        "busy_job_id": busy.get("id"),
+                        "busy_stage": busy.get("stage"),
+                        "busy_name": busy.get("name"),
+                        "hint": "Cancel the running job then retry.",
+                    },
+                )
             return get_hub().chat_sync(text, full=full)
-        return get_hub().chat_async(text, full=full)
+        out = get_hub().chat_async(text, full=full)
+        if out.get("busy") or out.get("status") == "busy":
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": out.get("error") or out.get("message") or "Pipeline busy",
+                    "busy": True,
+                    "busy_job_id": out.get("busy_job_id"),
+                    "busy_stage": out.get("busy_stage"),
+                    "busy_name": out.get("busy_name"),
+                    "hint": "Cancel the running job (Esc / Cancel) then retry.",
+                },
+            )
+        return out
 
     @app.post("/api/execute")
     def execute(sync: bool = Query(False)) -> dict[str, Any]:
         """Run distill → workers from accumulated brainstorm."""
         if sync:
+            busy = get_hub()._find_busy_job()
+            if busy is not None:
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "message": (
+                            f"Pipeline busy (job {busy.get('id')} @ {busy.get('stage')}). "
+                            "Cancel it first."
+                        ),
+                        "busy": True,
+                        "busy_job_id": busy.get("id"),
+                        "busy_stage": busy.get("stage"),
+                        "busy_name": busy.get("name"),
+                        "hint": "Cancel the running job then retry.",
+                    },
+                )
             return get_hub().execute_sync()
-        return get_hub().execute_async()
+        out = get_hub().execute_async()
+        if out.get("busy") or out.get("status") == "busy":
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": out.get("error") or out.get("message") or "Pipeline busy",
+                    "busy": True,
+                    "busy_job_id": out.get("busy_job_id"),
+                    "busy_stage": out.get("busy_stage"),
+                    "busy_name": out.get("busy_name"),
+                    "hint": "Cancel the running job (Esc / Cancel) then retry.",
+                },
+            )
+        return out
 
     @app.post("/api/workers/{worker_id}/rerun")
     def worker_rerun(worker_id: str, sync: bool = Query(False)) -> dict[str, Any]:
@@ -564,7 +623,41 @@ def create_app() -> FastAPI:
     def jobs_list(limit: int = Query(20, ge=1, le=50)) -> dict[str, Any]:
         jobs = get_hub().list_jobs(limit)
         running = sum(1 for j in jobs if j.get("status") == "running")
-        return {"jobs": jobs, "count": len(jobs), "running": running}
+        busy = get_hub()._find_busy_job()
+        return {
+            "jobs": jobs,
+            "count": len(jobs),
+            "running": running,
+            "busy": (
+                {
+                    "id": busy.get("id"),
+                    "name": busy.get("name"),
+                    "stage": busy.get("stage"),
+                    "status": busy.get("status"),
+                    "cancel": bool(busy.get("cancel")),
+                    "started_at": busy.get("started_at") or "",
+                }
+                if busy
+                else None
+            ),
+        }
+
+    @app.get("/api/jobs/busy")
+    def jobs_busy() -> dict[str, Any]:
+        """Current pipeline occupant (if any) — for desk banner."""
+        busy = get_hub()._find_busy_job()
+        if not busy:
+            return {"busy": False}
+        return {
+            "busy": True,
+            "busy_job_id": busy.get("id"),
+            "busy_name": busy.get("name"),
+            "busy_stage": busy.get("stage"),
+            "status": busy.get("status"),
+            "cancel": bool(busy.get("cancel")),
+            "started_at": busy.get("started_at") or "",
+            "timeout_s": busy.get("timeout_s"),
+        }
 
     @app.get("/api/jobs/{job_id}")
     def job_status(job_id: str) -> dict[str, Any]:
@@ -572,6 +665,11 @@ def create_app() -> FastAPI:
         if not job:
             raise HTTPException(status_code=404, detail="unknown job")
         return job
+
+    @app.post("/api/jobs/cancel-busy")
+    def job_cancel_busy() -> dict[str, Any]:
+        """Cancel the job that currently holds the pipeline (if any)."""
+        return get_hub().cancel_busy_job()
 
     @app.post("/api/jobs/{job_id}/cancel")
     def job_cancel(job_id: str) -> dict[str, Any]:
@@ -947,16 +1045,21 @@ def create_app() -> FastAPI:
         }
 
     @app.post("/api/plugins/reload")
+    @app.post("/api/plugins/reload")
     def plugins_reload(plugin_id: str = "") -> dict[str, Any]:
-        """Re-load one plugin by id (dev). Body optional query plugin_id=echo."""
+        """Hot-reload plugins. Optional ?plugin_id= for single plugin; else full scan."""
         hub = get_hub()
         pid = (plugin_id or "").strip()
-        if not pid:
-            # allow JSON body
-            return {"ok": False, "error": "plugin_id required (query ?plugin_id=echo)"}
-        result = hub.plugins.reload(pid)
-        hub.plugin_list = list(hub.plugins.loaded)
-        return result
+        if pid:
+            result = hub.plugins.reload(pid)
+            hub.plugin_list = list(hub.plugins.loaded)
+            return result
+        if hasattr(hub, "reload_plugins"):
+            return hub.reload_plugins()
+        # fallback: reload registry scan
+        result = hub.plugins.reload() if hasattr(hub.plugins, "reload") else {"ok": False}
+        hub.plugin_list = list(getattr(hub.plugins, "loaded", []) or [])
+        return result if isinstance(result, dict) else {"ok": True, "plugins": hub.plugin_list}
 
     @app.get("/api/mcp/tools")
     def mcp_tools() -> dict[str, Any]:

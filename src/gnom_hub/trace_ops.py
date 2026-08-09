@@ -25,6 +25,7 @@ class TraceOpsMixin:
             "pipeline.flex",
             "pipeline.coordinate",
             "pipeline.worker",
+            "pipeline.tool_call",
             "pipeline.quality",
             "pipeline.done",
             "pipeline.error",

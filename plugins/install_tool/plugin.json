@@ -1,39 +1,49 @@
 {
   "id": "install_tool",
   "name": "Install Tool",
-  "version": "0.1.0",
+  "version": "1.1.0",
   "enabled": true,
   "tools": [
     {
       "name": "install_tool",
-      "description": "Check whether an allowlisted package is installed and install it via pip if missing. Supports dry_run. Special handling for playwright browsers.",
+      "description": "Check/install allowlisted packages via pip (playwright, pyautogui, mss, pillow, pytesseract, pynput, beautifulsoup4, lxml). dry_run=true only reports would_install. Playwright can install Chromium. No free apt.",
       "module": "main.py",
-      "handler": "run",
+      "handler": "install_tool",
       "input_schema": {
         "type": "object",
         "properties": {
-          "package": {
-            "type": "string",
-            "description": "Package or short name: playwright, pyautogui, mss, pillow, pytesseract, pynput, beautifulsoup4, lxml"
-          },
-          "dry_run": {
-            "type": "boolean",
-            "description": "If true, only report status without installing",
-            "default": false
-          }
-        },
-        "required": [
-          "package"
-        ]
-      },
-      "tags": [
-        "install"
-      ]
+          "package": { "type": "string", "description": "Package name e.g. playwright" },
+          "name": { "type": "string", "description": "Alias for package (legacy)" },
+          "dry_run": { "type": "boolean", "description": "If true, do not pip install" },
+          "install_browsers": { "type": "boolean", "description": "playwright: install chromium" }
+        }
+      }
+    },
+    {
+      "name": "install_tool_check",
+      "description": "Only check if allowlisted package is importable (never install).",
+      "module": "main.py",
+      "handler": "install_tool_check",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "package": { "type": "string" },
+          "name": { "type": "string" }
+        }
+      }
+    },
+    {
+      "name": "install_tool_stack",
+      "description": "Ensure a stack: all|browser|gui|ocr|scrape. dry_run supported.",
+      "module": "main.py",
+      "handler": "install_tool_stack",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "which": { "type": "string" },
+          "dry_run": { "type": "boolean" }
+        }
+      }
     }
-  ],
-  "tags": [
-    "install",
-    "computer"
-  ],
-  "description": "Allowlisted pip install for computer-use deps (playwright, etc.)."
+  ]
 }

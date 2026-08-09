@@ -132,6 +132,7 @@
   let lastSnapshot = null; // latest hub snapshot (tools history etc.)
   let lastToolCalls = []; // pipeline.tool_calls for Tools modal history
   let manualToolCalls = []; // this browser session (Tools Run / Fetch)
+  let lastDryRunKey = ""; // avoid re-toasting dry-run God hint
   let currentJobId = null;
   let lastWorkerOutputs = [];
   let jobTimerStart = null;
@@ -584,11 +585,9 @@
         ttsInput.addEventListener("change", function (ev) {
           ev.stopPropagation();
           const on = !!ttsInput.checked;
-          // Speak HERE (same user gesture) — not after await/API
+          // Speak HERE (same user gesture) — short DE only, no EN, no long monologue
           if (on) {
-            speakNow(
-              "Gedanken an für " + (agent.label || agent.id) + ". Ich spreche den Denkprozess, nicht den Text."
-            );
+            speakNow("TTS an: " + (agent.label || agent.id) + ".");
           } else {
             stopSpeech();
           }

@@ -19,7 +19,7 @@ from gnom_hub.core.event_bus import EventBus
 # L2 Priority / budget
 # L3 Domain (HTML) rules
 # L4 Flex wishes (absolute)
-# L5 Tool protocol (prefetch is authoritative)
+# L5 Tool protocol (prefetch + optional TOOL_CALL loop)
 
 _WORKER_L1_ROLE = (
     "You are a Worker agent inside Gnom-Hub. "
@@ -68,8 +68,9 @@ _WORKER_L5_TOOLS = (
     '  - The hub may inject a block "Tool prefetch (auto):" with real tool outputs '
     "(web_fetch, memory_search, install_tool, color_palette, html_scaffold, …).\n"
     "  - Treat that block as ground truth. Cite URLs/facts from it; do not contradict it.\n"
-    "  - You do not call tools yourself mid-turn — the hub prefetches. "
-    "If a needed tool result is missing, work without inventing network data.\n"
+    "  - When tools are wired, you may also emit TOOL_CALL lines "
+    "(browser_goto, computer_shell, install_tool, …) and use TOOL_RESULT replies.\n"
+    "  - Never invent tool results. Never replace live tools with a fake HTML page.\n"
     "  - When install_tool reports a package installed, you may assume the import exists "
     "in later runtime (do not claim you ran the install)."
 )
@@ -108,7 +109,55 @@ def task_wants_html(*blobs: str) -> bool:
     )
 
 
+# Tools workers may call (pipeline_do excluded — recursion risk)
+_WORKER_TOOL_NAMES = [
+    # core
+    "browser_open",
+    "browser_goto",
+    "browser_screenshot",
+    "browser_eval",
+    "web_fetch",
+    "memory_search",
+    "hub_status",
+    "computer_inspect",
+    "computer_shell",
+    "computer_type",
+    "computer_click",
+    "tool_ensure",
+    "tool_ensure_package",
+    "tool_scenario_run",
+    # plugins (install_tool, playwright_browser, file_ops, git_ops, shell_safe)
+    "install_tool",
+    "install_tool_check",
+    "install_tool_stack",
+    "pw_goto",
+    "pw_click",
+    "pw_fill",
+    "pw_screenshot",
+    "file_list",
+    "file_read",
+    "file_write",
+    "git_status",
+    "git_diff",
+    "git_commit",
+    "shell_safe",
+    "shell_safe_allowlist",
+    # pipeline_do intentionally omitted — recursion
+]
+
+
+
 class WorkerAgent(BaseAgent):
+    def __init__(
+        self,
+        state: Any,
+        bus: EventBus,
+        llm: Any | None = None,
+        tools: Any | None = None,
+    ) -> None:
+        super().__init__(state, bus, llm)
+        self.tools = tools
+
     def run(
         self,
         task: str,
@@ -120,6 +169,146 @@ class WorkerAgent(BaseAgent):
             return ""
         self.emit_active(True)
         try:
+            if self.has_llm():
+                try:
+                    body = f"Aufgabe: {task}\nOriginal: {user_text}\nAnforderungen:\n" + "\n".join(
+                        f"- {r}" for r in requirements[:5]
+                    )
+                    from gnom_hub.agents.chat_policy import task_kind
+                    from gnom_hub.tools.tool_scenarios import (
+                        is_tool_drill_task,
+                        tool_drill_worker_prompt,
+                    )
+
+                    kind = task_kind(f"{user_text}\n{task}")
+                    drill = (
+                        kind == "tool_drill"
+                        or is_tool_drill_task(user_text)
+                        or is_tool_drill_task(task)
+                    )
+                    wants_html = kind == "html_page" or task_wants_html(
+                        task, user_text, "\n".join(requirements[:12])
+                    )
+                    system = worker_system_prompt(wants_html=wants_html)
+                    system = (
+                        system
+                        + "\nALWAYS finish — never cut mid-file. No max token excuses.\n"
+                        + "ROUTING (from desk chat policy):\n"
+                        + "  tool_drill → ONLY real tools, report TOOL_RESULT lines, NO HTML.\n"
+                        + "  browser_nav → browser_open or browser_goto, report URL/title, NO HTML.\n"
+                        + "  html_page → complete single-file HTML (layered rules above).\n"
+                        + "  research brief → markdown checklist for implementer, not full HTML.\n"
+                        + 'If a tool is missing: TOOL_CALL tool_ensure={"which":"browser"} '
+                        + "or tool_ensure_package — never invent install output.\n"
+                        + f"Detected task_kind={kind}.\n"
+                    )
+                    if drill:
+                        system = system + "\n\n" + tool_drill_worker_prompt()
+                    # Tool-aware path when registry is wired (TOOL_CALL protocol)
+                    if self.tools is not None:
+                        from gnom_hub.tools.agent_bridge import (
+                            is_live_browser_task,
+                            run_tool_loop,
+                            try_browser_nav_execute,
+                        )
+
+                        # Deterministic drill: run scenario tools for real (don't wait on LLM)
+                        if drill:
+                            from gnom_hub.tools.tool_scenarios import run_forced_tool_scenario
+
+                            forced = run_forced_tool_scenario(
+                                self.tools,
+                                f"{user_text}\n{task}",
+                                bus=self.bus,
+                            )
+                            return str(forced.get("summary") or forced)
+
+                        # Browser nav: deterministic open (LLM optional follow-up not needed)
+                        if (
+                            kind == "browser_nav"
+                            or is_live_browser_task(user_text)
+                            or is_live_browser_task(task)
+                        ):
+                            nav = try_browser_nav_execute(
+                                tools=self.tools,
+                                user_text=f"{user_text}\n{task}",
+                                bus=self.bus,
+                            )
+                            if nav is not None:
+                                return str(nav.get("summary") or nav)
+
+                        # Free path: still force tools when task text smells like ops
+                        blob = f"{user_text}\n{task}".lower()
+                        ops_hint = any(
+                            k in blob
+                            for k in (
+                                "tool",
+                                "shell",
+                                "terminal",
+                                "git ",
+                                "datei",
+                                "file_",
+                                "screenshot",
+                                "playwright",
+                                "install",
+                                "inspect",
+                                "computer",
+                                "browser",
+                                "fetch",
+                                "pwd",
+                                "kleinanzeigen",
+                            )
+                        )
+                        force_tools = (
+                            kind in ("tool_drill", "browser_nav")
+                            or is_live_browser_task(user_text)
+                            or ops_hint
+                        )
+                        if force_tools and kind not in ("tool_drill", "browser_nav", "html_page"):
+                            system = (
+                                system + "\n# OPS TASK: Call at least one real tool via TOOL_CALL "
+                                "before your final answer. Do not invent tool output.\n"
+                            )
+                        return run_tool_loop(
+                            ask_fn=lambda sys, usr, max_tokens=None, temperature=0.45: self.ask(
+                                system=sys,
+                                user=usr,
+                                max_tokens=max_tokens,
+                                temperature=temperature,
+                            ),
+                            system=system,
+                            user=_with_memory(body, memory_ctx),
+                            tools=self.tools,
+                            tool_names=_WORKER_TOOL_NAMES,
+                            max_rounds=4 if force_tools else 2,
+                            max_tokens=None,
+                            temperature=0.35 if force_tools else 0.45,
+                            bus=self.bus,
+                            agent_id=self.id,
+                        )
+                    return self.ask(
+                        system=system,
+                        user=_with_memory(body, memory_ctx),
+                        # Workers: no token limit (BaseAgent omits max_tokens for role=worker)
+                        max_tokens=None,
+                        temperature=0.45,
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    self.bus.emit(
+                        "pipeline.warning",
+                        {"stage": self.id, "error": str(exc)},
+                    )
+            # Stub path: still try browser_open without LLM when tools available
+            if self.tools is not None:
+                from gnom_hub.tools.agent_bridge import try_browser_nav_execute
+
+                nav = try_browser_nav_execute(
+                    tools=self.tools,
+                    user_text=f"{user_text}\n{task}",
+                    bus=self.bus,
+                )
+                if nav is not None:
+                    return str(nav.get("summary") or nav)
             task_lines = [ln.strip() for ln in (task or "").splitlines() if ln.strip()]
             task_head = task_lines[0][:140] if task_lines else "(empty task)"
             if not self.has_llm():
@@ -135,11 +324,11 @@ class WorkerAgent(BaseAgent):
                     f"- {r}" for r in requirements[:12]
                 )
                 wants_html = task_wants_html(task, user_text, "\n".join(requirements[:12]))
-                max_tok = 3200 if wants_html else 1800
                 return self.ask(
                     system=worker_system_prompt(wants_html=wants_html),
                     user=_with_memory(body, memory_ctx),
-                    max_tokens=max_tok,
+                    # Workers: no token limit (BaseAgent omits max_tokens for role=worker)
+                    max_tokens=None,
                     temperature=0.45,
                 )
             except Exception as exc:  # noqa: BLE001
@@ -205,7 +394,9 @@ class MemoryAgent(BaseAgent):
                     system=(
                         "You are the Memory agent. From the stored context, select only "
                         "facts relevant to the CURRENT user task. "
-                        "Ignore HTML, code, other projects, and pipeline meta. "
+                        "Ignore HTML, code, other projects, pipeline meta, and "
+                        "ephemeral tool-drill outputs (pwd/date/screenshot paths). "
+                        "Keep durable user prefs and product names. "
                         "Output 2–6 short bullet facts. No preamble. "
                         "If nothing is relevant: (no relevant memory)"
                     ),

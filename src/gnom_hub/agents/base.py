@@ -11,11 +11,16 @@ from gnom_hub.core.event_bus import EventBus
 # Injected into every agent system prompt — kills product-identity hallucination loops
 HUB_IDENTITY = (
     "CONTEXT: You are one agent *inside* Gnom-Hub v1, a local multi-agent control hub "
-    "(chat → brainstorm → distill → flex → coordinator → workers → memory). "
+    "(chat → brainstorm → distill → flex → coordinator → workers → memory + tools). "
     "Gnom-Hub is NOT a notes app, NOT a localStorage toy, NOT a single-page notebook. "
     "Never redefine what Gnom-Hub is. "
     "Work ONLY on the user's current task/request. "
-    "Do not invent product specs for Gnom-Hub itself unless the user explicitly asks."
+    "Do not invent product specs for Gnom-Hub itself unless the user explicitly asks. "
+    "TOOLS: When the task needs browser/shell/GUI, CALL tools "
+    "(browser_goto, computer_shell, computer_inspect, tool_ensure) — "
+    "never fake results and never replace tools with a made-up HTML page. "
+    "Live navigation ≠ build a landing page. "
+    "Go-only phrases mean re-run the last clear user task."
 )
 
 
@@ -47,12 +52,17 @@ class BaseAgent:
             {"id": self.id, "active": active, "enabled": self.enabled},
         )
 
+    def _is_worker(self) -> bool:
+        role = (getattr(self.state, "role", None) or "").strip().lower()
+        aid = str(self.id or "").strip().lower()
+        return role == "worker" or aid.startswith("worker")
+
     def ask(
         self,
         system: str,
         user: str,
         *,
-        max_tokens: int = 500,
+        max_tokens: int | None = 500,
         temperature: float = 0.5,
         prior: list[dict] | None = None,
     ) -> str:
@@ -60,29 +70,40 @@ class BaseAgent:
 
         prior: optional prior turns [{"role": "user"|"brainstorm"|"assistant", "content"|"text": ...}]
         for multi-turn dialogue (brainstorm chat).
+
+        Workers: no token limit (max_tokens omitted) — full HTML must not be cut mid-file.
+        Other agents: role budget is a floor; UI slider may only raise it.
         """
         if self.llm is None:
             raise RuntimeError(f"{self.id}: no LLM manager")
         from gnom_hub.llm.types import LLMMessage
 
-        # Agent tuning wins when set (plan: per-agent sliders)
         temp = (
             float(self.state.temperature)
             if self.state.temperature is not None
             else float(temperature)
         )
-        mt = int(self.state.max_tokens) if self.state.max_tokens is not None else int(max_tokens)
         # TTS wants the thinking stream, not the written deliverable.
-        # Enable DeepSeek thinking only when this agent has TTS on.
         want_thoughts = bool(getattr(self.state, "tts", False))
-        # TTS thinking stream: keep moderate so voice stays short; still need headroom
-        if want_thoughts and mt < 900:
-            mt = min(1200, max(mt, 900))
         kwargs: dict[str, Any] = {
             "agent": self.id,
-            "max_tokens": mt,
             "temperature": temp,
         }
+        if self._is_worker():
+            # Product rule: workers have NO max_tokens cap (UI slider ignored).
+            # Omit max_tokens so the provider uses its model completion maximum.
+            pass
+        else:
+            role_mt = max(1, int(max_tokens if max_tokens is not None else 500))
+            if self.state.max_tokens is not None:
+                user_mt = max(1, int(self.state.max_tokens))
+                mt = max(role_mt, user_mt)
+            else:
+                mt = role_mt
+            # TTS thinking stream: keep moderate so voice stays short; still need headroom
+            if want_thoughts and mt < 900:
+                mt = min(1200, max(mt, 900))
+            kwargs["max_tokens"] = mt
         if want_thoughts:
             kwargs["thinking"] = True
         if self.state.top_p is not None:

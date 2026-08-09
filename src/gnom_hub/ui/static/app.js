@@ -132,6 +132,7 @@
   let lastSnapshot = null; // latest hub snapshot (tools history etc.)
   let lastToolCalls = []; // pipeline.tool_calls for Tools modal history
   let manualToolCalls = []; // this browser session (Tools Run / Fetch)
+  let lastDryRunKey = ""; // avoid re-toasting dry-run God hint
   let currentJobId = null;
   let lastWorkerOutputs = [];
   let jobTimerStart = null;
@@ -584,11 +585,9 @@
         ttsInput.addEventListener("change", function (ev) {
           ev.stopPropagation();
           const on = !!ttsInput.checked;
-          // Speak HERE (same user gesture) — not after await/API
+          // Speak HERE (same user gesture) — short DE only, no EN, no long monologue
           if (on) {
-            speakNow(
-              "Gedanken an für " + (agent.label || agent.id) + ". Ich spreche den Denkprozess, nicht den Text."
-            );
+            speakNow("TTS an: " + (agent.label || agent.id) + ".");
           } else {
             stopSpeech();
           }
@@ -679,24 +678,33 @@
     }
     if (!res.ok) {
       let detail = res.statusText;
+      let detailObj = null;
       try {
         const j = await res.json();
-        detail = j.detail != null ? j.detail : j;
-      } catch (e) { /* ignore */ }
-      // Structured envelope: { ok, layer, code, message, retryable }
-      let msg = detail;
-      if (detail && typeof detail === "object") {
-        msg =
-          detail.message ||
-          detail.error ||
-          detail.detail ||
-          JSON.stringify(detail);
-        if (detail.code) msg = "[" + detail.code + "] " + msg;
-        if (detail.retryable) msg += " (retryable)";
+        const j = await res.json();
+        detailObj = j.detail !== undefined ? j.detail : j;
+        if (detailObj && typeof detailObj === "object") {
+          detail =
+            detailObj.message ||
+            detailObj.error ||
+            detailObj.hint ||
+            detailObj.detail ||
+            JSON.stringify(detailObj);
+          if (detailObj.code) detail = "[" + detailObj.code + "] " + detail;
+          if (detailObj.retryable) detail += " (retryable)";
+        } else {
+          detail = detailObj != null ? detailObj : JSON.stringify(j);
+        }
+      } catch (e) {
+        /* ignore */
       }
-      toast(String(msg), "error");
-      const err = new Error(String(msg));
-      err.detail = detail;
+      // Structured busy (409) — no toast spam; callers handle banner
+      const err = new Error(String(detail));
+      err.status = res.status;
+      err.detail = detailObj;
+      if (res.status !== 409) {
+        toast(String(detail), "error");
+      }
       throw err;
     }
     try {
@@ -814,8 +822,11 @@
     }
     if (els.godBadge) {
       const on = !!(snap.god_mode && snap.god_mode.enabled);
-      els.godBadge.textContent = on ? "God: ON" : "God: off";
+      els.godBadge.textContent = on ? "God: ON · live" : "God: off · dry-run";
       els.godBadge.classList.toggle("on", on);
+      els.godBadge.title = on
+        ? "God-Mode ON — Shell/GUI/click echt. Klick zum Ausschalten."
+        : "God-Mode off — Shell/GUI dry-run/blocked. Klick zum Einschalten.";
     }
     if (els.coldBadge && snap.cold) {
       els.coldBadge.textContent = "Cold: " + (snap.cold.count || 0);
@@ -878,6 +889,26 @@
       p.warnings.slice(0, 2).forEach(function (w) {
         toast(String(w), "info");
       });
+    }
+
+    // Tool strip in Box 3 (persists after job done)
+    if (typeof renderToolStrip === "function") {
+      renderToolStrip(p.tool_log || [], p.quality_notes || "");
+    }
+    // One toast if tools ran dry-run while God is off
+    if (p.stage === "done" && p.tool_log && p.tool_log.length) {
+      const dry = p.tool_log.filter(function (e) {
+        return e && e.mode === "dry-run";
+      }).length;
+      const godOn = !!(snap.god_mode && snap.god_mode.enabled);
+      const key = "dry:" + dry + ":" + (p.quality_notes || "").slice(0, 40);
+      if (dry > 0 && !godOn && key !== lastDryRunKey) {
+        lastDryRunKey = key;
+        toast(
+          dry + " Tool(s) dry-run — God-Mode an für echte Shell/GUI",
+          "info"
+        );
+      }
     }
 
     // Flex told agents what was missing — surface once so you don't have to nag
@@ -989,8 +1020,14 @@
     // TTS: speak Gedanken after brainstorm / done — not the written HTML/notes
     if (p.stage === "done" || p.stage === "brainstorm") {
       maybeSpeakPipeline(p, snap);
+      maybeSpeakFlexSupport(p, snap);
     }
   }
+
+  /** Recent spoken fingerprints — never queue the same text twice. */
+  let ttsSpokenFp = {};
+  let ttsToastAt = 0;
+  let ttsPrepareInflight = {};
 
   function stripForSpeech(text) {
     let s = String(text || "");
@@ -1003,15 +1040,40 @@
     return s.slice(0, 520);
   }
 
-  /** If model still emits English thoughts, prefer a short German fallback for voice. */
+  function speechFp(text) {
+    return String(text || "")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 220);
+  }
+
+  function looksMostlyGermanClient(text) {
+    const t = String(text || "").trim();
+    if (!t) return true;
+    if (/[äöüÄÖÜß]/.test(t)) return true;
+    if (/\b(der|die|das|und|ich|nicht|eine|für|mit|soll|wird|auch|noch|nur|wenn|dann|bitte|hier|box)\b/i.test(t)) {
+      return true;
+    }
+    const en = (t.match(/\b(the|and|with|for|this|that|should|would|could|build|page|user|about|from|have|will)\b/gi) || []).length;
+    return en < 3;
+  }
+
+  function looksMostlyEnglishClient(text) {
+    const t = String(text || "").trim();
+    if (!t) return false;
+    if (/[äöüÄÖÜß]/.test(t)) return false;
+    if (/\b(der|die|das|und|ich|nicht|eine|für|mit|soll)\b/i.test(t)) return false;
+    const en = (t.match(/\b(the|and|with|for|this|that|should|would|could|build|page|user|about|from|have|will)\b/gi) || []).length;
+    return en >= 3;
+  }
+
+  /** DE desk: never return English. English → short German shell. */
   function germanizeThoughtForSpeech(text, label) {
     const clean = stripForSpeech(text);
     if (!clean) return "";
-    const looksEn =
-      /\b(the|and|with|for|this|that|should|would|build|page|user)\b/i.test(clean) &&
-      !/[äöüÄÖÜß]/.test(clean) &&
-      !/\b(der|die|das|und|ich|nicht|eine|für|mit|soll)\b/i.test(clean);
-    if (looksEn && (uiLang === "de" || uiLang !== "en")) {
+    if (uiLang === "en") return clean;
+    if (looksMostlyEnglishClient(clean) || !looksMostlyGermanClient(clean)) {
       const who = label || "Agent";
       return (
         who +
@@ -1044,6 +1106,7 @@
   function stopSpeech() {
     ttsQueue = [];
     ttsPumping = false;
+    ttsPrepareInflight = {};
     try {
       if (window.speechSynthesis) window.speechSynthesis.cancel();
     } catch (_e) {
@@ -1052,14 +1115,8 @@
     pendingSpeech = "";
   }
 
-  /**
-   * Prefer German TTS.
-   * Default de-DE unless UI is explicitly English and text looks English-only.
-   */
-  function pickTtsLang(text) {
-    const clean = String(text || "");
-    if (uiLang === "de" || /[äöüÄÖÜß]/.test(clean)) return "de-DE";
-    if (/\b(der|die|das|und|ich|nicht|eine|für|mit)\b/i.test(clean)) return "de-DE";
+  /** DE desk always de-DE. Never en-US when UI is German. */
+  function pickTtsLang(_text) {
     if (uiLang === "en") return "en-US";
     return "de-DE";
   }
@@ -1068,15 +1125,48 @@
     const voices = window.speechSynthesis.getVoices() || [];
     if (!voices.length) return null;
     const want = (lang || "de-DE").slice(0, 2).toLowerCase();
-    return (
+    const match =
       voices.find(function (v) {
         return (v.lang || "").toLowerCase().indexOf(want) === 0;
       }) ||
       voices.find(function (v) {
         return (v.lang || "").toLowerCase().indexOf("de") === 0;
-      }) ||
-      voices[0]
-    );
+      });
+    /* Never fall back to English voice on DE desk — better silence than EN voice */
+    if (!match && uiLang !== "en") return null;
+    return match || voices[0];
+  }
+
+  function alreadyQueuedOrSpoken(text) {
+    const fp = speechFp(text);
+    if (!fp) return true;
+    if (ttsSpokenFp[fp]) return true;
+    if (
+      ttsQueue.some(function (q) {
+        return speechFp(q) === fp;
+      })
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  function markSpoken(text) {
+    const fp = speechFp(text);
+    if (!fp) return;
+    ttsSpokenFp[fp] = Date.now();
+    /* ring: keep last ~40 */
+    const keys = Object.keys(ttsSpokenFp);
+    if (keys.length > 40) {
+      keys
+        .sort(function (a, b) {
+          return ttsSpokenFp[a] - ttsSpokenFp[b];
+        })
+        .slice(0, keys.length - 40)
+        .forEach(function (k) {
+          delete ttsSpokenFp[k];
+        });
+    }
   }
 
   /**
@@ -1089,12 +1179,23 @@
       pumpTtsQueue();
       return false;
     }
+    /* Hard gate: DE desk must not utter English */
+    let say = clean;
+    if (uiLang !== "en" && looksMostlyEnglishClient(say)) {
+      say = germanizeThoughtForSpeech(say, "Agent");
+    }
+    if (!say) {
+      ttsPumping = false;
+      pumpTtsQueue();
+      return false;
+    }
     try {
-      const u = new SpeechSynthesisUtterance(clean);
-      u.lang = pickTtsLang(clean);
+      const u = new SpeechSynthesisUtterance(say);
+      u.lang = pickTtsLang(say);
       u.rate = 1.0;
       const match = pickGermanVoice(u.lang);
       if (match) u.voice = match;
+      markSpoken(say);
       u.onstart = function () {
         ttsUnlocked = true;
       };
@@ -1147,11 +1248,15 @@
     if (window.speechSynthesis.speaking || window.speechSynthesis.pending) return;
     if (!ttsQueue.length) return;
     if (!ttsUnlocked) {
-      pendingSpeech = ttsQueue[0] || pendingSpeech;
-      toast(
-        uiLang === "de" ? "TTS: einmal klicken zum Hören" : "TTS: click anywhere to hear",
-        "info"
-      );
+      /* Queue keeps the text — do NOT also copy into pendingSpeech (was double). */
+      const now = Date.now();
+      if (now - ttsToastAt > 4000) {
+        ttsToastAt = now;
+        toast(
+          uiLang === "de" ? "TTS: einmal klicken zum Hören" : "TTS: click anywhere to hear",
+          "info"
+        );
+      }
       return;
     }
     const next = ttsQueue.shift();
@@ -1162,66 +1267,82 @@
 
   /**
    * Enqueue already-prepared text (must be German when desk is DE).
-   * Does NOT cancel current speech.
+   * Single queue only — never pendingSpeech + queue (double speak bug).
    */
   function speakOrQueuePrepared(text) {
-    const pieces = chunkForSpeech(text);
+    let cleaned = stripForSpeech(text);
+    if (!cleaned) return;
+    if (uiLang !== "en") {
+      if (looksMostlyEnglishClient(cleaned)) {
+        cleaned = germanizeThoughtForSpeech(cleaned, "Agent");
+      }
+      if (!cleaned || looksMostlyEnglishClient(cleaned)) return;
+    }
+    const pieces = chunkForSpeech(cleaned);
     if (!pieces.length) return;
     pieces.forEach(function (p) {
+      if (alreadyQueuedOrSpoken(p)) return;
       ttsQueue.push(p);
     });
     if (ttsUnlocked) {
       pumpTtsQueue();
     } else {
-      pendingSpeech = pieces[0];
-      toast(
-        uiLang === "de" ? "TTS: einmal klicken zum Hören" : "TTS: click anywhere to hear",
-        "info"
-      );
+      const now = Date.now();
+      if (now - ttsToastAt > 4000) {
+        ttsToastAt = now;
+        toast(
+          uiLang === "de" ? "TTS: einmal klicken zum Hören" : "TTS: click anywhere to hear",
+          "info"
+        );
+      }
     }
   }
 
   /**
-   * Translate via hub (EN→DE) then enqueue. Always translate-before-TTS on DE desk.
+   * DE desk: only German leaves the speaker.
+   * Hub often already translated thoughts — skip prepare if already DE (no EN then DE).
    */
   function speakOrQueue(text) {
     const raw = String(text || "").trim();
     if (!raw) return;
-    const wantDe = uiLang !== "en";
-    if (!wantDe) {
+    if (uiLang === "en") {
       speakOrQueuePrepared(raw);
       return;
     }
-    // Server: English agent thoughts → German, then speech
+    /* Already German (hub translated) → speak once, no second prepare pass */
+    if (looksMostlyGermanClient(raw) && !looksMostlyEnglishClient(raw)) {
+      speakOrQueuePrepared(raw);
+      return;
+    }
+    const fp = speechFp(raw);
+    if (ttsPrepareInflight[fp] || alreadyQueuedOrSpoken(raw)) return;
+    ttsPrepareInflight[fp] = true;
     api("POST", "/api/tts/prepare", { text: raw, lang: "de" })
       .then(function (r) {
-        const de = (r && r.text) || raw;
-        speakOrQueuePrepared(de);
+        delete ttsPrepareInflight[fp];
+        const de = stripForSpeech((r && r.text) || "");
+        if (de && !looksMostlyEnglishClient(de)) {
+          speakOrQueuePrepared(de);
+        } else {
+          speakOrQueuePrepared(germanizeThoughtForSpeech(raw, "Agent"));
+        }
       })
       .catch(function () {
-        // Offline fallback: short DE shell if still looks English
-        speakOrQueuePrepared(germanizeThoughtForSpeech(raw, "Agent") || raw);
+        delete ttsPrepareInflight[fp];
+        /* Never speak English raw on DE desk */
+        speakOrQueuePrepared(germanizeThoughtForSpeech(raw, "Agent"));
       });
   }
 
-  /** Immediate speak from a real click handler (unlock + optional text). */
+  /** Unlock + optional short DE line from a real click (no pending re-queue). */
   function speakNow(text) {
     ttsUnlocked = true;
+    pendingSpeech = "";
     if (text) {
-      const pieces = chunkForSpeech(text);
-      pieces.forEach(function (p) {
-        ttsQueue.push(p);
-      });
+      speakOrQueuePrepared(text);
+    } else {
+      pumpTtsQueue();
     }
-    // If something is pending from autoplay block, enqueue it
-    if (pendingSpeech) {
-      const p = pendingSpeech;
-      pendingSpeech = "";
-      chunkForSpeech(p).forEach(function (c) {
-        ttsQueue.push(c);
-      });
-    }
-    pumpTtsQueue();
     return true;
   }
 
@@ -1237,14 +1358,9 @@
     document.addEventListener(
       "click",
       function () {
+        /* Only unlock + drain queue. Never re-push pending (caused double TTS). */
         ttsUnlocked = true;
-        if (pendingSpeech) {
-          const t = pendingSpeech;
-          pendingSpeech = "";
-          chunkForSpeech(t).forEach(function (c) {
-            ttsQueue.push(c);
-          });
-        }
+        pendingSpeech = "";
         pumpTtsQueue();
       },
       true
@@ -1253,7 +1369,7 @@
 
   /**
    * TTS speaks agent *thoughts* (reasoning), not the written Box text / HTML.
-   * Each agent is a separate queue item so speech finishes fully before the next.
+   * Flex is handled by maybeSpeakFlexSupport (how/why support) — not listed here.
    */
   function maybeSpeakPipeline(p, snap) {
     const thoughts =
@@ -1262,8 +1378,10 @@
       lastAgentThoughts ||
       {};
     const thoughtKey = Object.keys(thoughts)
+      .sort()
       .map(function (k) {
-        return k + ":" + String(thoughts[k] || "").slice(0, 40);
+        const t = String(thoughts[k] || "");
+        return k + ":" + t.length + ":" + t.slice(0, 24) + ":" + t.slice(-24);
       })
       .join("|");
     const key =
@@ -1273,21 +1391,20 @@
       "|" +
       ((p.worker_outputs && p.worker_outputs.length) || 0);
     if (key === lastSpokenKey) return;
-    const de = uiLang === "de";
+    const de = uiLang !== "en";
     const labels = {
-      brainstorm: de ? "Brainstorm" : "Brainstorm",
-      memory: de ? "Memory" : "Memory",
-      flex: "Flex",
+      brainstorm: "Brainstorm",
+      memory: "Memory",
       coordinator: de ? "Koordinator" : "Coordinator",
-      worker1: de ? "Worker 1" : "Worker 1",
+      worker1: "Worker 1",
       worker2: "Worker 2",
       worker3: "Worker 3",
       worker4: "Worker 4",
     };
+    /* flex omitted on purpose → maybeSpeakFlexSupport */
     const order = [
       "brainstorm",
       "memory",
-      "flex",
       "coordinator",
       "worker1",
       "worker2",
@@ -1302,11 +1419,57 @@
       if (!t || !String(t).trim()) return;
       any = true;
       const label = labels[agentId] || a.label || agentId;
-      // One agent = queue item(s); never speak English monologues on a DE desk
-      const spoken = germanizeThoughtForSpeech(String(t), label);
-      if (spoken) speakOrQueue(spoken);
+      const body = stripForSpeech(String(t));
+      if (!body) return;
+      speakOrQueue(label + ". " + body);
     });
     if (any) lastSpokenKey = key;
+  }
+
+  /**
+   * Flex TTS: user wants to hear HOW Flex supports them and WHY.
+   * Prefer flex_notes (companion reasoning) over raw thought; DE only, once.
+   */
+  let lastFlexSupportKey = "";
+
+  function maybeSpeakFlexSupport(p, snap) {
+    const a = typeof findAgent === "function" ? findAgent("flex") : null;
+    if (!a || !a.tts) return;
+    p = p || {};
+    const thoughts =
+      (snap && snap.agent_thoughts) || lastAgentThoughts || {};
+    const notes = stripForSpeech(p.flex_notes || "");
+    const thought = stripForSpeech(thoughts.flex || "");
+    /* Notes = was ich über dich weiß / für die Worker — the support story */
+    let body = notes || thought;
+    if (!body) return;
+    body = body
+      .replace(/^#+\s*/gm, "")
+      .replace(/\*\*/g, "")
+      .replace(/`+/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 500);
+    if (!body) return;
+    const key =
+      "flex-support|" +
+      (p.stage || "") +
+      "|" +
+      body.length +
+      "|" +
+      body.slice(0, 40) +
+      "|" +
+      body.slice(-40);
+    if (key === lastFlexSupportKey) return;
+    lastFlexSupportKey = key;
+
+    /* Personal companion only — not product pitch */
+    let spoken = "Flex, nur für dich. " + body;
+    if (p.stage === "done") {
+      spoken +=
+        " Wenn du magst: sag mir kurz, ob das Ergebnis für dich passt.";
+    }
+    speakOrQueue(spoken);
   }
 
   /**
@@ -1373,32 +1536,16 @@
       btnsEl.appendChild(btn);
     });
 
-    // Flex speaks the review question once (German, after translate pipeline)
-    const speakKey =
-      "flex|" +
+    /* Panel is visual only. Flex voice = maybeSpeakFlexSupport (how/why). */
+    lastFlexReviewKey =
+      "flex-panel|" +
       String(p.question || "").slice(0, 80) +
       "|" +
-      buttons.map(function (b) {
-        return b.id;
-      }).join(",");
-    if (speakKey !== lastFlexReviewKey) {
-      lastFlexReviewKey = speakKey;
-      const labels = buttons
-        .slice(0, 5)
+      buttons
         .map(function (b) {
-          return b.label;
+          return b.id;
         })
-        .join(", ");
-      const spoken =
-        "Flex. " +
-        String(qText).replace(/\n/g, " ") +
-        " Wähle: " +
-        labels +
-        ".";
-      if (typeof speakOrQueue === "function") {
-        speakOrQueue(spoken);
-      }
-    }
+        .join(",");
   }
 
   async function onFlexFeedbackClick(btnSpec) {
@@ -1619,14 +1766,10 @@
     };
     const key = document.getElementById("tune-key").value.trim();
     if (key) body.api_key = key;
-    // Speak in the same click as Save (before await)
+    // Speak in the same click as Save (before await) — short DE only
     if (ttsOn) {
       const a = findAgent(tuneAgentId);
-      speakNow(
-        "Gedanken an für " +
-          ((a && a.label) || tuneAgentId) +
-          ". Ich spreche den Denkprozess, nicht den Text."
-      );
+      speakNow("TTS an: " + ((a && a.label) || tuneAgentId) + ".");
     } else {
       stopSpeech();
     }
@@ -2273,13 +2416,29 @@
     }
   }
 
-  async function refreshToolsModal() {
+  async function refreshToolsModal(opts) {
+    const doReload = !!(opts && opts.reload);
     const ul = document.getElementById("tools-list");
     const sel = document.getElementById("tools-select");
     const countEl = document.getElementById("tools-count");
     try {
-      const data = await api("GET", "/api/plugins");
+      // Hot-reload: re-scan plugins/ + re-import handlers (core tools untouched)
+      const data = doReload
+        ? await api("POST", "/api/plugins/reload")
+        : await api("GET", "/api/plugins");
       const tools = data.tools || [];
+      if (doReload) {
+        const errs = data.errors || [];
+        const nPlug = data.plugins ? data.plugins.length : 0;
+        toast(
+          "Plugins reloaded: " +
+            nPlug +
+            " · tools " +
+            tools.length +
+            (errs.length ? " · errors " + errs.length : ""),
+          errs.length ? "info" : "ok"
+        );
+      }
       if (countEl) {
         countEl.textContent =
           "Tools: " +
@@ -3070,6 +3229,51 @@
   }
 
   let chatBusy = false;
+  let busyJobId = null; // job holding pipeline (may differ from currentJobId after 409)
+
+  function godModeLabel() {
+    const b = els.godBadge || document.getElementById("god-badge");
+    if (b && b.classList.contains("on")) return "God:ON";
+    return "God:off";
+  }
+
+  function showBusyBanner(info) {
+    const ban = document.getElementById("pipeline-busy-banner");
+    const txt = document.getElementById("pipeline-busy-text");
+    if (!ban) return;
+    const id = (info && (info.busy_job_id || info.id)) || busyJobId || currentJobId || "?";
+    const stage = (info && (info.busy_stage || info.stage)) || "?";
+    const name = (info && (info.busy_name || info.name)) || "job";
+    const cancelling = !!(info && info.cancel);
+    busyJobId = id !== "?" ? id : busyJobId;
+    const god = godModeLabel();
+    if (txt) {
+      txt.textContent = cancelling
+        ? "Pipeline cancel… (" +
+          name +
+          " @ " +
+          stage +
+          ") · " +
+          god +
+          " · warte auf Stage-Ende"
+        : "Pipeline busy: " +
+          name +
+          " @ " +
+          stage +
+          " · job " +
+          id +
+          " · " +
+          god +
+          (god === "God:off" ? " (Shell/GUI oft dry-run)" : "");
+    }
+    ban.hidden = false;
+  }
+
+  function hideBusyBanner() {
+    const ban = document.getElementById("pipeline-busy-banner");
+    if (ban) ban.hidden = true;
+    busyJobId = null;
+  }
 
   function formatDuration(sec) {
     if (sec < 60) return sec.toFixed(1) + "s";
@@ -3138,6 +3342,7 @@
       btnCancel.hidden = !chatBusy;
       btnCancel.disabled = !chatBusy;
     }
+    // Keep chat input usable when only foreign busy (409) — allow Cancel banner
     if (els.btnMic) els.btnMic.disabled = chatBusy;
     if (els.chatInput) els.chatInput.disabled = chatBusy;
     if (els.stageBadge) {
@@ -3148,6 +3353,7 @@
         els.stageBadge.textContent = activeStage;
       }
     }
+    if (!chatBusy && !busyJobId) hideBusyBanner();
   }
 
   function updateCostBadge(llm) {
@@ -4169,8 +4375,11 @@
 
   async function pollJob(jobId, maxMs) {
     currentJobId = jobId;
+    busyJobId = jobId;
+    showBusyBanner({ busy_job_id: jobId, busy_name: "job", busy_stage: "queued" });
     const deadline = Date.now() + (maxMs || 180000);
     let lastStage = "";
+    let lastToolLogLen = 0;
     try {
       while (Date.now() < deadline) {
         let job;
@@ -4187,6 +4396,26 @@
           job.stage ||
           (job.snapshot && job.snapshot.pipeline && job.snapshot.pipeline.stage) ||
           "";
+        showBusyBanner({
+          busy_job_id: jobId,
+          busy_name: job.name || "job",
+          busy_stage: stage || job.status,
+          cancel: job.cancel,
+        });
+        // Live tool log → chat (so desk sees real tool use, not only final box)
+        const tlog = Array.isArray(job.tool_log) ? job.tool_log : [];
+        if (tlog.length > lastToolLogLen) {
+          for (let ti = lastToolLogLen; ti < tlog.length; ti++) {
+            const e = tlog[ti] || {};
+            const mode = e.mode ? " · " + e.mode : "";
+            const ok = e.ok === false ? "FAIL" : "ok";
+            appendChat(
+              "system",
+              "Tool: " + (e.tool || "?") + " " + ok + mode
+            );
+          }
+          lastToolLogLen = tlog.length;
+        }
         if (stage && stage !== lastStage) {
           lastStage = stage;
           if (els.stageBadge) els.stageBadge.textContent = stage;
@@ -4235,6 +4464,7 @@
         const st = job.status;
         if (st === "done" || st === "error" || st === "clarify" || st === "cancelled") {
           // Always resync so can_execute / stage match server after soft-cancel
+          hideBusyBanner();
           await resyncState();
           return job;
         }
@@ -4249,6 +4479,7 @@
       } catch (_c) {
         /* ignore */
       }
+      hideBusyBanner();
       await resyncState();
       throw new Error("Pipeline timeout");
     } finally {
@@ -4256,20 +4487,103 @@
     }
   }
 
+  async function waitPipelineFree(maxMs) {
+    const deadline = Date.now() + (maxMs || 45000);
+    while (Date.now() < deadline) {
+      try {
+        const b = await api("GET", "/api/jobs/busy");
+        if (!b || !b.busy) {
+          hideBusyBanner();
+          busyJobId = null;
+          currentJobId = null;
+          if (typeof setChatBusy === "function") setChatBusy(false);
+          await resyncState();
+          return true;
+        }
+        showBusyBanner({
+          busy_job_id: b.busy_job_id,
+          busy_name: b.busy_name || "job",
+          busy_stage: b.busy_stage || "cancelling",
+          cancel: true,
+        });
+      } catch (_e) {
+        /* ignore */
+      }
+      await new Promise(function (r) {
+        setTimeout(r, 500);
+      });
+    }
+    return false;
+  }
+
   async function cancelCurrentJob() {
-    if (!currentJobId) {
-      toast("No running job", "info");
+    const jid = currentJobId || busyJobId;
+    if (!jid) {
+      // one-shot: cancel whatever server says is busy
+      try {
+        const r = await api("POST", "/api/jobs/cancel-busy");
+        if (r && r.busy) {
+          toast("Cancel requested — warte bis Pipeline frei…", "info");
+          appendChat("system", "Cancel busy job " + ((r.cancelled && r.cancelled.id) || ""));
+          showBusyBanner({
+            busy_job_id: (r.cancelled && r.cancelled.id) || "?",
+            busy_stage: "cancelling",
+            busy_name: "job",
+            cancel: true,
+          });
+          const free = await waitPipelineFree(45000);
+          toast(
+            free ? "Pipeline frei" : "Cancel läuft noch (LLM kann warten)",
+            free ? "ok" : "info"
+          );
+          if (free) appendChat("system", "Pipeline free — ready.");
+        } else {
+          toast("No running job", "info");
+          hideBusyBanner();
+        }
+        await resyncState();
+      } catch (err) {
+        toast("Cancel failed: " + err.message, "error");
+      }
       return;
     }
-    const jid = currentJobId;
     try {
       await api("POST", "/api/jobs/" + encodeURIComponent(jid) + "/cancel");
-      toast("Cancel requested", "info");
+      toast("Cancel requested — warte bis Pipeline frei…", "info");
       appendChat("system", "Cancel requested for job " + jid);
+      showBusyBanner({
+        busy_job_id: jid,
+        busy_stage: "cancelling",
+        busy_name: "job",
+        cancel: true,
+      });
+      const free = await waitPipelineFree(45000);
+      toast(
+        free ? "Pipeline frei" : "Cancel läuft noch (LLM kann warten)",
+        free ? "ok" : "info"
+      );
+      if (free) appendChat("system", "Pipeline free — ready.");
       await resyncState();
     } catch (err) {
       toast("Cancel failed: " + err.message, "error");
     }
+  }
+
+  function handleBusyError(err, userText) {
+    const d = err && err.detail;
+    const obj = d && typeof d === "object" ? d : null;
+    const msg =
+      (obj && (obj.message || obj.hint)) ||
+      (err && err.message) ||
+      "Pipeline busy";
+    if (obj && obj.busy_job_id) {
+      busyJobId = obj.busy_job_id;
+      showBusyBanner(obj);
+    } else {
+      showBusyBanner({ busy_job_id: busyJobId || "?", busy_stage: "busy", busy_name: "pipeline" });
+    }
+    appendChat("system", msg + (userText ? " (deine Nachricht wurde nicht gestartet)" : ""));
+    toast(msg, "error");
   }
 
   function loadChatHist() {
@@ -4467,6 +4781,14 @@
     try {
       const start = await api("POST", "/api/chat", { text: text });
       let snap = start;
+      // Pipeline already busy — do not poll forever
+      if (start.busy || start.status === "busy") {
+        handleBusyError(
+          { message: start.message || start.error, detail: start },
+          text
+        );
+        return;
+      }
       if (start.job_id) {
         const job = await pollJob(start.job_id, pollMs);
         snap = job.snapshot || (await api("GET", "/api/state"));
@@ -4479,6 +4801,7 @@
         if (job.status === "cancelled") {
           appendChat("system", "Job cancelled.");
           toast("Cancelled", "info");
+          hideBusyBanner();
           applySnapshot(snap);
           return;
         }
@@ -4508,8 +4831,12 @@
         toast("Cancelled", "info");
       }
     } catch (err) {
-      appendChat("system", "Chat failed: " + err.message);
-      toast("Chat failed: " + err.message, "error");
+      if (err && (err.status === 409 || (err.detail && err.detail.busy))) {
+        handleBusyError(err, text);
+      } else {
+        appendChat("system", "Chat failed: " + err.message);
+        toast("Chat failed: " + err.message, "error");
+      }
     } finally {
       setChatBusy(false);
       currentJobId = null;
@@ -4985,10 +5312,9 @@
       frame.className = "worker-preview-frame dyn-frame";
       frame.setAttribute(
         "sandbox",
-        "allow-same-origin allow-forms allow-popups allow-modals"
+        "allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
       );
       frame.setAttribute("title", opts.title || "preview");
-      frame.setAttribute("scrolling", "no"); /* pure box — no scroll */
       frame.srcdoc = wrapHtmlDocument(html);
       const pre = document.createElement("pre");
       pre.className = "result-block worker-source dyn-source";
@@ -5109,23 +5435,33 @@
    */
   function extractHtml(raw) {
     const s = String(raw || "");
-    // Explicit ```html fence with a real document or substantial markup
+    // Closed ```html fence
     const fenceHtml = s.match(/```html\s*([\s\S]*?)```/i);
     if (fenceHtml && fenceHtml[1]) {
       const body = fenceHtml[1].trim();
       if (/<!DOCTYPE\s+html|<html[\s>]/i.test(body)) return body;
       if (body.startsWith("<") && (body.match(/<\w+/g) || []).length >= 4) return body;
     }
+    // Open fence (worker cut off before closing ```) — common failure mode
+    const fenceOpen = s.match(/```html\s*([\s\S]+)$/i);
+    if (fenceOpen && fenceOpen[1]) {
+      const body = fenceOpen[1].replace(/```\s*$/, "").trim();
+      if (/<!DOCTYPE\s+html|<html[\s>]/i.test(body) && body.length >= 80) {
+        return body;
+      }
+    }
     // Full document with doctype + closing html (preferred)
     const fullDoc = s.match(/(<!DOCTYPE\s+html[\s\S]*?<\/html>)/i);
     if (fullDoc) return fullDoc[1].trim();
     // Open doctype document (truncated mid-file still previewable)
-    const doctypeOpen = s.match(/(<!DOCTYPE\s+html[\s\S]{120,})$/i);
+    const doctypeOpen = s.match(/(<!DOCTYPE\s+html[\s\S]{80,})$/i);
     if (doctypeOpen && /<(html|head|body)[\s>]/i.test(doctypeOpen[1])) {
       return doctypeOpen[1].trim();
     }
     const htmlTag = s.match(/(<html[\s\S]*?<\/html>)/i);
     if (htmlTag) return htmlTag[1].trim();
+    const htmlOpen = s.match(/(<html[\s\S]{80,})$/i);
+    if (htmlOpen) return htmlOpen[1].trim();
     // Markup-first fragment only: must start with tag, enough structure, high density
     const trimmed = s.trim();
     if (
@@ -5140,12 +5476,158 @@
     return null;
   }
 
+  /** True when document has no usable body content (truncated mid-CSS etc.). */
+  function htmlBodyIsEmpty(html) {
+    const s = String(html || "");
+    const m = s.match(/<body[^>]*>([\s\S]*)/i);
+    if (!m) return true;
+    const inner = m[1]
+      .replace(/<\/body>[\s\S]*$/i, "")
+      .replace(/<script[\s\S]*?<\/script>/gi, "")
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    return inner.length < 12;
+  }
+
+  /**
+   * Heal truncated worker HTML so the iframe shows a page, not a black void.
+   * Workers often cut off mid-<style> with no </html>.
+   */
+  function healTruncatedHtml(html) {
+    let doc = String(html || "").trim();
+    if (!doc) return doc;
+    const incomplete =
+      !/<\/html>/i.test(doc) ||
+      htmlBodyIsEmpty(doc) ||
+      (/<style[\s>]/i.test(doc) && !/<\/style>/i.test(doc));
+
+    if (/<style[\s>]/i.test(doc) && !/<\/style>/i.test(doc)) {
+      doc += "\n</style>";
+    }
+    if (/<script[\s>](?![^<]*<\/script>)/i.test(doc) && !/<\/script>\s*$/i.test(doc)) {
+      /* crude: if last script unclosed */
+      if ((doc.match(/<script[\s>]/gi) || []).length > (doc.match(/<\/script>/gi) || []).length) {
+        doc += "\n</script>";
+      }
+    }
+    if (/<head[\s>]/i.test(doc) && !/<\/head>/i.test(doc)) {
+      doc += "\n</head>";
+    }
+
+    if (!/<body[\s>]/i.test(doc) || htmlBodyIsEmpty(doc)) {
+      /* Inject a visible page so user never sees "empty top / code bottom" only */
+      const stub =
+        '<body style="margin:0;font-family:system-ui,sans-serif;background:#12141a;color:#e8eaed;">' +
+        '<main style="max-width:42rem;margin:0 auto;padding:1.5rem 1.25rem;">' +
+        "<h1 style=\"font-size:1.35rem;margin:0 0 .75rem;\">Vorschau — Seite unvollständig</h1>" +
+        "<p style=\"line-height:1.45;margin:0 0 .75rem;color:#b8bcc4;\">" +
+        "Der Worker hat die HTML-Datei abgeschnitten (oft mitten im CSS, ohne sichtbaren Inhalt). " +
+        "Unten siehst du den Quelltext. Bitte im Flex-Panel „Nochmal bauen“ oder „HTML reparieren“." +
+        "</p>" +
+        "<p style=\"margin:0;font-size:.9rem;color:#8b909a;\">" +
+        "Zeichen geliefert: " +
+        String(doc.length) +
+        " · kein fertiges &lt;body&gt;-Layout</p>" +
+        "</main></body>";
+      if (/<body[\s>]/i.test(doc)) {
+        doc = doc.replace(/<body[^>]*>[\s\S]*$/i, stub);
+      } else {
+        doc += "\n" + stub;
+      }
+    } else if (!/<\/body>/i.test(doc)) {
+      doc += "\n</body>";
+    }
+    if (!/<\/html>/i.test(doc)) {
+      doc += "\n</html>";
+    }
+    if (!/<!DOCTYPE/i.test(doc) && !/<html/i.test(doc)) {
+      return wrapHtmlDocument(doc);
+    }
+    if (!/<!DOCTYPE/i.test(doc) && /<html/i.test(doc)) {
+      doc = "<!DOCTYPE html>\n" + doc;
+    }
+    return doc;
+  }
+
   /**
    * Box 3: dynamic — one panel per worker result (all outputs, not only first).
    * HTML → Preview + Source; plain text → pre. Panels share height equally.
    */
   function updateBox3Toolbar() {
     // Box 3 toolbar intentionally minimal (no history/diff chrome)
+  }
+
+  /** Skip iframe rebuild when snapshot polls same worker payload (avoids white flash). */
+  let lastBox3StageKey = "";
+  let lastBox3RenderKey = "";
+
+  function box3OutputsKey(outputs, stage) {
+    return (
+      String(stage || "") +
+      "|" +
+      (outputs || [])
+        .map(function (o) {
+          const r = String((o && o.result) || "");
+          return (
+            String((o && (o.worker || o.name)) || "") +
+            ":" +
+            r.length +
+            ":" +
+            r.slice(0, 120) +
+            ":" +
+            r.slice(-120)
+          );
+        })
+        .join("||")
+    );
+  }
+
+  function revokeBox3Blobs(root) {
+    if (!root) return;
+    root.querySelectorAll("iframe").forEach(function (frame) {
+      if (frame._blobUrl) {
+        try {
+          URL.revokeObjectURL(frame._blobUrl);
+        } catch (_e) {
+          /* ignore */
+        }
+        frame._blobUrl = null;
+      }
+    });
+  }
+
+  /**
+   * Highlight which worker result is shown — without switching Box1/Box2 layers
+   * or chat. Global activateAgentLayer(worker) was wiping brainstorm from Box2.
+   */
+  function highlightWorkerResult(agentId) {
+    if (!agentId) return;
+    document.querySelectorAll("#box3-layers .agent-layer").forEach(function (layer) {
+      const on = layer.getAttribute("data-agent") === agentId;
+      layer.classList.toggle("is-active", on);
+      layer.hidden = !on;
+    });
+    /* Card ring = which deliverable; do not touch Box1/2 layers or lastClickedAgentId */
+    document.querySelectorAll(".agent-card").forEach(function (card) {
+      card.classList.toggle(
+        "is-layer-active",
+        card.dataset.agentId === agentId
+      );
+    });
+    const hex =
+      typeof COLOR_HEX !== "undefined" && COLOR_HEX[agentId]
+        ? COLOR_HEX[agentId]
+        : null;
+    const mod = document.querySelector(".boxes");
+    if (mod) {
+      mod.style.setProperty("--boxes-mod-color", hex || "var(--border)");
+    }
+    const chatMod = document.getElementById("chat-mod");
+    if (chatMod && hex) {
+      chatMod.style.setProperty("--chat-mod-color", hex);
+    }
   }
 
   function showBox3ResultStage(out, idx) {
@@ -5155,14 +5637,36 @@
     if (!stage || !body) return false;
     const raw = (out && out.result) != null ? String(out.result) : "";
     if (!raw.trim()) {
+      lastBox3StageKey = "";
+      revokeBox3Blobs(body);
       stage.hidden = true;
       stage.classList.remove("is-open");
       return false;
     }
-    body.innerHTML = "";
-    body.classList.add("box3-dynamic", "box3-result-split");
     const name = (out && (out.name || out.worker)) || "Worker";
     const html = extractHtml(raw);
+    const stageKey =
+      name +
+      "|" +
+      raw.length +
+      "|" +
+      raw.slice(0, 160) +
+      "|" +
+      raw.slice(-160) +
+      "|" +
+      (html ? "h" : "t");
+    /* Same payload already painted — keep iframe (no white flash on poll). */
+    if (
+      stageKey === lastBox3StageKey &&
+      stage.classList.contains("is-open") &&
+      body.childNodes.length
+    ) {
+      return true;
+    }
+    lastBox3StageKey = stageKey;
+    revokeBox3Blobs(body);
+    body.innerHTML = "";
+    body.classList.add("box3-dynamic", "box3-result-split");
     if (label) {
       label.textContent =
         name +
@@ -5176,13 +5680,18 @@
     }
 
     /*
-     * Split view: ALWAYS show readable source + optional live preview.
-     * iframe-only looked "only white" when CSS was broken / height collapsed.
+     * Page-first layout: large live preview on top, compact collapsible source.
+     * Truncated worker HTML is healed so preview is never a black empty pane.
      */
     const split = document.createElement("div");
-    split.className = "box3-split";
+    split.className = "box3-split" + (html ? " has-preview" : " text-only");
 
     if (html) {
+      const incomplete = htmlBodyIsEmpty(html) || !/<\/html>/i.test(html);
+      if (incomplete && label) {
+        label.textContent =
+          (label.textContent || "") + " · unvollständig → Vorschau geheilt";
+      }
       const prevWrap = document.createElement("div");
       prevWrap.className = "box3-split-preview";
       const frame = document.createElement("iframe");
@@ -5192,28 +5701,41 @@
         "sandbox",
         "allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
       );
-      // blob URL is more reliable than srcdoc on some Chromium builds
+      const docHtml = wrapHtmlDocument(html);
       try {
-        const blob = new Blob([wrapHtmlDocument(html)], {
+        const blob = new Blob([docHtml], {
           type: "text/html;charset=utf-8",
         });
         frame.src = URL.createObjectURL(blob);
         frame._blobUrl = frame.src;
       } catch (_e) {
-        frame.srcdoc = wrapHtmlDocument(html);
+        frame.srcdoc = docHtml;
       }
       prevWrap.appendChild(frame);
       split.appendChild(prevWrap);
     }
 
     const srcWrap = document.createElement("div");
-    srcWrap.className = "box3-split-source";
-    const srcHead = document.createElement("div");
+    srcWrap.className =
+      "box3-split-source" + (html ? " is-collapsed" : "");
+    const srcHead = document.createElement("button");
+    srcHead.type = "button";
     srcHead.className = "box3-split-source-h";
-    srcHead.textContent = html ? "Quelltext (Worker-Ausgabe)" : "Worker-Ausgabe";
+    srcHead.textContent = html
+      ? "▸ Quelltext (Worker-Ausgabe) — klicken zum Aufklappen"
+      : "Worker-Ausgabe";
     const pre = document.createElement("pre");
     pre.className = "result-block box3-result-pre";
     pre.textContent = raw.slice(0, 30000);
+    if (html) {
+      srcHead.addEventListener("click", function () {
+        const open = srcWrap.classList.toggle("is-open");
+        srcWrap.classList.toggle("is-collapsed", !open);
+        srcHead.textContent = open
+          ? "▾ Quelltext (Worker-Ausgabe)"
+          : "▸ Quelltext (Worker-Ausgabe) — klicken zum Aufklappen";
+      });
+    }
     srcWrap.appendChild(srcHead);
     srcWrap.appendChild(pre);
     split.appendChild(srcWrap);
@@ -5243,17 +5765,74 @@
   function hideBox3ResultStage() {
     const stage = document.getElementById("box3-result-stage");
     const body = document.getElementById("box3-result-body");
+    lastBox3StageKey = "";
+    /* lastBox3RenderKey owned by renderBox3Workers */
+    revokeBox3Blobs(body);
     if (body) body.innerHTML = "";
     if (stage) {
       stage.hidden = true;
       stage.classList.remove("is-open");
     }
+    const strip = document.getElementById("box3-tool-strip");
+    if (strip) {
+      strip.hidden = true;
+      strip.innerHTML = "";
+    }
+  }
+
+  function renderToolStrip(toolLog, qualityNotes) {
+    const strip = document.getElementById("box3-tool-strip");
+    if (!strip) return;
+    const log = Array.isArray(toolLog) ? toolLog : [];
+    if (!log.length) {
+      // fallback: quality_notes may list tools
+      if (qualityNotes && /tool/i.test(String(qualityNotes))) {
+        strip.hidden = false;
+        strip.textContent = String(qualityNotes).slice(0, 220);
+        return;
+      }
+      strip.hidden = true;
+      strip.innerHTML = "";
+      return;
+    }
+    strip.hidden = false;
+    strip.innerHTML = "";
+    log.slice(-16).forEach(function (e) {
+      if (!e) return;
+      const chip = document.createElement("span");
+      const mode = String(e.mode || "");
+      chip.className = "box3-tool-chip";
+      if (mode === "dry-run") chip.classList.add("is-dry");
+      else if (mode === "blocked") chip.classList.add("is-blocked");
+      else if (e.ok === false || mode === "error") chip.classList.add("is-err");
+      const ok = e.ok === false ? "✗" : "✓";
+      chip.textContent =
+        ok + " " + (e.tool || "?") + (mode ? " · " + mode : "");
+      chip.title = JSON.stringify(e);
+      strip.appendChild(chip);
+    });
   }
 
   function renderBox3Workers(pipeline) {
     const outputs = normalizeWorkerOutputs(pipeline);
     lastWorkerOutputs = outputs;
     updateBox3Toolbar();
+    if (pipeline) {
+      renderToolStrip(pipeline.tool_log || [], pipeline.quality_notes || "");
+    }
+
+    const stageName = pipeline && pipeline.stage;
+    const renderKey = box3OutputsKey(outputs, stageName);
+    const stageEl = document.getElementById("box3-result-stage");
+    /* Poll with unchanged worker output: do not wipe DOM / flash white. */
+    if (
+      outputs.length &&
+      renderKey === lastBox3RenderKey &&
+      stageEl &&
+      stageEl.classList.contains("is-open")
+    ) {
+      return;
+    }
 
     /* clear each worker agent layer in box 3 */
     ["worker1", "worker2", "worker3", "worker4"].forEach(function (wid) {
@@ -5274,11 +5853,12 @@
     });
 
     if (!outputs.length) {
+      lastBox3RenderKey = renderKey;
       hideBox3ResultStage();
       return;
     }
 
-    /* each worker → agent layer body */
+    /* each worker → agent layer body (secondary; result stage is primary) */
     let firstAgentId = "worker1";
     let best = outputs[0];
     let bestLen = 0;
@@ -5310,6 +5890,9 @@
       });
     });
 
+    const contentChanged = renderKey !== lastBox3RenderKey;
+    lastBox3RenderKey = renderKey;
+
     // PRIMARY: always-open result stage (what the user looks at)
     const shown = showBox3ResultStage(best, 0);
     if (!shown) {
@@ -5317,27 +5900,28 @@
       const body = document.getElementById("box3-result-body");
       const stage = document.getElementById("box3-result-stage");
       if (body && stage && best) {
+        revokeBox3Blobs(body);
         body.innerHTML = "";
         const pre = document.createElement("pre");
-        pre.className = "result-block";
+        pre.className = "result-block box3-result-pre";
         pre.textContent = String(best.result || "").slice(0, 20000);
         body.appendChild(pre);
         stage.hidden = false;
+        stage.removeAttribute("hidden");
         stage.classList.add("is-open");
       }
     }
 
-    if (typeof activateAgentLayer === "function") {
-      try {
-        activateAgentLayer(firstAgentId, false);
-      } catch (_e) {
-        /* ignore */
-      }
+    /* Box3-only highlight — never activateAgentLayer(worker): that hid Box2 brainstorm */
+    try {
+      highlightWorkerResult(firstAgentId);
+    } catch (_e) {
+      /* ignore */
     }
 
     box3FocusIdx = 0;
     bindBoxLayerControls();
-    if (typeof focusBox3 === "function") {
+    if (contentChanged && typeof focusBox3 === "function") {
       try {
         focusBox3();
       } catch (_e) {
@@ -5650,15 +6234,23 @@
 
   function wrapHtmlDocument(html) {
     let doc = html || "";
-    if (!/<!DOCTYPE/i.test(doc) && !/<html/i.test(doc)) {
-      doc =
-        "<!DOCTYPE html><html><head><meta charset=\"utf-8\">" +
-        "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
-        "<style>body{font-family:system-ui,sans-serif;margin:12px;}</style>" +
-        "</head><body>" +
-        doc +
-        "</body></html>";
+    /* Prefer healed full documents (truncated workers) */
+    if (/<!DOCTYPE/i.test(doc) || /<html[\s>]/i.test(doc)) {
+      return healTruncatedHtml(doc);
     }
+    /* Dark shell so fragments are not a blinding white box in the desk */
+    doc =
+      "<!DOCTYPE html><html><head><meta charset=\"utf-8\">" +
+      "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
+      "<style>" +
+      "html,body{margin:0;min-height:100%;background:#111;color:#e8eaed;" +
+      "font-family:system-ui,sans-serif;}" +
+      "body{padding:12px;box-sizing:border-box;}" +
+      "a{color:#7db7ff;}" +
+      "</style>" +
+      "</head><body>" +
+      doc +
+      "</body></html>";
     return doc;
   }
 
@@ -5850,12 +6442,36 @@
   }
 
 /* part: 05-init.js  lines 4268-4656 of app.js — edit parts, run scripts/build_ui_js.py */
+  async function refreshBusyFromServer() {
+    try {
+      const b = await api("GET", "/api/jobs/busy");
+      if (b && b.busy) {
+        if (typeof showBusyBanner === "function") {
+          showBusyBanner({
+            busy_job_id: b.busy_job_id,
+            busy_name: b.busy_name,
+            busy_stage: b.busy_stage,
+            cancel: b.cancel,
+          });
+        }
+        if (typeof setChatBusy === "function" && !chatBusy) {
+          // do not lock chat fully — only banner; user can cancel
+        }
+      } else if (typeof hideBusyBanner === "function") {
+        hideBusyBanner();
+      }
+    } catch (_e) {
+      /* ignore */
+    }
+  }
+
   function init() {
     if (typeof buildAgentLayers === "function") buildAgentLayers();
     if (typeof buildChatLayers === "function") buildChatLayers();
     renderCards();
     bindTooltipHovers();
     bindTuneSliders();
+    refreshBusyFromServer();
 
     els.btnSend.addEventListener("click", sendChat);
     if (els.btnExecute) els.btnExecute.addEventListener("click", runExecute);
@@ -5863,6 +6479,8 @@
     if (btnSendExec) btnSendExec.addEventListener("click", sendAndExecute);
     const btnCancel = document.getElementById("btn-cancel");
     if (btnCancel) btnCancel.addEventListener("click", cancelCurrentJob);
+    const btnCancelBusy = document.getElementById("btn-cancel-busy");
+    if (btnCancelBusy) btnCancelBusy.addEventListener("click", cancelCurrentJob);
     if (els.btnMic) els.btnMic.addEventListener("click", toggleMic);
     const presetApply = document.getElementById("sys-preset-apply");
     const presetDel = document.getElementById("sys-preset-delete");
@@ -6063,7 +6681,11 @@
     const toolsRun = document.getElementById("tools-run");
     if (toolsRun) toolsRun.addEventListener("click", runSelectedTool);
     const toolsRefresh = document.getElementById("tools-refresh");
-    if (toolsRefresh) toolsRefresh.addEventListener("click", refreshToolsModal);
+    if (toolsRefresh) {
+      toolsRefresh.addEventListener("click", function () {
+        refreshToolsModal({ reload: true });
+      });
+    }
     const toolsFetchBtn = document.getElementById("tools-fetch-btn");
     if (toolsFetchBtn) toolsFetchBtn.addEventListener("click", runQuickFetch);
     const toolsArgs = document.getElementById("tools-args");

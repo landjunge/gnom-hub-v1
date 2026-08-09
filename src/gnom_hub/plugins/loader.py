@@ -10,6 +10,7 @@ Security note (local desk):
 from __future__ import annotations
 
 import importlib.util
+import itertools
 import json
 import logging
 from pathlib import Path
@@ -20,6 +21,8 @@ from gnom_hub.plugins.registry import ToolRegistry, ToolSpec
 
 logger = logging.getLogger(__name__)
 
+_LOAD_SEQ = itertools.count(1)
+
 
 class PluginLoader:
     def __init__(self, plugins_dir: Path, registry: ToolRegistry) -> None:
@@ -27,6 +30,22 @@ class PluginLoader:
         self.registry = registry
         self.loaded: list[dict[str, Any]] = []
         self.errors: list[dict[str, str]] = []
+
+    def reload_all(self) -> dict[str, Any]:
+        """Hot-reload all plugins from disk (unregister non-core, re-discover)."""
+        removed = []
+        if hasattr(self.registry, "unregister_non_core"):
+            removed = self.registry.unregister_non_core()
+        self.loaded = []
+        self.errors = []
+        loaded = self.discover_and_load()
+        logger.info("Plugins reloaded: %d plugins, removed_tools=%s", len(loaded), removed)
+        return {
+            "ok": True,
+            "plugins": loaded,
+            "removed_tools": list(removed or []),
+            "errors": list(self.errors),
+        }
 
     def discover_and_load(self) -> list[dict[str, Any]]:
         self.loaded = []
@@ -234,7 +253,6 @@ class PluginLoader:
 
     def _load_module(self, path: Path, plugin_id: str) -> Any | None:
         import sys
-        import time
 
         if not path.is_file():
             logger.warning("Plugin %s: module file missing: %s", plugin_id, path)
@@ -242,43 +260,50 @@ class PluginLoader:
                 {"path": str(path), "error": "module file missing", "plugin": plugin_id}
             )
             return None
-        # Unique name so reload() does not reuse a cached module object
-        mod_name = f"gnom_plugin_{plugin_id}_{path.stem}_{int(time.time() * 1000) % 10_000_000}"
-        # Drop older gnom_plugin_<id>_* entries to avoid unbounded growth
-        prefix = f"gnom_plugin_{plugin_id}_"
-        for k in list(sys.modules):
-            if k.startswith(prefix):
-                del sys.modules[k]
-        spec = importlib.util.spec_from_file_location(mod_name, path)
-        if spec is None or spec.loader is None:
-            logger.warning(
-                "Plugin %s: cannot create import spec for %s",
-                plugin_id,
-                path,
-            )
-            return None
-        mod = importlib.util.module_from_spec(spec)
-        sys.modules[mod_name] = mod
+        # Exec source from disk (not stale bytecode after main.py edits)
+        mod_name = f"gnom_plugin_{plugin_id}_{path.stem}_{next(_LOAD_SEQ)}"
         try:
-            # Always compile from current source so reload() sees file edits
-            # (bypass stale __pycache__ / bytecode surprises).
             source = path.read_text(encoding="utf-8")
             code = compile(source, str(path), "exec")
-            exec(code, mod.__dict__)  # noqa: S102 — intentional plugin sandbox boundary
-        except Exception:
-            logger.exception("Plugin %s: failed to exec module %s", plugin_id, path)
-            self.errors.append(
-                {
-                    "path": str(path),
-                    "error": f"exec_module failed for {path.name}",
-                    "plugin": plugin_id,
-                }
-            )
-            sys.modules.pop(mod_name, None)
-            return None
-        return mod
+            # Drop older gnom_plugin_<id>_* entries
+            prefix = f"gnom_plugin_{plugin_id}_"
+            for k in list(sys.modules):
+                if k.startswith(prefix):
+                    del sys.modules[k]
+            mod = type(sys)("module")
+            mod.__file__ = str(path)
+            mod.__name__ = mod_name
+            # provide common names plugins expect
+            ns = {
+                "__name__": mod_name,
+                "__file__": str(path),
+                "ToolSpec": ToolSpec,
+                "registry": self.registry,
+            }
+            exec(code, ns, ns)  # noqa: S102
+            # Drop plugin __pycache__ so next loads stay fresh
+            try:
+                import shutil
 
-    # back-compat name used nowhere but keep alias
+                pyc = path.parent / "__pycache__"
+                if pyc.is_dir():
+                    shutil.rmtree(pyc, ignore_errors=True)
+            except Exception:  # noqa: BLE001
+                pass
+            try:
+                importlib.invalidate_caches()
+            except Exception:  # noqa: BLE001
+                pass
+            # Store as module-like
+            for k, v in ns.items():
+                setattr(mod, k, v)
+            sys.modules[mod_name] = mod
+            return mod
+        except Exception as exc:
+            logger.exception("Plugin %s load failed", plugin_id)
+            self.errors.append({"path": str(path), "error": str(exc), "plugin": plugin_id})
+            return None
+
     def _load_handler(self, path: Path, attr: str, plugin_id: str):
         mod = self._load_module(path, plugin_id)
         if mod is None:
