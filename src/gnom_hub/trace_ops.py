@@ -31,6 +31,8 @@ class TraceOpsMixin:
             "pipeline.question",
             "pipeline.warning",
             "pipeline.brainstorm_ready",
+            "pipeline.tool_call",
+            "pipeline.web_fetch",
         ):
             self.bus.on(ev, make_handler(ev))
 

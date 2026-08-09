@@ -45,6 +45,7 @@ class Orchestrator:
         self._clarified_once = False
         self.cancel_check: Callable[[], bool] | None = None
         self.plan_mode: str = "default"
+        self.tools: Any | None = None  # ToolRegistry from Hub (optional)
         self._stage_t0: float | None = None
         self._stage_name: str | None = None
         self._build_roles()
@@ -454,9 +455,18 @@ class Orchestrator:
             text = self._state.user_text or task
             mem = self._state.memory_context or self.memory.recall(text)
             self._state.memory_context = mem
-            web_ctx = _prefetch_urls(f"{text}\n{task}")
-            if web_ctx:
-                mem = (mem or "").rstrip() + "\n\nWeb fetch (auto):\n" + web_ctx
+            tool_ctx = _prefetch_worker_tools(
+                f"{text}\n{task}",
+                bus=self.bus,
+                tools=getattr(self, "tools", None),
+                memory=self.memory_store,
+            )
+            if tool_ctx:
+                mem = (mem or "").rstrip() + "\n\nTool prefetch (auto):\n" + tool_ctx
+                self.bus.emit(
+                    "pipeline.web_fetch",
+                    {"chars": len(tool_ctx), "via": "worker_prefetch"},
+                )
             result = worker.run(
                 task,
                 text,
@@ -617,10 +627,19 @@ class Orchestrator:
         # H4: clear then publish incrementally so cancel keeps partials
         self._state.worker_results = []
         self._state.worker_outputs = []
-        web_ctx = _prefetch_urls(f"{text}\n" + "\n".join(t for _, t in tasks))
-        if web_ctx:
-            mem = (mem or "").rstrip() + "\n\nWeb fetch (auto):\n" + web_ctx
-            self.bus.emit("pipeline.web_fetch", {"chars": len(web_ctx)})
+        pre_blob = f"{text}\n" + "\n".join(t for _, t in tasks)
+        tool_ctx = _prefetch_worker_tools(
+            pre_blob,
+            bus=self.bus,
+            tools=getattr(self, "tools", None),
+            memory=self.memory_store,
+        )
+        if tool_ctx:
+            mem = (mem or "").rstrip() + "\n\nTool prefetch (auto):\n" + tool_ctx
+            self.bus.emit(
+                "pipeline.web_fetch",
+                {"chars": len(tool_ctx), "via": "worker_prefetch"},
+            )
         dod = _definition_of_done(text, self._state.distilled_requirements)
         for i, (wid, task) in enumerate(tasks, start=1):
             self._check_cancel()
@@ -1089,26 +1108,29 @@ def _is_topic_switch(turns: list[dict], new_text: str) -> bool:
 
 
 def _prefetch_urls(blob: str, *, limit: int = 3) -> str:
-    import re
+    """Backward-compatible URL-only prefetch (tests may call this)."""
+    return _prefetch_worker_tools(blob, max_urls=limit, max_tool_calls=limit)
 
-    from gnom_hub.tools.web_fetch import web_fetch
 
-    urls = re.findall(r"https?://[^\s\]\)\"'<>]+", blob or "")
-    seen: set[str] = set()
-    chunks: list[str] = []
-    for u in urls:
-        u = u.rstrip(".,;:)")
-        if u in seen:
-            continue
-        seen.add(u)
-        if len(seen) > limit:
-            break
-        res = web_fetch(u, max_chars=2500)
-        if res.get("ok"):
-            chunks.append(f"URL: {res.get('url')}\n{res.get('text', '')[:2500]}")
-        else:
-            chunks.append(f"URL: {u}\n(fetch failed: {res.get('error')})")
-    return "\n---\n".join(chunks)
+def _prefetch_worker_tools(
+    blob: str,
+    *,
+    bus: Any = None,
+    tools: Any = None,
+    memory: Any = None,
+    max_urls: int = 3,
+    max_tool_calls: int = 5,
+) -> str:
+    from gnom_hub.tools.worker_prefetch import prefetch_for_workers
+
+    return prefetch_for_workers(
+        blob,
+        bus=bus,
+        tools=tools,
+        memory=memory,
+        max_urls=max_urls,
+        max_tool_calls=max_tool_calls,
+    )
 
 
 def _definition_of_done(user_text: str, requirements: list[str]) -> str:

@@ -163,6 +163,7 @@ class Hub(
             memory=self.memory,
         )
         pipe.plan_mode = getattr(self, "plan_mode", "default") or "default"
+        pipe.tools = self.tools  # web_fetch / memory_search for worker prefetch
         return pipe
 
     def _wire_thoughts(self) -> None:

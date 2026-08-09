@@ -46,7 +46,7 @@ CORPUS: list[tuple[str, dict]] = [
     ("dark theme parks in germany travel guide", {"source": "warm"}),
     ("language answers without German preference stated", {"source": "warm"}),
     ("always use black formatter before push", {"source": "warm"}),
-    ("hero without footer for a landing mock", {"source": "warm"}),
+    ("landing mock with only a hero section — no footer block", {"source": "warm"}),
 ]
 
 
