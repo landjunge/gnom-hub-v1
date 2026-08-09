@@ -55,17 +55,23 @@ Do **not** use a bare `actions/cache` key without `${{ matrix.python-version }}`
 
 ## CI pipeline
 
-| Job | What |
-|-----|------|
-| **lint** | `./scripts/prepush_gate.sh` (Ruff + Mermaid) + inventory drift |
-| **test** | Pytest matrix 3.10–3.12 · smoke_e2e · optional live smoke |
-| **ci-ok** | Single green gate for branch protection |
-| **mutation-nightly** | Deep mutmut + rank-eval (schedule) |
+| Job | What | Notes |
+|-----|------|--------|
+| **lint** | Ruff + Mermaid + inventory drift | **Fast install** (`ruff` only) · ∥ with test |
+| **test** | Pytest 3.10–3.12 | Full `pip install -e ".[dev]"` |
+| **smoke / live** | `smoke_e2e` · optional DeepSeek | **Only Py3.12** |
+| **ci-ok** | Branch-protection gate | needs lint + test |
+| **mutation-nightly** | mutmut + rank-eval | schedule, not PR |
 
 Local parity:
 
 ```bash
-./scripts/prepush_gate.sh
+ruff check . && ruff format --check .
+python scripts/mermaid_check.py
+./scripts/prepush_gate.sh          # ruff + mermaid
 pytest tests/ -q
-python scripts/smoke_e2e.py
+python scripts/smoke_e2e.py        # optional local
 ```
+
+Optimizations: lint ∥ test · no `build` on matrix · junit artifact only on failure · smoke once.
+
