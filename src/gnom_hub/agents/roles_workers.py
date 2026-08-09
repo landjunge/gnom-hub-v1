@@ -25,70 +25,91 @@ class WorkerAgent(BaseAgent):
             return ""
         self.emit_active(True)
         try:
-            if self.has_llm():
-                try:
-                    body = f"Aufgabe: {task}\nOriginal: {user_text}\nAnforderungen:\n" + "\n".join(
-                        f"- {r}" for r in requirements[:12]
-                    )
-                    blob = f"{task}\n{user_text}".lower()
-                    wants_html = any(
-                        k in blob
-                        for k in (
-                            "html",
-                            "landing",
-                            "webpage",
-                            "web page",
-                            "css",
-                            "seite",
-                            "website",
-                            "frontend",
-                        )
-                    )
-                    max_tok = 3200 if wants_html else 1800
-                    return self.ask(
-                        system=(
-                            "You are a Worker agent. Deliver a concrete useful result "
-                            "for the assigned task (plan, structure, checklist, draft, "
-                            "or full HTML when the task is a page/UI).\n"
-                            "PRIORITY ORDER (mandatory — do not reverse):\n"
-                            "  1) Complete structure / skeleton (always finish the file)\n"
-                            "  2) Core interactive behavior (JS/handlers, DOM updates)\n"
-                            "  3) Error/empty states for those core flows\n"
-                            "  4) CSS/styling LAST (max ~30% of effort; minimal layout first)\n"
-                            "Budget: ~70% functions+structure, ~30% styling. If near limit, "
-                            "CUT CSS — never omit </html> or core interactions.\n"
-                            "If HTML/landing/page/UI:\n"
-                            "  - ONE complete file: <!DOCTYPE html> … </html>\n"
-                            "  - At least one real interaction "
-                            "(onclick= or addEventListener or form submit handler)\n"
-                            "  - Prefer working demo over pretty design\n"
-                            "Work on the USER task only. Match user language.\n"
-                            "STANDING USER WISHES (Flex-wish / User: lines) are ABSOLUTE ORDERS:\n"
-                            "  - Implement them fully in the deliverable — no debate, no skip,\n"
-                            "    no 'optional', no 'if space allows'.\n"
-                            "  - Do not contradict, weaken, or postpone them.\n"
-                            "  - If a wish conflicts with decoration, drop decoration, keep the wish.\n"
-                            "  - Dark theme / language / always-rules must be visible in the result."
-                        ),
-                        user=_with_memory(body, memory_ctx),
-                        max_tokens=max_tok,
-                        temperature=0.45,
-                    )
-                except Exception as exc:  # noqa: BLE001
-                    self.bus.emit(
-                        "pipeline.warning",
-                        {"stage": self.id, "error": str(exc)},
-                    )
             task_lines = [ln.strip() for ln in (task or "").splitlines() if ln.strip()]
             task_head = task_lines[0][:140] if task_lines else "(empty task)"
-            return (
-                f"{self.state.name} Ergebnis\n"
-                f"Aufgabe: {task_head}\n"
-                "• Schritt 1: Anforderungen klären\n"
-                "• Schritt 2: MVP skizzieren\n"
-                "• Schritt 3: Nächsten Schritt vorschlagen\n"
-                "(Stub — mit DeepSeek-Key echte Ausgabe.)"
-            )
+            if not self.has_llm():
+                return (
+                    f"{self.state.name} FEHLER — kein Deliverable\n"
+                    f"Aufgabe: {task_head}\n"
+                    "Kein nutzbarer LLM-Key (DeepSeek/Ollama).\n"
+                    "Key.txt: echten DEEPSEEK_API_KEY setzen (nicht sk-your-…-key).\n"
+                    "Kein Fake-Ergebnis. Worker liefert erst mit gültigem Provider."
+                )
+            try:
+                body = f"Aufgabe: {task}\nOriginal: {user_text}\nAnforderungen:\n" + "\n".join(
+                    f"- {r}" for r in requirements[:12]
+                )
+                blob = f"{task}\n{user_text}".lower()
+                wants_html = any(
+                    k in blob
+                    for k in (
+                        "html",
+                        "landing",
+                        "webpage",
+                        "web page",
+                        "css",
+                        "seite",
+                        "website",
+                        "frontend",
+                    )
+                )
+                max_tok = 3200 if wants_html else 1800
+                return self.ask(
+                    system=(
+                        "You are a Worker agent. Deliver a concrete useful result "
+                        "for the assigned task (plan, structure, checklist, draft, "
+                        "or full HTML when the task is a page/UI).\n"
+                        "PRIORITY ORDER (mandatory — do not reverse):\n"
+                        "  1) Complete structure / skeleton (always finish the file)\n"
+                        "  2) Core interactive behavior (JS/handlers, DOM updates)\n"
+                        "  3) Error/empty states for those core flows\n"
+                        "  4) CSS/styling LAST (max ~30% of effort; minimal layout first)\n"
+                        "Budget: ~70% functions+structure, ~30% styling. If near limit, "
+                        "CUT CSS — never omit </html> or core interactions.\n"
+                        "If HTML/landing/page/UI:\n"
+                        "  - ONE complete file: <!DOCTYPE html> … </html>\n"
+                        "  - At least one real interaction "
+                        "(onclick= or addEventListener or form submit handler)\n"
+                        "  - Prefer working demo over pretty design\n"
+                        "Work on the USER task only. Match user language.\n"
+                        "STANDING USER WISHES (Flex-wish / User: lines) are ABSOLUTE ORDERS:\n"
+                        "  - Implement them fully in the deliverable — no debate, no skip,\n"
+                        "    no 'optional', no 'if space allows'.\n"
+                        "  - Do not contradict, weaken, or postpone them.\n"
+                        "  - If a wish conflicts with decoration, drop decoration, keep the wish.\n"
+                        "  - Dark theme / language / always-rules must be visible in the result."
+                    ),
+                    user=_with_memory(body, memory_ctx),
+                    max_tokens=max_tok,
+                    temperature=0.45,
+                )
+            except Exception as exc:  # noqa: BLE001
+                err = str(exc)
+                self.bus.emit(
+                    "pipeline.warning",
+                    {"stage": self.id, "error": err},
+                )
+                auth = any(
+                    x in err.lower()
+                    for x in (
+                        "401",
+                        "authentication",
+                        "invalid",
+                        "api key",
+                        "unauthorized",
+                    )
+                )
+                why = (
+                    "Authentifizierung fehlgeschlagen (API-Key ungültig/abgelaufen)."
+                    if auth
+                    else f"LLM-Fehler: {err[:280]}"
+                )
+                return (
+                    f"{self.state.name} FEHLER — kein Deliverable\n"
+                    f"Aufgabe: {task_head}\n"
+                    f"{why}\n"
+                    "Kein Stub-Ersatz. Key prüfen, Budget prüfen, dann erneut ausführen."
+                )
         finally:
             self.emit_active(False)
 

@@ -659,6 +659,11 @@ class Orchestrator:
             max_retries = 2
             while retries < max_retries:
                 gate0 = _validate_worker_draft(result, user_text=text, task=task)
+                # Auth / missing key: do not burn retries on the same dead key
+                if "worker_error" in (gate0.get("issues") or []) or "FEHLER — kein Deliverable" in (
+                    result or ""
+                ):
+                    break
                 need_retry = False
                 retry_why = ""
                 if _wants_html_artifact(text, task) and not _html_complete(result):
@@ -1254,7 +1259,10 @@ def _validate_worker_draft(body: str, *, user_text: str = "", task: str = "") ->
     if len(s) < 40:
         ok = False
         issues.append("too_short")
-    if s.startswith("Stub") or "Stub —" in s:
+    if "FEHLER — kein Deliverable" in s or s.startswith("FEHLER"):
+        ok = False
+        issues.append("worker_error")
+    if s.startswith("Stub") or "Stub —" in s or "Kein Fake-Ergebnis" in s:
         ok = False
         issues.append("stub")
     if _wants_html_artifact(user_text, task):

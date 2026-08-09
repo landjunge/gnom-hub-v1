@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from gnom_hub.agents.models import AgentState
+from gnom_hub.config.keys import is_usable_api_key
 from gnom_hub.core.event_bus import EventBus
 
 # Injected into every agent system prompt — kills product-identity hallucination loops
@@ -148,6 +149,6 @@ class BaseAgent:
                 bool(has("deepseek"))
                 or bool(has("ollama"))
                 or bool(has("any"))
-                or bool(self.state.api_key)
+                or is_usable_api_key(self.state.api_key)
             )
         return False

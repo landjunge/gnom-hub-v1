@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from gnom_hub.config.keys import parse_key_file
+from gnom_hub.config.keys import is_usable_api_key, parse_key_file
 from gnom_hub.config.paths import (
     backups_dir,
     is_usb_root,
@@ -64,13 +64,7 @@ def _has_real_deepseek_key(key_path: Path | None) -> bool:
         keys = parse_key_file(key_path.read_text(encoding="utf-8"))
     except OSError:
         return False
-    val = (keys.get("DEEPSEEK_API_KEY") or "").strip()
-    if not val:
-        return False
-    low = val.lower()
-    if low in ("sk-your-system-deepseek-key", "sk-...", "your-key", "changeme"):
-        return False
-    return not ("your-" in low and "key" in low)
+    return is_usable_api_key(keys.get("DEEPSEEK_API_KEY", ""))
 
 
 def _ensure_key_file(ud: Path, hub: Path, actions: list[str], warnings: list[str]) -> Path | None:

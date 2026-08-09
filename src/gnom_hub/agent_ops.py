@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from gnom_hub.agents.models import AgentId, AgentState
+from gnom_hub.config.keys import is_usable_api_key
 from gnom_hub.memory.atomic import atomic_write_text
 
 
@@ -20,8 +21,10 @@ class AgentOpsMixin:
           WORKER_API_KEY / WORKER → worker1–4
           DEEPSEEK_MODEL → default + every agent model
         """
-        system_key = (self.keys.get("DEEPSEEK_API_KEY") or "").strip() or None
-        worker_key = (self.keys.get("WORKER_API_KEY") or "").strip() or None
+        system_raw = (self.keys.get("DEEPSEEK_API_KEY") or "").strip()
+        worker_raw = (self.keys.get("WORKER_API_KEY") or "").strip()
+        system_key = system_raw if is_usable_api_key(system_raw) else None
+        worker_key = worker_raw if is_usable_api_key(worker_raw) else None
         model = (self.keys.get("DEEPSEEK_MODEL") or "").strip() or None
         if model:
             self.llm.default_model = model
@@ -93,7 +96,7 @@ class AgentOpsMixin:
                 agent.model = str(item["model"])
             if item.get("api_key") is not None:
                 k = str(item["api_key"]).strip()
-                agent.api_key = k or None
+                agent.api_key = k if is_usable_api_key(k) else None
             if "tts" in item:
                 agent.tts = bool(item["tts"])
             if item.get("system_prompt") is not None:
@@ -147,7 +150,9 @@ class AgentOpsMixin:
         usage = self.llm.usage_snapshot()["by_agent"].get(a.id.value, {})
         tokens = int(usage.get("prompt_tokens", 0)) + int(usage.get("completion_tokens", 0))
         has_llm = (
-            bool(a.api_key) or self.llm.has_provider("deepseek") or self.llm.has_provider("ollama")
+            is_usable_api_key(a.api_key)
+            or self.llm.has_provider("deepseek")
+            or self.llm.has_provider("ollama")
         )
         online = a.enabled and has_llm
         return {
@@ -202,7 +207,8 @@ class AgentOpsMixin:
         if model is not None:
             agent.model = model.strip() or None
         if api_key is not None:
-            agent.api_key = api_key.strip() or None
+            k = api_key.strip()
+            agent.api_key = k if is_usable_api_key(k) else None
         self.agents.emit_status(agent_id)
         self._save_agent_state()
         return self._agent_dict(agent)
@@ -214,7 +220,7 @@ class AgentOpsMixin:
             agent.model = str(fields["model"]).strip() or None
         if "api_key" in fields and fields["api_key"] is not None:
             key = str(fields["api_key"]).strip()
-            agent.api_key = key or None
+            agent.api_key = key if is_usable_api_key(key) else None
         if "system_prompt" in fields:
             sp = fields["system_prompt"]
             agent.system_prompt = (str(sp).strip() if sp is not None else "") or None

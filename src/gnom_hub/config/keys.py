@@ -32,6 +32,42 @@ _ALIASES: dict[str, str] = {
 _LINE_RE = re.compile(r"^\s*(?:export\s+)?([A-Za-z_][\w]*)\s*[=:]\s*(.+?)\s*$")
 
 
+# Placeholder / example keys must NOT count as "provider ready"
+_PLACEHOLDER_MARKERS = (
+    "your-",
+    "your_",
+    "example",
+    "placeholder",
+    "changeme",
+    "change_me",
+    "change-me",
+    "insert",
+    "paste",
+    "xxx",
+    "todo",
+    "<your",
+    "sk-xxx",
+    "dummy",
+    "test-key",
+    "fake",
+    "not-a-real",
+)
+
+
+def is_usable_api_key(value: str | None) -> bool:
+    """True only for non-empty keys that look real (not Key.txt.example placeholders)."""
+    s = (value or "").strip()
+    if len(s) < 20:
+        return False
+    low = s.lower()
+    if any(m in low for m in _PLACEHOLDER_MARKERS):
+        return False
+    # classic example: sk-your-system-deepseek-key
+    if "your" in low and "key" in low:
+        return False
+    return not (low.endswith("-key") and "sk-" in low and len(s) < 40)
+
+
 def _normalize_key(name: str) -> str:
     raw = name.strip()
     lower = raw.lower()
@@ -174,4 +210,4 @@ def load_keys(
 
 def has_deepseek_key(keys: dict[str, str] | None = None) -> bool:
     k = keys if keys is not None else load_keys()
-    return bool(k.get("DEEPSEEK_API_KEY", "").strip())
+    return is_usable_api_key(k.get("DEEPSEEK_API_KEY", ""))

@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from collections.abc import Callable
 
+from gnom_hub.config.keys import is_usable_api_key
 from gnom_hub.llm.deepseek import DEFAULT_MODEL, DeepSeekClient, estimate_cost_usd
 from gnom_hub.llm.ollama import DEFAULT_MODEL as OLLAMA_DEFAULT
 from gnom_hub.llm.ollama import OllamaClient
@@ -104,8 +105,9 @@ class LLMManager:
 
     def deepseek_key(self, override: str | None = None) -> str:
         if override and override.strip():
-            return override.strip()
-        return self._keys.get("DEEPSEEK_API_KEY", "").strip()
+            return override.strip() if is_usable_api_key(override) else ""
+        raw = self._keys.get("DEEPSEEK_API_KEY", "").strip()
+        return raw if is_usable_api_key(raw) else ""
 
     def ollama_available(self, *, force: bool = False) -> bool:
         if self._ollama_ok is not None and not force:

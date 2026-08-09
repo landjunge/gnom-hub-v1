@@ -7,14 +7,16 @@
 #   deepseek-v4-flash  — fast / economical (recommended)
 #   deepseek-v4-pro    — higher quality
 #   deepseek-chat      — legacy alias
-DEEPSEEK_MODEL=deepseek-v4-flash
+DEEPSEEK_MODEL = deepseek - v4 - flash
 
 # System agents (Brainstorm, Memory, Flex, Coordinator) + global default
-DEEPSEEK_API_KEY=sk-your-system-deepseek-key
+DEEPSEEK_API_KEY = sk - your - system - deepseek - key
+# ↑ example only — hub ignores placeholders (sk-your-…); paste a real key
 # alias: SYSTEM=sk-...
 
 # All workers (Worker 1–4) — optional; falls back to DEEPSEEK_API_KEY if empty
-WORKER_API_KEY=sk-your-worker-deepseek-key
+WORKER_API_KEY = sk - your - worker - deepseek - key
+# ↑ optional; empty → uses DEEPSEEK_API_KEY; placeholders ignored
 # alias: WORKER=sk-...
 
 # Optional Telegram bot (set GNOM_TELEGRAM_POLL=1 to auto long-poll)
