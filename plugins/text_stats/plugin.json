@@ -1,0 +1,23 @@
+{
+  "id": "text_stats",
+  "name": "Text Stats",
+  "version": "0.1.0",
+  "enabled": true,
+  "description": "Count words/lines/chars for worker debugging.",
+  "tags": ["util", "text"],
+  "tools": [
+    {
+      "name": "text_stats",
+      "description": "Return word/line/char counts for a text blob.",
+      "module": "main.py",
+      "handler": "run",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "text": { "type": "string" }
+        },
+        "required": ["text"]
+      }
+    }
+  ]
+}

@@ -22,8 +22,18 @@
             "default": false
           }
         },
-        "required": ["package"]
-      }
+        "required": [
+          "package"
+        ]
+      },
+      "tags": [
+        "install"
+      ]
     }
-  ]
+  ],
+  "tags": [
+    "install",
+    "computer"
+  ],
+  "description": "Allowlisted pip install for computer-use deps (playwright, etc.)."
 }

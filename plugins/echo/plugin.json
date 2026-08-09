@@ -1,18 +1,22 @@
 {
   "id": "echo",
   "name": "Echo Plugin",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "enabled": true,
+  "description": "Demo plugin: echo text and optional on_load hook.",
+  "tags": ["demo", "util"],
   "tools": [
     {
       "name": "echo",
       "description": "Echo text back (demo plugin tool)",
       "module": "main.py",
       "handler": "run",
+      "retries": 0,
+      "tags": ["demo"],
       "input_schema": {
         "type": "object",
         "properties": {
-          "text": { "type": "string" }
+          "text": { "type": "string", "description": "Text to echo" }
         },
         "required": ["text"]
       }

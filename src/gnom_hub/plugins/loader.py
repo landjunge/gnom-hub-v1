@@ -15,6 +15,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from gnom_hub.plugins.manifest import ManifestError, validate_manifest
 from gnom_hub.plugins.registry import ToolRegistry, ToolSpec
 
 logger = logging.getLogger(__name__)
@@ -35,118 +36,220 @@ class PluginLoader:
         for child in sorted(self.plugins_dir.iterdir()):
             if not child.is_dir():
                 continue
+            # skip templates / private folders
+            if child.name.startswith(("_", ".")):
+                continue
             manifest = child / "plugin.json"
             if not manifest.is_file():
                 continue
-            try:
-                meta = json.loads(manifest.read_text(encoding="utf-8"))
-            except json.JSONDecodeError as exc:
-                msg = f"invalid plugin.json: {exc}"
-                logger.warning("Plugin %s skipped — %s", child.name, msg)
-                self.errors.append({"path": str(child), "error": msg})
-                continue
-            except OSError as exc:
-                msg = f"cannot read plugin.json: {exc}"
-                logger.warning("Plugin %s skipped — %s", child.name, msg)
-                self.errors.append({"path": str(child), "error": msg})
-                continue
-
-            if not isinstance(meta, dict):
-                msg = "plugin.json root must be an object"
-                logger.warning("Plugin %s skipped — %s", child.name, msg)
-                self.errors.append({"path": str(child), "error": msg})
-                continue
-
-            if meta.get("enabled") is False:
-                logger.debug("Plugin %s disabled in manifest", child.name)
-                continue
-
-            info = {
-                "id": str(meta.get("id") or child.name),
-                "name": str(meta.get("name") or child.name),
-                "version": str(meta.get("version") or "0.0.0"),
-                "path": str(child),
-            }
-            tools = meta.get("tools") or []
-            if tools is not None and not isinstance(tools, list):
-                msg = "tools must be a list"
-                logger.warning("Plugin %s skipped — %s", child.name, msg)
-                self.errors.append({"path": str(child), "error": msg})
-                continue
-
-            registered = 0
-            for t in tools:
-                if not isinstance(t, dict):
-                    logger.warning(
-                        "Plugin %s: skip non-object tool entry",
-                        info["id"],
-                    )
-                    continue
-                name = t.get("name")
-                if not name or not isinstance(name, str):
-                    logger.warning(
-                        "Plugin %s: tool missing string name",
-                        info["id"],
-                    )
-                    continue
-                handler_name = str(t.get("handler") or "run")
-                mod_file = str(t.get("module") or "main.py")
-                # no path escape outside plugin dir
-                mod_path = (child / mod_file).resolve()
-                try:
-                    mod_path.relative_to(child.resolve())
-                except ValueError:
-                    msg = f"module path escapes plugin dir: {mod_file}"
-                    logger.warning("Plugin %s: %s", info["id"], msg)
-                    self.errors.append({"path": str(child), "error": msg})
-                    continue
-
-                handler = self._load_handler(mod_path, handler_name, info["id"])
-                if handler is None:
-                    continue
-                schema = t.get("input_schema") or {}
-                if not isinstance(schema, dict):
-                    schema = {}
-                ok = self.registry.register(
-                    ToolSpec(
-                        name=name,
-                        description=str(t.get("description") or name),
-                        handler=handler,
-                        input_schema=schema,
-                        plugin=info["id"],
-                    )
-                )
-                if not ok:
-                    msg = f"tool name reserved by core: {name}"
-                    logger.warning("Plugin %s: %s", info["id"], msg)
-                    self.errors.append({"path": str(child), "error": msg, "tool": name})
-                    continue
-                registered += 1
-
-            if registered == 0 and tools:
-                msg = "no tools registered (handlers failed or empty names)"
-                logger.warning("Plugin %s: %s", info["id"], msg)
-                self.errors.append({"path": str(child), "error": msg})
-                continue
-
-            self.loaded.append(info)
-            logger.info(
-                "Plugin loaded: %s v%s (%d tools)",
-                info["id"],
-                info["version"],
-                registered,
-            )
+            self._load_one(child, manifest)
         return self.loaded
 
-    def _load_handler(self, path: Path, attr: str, plugin_id: str):
+    def reload(self, plugin_id: str) -> dict[str, Any]:
+        """
+        Re-read one plugin folder and re-register its tools (overwrite same plugin).
+
+        Unregisters previous tools that still point at this plugin id, then loads again.
+        """
+        pid = (plugin_id or "").strip()
+        if not pid:
+            return {"ok": False, "error": "plugin_id required"}
+        # drop existing tools from this plugin
+        for name in list(self.registry.names()):
+            spec = self.registry.get(name)
+            if spec and spec.plugin == pid:
+                self.registry.unregister(name, force=True)
+        self.loaded = [p for p in self.loaded if p.get("id") != pid]
+        self.errors = [
+            e for e in self.errors if e.get("plugin") != pid and pid not in str(e.get("path") or "")
+        ]
+
+        child = self.plugins_dir / pid
+        # also match folder by id in plugin.json
+        if not child.is_dir():
+            for cand in sorted(self.plugins_dir.iterdir()):
+                if not cand.is_dir() or cand.name.startswith(("_", ".")):
+                    continue
+                mj = cand / "plugin.json"
+                if not mj.is_file():
+                    continue
+                try:
+                    meta = json.loads(mj.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    continue
+                if str(meta.get("id") or cand.name) == pid:
+                    child = cand
+                    break
+        manifest = child / "plugin.json"
+        if not child.is_dir() or not manifest.is_file():
+            return {"ok": False, "error": f"plugin not found: {pid}"}
+        before = len(self.loaded)
+        self._load_one(child, manifest)
+        ok = any(p.get("id") == pid for p in self.loaded)
+        return {
+            "ok": ok,
+            "plugin_id": pid,
+            "loaded_delta": len(self.loaded) - before,
+            "tools": [t for p in self.loaded if p.get("id") == pid for t in p.get("tools") or []],
+            "errors": [e for e in self.errors if pid in str(e)],
+        }
+
+    def _load_one(self, child: Path, manifest: Path) -> None:
+        try:
+            meta = json.loads(manifest.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            msg = f"invalid plugin.json: {exc}"
+            logger.warning("Plugin %s skipped — %s", child.name, msg)
+            self.errors.append({"path": str(child), "error": msg, "plugin": child.name})
+            return
+        except OSError as exc:
+            msg = f"cannot read plugin.json: {exc}"
+            logger.warning("Plugin %s skipped — %s", child.name, msg)
+            self.errors.append({"path": str(child), "error": msg, "plugin": child.name})
+            return
+
+        try:
+            cleaned = validate_manifest(
+                meta if isinstance(meta, dict) else {}, folder_name=child.name
+            )
+        except ManifestError as exc:
+            msg = str(exc)
+            logger.warning("Plugin %s skipped — %s", child.name, msg)
+            self.errors.append({"path": str(child), "error": msg, "plugin": child.name})
+            return
+
+        if not cleaned["enabled"]:
+            logger.debug("Plugin %s disabled in manifest", child.name)
+            return
+
+        info: dict[str, Any] = {
+            "id": cleaned["id"],
+            "name": cleaned["name"],
+            "version": cleaned["version"],
+            "path": str(child),
+            "description": cleaned.get("description") or "",
+            "tags": list(cleaned.get("tags") or []),
+            "tools": [],
+        }
+
+        tools = cleaned["tools"]
+        registered = 0
+        registered_names: list[str] = []
+        modules_loaded: dict[str, Any] = {}
+
+        for t in tools:
+            name = t["name"]
+            handler_name = t["handler"]
+            mod_file = t["module"]
+            mod_path = (child / mod_file).resolve()
+            try:
+                mod_path.relative_to(child.resolve())
+            except ValueError:
+                msg = f"module path escapes plugin dir: {mod_file}"
+                logger.warning("Plugin %s: %s", info["id"], msg)
+                self.errors.append(
+                    {"path": str(child), "error": msg, "plugin": info["id"], "tool": name}
+                )
+                continue
+
+            cache_key = str(mod_path)
+            if cache_key not in modules_loaded:
+                modules_loaded[cache_key] = self._load_module(mod_path, info["id"])
+            mod = modules_loaded[cache_key]
+            if mod is None:
+                continue
+            handler = getattr(mod, handler_name, None)
+            if handler is None:
+                logger.warning(
+                    "Plugin %s: attribute %r not found in %s",
+                    info["id"],
+                    handler_name,
+                    mod_path.name,
+                )
+                self.errors.append(
+                    {
+                        "path": str(mod_path),
+                        "error": f"handler {handler_name!r} missing",
+                        "plugin": info["id"],
+                        "tool": name,
+                    }
+                )
+                continue
+
+            ok = self.registry.register(
+                ToolSpec(
+                    name=name,
+                    description=t["description"],
+                    handler=handler,
+                    input_schema=t["input_schema"],
+                    plugin=info["id"],
+                    retries=int(t.get("retries", 2)),
+                    tags=tuple(t.get("tags") or ()),
+                )
+            )
+            if not ok:
+                msg = f"tool name reserved by core: {name}"
+                logger.warning("Plugin %s: %s", info["id"], msg)
+                self.errors.append(
+                    {"path": str(child), "error": msg, "plugin": info["id"], "tool": name}
+                )
+                continue
+            registered += 1
+            registered_names.append(name)
+
+        if registered == 0 and tools:
+            msg = "no tools registered (handlers failed or empty names)"
+            logger.warning("Plugin %s: %s", info["id"], msg)
+            self.errors.append({"path": str(child), "error": msg, "plugin": info["id"]})
+            return
+
+        # Optional lifecycle: on_load(registry_info) on primary module
+        primary = child / "main.py"
+        if primary.is_file():
+            mod = modules_loaded.get(str(primary.resolve()))
+            if mod is None:
+                mod = self._load_module(primary.resolve(), info["id"])
+            if mod is not None and callable(getattr(mod, "on_load", None)):
+                try:
+                    mod.on_load({"id": info["id"], "tools": list(registered_names)})
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("Plugin %s on_load failed: %s", info["id"], exc)
+                    self.errors.append(
+                        {
+                            "path": str(primary),
+                            "error": f"on_load failed: {exc}",
+                            "plugin": info["id"],
+                        }
+                    )
+
+        info["tools"] = registered_names
+        info["tool_count"] = registered
+        self.loaded.append(info)
+        logger.info(
+            "Plugin loaded: %s v%s (%d tools)",
+            info["id"],
+            info["version"],
+            registered,
+        )
+
+    def _load_module(self, path: Path, plugin_id: str) -> Any | None:
+        import sys
+        import time
+
         if not path.is_file():
-            logger.warning(
-                "Plugin %s: module file missing: %s",
-                plugin_id,
-                path,
+            logger.warning("Plugin %s: module file missing: %s", plugin_id, path)
+            self.errors.append(
+                {"path": str(path), "error": "module file missing", "plugin": plugin_id}
             )
             return None
-        spec = importlib.util.spec_from_file_location(f"gnom_plugin_{plugin_id}_{path.stem}", path)
+        # Unique name so reload() does not reuse a cached module object
+        mod_name = f"gnom_plugin_{plugin_id}_{path.stem}_{int(time.time() * 1000) % 10_000_000}"
+        # Drop older gnom_plugin_<id>_* entries to avoid unbounded growth
+        prefix = f"gnom_plugin_{plugin_id}_"
+        for k in list(sys.modules):
+            if k.startswith(prefix):
+                del sys.modules[k]
+        spec = importlib.util.spec_from_file_location(mod_name, path)
         if spec is None or spec.loader is None:
             logger.warning(
                 "Plugin %s: cannot create import spec for %s",
@@ -155,27 +258,29 @@ class PluginLoader:
             )
             return None
         mod = importlib.util.module_from_spec(spec)
+        sys.modules[mod_name] = mod
         try:
-            spec.loader.exec_module(mod)
+            # Always compile from current source so reload() sees file edits
+            # (bypass stale __pycache__ / bytecode surprises).
+            source = path.read_text(encoding="utf-8")
+            code = compile(source, str(path), "exec")
+            exec(code, mod.__dict__)  # noqa: S102 — intentional plugin sandbox boundary
         except Exception:
-            logger.exception(
-                "Plugin %s: failed to exec module %s",
-                plugin_id,
-                path,
-            )
+            logger.exception("Plugin %s: failed to exec module %s", plugin_id, path)
             self.errors.append(
                 {
                     "path": str(path),
                     "error": f"exec_module failed for {path.name}",
+                    "plugin": plugin_id,
                 }
             )
+            sys.modules.pop(mod_name, None)
             return None
-        handler = getattr(mod, attr, None)
-        if handler is None:
-            logger.warning(
-                "Plugin %s: attribute %r not found in %s",
-                plugin_id,
-                attr,
-                path.name,
-            )
-        return handler
+        return mod
+
+    # back-compat name used nowhere but keep alias
+    def _load_handler(self, path: Path, attr: str, plugin_id: str):
+        mod = self._load_module(path, plugin_id)
+        if mod is None:
+            return None
+        return getattr(mod, attr, None)

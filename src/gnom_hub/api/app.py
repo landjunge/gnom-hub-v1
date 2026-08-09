@@ -943,6 +943,18 @@ def create_app() -> FastAPI:
             "errors": errs,
         }
 
+    @app.post("/api/plugins/reload")
+    def plugins_reload(plugin_id: str = "") -> dict[str, Any]:
+        """Re-load one plugin by id (dev). Body optional query plugin_id=echo."""
+        hub = get_hub()
+        pid = (plugin_id or "").strip()
+        if not pid:
+            # allow JSON body
+            return {"ok": False, "error": "plugin_id required (query ?plugin_id=echo)"}
+        result = hub.plugins.reload(pid)
+        hub.plugin_list = list(hub.plugins.loaded)
+        return result
+
     @app.get("/api/mcp/tools")
     def mcp_tools() -> dict[str, Any]:
         return get_hub().tools.mcp_manifest()

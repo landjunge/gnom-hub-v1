@@ -1,0 +1,24 @@
+{
+  "id": "my_plugin",
+  "name": "My Plugin",
+  "version": "0.1.0",
+  "enabled": true,
+  "description": "Copy this folder to plugins/<id>/ and implement main.py",
+  "tags": ["custom"],
+  "tools": [
+    {
+      "name": "my_tool",
+      "description": "Describe what this tool does",
+      "module": "main.py",
+      "handler": "run",
+      "retries": 2,
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "input": { "type": "string" }
+        },
+        "required": ["input"]
+      }
+    }
+  ]
+}
