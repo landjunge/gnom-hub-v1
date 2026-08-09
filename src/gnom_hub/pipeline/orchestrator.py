@@ -660,8 +660,8 @@ class Orchestrator:
             while retries < max_retries:
                 gate0 = _validate_worker_draft(result, user_text=text, task=task)
                 # Auth / missing key: do not burn retries on the same dead key
-                if "worker_error" in (gate0.get("issues") or []) or "FEHLER — kein Deliverable" in (
-                    result or ""
+                if "worker_error" in (gate0.get("issues") or []) or (
+                    "FEHLER" in (result or "") and "Deliverable" in (result or "")
                 ):
                     break
                 need_retry = False
@@ -1259,7 +1259,7 @@ def _validate_worker_draft(body: str, *, user_text: str = "", task: str = "") ->
     if len(s) < 40:
         ok = False
         issues.append("too_short")
-    if "FEHLER — kein Deliverable" in s or s.startswith("FEHLER"):
+    if "FEHLER" in s and "Deliverable" in s:
         ok = False
         issues.append("worker_error")
     if (s.startswith("Stub") or "Stub —" in s) and "FEHLER" not in s:

@@ -93,8 +93,12 @@ class BaseAgent:
             kwargs["presence_penalty"] = float(self.state.presence_penalty)
         if self.state.model:
             kwargs["model"] = self.state.model
-        if self.state.api_key:
+        if is_usable_api_key(self.state.api_key):
             kwargs["api_key"] = self.state.api_key
+        elif str(self.id).startswith("worker") and hasattr(self.llm, "worker_key"):
+            wk = self.llm.worker_key()
+            if wk:
+                kwargs["api_key"] = wk
         # Code role prompt is always the base. Persisted tuning may *append*,
         # never fully replace — old agents.json strings were wiping Brainstorm rules.
         custom = (self.state.system_prompt or "").strip()

@@ -96,6 +96,7 @@ class SnapshotOpsMixin:
             "llm": {
                 "deepseek": self.llm.has_provider("deepseek"),
                 "ollama": self.llm.has_provider("ollama"),
+                "auth": (self.llm.auth_snapshot() if hasattr(self.llm, "auth_snapshot") else {}),
                 "free_only": self.llm.free_only,
                 "max_budget_usd": self.llm.max_budget_usd,
                 "spent_usd": usage["spent_usd"],

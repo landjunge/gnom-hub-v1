@@ -31,6 +31,14 @@ class MissingKeyError(LLMError):
     """API key not configured."""
 
 
+class AuthError(LLMError):
+    """Provider rejected credentials (401/403)."""
+
+
+class RateLimitError(LLMError):
+    """Provider rate limit / quota (429)."""
+
+
 class BudgetExceededError(LLMError):
     """Session budget would be exceeded."""
 

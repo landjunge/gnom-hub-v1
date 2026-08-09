@@ -185,6 +185,7 @@ def create_app() -> FastAPI:
             "llm": {
                 "deepseek": hub.llm.has_provider("deepseek"),
                 "ollama": hub.llm.has_provider("ollama"),
+                "auth": (hub.llm.auth_snapshot() if hasattr(hub.llm, "auth_snapshot") else {}),
             },
         }
 

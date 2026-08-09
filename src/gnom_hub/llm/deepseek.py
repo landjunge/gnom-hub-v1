@@ -9,7 +9,7 @@ import urllib.request
 from collections.abc import Callable
 from typing import Any
 
-from gnom_hub.llm.types import LLMError, LLMMessage, LLMResult
+from gnom_hub.llm.types import AuthError, LLMError, LLMMessage, LLMResult, RateLimitError
 
 DEFAULT_BASE_URL = "https://api.deepseek.com"
 # Official model id (DeepSeek API Docs 2026): deepseek-v4-flash
@@ -117,7 +117,12 @@ class DeepSeekClient:
 
         if status >= 400:
             msg = data.get("error", data) if isinstance(data, dict) else data
-            raise LLMError(f"DeepSeek HTTP {status}: {msg}")
+            detail = f"DeepSeek HTTP {status}: {msg}"
+            if status in (401, 403):
+                raise AuthError(detail)
+            if status == 429:
+                raise RateLimitError(detail)
+            raise LLMError(detail)
 
         try:
             msg = data["choices"][0]["message"]

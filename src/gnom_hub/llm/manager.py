@@ -5,16 +5,19 @@ from __future__ import annotations
 import os
 from collections.abc import Callable
 
+from gnom_hub.config.auth import key_fingerprint, keys_auth_snapshot
 from gnom_hub.config.keys import is_usable_api_key
 from gnom_hub.llm.deepseek import DEFAULT_MODEL, DeepSeekClient, estimate_cost_usd
 from gnom_hub.llm.ollama import DEFAULT_MODEL as OLLAMA_DEFAULT
 from gnom_hub.llm.ollama import OllamaClient
 from gnom_hub.llm.types import (
+    AuthError,
     BudgetExceededError,
     FreeOnlyError,
     LLMMessage,
     LLMResult,
     MissingKeyError,
+    RateLimitError,
 )
 
 # Free when free_only: all ollama/* local models
@@ -74,6 +77,8 @@ class LLMManager:
         self._client_factory = client_factory or (lambda key: DeepSeekClient(key))
         self._ollama = OllamaClient(base_url=ollama_base)
         self._ollama_ok: bool | None = None
+        # Session blocklist after 401/403 — avoid hammering dead keys
+        self._auth_blocked: set[str] = set()
 
     @property
     def spent_usd(self) -> float:
@@ -103,11 +108,54 @@ class LLMManager:
         self._by_agent = {}
         return self.usage_snapshot()
 
+    def _usable_or_empty(self, raw: str) -> str:
+        s = (raw or "").strip()
+        if not is_usable_api_key(s):
+            return ""
+        fp = key_fingerprint(s)
+        if fp and fp in self._auth_blocked:
+            return ""
+        return s
+
     def deepseek_key(self, override: str | None = None) -> str:
         if override and override.strip():
-            return override.strip() if is_usable_api_key(override) else ""
-        raw = self._keys.get("DEEPSEEK_API_KEY", "").strip()
-        return raw if is_usable_api_key(raw) else ""
+            return self._usable_or_empty(override)
+        return self._usable_or_empty(self._keys.get("DEEPSEEK_API_KEY", ""))
+
+    def worker_key(self, override: str | None = None) -> str:
+        """Worker key, then fall back to system DeepSeek key."""
+        if override and override.strip():
+            return self._usable_or_empty(override)
+        wrk = self._usable_or_empty(self._keys.get("WORKER_API_KEY", ""))
+        if wrk:
+            return wrk
+        return self.deepseek_key()
+
+    def note_auth_failure(self, key: str | None = None) -> None:
+        """Block a key for this process after provider 401/403."""
+        for candidate in (
+            key,
+            self._keys.get("DEEPSEEK_API_KEY"),
+            self._keys.get("WORKER_API_KEY"),
+        ):
+            s = (candidate or "").strip()
+            if is_usable_api_key(s):
+                self._auth_blocked.add(key_fingerprint(s))
+                break
+        # if key passed was the failing one
+        if key and is_usable_api_key(key):
+            self._auth_blocked.add(key_fingerprint(key))
+
+    def clear_auth_blocks(self) -> None:
+        self._auth_blocked.clear()
+
+    def auth_snapshot(self) -> dict:
+        snap = keys_auth_snapshot(self._keys)
+        snap["session_auth_blocked"] = len(self._auth_blocked) > 0
+        snap["session_blocked_n"] = len(self._auth_blocked)
+        # effective readiness after blocklist
+        snap["deepseek_live"] = self.has_provider("deepseek")
+        return snap
 
     def ollama_available(self, *, force: bool = False) -> bool:
         if self._ollama_ok is not None and not force:
@@ -204,16 +252,22 @@ class LLMManager:
                             f"max ${self.max_budget_usd:.4f}"
                         )
                 client = self._client_factory(key)
-                result = client.chat(
-                    msgs,
-                    model=bare_model,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    top_p=top_p,
-                    frequency_penalty=frequency_penalty,
-                    presence_penalty=presence_penalty,
-                    thinking=thinking,
-                )
+                try:
+                    result = client.chat(
+                        msgs,
+                        model=bare_model,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        top_p=top_p,
+                        frequency_penalty=frequency_penalty,
+                        presence_penalty=presence_penalty,
+                        thinking=thinking,
+                    )
+                except AuthError:
+                    self.note_auth_failure(key)
+                    raise
+                except RateLimitError:
+                    raise
 
         self._spent_usd += result.cost_usd
         self._prompt_tokens += result.prompt_tokens

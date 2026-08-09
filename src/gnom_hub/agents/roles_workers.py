@@ -10,6 +10,7 @@ from gnom_hub.agents.roles_helpers import (
     _is_garbage_fact,
     _with_memory,
 )
+from gnom_hub.config.auth import user_message_for_failure
 from gnom_hub.core.event_bus import EventBus
 
 
@@ -28,12 +29,12 @@ class WorkerAgent(BaseAgent):
             task_lines = [ln.strip() for ln in (task or "").splitlines() if ln.strip()]
             task_head = task_lines[0][:140] if task_lines else "(empty task)"
             if not self.has_llm():
+                why = user_message_for_failure("DEEPSEEK_API_KEY missing", role=self.id)
                 return (
-                    f"{self.state.name} FEHLER — kein Deliverable\n"
+                    f"{self.state.name} FEHLER - kein Deliverable\n"
                     f"Aufgabe: {task_head}\n"
-                    "Kein nutzbarer LLM-Key (DeepSeek/Ollama).\n"
-                    "Key.txt: echten DEEPSEEK_API_KEY setzen (nicht sk-your-…-key).\n"
-                    "Kein Fake-Ergebnis. Worker liefert erst mit gültigem Provider."
+                    f"{why}\n"
+                    "Kein Fake-Ergebnis. Worker liefert erst mit gueltigem Provider."
                 )
             try:
                 body = f"Aufgabe: {task}\nOriginal: {user_text}\nAnforderungen:\n" + "\n".join(
@@ -59,21 +60,21 @@ class WorkerAgent(BaseAgent):
                         "You are a Worker agent. Deliver a concrete useful result "
                         "for the assigned task (plan, structure, checklist, draft, "
                         "or full HTML when the task is a page/UI).\n"
-                        "PRIORITY ORDER (mandatory — do not reverse):\n"
+                        "PRIORITY ORDER (mandatory - do not reverse):\n"
                         "  1) Complete structure / skeleton (always finish the file)\n"
                         "  2) Core interactive behavior (JS/handlers, DOM updates)\n"
                         "  3) Error/empty states for those core flows\n"
                         "  4) CSS/styling LAST (max ~30% of effort; minimal layout first)\n"
                         "Budget: ~70% functions+structure, ~30% styling. If near limit, "
-                        "CUT CSS — never omit </html> or core interactions.\n"
+                        "CUT CSS - never omit </html> or core interactions.\n"
                         "If HTML/landing/page/UI:\n"
-                        "  - ONE complete file: <!DOCTYPE html> … </html>\n"
+                        "  - ONE complete file: <!DOCTYPE html> ... </html>\n"
                         "  - At least one real interaction "
                         "(onclick= or addEventListener or form submit handler)\n"
                         "  - Prefer working demo over pretty design\n"
                         "Work on the USER task only. Match user language.\n"
                         "STANDING USER WISHES (Flex-wish / User: lines) are ABSOLUTE ORDERS:\n"
-                        "  - Implement them fully in the deliverable — no debate, no skip,\n"
+                        "  - Implement them fully in the deliverable - no debate, no skip,\n"
                         "    no 'optional', no 'if space allows'.\n"
                         "  - Do not contradict, weaken, or postpone them.\n"
                         "  - If a wish conflicts with decoration, drop decoration, keep the wish.\n"
@@ -87,28 +88,22 @@ class WorkerAgent(BaseAgent):
                 err = str(exc)
                 self.bus.emit(
                     "pipeline.warning",
-                    {"stage": self.id, "error": err},
+                    {"stage": self.id, "error": err, "kind": "llm"},
                 )
-                auth = any(
-                    x in err.lower()
-                    for x in (
-                        "401",
-                        "authentication",
-                        "invalid",
-                        "api key",
-                        "unauthorized",
-                    )
-                )
-                why = (
-                    "Authentifizierung fehlgeschlagen (API-Key ungültig/abgelaufen)."
-                    if auth
-                    else f"LLM-Fehler: {err[:280]}"
-                )
+                note = getattr(self.llm, "note_auth_failure", None)
+                if callable(note) and (
+                    "401" in err or "403" in err or type(exc).__name__ == "AuthError"
+                ):
+                    try:
+                        note(getattr(self.state, "api_key", None))
+                    except Exception:  # noqa: BLE001
+                        pass
+                why = user_message_for_failure(exc, role=self.id)
                 return (
-                    f"{self.state.name} FEHLER — kein Deliverable\n"
+                    f"{self.state.name} FEHLER - kein Deliverable\n"
                     f"Aufgabe: {task_head}\n"
                     f"{why}\n"
-                    "Kein Stub-Ersatz. Key prüfen, Budget prüfen, dann erneut ausführen."
+                    "Kein Stub-Ersatz. Key pruefen, Budget pruefen, dann erneut ausfuehren."
                 )
         finally:
             self.emit_active(False)
