@@ -22,6 +22,10 @@ fi
 chmod +x "${HOOKS_DIR}"/* 2>/dev/null || true
 chmod +x "${ROOT}/scripts/prepush_gate.sh" 2>/dev/null || true
 chmod +x "${ROOT}/scripts/install_git_hooks.sh" 2>/dev/null || true
+chmod +x "${ROOT}/scripts/ensure_git_safe_directory.sh" 2>/dev/null || true
+
+# Ownership: avoid "dubious ownership" on USB / containers / multi-user
+bash "${ROOT}/scripts/ensure_git_safe_directory.sh" --global || true
 
 git config core.hooksPath .githooks
 

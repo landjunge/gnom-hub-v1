@@ -101,6 +101,22 @@ GNOM_PREPUSH_PYTEST=1 ./scripts/prepush_gate.sh   # optional tests
 
 CI mirrors the same ruff commands (`.github/workflows/ci.yml` → job `lint`).
 
+### Git safe.directory (dubious ownership)
+
+If Git says **detected dubious ownership** (USB stick, container, different user than clone owner):
+
+```bash
+./scripts/ensure_git_safe_directory.sh          # this repo → global safe.directory
+./scripts/install_git_hooks.sh                  # also runs the above
+# Dev VM / sandbox only:
+GNOM_SAFE_DIRECTORY_STAR=1 ./scripts/ensure_git_safe_directory.sh
+```
+
+- Prefer **one concrete path** over `*`.
+- Idempotent; does not wipe other `safe.directory` entries.
+- Does **not** replace auth/SSH — only ownership trust for local git operations.
+
+
 ## Product rules
 
 - UI: Basic English; Box-1 content multi-language ready.
