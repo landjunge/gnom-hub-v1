@@ -523,10 +523,13 @@ class Orchestrator:
         self._check_cancel()
         if self.flex.enabled:
             self._set_stage(PipelineStage.flex)
+            from gnom_hub.memory.dedupe import already_covered
+
             for wish in self.flex.binding_wishes(mem or ""):
                 tag = f"Flex-wish: {wish}"
-                if tag not in self._state.distilled_requirements:
-                    self._state.distilled_requirements.append(tag)
+                if already_covered(tag, self._state.distilled_requirements, strategy="requirement"):
+                    continue
+                self._state.distilled_requirements.append(tag)
             reqs = list(self._state.distilled_requirements)
             notes = self.flex.run(text, reqs, mem)
             self._state.flex_notes = notes
@@ -1110,8 +1113,10 @@ def _prefetch_urls(blob: str, *, limit: int = 3) -> str:
 
 def _definition_of_done(user_text: str, requirements: list[str]) -> str:
     from gnom_hub.agents.roles_helpers import _is_flex_meta_requirement
+    from gnom_hub.memory.dedupe import dedupe_texts
 
-    reqs = [r for r in (requirements or []) if r and not _is_flex_meta_requirement(str(r))][:6]
+    raw = [str(r) for r in (requirements or []) if r and not _is_flex_meta_requirement(str(r))]
+    reqs = dedupe_texts(raw, strategy="requirement", limit=6)
     lines = [
         "=== DEFINITION OF DONE (mandatory) ===",
         "DONE means functional complete — not 'draft exists' or 'pretty CSS only'.",

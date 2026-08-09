@@ -490,6 +490,8 @@ class FlexAgent(BaseAgent):
 
     def binding_wishes(self, memory_ctx: str = "", *, limit: int = 12) -> list[str]:
         """Standing User:/Wish: lines from memory — for requirement injection."""
+        from gnom_hub.memory.dedupe import core_key, prefer_canonical_wish
+
         out: list[str] = []
         seen: set[str] = set()
         for ln in (memory_ctx or "").splitlines():
@@ -499,13 +501,14 @@ class FlexAgent(BaseAgent):
             low = s.lower()
             if not low.startswith(("user:", "wish:", "flex-wish:")):
                 continue
-            if not low.startswith("user:"):
-                s = "User: " + s.split(":", 1)[-1].strip()
-            key = s.lower()
-            if key in seen:
+            canon = prefer_canonical_wish(s)
+            if not canon:
+                continue
+            key = core_key(canon)
+            if not key or key in seen:
                 continue
             seen.add(key)
-            out.append(s[:200])
+            out.append(canon[:200])
             if len(out) >= limit:
                 break
         return out

@@ -32,6 +32,7 @@ class MemoryFacade:
     def flex_wishes(self, *, limit: int = 40) -> list[str]:
         """Active Flex wishes from WARM (source=flex or User:/Wish: prefix)."""
         from gnom_hub.agents.roles_helpers import _is_garbage_fact
+        from gnom_hub.memory.dedupe import core_key, prefer_canonical_wish
 
         out: list[str] = []
         seen: set[str] = set()
@@ -41,17 +42,15 @@ class MemoryFacade:
             if not t or _is_garbage_fact(t):
                 continue
             low = t.lower()
-            is_flex_src = False
             # WarmMemory may only return text; detect by prefix (source=flex writes User:)
-            if low.startswith(self.FLEX_PREFIXES):
-                is_flex_src = True
-            if not is_flex_src:
+            if not low.startswith(self.FLEX_PREFIXES):
                 continue
-            key = low
-            if key in seen:
+            canon = prefer_canonical_wish(t) or t
+            key = core_key(canon)
+            if not key or key in seen:
                 continue
             seen.add(key)
-            out.append(t)
+            out.append(canon)
             if len(out) >= limit:
                 break
         return out

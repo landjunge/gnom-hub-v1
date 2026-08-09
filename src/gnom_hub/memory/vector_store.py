@@ -213,6 +213,35 @@ class VectorStore:
                 return ""
         except Exception:  # noqa: BLE001
             pass
+        # Core-key dedupe: one doc per semantic body; keep higher-priority source
+        try:
+            from gnom_hub.memory.dedupe import core_key, prefer_canonical_wish
+
+            ck = core_key(text)
+            if ck:
+                rank = {
+                    "flex_wish": 3,
+                    "flex_personal": 2,
+                    "warm": 1,
+                    "memory_agent": 1,
+                    "requirement": 0,
+                }
+                new_src = str((meta or {}).get("source") or "").lower()
+                new_rank = int(rank.get(new_src, 0))
+                for d in self._docs:
+                    if core_key(str(d.get("text") or "")) != ck:
+                        continue
+                    doc_id = str(d.get("id") or "")
+                    old_meta = d.get("meta") if isinstance(d.get("meta"), dict) else {}
+                    old_src = str(old_meta.get("source") or "").lower()
+                    old_rank = int(rank.get(old_src, 0))
+                    if new_rank > old_rank:
+                        # Prefer canonical User: form when upgrading to flex
+                        body = prefer_canonical_wish(text) or text
+                        return self.upsert(doc_id, body, meta)
+                    return doc_id
+        except Exception:  # noqa: BLE001
+            pass
         doc_id = f"v{len(self._docs) + 1}"
         return self.upsert(doc_id, text, meta)
 

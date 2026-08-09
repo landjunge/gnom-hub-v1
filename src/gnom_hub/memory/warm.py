@@ -57,6 +57,15 @@ class WarmMemory:
 
         if _is_garbage_fact(t):
             return False
+        # Flex: reject core-key duplicates (User: X vs Flex-wish: User: X)
+        if (source or "warm") == "flex":
+            from gnom_hub.memory.dedupe import core_key
+
+            ck = core_key(t)
+            if ck:
+                for existing in self.all_facts():
+                    if core_key(existing) == ck:
+                        return False
         ok = self.db.warm_add(t, source=source or "warm")
         if ok:
             self.db.warm_trim(self.max_facts, flex_reserve=40)

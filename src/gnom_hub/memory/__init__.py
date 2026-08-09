@@ -2,6 +2,12 @@
 
 from gnom_hub.memory.canvas import MermaidCanvas
 from gnom_hub.memory.cold import ColdArchive
+from gnom_hub.memory.dedupe import (
+    already_covered,
+    core_key,
+    dedupe_texts,
+    merge_unique,
+)
 from gnom_hub.memory.facade import MemoryFacade
 from gnom_hub.memory.hot import HotMemory
 from gnom_hub.memory.vector_store import VectorStore
@@ -16,4 +22,8 @@ __all__ = [
     "VectorStore",
     "WarmMemory",
     "WorkspaceStore",
+    "already_covered",
+    "core_key",
+    "dedupe_texts",
+    "merge_unique",
 ]

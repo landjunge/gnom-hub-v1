@@ -90,15 +90,18 @@ class MemoryWiringMixin:
             if not isinstance(data, dict):
                 return
             from gnom_hub.agents.roles_helpers import _is_garbage_fact
+            from gnom_hub.memory.dedupe import prefer_canonical_wish
 
             for fact in data.get("facts") or []:
                 text = " ".join(str(fact).split()).strip()
                 if not text:
                     continue
+                text = prefer_canonical_wish(text) or text
                 if not text.lower().startswith(("user:", "wish:")):
                     text = "User: " + text
                 if 12 <= len(text) <= 200 and not _is_garbage_fact(text):
                     # source=flex → warm_trim keeps these until non-flex exhausted
+                    # add_fact(source=flex) core-dedupes prefix variants
                     self.warm.add_fact(text, source="flex")
                     self.hot.add_fact(text)
                     self.vectors.add(text, meta={"source": "flex_wish"})
