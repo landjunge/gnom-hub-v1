@@ -1,0 +1,29 @@
+{
+  "id": "install_tool",
+  "name": "Install Tool",
+  "version": "0.1.0",
+  "enabled": true,
+  "tools": [
+    {
+      "name": "install_tool",
+      "description": "Check whether an allowlisted package is installed and install it via pip if missing. Supports dry_run. Special handling for playwright browsers.",
+      "module": "main.py",
+      "handler": "run",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "package": {
+            "type": "string",
+            "description": "Package or short name: playwright, pyautogui, mss, pillow, pytesseract, pynput, beautifulsoup4, lxml"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "description": "If true, only report status without installing",
+            "default": false
+          }
+        },
+        "required": ["package"]
+      }
+    }
+  ]
+}
