@@ -49,9 +49,13 @@ def packages_needed(blob: str) -> list[str]:
     return out
 
 
-def _emit_tool_call(bus: Any, name: str, args: dict[str, Any], result: Any) -> None:
-    if bus is None:
-        return
+def _emit_tool_call(
+    bus: Any,
+    name: str,
+    args: dict[str, Any],
+    result: Any,
+    record: list[dict[str, Any]] | None = None,
+) -> None:
     ok = True
     err = None
     summary: Any
@@ -80,19 +84,20 @@ def _emit_tool_call(bus: Any, name: str, args: dict[str, Any], result: Any) -> N
         ok = True
     else:
         summary = {"type": type(result).__name__}
-    bus.emit(
-        "pipeline.tool_call",
-        {
-            "name": name,
-            "args": {
-                k: (str(v)[:120] if not isinstance(v, (int, float, bool)) else v)
-                for k, v in (args or {}).items()
-            },
-            "ok": ok,
-            "error": err,
-            "result": summary,
+    payload = {
+        "name": name,
+        "args": {
+            k: (str(v)[:120] if not isinstance(v, (int, float, bool)) else v)
+            for k, v in (args or {}).items()
         },
-    )
+        "ok": ok,
+        "error": err,
+        "result": summary,
+    }
+    if bus is not None:
+        bus.emit("pipeline.tool_call", payload)
+    if record is not None:
+        record.append(dict(payload))
 
 
 def _call_tool(
@@ -132,6 +137,7 @@ def _ensure_packages(
     tools: Any | None,
     calls: int,
     max_tool_calls: int,
+    record: list[dict[str, Any]] | None = None,
 ) -> tuple[list[str], int]:
     """install_tool dry_run → install if missing. Returns (context lines, calls_used)."""
     chunks: list[str] = []
@@ -145,7 +151,7 @@ def _ensure_packages(
         args_dry = {"package": pkg, "dry_run": True}
         st = _call_tool(tools, "install_tool", args_dry)
         calls += 1
-        _emit_tool_call(bus, "install_tool", args_dry, st)
+        _emit_tool_call(bus, "install_tool", args_dry, st, record=record)
 
         # install_tool shape: already_installed + dry_run
         installed = bool(isinstance(st, dict) and st.get("already_installed"))
@@ -162,7 +168,7 @@ def _ensure_packages(
         args_inst = {"package": pkg, "dry_run": False}
         res = _call_tool(tools, "install_tool", args_inst)
         calls += 1
-        _emit_tool_call(bus, "install_tool", args_inst, res)
+        _emit_tool_call(bus, "install_tool", args_inst, res, record=record)
         if isinstance(res, dict) and res.get("ok"):
             chunks.append(f"install_tool: installed {pkg}")
         else:
@@ -180,6 +186,7 @@ def prefetch_for_workers(
     memory: Any | None = None,
     max_tool_calls: int = 5,
     max_urls: int = 3,
+    record: list[dict[str, Any]] | None = None,
 ) -> str:
     """
     Run allowlisted prefetches and return a context block for workers.
@@ -195,7 +202,12 @@ def prefetch_for_workers(
 
     # ── install missing deps (allowlist) ──────────────────────────────
     inst_lines, calls = _ensure_packages(
-        text, bus=bus, tools=tools, calls=calls, max_tool_calls=max_tool_calls
+        text,
+        bus=bus,
+        tools=tools,
+        calls=calls,
+        max_tool_calls=max_tool_calls,
+        record=record,
     )
     chunks.extend(inst_lines)
 
@@ -224,7 +236,7 @@ def prefetch_for_workers(
             fallback=lambda url, max_chars=2500: web_fetch(str(url), max_chars=int(max_chars)),
         )
         calls += 1
-        _emit_tool_call(bus, "web_fetch", args, res)
+        _emit_tool_call(bus, "web_fetch", args, res, record=record)
         if isinstance(res, dict) and res.get("ok"):
             chunks.append(f"URL: {res.get('url') or u}\n{str(res.get('text') or '')[:2500]}")
         else:
@@ -249,7 +261,7 @@ def prefetch_for_workers(
             except Exception as exc:  # noqa: BLE001
                 hits = {"ok": False, "error": str(exc)}
         calls += 1
-        _emit_tool_call(bus, "memory_search", args, hits)
+        _emit_tool_call(bus, "memory_search", args, hits, record=record)
         if isinstance(hits, list) and hits:
             lines = []
             for h in hits[:3]:

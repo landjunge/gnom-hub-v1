@@ -73,9 +73,21 @@ class ToolsOpsMixin:
 
     def _status_text(self) -> str:
         st = self.pipeline.state
+        auth = {}
+        if hasattr(self.llm, "auth_snapshot"):
+            try:
+                auth = self.llm.auth_snapshot() or {}
+            except Exception:  # noqa: BLE001
+                auth = {}
+        sys_a = auth.get("system") or "?"
+        wrk_a = auth.get("worker_effective") or auth.get("worker") or "?"
+        blocked = "yes" if auth.get("session_auth_blocked") else "no"
+        tcalls = len(getattr(st, "tool_calls", None) or [])
         return (
             f"stage={st.stage.value} "
             f"deepseek={'yes' if self.llm.has_provider('deepseek') else 'no'} "
+            f"auth_sys={sys_a} auth_worker={wrk_a} auth_blocked={blocked} "
+            f"tool_calls={tcalls} "
             f"god={self.god_mode.enabled} "
             f"vectors={self.vectors.count()} "
             f"plugins={len(self.plugin_list)}"

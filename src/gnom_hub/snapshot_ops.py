@@ -39,6 +39,7 @@ class SnapshotOpsMixin:
             "flex_notes": st.flex_notes,
             "pending_question": q,
             "worker_results": list(st.worker_results),
+            "tool_calls": list(getattr(st, "tool_calls", None) or []),
             "worker_outputs": list(st.worker_outputs or []),
             "quality_notes": getattr(st, "quality_notes", "") or "",
             "agent_nudges": list(getattr(st, "agent_nudges", None) or []),

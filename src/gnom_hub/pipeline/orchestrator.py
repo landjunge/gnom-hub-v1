@@ -455,11 +455,13 @@ class Orchestrator:
             text = self._state.user_text or task
             mem = self._state.memory_context or self.memory.recall(text)
             self._state.memory_context = mem
+            self._state.tool_calls = list(self._state.tool_calls or [])
             tool_ctx = _prefetch_worker_tools(
                 f"{text}\n{task}",
                 bus=self.bus,
                 tools=getattr(self, "tools", None),
                 memory=self.memory_store,
+                record=self._state.tool_calls,
             )
             if tool_ctx:
                 mem = (mem or "").rstrip() + "\n\nTool prefetch (auto):\n" + tool_ctx
@@ -628,11 +630,13 @@ class Orchestrator:
         self._state.worker_results = []
         self._state.worker_outputs = []
         pre_blob = f"{text}\n" + "\n".join(t for _, t in tasks)
+        self._state.tool_calls = []
         tool_ctx = _prefetch_worker_tools(
             pre_blob,
             bus=self.bus,
             tools=getattr(self, "tools", None),
             memory=self.memory_store,
+            record=self._state.tool_calls,
         )
         if tool_ctx:
             mem = (mem or "").rstrip() + "\n\nTool prefetch (auto):\n" + tool_ctx
@@ -1125,6 +1129,7 @@ def _prefetch_worker_tools(
     memory: Any = None,
     max_urls: int = 3,
     max_tool_calls: int = 5,
+    record: list | None = None,
 ) -> str:
     from gnom_hub.tools.worker_prefetch import prefetch_for_workers
 
@@ -1135,6 +1140,7 @@ def _prefetch_worker_tools(
         memory=memory,
         max_urls=max_urls,
         max_tool_calls=max_tool_calls,
+        record=record,
     )
 
 

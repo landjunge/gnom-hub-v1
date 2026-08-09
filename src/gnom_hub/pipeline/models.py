@@ -47,6 +47,8 @@ class PipelineState:
     pending_question: DistillQuestion | None = None
     worker_results: list[str] = field(default_factory=list)
     worker_outputs: list[dict] = field(default_factory=list)
+    # Light tool trace (prefetch / registry calls this run)
+    tool_calls: list[dict] = field(default_factory=list)
     # Light quality notes after workers (plan §8)
     quality_notes: str = ""
     # Flex proactive corrections: [{agent, message, reason}] before user has to yell
