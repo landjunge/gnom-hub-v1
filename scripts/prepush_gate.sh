@@ -71,6 +71,22 @@ if ! run_ruff format --check .; then
   exit 1
 fi
 
+# Mermaid docs gate (static). Skip with GNOM_PREPUSH_MERMAID=0
+if [ "${GNOM_PREPUSH_MERMAID:-1}" != "0" ] && [ "${GNOM_PREPUSH_MERMAID:-}" != "false" ]; then
+  echo "▸ prepush_gate: mermaid_check"
+  if [ -x .venv/bin/python ]; then
+    PY=.venv/bin/python
+  else
+    PY=python
+  fi
+  if ! "$PY" scripts/mermaid_check.py; then
+    echo "" >&2
+    echo "❌ mermaid_check failed. See docs/MERMAID.md" >&2
+    echo "  python scripts/mermaid_check.py --list" >&2
+    exit 1
+  fi
+fi
+
 if [ "${GNOM_PREPUSH_PYTEST:-}" = "1" ] || [ "${GNOM_PREPUSH_PYTEST:-}" = "true" ]; then
   echo "▸ prepush_gate: pytest (GNOM_PREPUSH_PYTEST=1)"
   export PYTHONPATH="${PYTHONPATH:-}:src"

@@ -515,6 +515,36 @@ sequenceDiagram
 
 ---
 
+
+---
+
+## 9. Automatisierung
+
+```bash
+# Statische Prüfung aller ```mermaid```-Blöcke (README + docs/)
+python scripts/mermaid_check.py
+python scripts/mermaid_check.py --list
+python scripts/mermaid_check.py --json
+python scripts/mermaid_check.py --write-inventory docs/generated/mermaid_inventory.md
+
+# Im Pre-Push-Gate (default an; aus: GNOM_PREPUSH_MERMAID=0)
+./scripts/prepush_gate.sh
+```
+
+Der Checker erzwingt:
+
+| Check | Level |
+|-------|-------|
+| Erlaubte Diagrammtypen | error |
+| Palette-`classDef` / `:::` nur aus §5 | error |
+| Gebannte Klassen (`edge`, `reg`) | error |
+| `\n` in Labels | error |
+| `click` / gantt / … | error |
+| `activate`/`deactivate` Balance | warning |
+| `stroke-width` in classDef | warning |
+
+Inventory (generiert): [generated/mermaid_inventory.md](generated/mermaid_inventory.md).
+
 ## Siehe auch
 
 | Doc | Inhalt |

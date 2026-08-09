@@ -117,6 +117,18 @@ GNOM_SAFE_DIRECTORY_STAR=1 ./scripts/ensure_git_safe_directory.sh
 - Does **not** replace auth/SSH — only ownership trust for local git operations.
 
 
+
+## Mermaid docs gate
+
+```bash
+python scripts/mermaid_check.py
+# inventory: python scripts/mermaid_check.py --write-inventory docs/generated/mermaid_inventory.md
+```
+
+Runs in `./scripts/prepush_gate.sh` by default (`GNOM_PREPUSH_MERMAID=0` to skip).  
+Rules: [docs/MERMAID.md](docs/MERMAID.md).
+
+
 ## Product rules
 
 - UI: Basic English; Box-1 content multi-language ready.
