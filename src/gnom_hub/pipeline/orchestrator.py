@@ -1262,7 +1262,7 @@ def _validate_worker_draft(body: str, *, user_text: str = "", task: str = "") ->
     if "FEHLER — kein Deliverable" in s or s.startswith("FEHLER"):
         ok = False
         issues.append("worker_error")
-    if s.startswith("Stub") or "Stub —" in s or "Kein Fake-Ergebnis" in s:
+    if (s.startswith("Stub") or "Stub —" in s) and "FEHLER" not in s:
         ok = False
         issues.append("stub")
     if _wants_html_artifact(user_text, task):
