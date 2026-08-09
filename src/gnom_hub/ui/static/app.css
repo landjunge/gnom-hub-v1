@@ -460,7 +460,18 @@ html, body {
   min-width: 88px;
 }
 
+.llm-badge.auth-warn {
+  border-color: #c9a227;
+  color: #e6c35c;
+  background: rgba(201, 162, 39, 0.12);
+}
+.llm-badge.auth-bad {
+  border-color: #c44;
+  color: #f88;
+  background: rgba(204, 68, 68, 0.12);
+}
 .llm-badge.has-key {
+
   color: var(--text);
   border-color: #3f434c;
 }

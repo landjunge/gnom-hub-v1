@@ -427,9 +427,18 @@ class FlexAgent(BaseAgent):
             gate = o.get("validation") if isinstance(o.get("validation"), dict) else {}
             issues = list(gate.get("issues") or [])
             msgs: list[str] = []
+            if "worker_error" in issues or ("FEHLER" in body and "Deliverable" in body):
+                msgs.append(
+                    "Kein Deliverable (LLM/Key). Echten DEEPSEEK_API_KEY setzen; "
+                    "kein Platzhalter sk-your-…. Danach Execute erneut."
+                )
+            if "stub" in issues or "Stub —" in body:
+                msgs.append(
+                    "Kein Stub-Output: echten Worker-Lauf mit LLM liefern, User-Auftrag voll erfuellen."
+                )
             if "incomplete_html" in issues or "html incomplete" in qlow:
                 msgs.append("Pflicht: komplette HTML-Datei bis </html>, nichts abschneiden.")
-            if "missing_required_interaction" in issues:
+            if "missing_required_interaction" in issues or "no_interaction" in issues:
                 msgs.append(
                     "Pflicht: mindestens eine echte Interaktion (onclick oder addEventListener)."
                 )

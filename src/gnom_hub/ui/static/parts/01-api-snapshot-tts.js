@@ -79,20 +79,41 @@
     if (els.llmBadge && snap.llm) {
       const ds = !!snap.llm.deepseek;
       const ol = !!snap.llm.ollama;
-      const ok = ds || ol;
+      const auth = snap.llm.auth || {};
+      const sys = String(auth.system || "");
+      const wrk = String(auth.worker_effective || auth.worker || "");
+      const blocked = !!auth.session_auth_blocked;
+      const placeholder = !!auth.placeholder_detected || sys === "placeholder" || wrk === "placeholder";
+      const ok = (ds || ol) && !blocked;
       const tok =
         (snap.llm.prompt_tokens || 0) + (snap.llm.completion_tokens || 0);
       let label = "LLM: stub";
-      if (ds && ol) label = "LLM: DeepSeek+Ollama";
+      if (blocked) label = "LLM: auth blocked";
+      else if (placeholder && !ok) label = "LLM: key placeholder";
+      else if (!ok && sys === "missing") label = "LLM: no key";
+      else if (ds && ol) label = "LLM: DeepSeek+Ollama";
       else if (ds) label = "LLM: DeepSeek";
       else if (ol) label = "LLM: Ollama";
       els.llmBadge.textContent = ok ? label + " · " + tok + " tok" : label;
       els.llmBadge.classList.toggle("has-key", ok);
+      els.llmBadge.classList.toggle("auth-warn", placeholder && !ok);
+      els.llmBadge.classList.toggle("auth-bad", blocked || (!ok && !placeholder && sys === "missing"));
       els.llmBadge.title =
-        "prompt=" +
+        "deepseek=" +
+        (ds ? "yes" : "no") +
+        " ollama=" +
+        (ol ? "yes" : "no") +
+        " auth.system=" +
+        (sys || "?") +
+        " auth.worker=" +
+        (wrk || "?") +
+        " blocked=" +
+        (blocked ? "yes" : "no") +
+        " prompt=" +
         (snap.llm.prompt_tokens || 0) +
         " completion=" +
-        (snap.llm.completion_tokens || 0);
+        (snap.llm.completion_tokens || 0) +
+        " — set User/Key.txt DEEPSEEK_API_KEY (not sk-your-…)";
     }
     updateCostBadge(snap.llm);
     if (els.memBadge && snap.memory_summary) {

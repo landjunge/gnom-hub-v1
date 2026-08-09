@@ -804,10 +804,29 @@ class Orchestrator:
             if worker is None or not worker.enabled:
                 continue
             task = text
+            prev_body = ""
+            prev_issues: list[str] = []
             for o in outputs:
                 if str(o.get("worker") or "") == aid:
                     task = str(o.get("task") or text)
+                    prev_body = str(o.get("result") or "")
+                    gate_prev = o.get("validation") if isinstance(o.get("validation"), dict) else {}
+                    prev_issues = list(gate_prev.get("issues") or [])
                     break
+            # Auth / missing-key failures cannot be fixed by re-calling the same dead provider
+            if "worker_error" in prev_issues or (
+                "FEHLER" in prev_body and "Deliverable" in prev_body
+            ):
+                self.bus.emit(
+                    "pipeline.agent_nudge",
+                    {
+                        "agent": aid,
+                        "message": msg,
+                        "reason": "auth_or_missing_key",
+                        "rerun": False,
+                    },
+                )
+                continue
             self._check_cancel()
             self.bus.emit("pipeline.stage", {"stage": aid})
             fixed = worker.run(
