@@ -110,10 +110,7 @@ def run(package: str = "", dry_run: bool = False) -> dict[str, Any]:
         raise ToolFailed("package is required")
 
     if key not in _ALLOW:
-        raise ToolFailed(
-            f"package not allowlisted: {package!r}; "
-            f"allowed={sorted(_ALLOW.keys())}"
-        )
+        raise ToolFailed(f"package not allowlisted: {package!r}; allowed={sorted(_ALLOW.keys())}")
 
     pip_name, import_name = _ALLOW[key]
     already = _is_installed(import_name)
@@ -152,11 +149,7 @@ def run(package: str = "", dry_run: bool = False) -> dict[str, Any]:
         if not browsers.get("ok"):
             err = str(browsers.get("error") or browsers.get("stderr") or "browser install failed")
             if browsers.get("transient") or _looks_transient(err):
-                raise ToolRetry(
-                    f"playwright package ok, chromium install transient: {err[:400]}"
-                )
-            raise ToolFailed(
-                f"playwright package ok, chromium install failed: {err[:400]}"
-            )
+                raise ToolRetry(f"playwright package ok, chromium install transient: {err[:400]}")
+            raise ToolFailed(f"playwright package ok, chromium install failed: {err[:400]}")
 
     return result
