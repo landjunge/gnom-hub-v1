@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
-# Pre-push gate: ruff must be clean (matches CI lint job).
-# Install once:  ./scripts/install_git_hooks.sh
-# Or:            git config core.hooksPath .githooks
-#
-# Skip in emergency only:  git push --no-verify
+# Pre-push gate — blocks push if ruff is red (CI lint parity).
+# Install:  ./scripts/install_git_hooks.sh
+# Skip:     git push --no-verify   (emergency only)
 set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
@@ -13,21 +11,4 @@ if [ -z "${ROOT}" ]; then
 fi
 cd "$ROOT"
 
-if [ -d .venv ]; then
-  # shellcheck disable=SC1091
-  source .venv/bin/activate
-fi
-
-if ! command -v ruff >/dev/null 2>&1; then
-  echo "pre-push: ruff not found. Install dev deps:" >&2
-  echo "  pip install -e '.[dev]'   # ruff==0.16.1 pinned in pyproject.toml" >&2
-  exit 1
-fi
-
-echo "▸ pre-push: ruff check ."
-ruff check .
-echo "▸ pre-push: ruff format --check ."
-ruff format --check .
-
-echo "✅ pre-push: ruff OK"
-exit 0
+exec bash "$ROOT/scripts/prepush_gate.sh"

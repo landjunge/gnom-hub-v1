@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Pre-commit: same ruff gate early (cheaper than failing at push).
+# Install:  ./scripts/install_git_hooks.sh
+# Skip:     git commit --no-verify
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+if [ -z "${ROOT}" ]; then
+  echo "pre-commit: not a git repo" >&2
+  exit 1
+fi
+cd "$ROOT"
+
+# Fast path: only when Python/plugin sources staged (or format always — safer)
+if git rev-parse --verify HEAD >/dev/null 2>&1; then
+  STAGED=$(git diff --cached --name-only --diff-filter=ACMR || true)
+else
+  STAGED=$(git diff --cached --name-only --diff-filter=ACMR || true)
+fi
+
+# Always run full gate if any .py / pyproject / ruff config staged; else skip
+NEED=0
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
+  case "$f" in
+    *.py|pyproject.toml|ruff.toml|.ruff.toml) NEED=1; break ;;
+    plugins/*) NEED=1; break ;;
+  esac
+done <<< "$STAGED"
+
+if [ "$NEED" -eq 0 ]; then
+  # Still check if only non-py — skip heavy gate for pure docs/UI css
+  exit 0
+fi
+
+exec bash "$ROOT/scripts/prepush_gate.sh"

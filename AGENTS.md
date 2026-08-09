@@ -68,25 +68,36 @@ pytest tests/ -q --tb=short
 
 Never push with ruff/format/pytest red.
 
-### Git pre-push hook (local)
+### Git hooks (local, automated)
 
-Versioned hooks live in **`.githooks/`**. Install once per clone:
+Versioned hooks live in **`.githooks/`**. **Install once per clone** (agents: first step after clone):
 
 ```bash
 ./scripts/install_git_hooks.sh
-# equivalent: git config core.hooksPath .githooks
+# sets: git config core.hooksPath .githooks
 ```
 
-What runs on `git push`:
+| Hook | When | Runs |
+|------|------|------|
+| **pre-commit** | commit with staged `.py` / `pyproject` / `plugins/*` | `scripts/prepush_gate.sh` |
+| **pre-push** | every `git push` | `scripts/prepush_gate.sh` |
+
+Gate body (`scripts/prepush_gate.sh`) — same as CI lint:
 
 ```text
 ruff check .
 ruff format --check .
 ```
 
-- **Fail** → push aborted (fix, then push again).
-- **Emergency skip only:** `git push --no-verify` (do not use as normal workflow).
-- Hook does **not** replace pytest; still run `pytest` / `quality_check.sh` before claiming done.
+```bash
+./scripts/prepush_gate.sh          # dry-run
+./scripts/prepush_gate.sh --fix   # format + re-check
+GNOM_PREPUSH_PYTEST=1 ./scripts/prepush_gate.sh   # optional tests
+```
+
+- **Fail** → commit/push aborted. Fix, then retry.
+- **Emergency skip only:** `git push --no-verify` / `git commit --no-verify` (not normal workflow).
+- Hooks do **not** replace full `quality_check.sh`; still run it before claiming done.
 
 CI mirrors the same ruff commands (`.github/workflows/ci.yml` → job `lint`).
 
