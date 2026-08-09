@@ -205,26 +205,26 @@ title: Gnom-Hub runtime
 flowchart TB
   subgraph Client["Browser SPA"]
     direction TB
-    UI["UI · app.js"]
-    Badges["LLM · Tools · God badges"]
+    UI["UI · app.js"]:::ui
+    Badges["LLM · Tools · God badges"]:::ui
   end
 
   subgraph API["FastAPI :8080"]
     direction LR
-    REST["REST"]
-    Poll["job polling"]
+    REST["REST"]:::ui
+    Poll["job polling"]:::ui
   end
 
   subgraph Hub["Hub composition"]
     direction TB
-    Bus((EventBus))
-    Orch["Orchestrator"]
-    Agents["8 role agents"]
-    LLM["LLM manager<br/>DeepSeek / Ollama"]
-    Mem["Memory<br/>HOT · WARM · COLD · Vector"]
-    Tools["ToolRegistry + Plugins"]
-    WS["Workspace · packs · jobs"]
-    CU["Computer-use + God-Mode"]
+    Bus((EventBus)):::core
+    Orch["Orchestrator"]:::core
+    Agents["8 role agents"]:::core
+    LLM["LLM manager<br/>DeepSeek / Ollama"]:::core
+    Mem["Memory<br/>HOT · WARM · COLD · Vector"]:::warm
+    Tools["ToolRegistry + Plugins"]:::core
+    WS["Workspace · packs · jobs"]:::store
+    CU["Computer-use + God-Mode"]:::danger
   end
 
   UI --> REST
@@ -241,11 +241,14 @@ flowchart TB
   Tools --> WS
   Tools --> CU
 
-  classDef edge fill:#1a1f2e,stroke:#5b8def,color:#e6edf3
-  classDef core fill:#1e2a1e,stroke:#3a8f6e,color:#e6edf3
-  class Orch,Agents,LLM core
-  class UI,REST edge
+  classDef ui fill:#1a1f2e,stroke:#5b8def,color:#e6edf3,stroke-width:1px
+  classDef core fill:#1e2a1e,stroke:#3a8f6e,color:#e6edf3,stroke-width:1px
+  classDef warm fill:#1e2a1e,stroke:#3a8f6e,color:#e6edf3,stroke-width:1px
+  classDef store fill:#1a2433,stroke:#7c9cbf,color:#e6edf3,stroke-width:1px
+  classDef danger fill:#2a1818,stroke:#c45c5c,color:#f5e6e6,stroke-width:2px
 ```
+
+Classes: [docs/MERMAID.md](docs/MERMAID.md) (`ui` · `core` · `warm` · `store` · `danger`).
 
 ### Pipeline
 
@@ -271,15 +274,22 @@ stateDiagram-v2
 
 ```mermaid
 flowchart LR
-  M([memory]) --> B[brainstorm]
-  B --> D[distill]
-  D --> C{clarify?}
-  C -->|yes| CL[clarify]
-  C -->|no| F[flex]
+  M([memory]):::terminal --> B[brainstorm]:::core
+  B --> D[distill]:::core
+  D --> C{clarify?}:::gate
+  C -->|yes| CL[clarify]:::ui
+  C -->|no| F[flex]:::locked
   CL --> F
-  F --> CO[coordinate]
-  CO --> W[work]
-  W --> DONE([done])
+  F --> CO[coordinate]:::core
+  CO --> W[work]:::work
+  W --> DONE([done]):::terminal
+
+  classDef ui fill:#1a1f2e,stroke:#5b8def,color:#e6edf3,stroke-width:1px
+  classDef core fill:#1e2a1e,stroke:#3a8f6e,color:#e6edf3,stroke-width:1px
+  classDef locked fill:#2a2218,stroke:#c9a227,color:#f5f0e6,stroke-width:2px
+  classDef work fill:#141c2a,stroke:#6ea8fe,color:#e6edf3,stroke-width:1px
+  classDef gate fill:#2a2418,stroke:#d4a017,color:#f5f0e6,stroke-width:1px
+  classDef terminal fill:#12151c,stroke:#8b929e,color:#c9cdd4,stroke-width:1px
 ```
 
 ```
@@ -301,23 +311,21 @@ Telegram → one-shot /do
 title: Memory layers
 ---
 flowchart TB
-  HOT["HOT · session<br/>messages · facts · canvas"]
-  WARM["WARM · durable<br/>facts · Flex wishes"]
-  COLD["COLD · archive<br/>past sessions"]
-  VEC[("Vector · durable<br/>BM25 + cosine")]
-  WORK["Workspace<br/>temp · perm artifacts"]
+  HOT["HOT · session<br/>messages · facts · canvas"]:::hot
+  WARM["WARM · durable<br/>facts · Flex wishes"]:::warm
+  COLD["COLD · archive<br/>past sessions"]:::cold
+  VEC[("Vector · durable<br/>BM25 + cosine")]:::store
+  WORK["Workspace<br/>temp · perm artifacts"]:::store
 
   HOT -->|"promote"| WARM
   HOT -->|"archive"| COLD
   HOT & WARM --> VEC
   WARM -.->|"artifacts after execute"| WORK
 
-  classDef hot fill:#2a2218,stroke:#c9a227,color:#f5f0e6
-  classDef warm fill:#1e2a1e,stroke:#3a8f6e,color:#e6edf3
-  classDef cold fill:#1a1f2e,stroke:#6b7280,color:#e6edf3
-  class HOT hot
-  class WARM warm
-  class COLD,VEC cold
+  classDef hot fill:#2a2218,stroke:#c9a227,color:#f5f0e6,stroke-width:1px
+  classDef warm fill:#1e2a1e,stroke:#3a8f6e,color:#e6edf3,stroke-width:1px
+  classDef cold fill:#1a1f2e,stroke:#6b7280,color:#c9cdd4,stroke-width:1px
+  classDef store fill:#1a2433,stroke:#7c9cbf,color:#e6edf3,stroke-width:1px
 ```
 
 | Layer | Lifetime | Purpose |

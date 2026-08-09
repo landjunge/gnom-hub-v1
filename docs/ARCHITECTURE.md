@@ -2,7 +2,7 @@
 
 Short map of the running system. Deep dive: [CODE_ANALYSIS_FOR_AI.md](CODE_ANALYSIS_FOR_AI.md).  
 Agent contracts: [AGENTS_DEFINITION.md](AGENTS_DEFINITION.md).  
-Mermaid style guide: [MERMAID.md](MERMAID.md).  
+Mermaid style guide + **class palette**: [MERMAID.md](MERMAID.md).  
 README diagrams: [README.md](../README.md) · [README_DE.md](../README_DE.md).
 
 ## One sentence
@@ -22,26 +22,26 @@ config:
 flowchart TB
   subgraph Client["Browser SPA"]
     direction TB
-    UI["UI · app.js ← parts/*"]
-    Badges["LLM · Tools · God · Stage"]
+    UI["UI · app.js ← parts/*"]:::ui
+    Badges["LLM · Tools · God · Stage"]:::ui
   end
 
   subgraph API["FastAPI :8080"]
     direction LR
-    REST["REST"]
-    Jobs["Async jobs"]
+    REST["REST"]:::ui
+    Jobs["Async jobs"]:::ui
   end
 
   subgraph Hub["Hub · composition + mixins"]
     direction TB
-    Bus((EventBus))
-    Orch["Orchestrator"]
-    Agents["8 role agents"]
-    LLM["LLM manager<br/>DeepSeek / Ollama · auth"]
-    Mem["Memory<br/>HOT · WARM · COLD · Vector"]
-    Tools["ToolRegistry + PluginLoader"]
-    WS["Workspace · packs · backups"]
-    CU["Computer-use + God-Mode"]
+    Bus((EventBus)):::core
+    Orch["Orchestrator"]:::core
+    Agents["8 role agents"]:::core
+    LLM["LLM manager<br/>DeepSeek / Ollama · auth"]:::core
+    Mem["Memory<br/>HOT · WARM · COLD · Vector"]:::warm
+    Tools["ToolRegistry + PluginLoader"]:::core
+    WS["Workspace · packs · backups"]:::store
+    CU["Computer-use + God-Mode"]:::danger
   end
 
   UI --> REST
@@ -59,12 +59,11 @@ flowchart TB
   Tools --> CU
   Mem --> WS
 
-  classDef ui fill:#1a1f2e,stroke:#5b8def,color:#e6edf3
-  classDef core fill:#1e2a1e,stroke:#3a8f6e,color:#e6edf3
-  classDef danger fill:#2a1818,stroke:#c45c5c,color:#f5e6e6
-  class UI,REST,Jobs ui
-  class Orch,Agents,LLM,Mem,Tools core
-  class CU danger
+  classDef ui fill:#1a1f2e,stroke:#5b8def,color:#e6edf3,stroke-width:1px
+  classDef core fill:#1e2a1e,stroke:#3a8f6e,color:#e6edf3,stroke-width:1px
+  classDef warm fill:#1e2a1e,stroke:#3a8f6e,color:#e6edf3,stroke-width:1px
+  classDef store fill:#1a2433,stroke:#7c9cbf,color:#e6edf3,stroke-width:1px
+  classDef danger fill:#2a1818,stroke:#c45c5c,color:#f5e6e6,stroke-width:2px
 ```
 
 ASCII (fallback):
@@ -113,13 +112,22 @@ stateDiagram-v2
 
 ```mermaid
 flowchart LR
-  memory([memory]) --> brainstorm
-  brainstorm --> distill
-  distill --> clarify{clarify?}
-  clarify -->|yes| clarify_ui[clarify UI]
-  clarify -->|no| flex
+  memory([memory]):::terminal --> brainstorm:::core
+  brainstorm --> distill:::core
+  distill --> clarify{clarify?}:::gate
+  clarify -->|yes| clarify_ui[clarify UI]:::ui
+  clarify -->|no| flex:::locked
   clarify_ui --> flex
-  flex --> coordinate --> work --> done([done])
+  flex --> coordinate:::core
+  coordinate --> work:::work
+  work --> done([done]):::terminal
+
+  classDef ui fill:#1a1f2e,stroke:#5b8def,color:#e6edf3,stroke-width:1px
+  classDef core fill:#1e2a1e,stroke:#3a8f6e,color:#e6edf3,stroke-width:1px
+  classDef locked fill:#2a2218,stroke:#c9a227,color:#f5f0e6,stroke-width:2px
+  classDef work fill:#141c2a,stroke:#6ea8fe,color:#e6edf3,stroke-width:1px
+  classDef gate fill:#2a2418,stroke:#d4a017,color:#f5f0e6,stroke-width:1px
+  classDef terminal fill:#12151c,stroke:#8b929e,color:#c9cdd4,stroke-width:1px
 ```
 
 | Mode | What runs |
@@ -152,7 +160,7 @@ sequenceDiagram
   C-->>O: worker plan
 
   rect rgb(30, 42, 30)
-    Note over P,T: Worker prefetch
+    Note over P,T: core · worker prefetch
     O->>P: tool_calls_needed
     P->>T: web_fetch / memory_search / install_tool
     T-->>P: results
@@ -170,7 +178,10 @@ sequenceDiagram
     O->>F: nudge
     F-->>W: correction
   else auth / non-fixable
-    O-->>U: FEHLER (no fake stub)
+    rect rgb(42, 24, 24)
+      Note over O,U: danger · honest FEHLER
+      O-->>U: FEHLER (no fake stub)
+    end
   end
   O-->>U: Box 3 + Memory
 ```
@@ -184,16 +195,16 @@ title: Fixed desk
 flowchart TB
   subgraph Desk["8 agents"]
     direction TB
-    B[Brainstorm]
-    M[Memory locked]
-    F[Flex locked]
-    C[Coordinator]
+    B[Brainstorm]:::core
+    M[Memory locked]:::locked
+    F[Flex locked]:::locked
+    C[Coordinator]:::core
     subgraph Workers["Workers"]
       direction LR
-      W1[W1]
-      W2[W2]
-      W3[W3]
-      W4[W4]
+      W1[W1]:::work
+      W2[W2]:::work
+      W3[W3]:::work
+      W4[W4]:::work
     end
   end
 
@@ -202,10 +213,9 @@ flowchart TB
   C -->|"tasks"| Workers
   F -.->|"nudge"| Workers
 
-  classDef locked fill:#2a2218,stroke:#c9a227,color:#f5f0e6
-  classDef work fill:#1a1f2e,stroke:#5b8def,color:#e6edf3
-  class M,F locked
-  class W1,W2,W3,W4 work
+  classDef core fill:#1e2a1e,stroke:#3a8f6e,color:#e6edf3,stroke-width:1px
+  classDef locked fill:#2a2218,stroke:#c9a227,color:#f5f0e6,stroke-width:2px
+  classDef work fill:#141c2a,stroke:#6ea8fe,color:#e6edf3,stroke-width:1px
 ```
 
 | Agent | Role | Toggle |
@@ -225,23 +235,21 @@ Flex details: standing `User:` / `Wish:` facts (`source=flex`), never trimmed be
 title: Memory layers
 ---
 flowchart TB
-  HOT["HOT · session<br/>messages · facts · canvas"]
-  WARM["WARM · durable<br/>facts · Flex wishes"]
-  COLD["COLD · archive"]
-  VEC[("Vector hybrid<br/>BM25 + cosine")]
-  WORK["Workspace<br/>temp · perm"]
+  HOT["HOT · session<br/>messages · facts · canvas"]:::hot
+  WARM["WARM · durable<br/>facts · Flex wishes"]:::warm
+  COLD["COLD · archive"]:::cold
+  VEC[("Vector hybrid<br/>BM25 + cosine")]:::store
+  WORK["Workspace<br/>temp · perm"]:::store
 
   HOT -->|"promote"| WARM
   HOT -->|"archive"| COLD
   HOT & WARM --> VEC
   WARM -.->|"facts feed"| WORK
 
-  classDef hot fill:#2a2218,stroke:#c9a227,color:#f5f0e6
-  classDef warm fill:#1e2a1e,stroke:#3a8f6e,color:#e6edf3
-  classDef cold fill:#1a1f2e,stroke:#6b7280,color:#e6edf3
-  class HOT hot
-  class WARM warm
-  class COLD,VEC cold
+  classDef hot fill:#2a2218,stroke:#c9a227,color:#f5f0e6,stroke-width:1px
+  classDef warm fill:#1e2a1e,stroke:#3a8f6e,color:#e6edf3,stroke-width:1px
+  classDef cold fill:#1a1f2e,stroke:#6b7280,color:#c9cdd4,stroke-width:1px
+  classDef store fill:#1a2433,stroke:#7c9cbf,color:#e6edf3,stroke-width:1px
 ```
 
 | Layer | Lifetime | Role |
@@ -262,14 +270,14 @@ title: Tool surface
 ---
 flowchart LR
   subgraph Sources
-    Core["Core tools<br/>hub_status · web_fetch · …"]
-    Plug["Plugins<br/>echo · install_tool · text_stats"]
+    Core["Core tools<br/>hub_status · web_fetch · …"]:::core
+    Plug["Plugins<br/>echo · install_tool · text_stats"]:::plugin
   end
 
-  Reg[["ToolRegistry<br/>validate · retry · tags"]]
-  Pref["worker_prefetch"]
-  API["POST /api/tools/call"]
-  UI["Tools modal"]
+  Reg[["ToolRegistry<br/>validate · retry · tags"]]:::core
+  Pref["worker_prefetch"]:::work
+  API["POST /api/tools/call"]:::ui
+  UI["Tools modal"]:::ui
 
   Core --> Reg
   Plug --> Reg
@@ -277,8 +285,10 @@ flowchart LR
   API --> Reg
   UI --> API
 
-  classDef reg fill:#1e2a1e,stroke:#3a8f6e,color:#e6edf3
-  class Reg reg
+  classDef ui fill:#1a1f2e,stroke:#5b8def,color:#e6edf3,stroke-width:1px
+  classDef core fill:#1e2a1e,stroke:#3a8f6e,color:#e6edf3,stroke-width:1px
+  classDef work fill:#141c2a,stroke:#6ea8fe,color:#e6edf3,stroke-width:1px
+  classDef plugin fill:#221a2e,stroke:#9b7ed9,color:#efe6f5,stroke-width:1px
 ```
 
 ## Plan modes

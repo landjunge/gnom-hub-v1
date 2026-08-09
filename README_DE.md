@@ -205,26 +205,26 @@ title: Gnom-Hub Runtime
 flowchart TB
   subgraph Client["Browser-SPA"]
     direction TB
-    UI["UI · app.js"]
-    Badges["LLM · Tools · God Badges"]
+    UI["UI · app.js"]:::ui
+    Badges["LLM · Tools · God Badges"]:::ui
   end
 
   subgraph API["FastAPI :8080"]
     direction LR
-    REST["REST"]
-    Poll["Job-Polling"]
+    REST["REST"]:::ui
+    Poll["Job-Polling"]:::ui
   end
 
   subgraph Hub["Hub Composition"]
     direction TB
-    Bus((EventBus))
-    Orch["Orchestrator"]
-    Agents["8 Rollen-Agenten"]
-    LLM["LLM-Manager<br/>DeepSeek / Ollama"]
-    Mem["Memory<br/>HOT · WARM · COLD · Vector"]
-    Tools["ToolRegistry + Plugins"]
-    WS["Workspace · Packs · Jobs"]
-    CU["Computer-Use + God-Mode"]
+    Bus((EventBus)):::core
+    Orch["Orchestrator"]:::core
+    Agents["8 Rollen-Agenten"]:::core
+    LLM["LLM-Manager<br/>DeepSeek / Ollama"]:::core
+    Mem["Memory<br/>HOT · WARM · COLD · Vector"]:::warm
+    Tools["ToolRegistry + Plugins"]:::core
+    WS["Workspace · Packs · Jobs"]:::store
+    CU["Computer-Use + God-Mode"]:::danger
   end
 
   UI --> REST
@@ -241,11 +241,14 @@ flowchart TB
   Tools --> WS
   Tools --> CU
 
-  classDef edge fill:#1a1f2e,stroke:#5b8def,color:#e6edf3
-  classDef core fill:#1e2a1e,stroke:#3a8f6e,color:#e6edf3
-  class Orch,Agents,LLM core
-  class UI,REST edge
+  classDef ui fill:#1a1f2e,stroke:#5b8def,color:#e6edf3,stroke-width:1px
+  classDef core fill:#1e2a1e,stroke:#3a8f6e,color:#e6edf3,stroke-width:1px
+  classDef warm fill:#1e2a1e,stroke:#3a8f6e,color:#e6edf3,stroke-width:1px
+  classDef store fill:#1a2433,stroke:#7c9cbf,color:#e6edf3,stroke-width:1px
+  classDef danger fill:#2a1818,stroke:#c45c5c,color:#f5e6e6,stroke-width:2px
 ```
+
+Klassen: [docs/MERMAID.md](docs/MERMAID.md) (`ui` · `core` · `warm` · `store` · `danger`).
 
 ### Pipeline
 
@@ -271,15 +274,22 @@ stateDiagram-v2
 
 ```mermaid
 flowchart LR
-  M([memory]) --> B[brainstorm]
-  B --> D[distill]
-  D --> C{clarify?}
-  C -->|ja| CL[clarify]
-  C -->|nein| F[flex]
+  M([memory]):::terminal --> B[brainstorm]:::core
+  B --> D[distill]:::core
+  D --> C{clarify?}:::gate
+  C -->|ja| CL[clarify]:::ui
+  C -->|nein| F[flex]:::locked
   CL --> F
-  F --> CO[coordinate]
-  CO --> W[work]
-  W --> DONE([done])
+  F --> CO[coordinate]:::core
+  CO --> W[work]:::work
+  W --> DONE([done]):::terminal
+
+  classDef ui fill:#1a1f2e,stroke:#5b8def,color:#e6edf3,stroke-width:1px
+  classDef core fill:#1e2a1e,stroke:#3a8f6e,color:#e6edf3,stroke-width:1px
+  classDef locked fill:#2a2218,stroke:#c9a227,color:#f5f0e6,stroke-width:2px
+  classDef work fill:#141c2a,stroke:#6ea8fe,color:#e6edf3,stroke-width:1px
+  classDef gate fill:#2a2418,stroke:#d4a017,color:#f5f0e6,stroke-width:1px
+  classDef terminal fill:#12151c,stroke:#8b929e,color:#c9cdd4,stroke-width:1px
 ```
 
 ```
@@ -301,23 +311,21 @@ Telegram → One-Shot /do
 title: Memory-Schichten
 ---
 flowchart TB
-  HOT["HOT · Session<br/>Messages · Fakten · Canvas"]
-  WARM["WARM · dauerhaft<br/>Fakten · Flex-Wünsche"]
-  COLD["COLD · Archiv<br/>alte Sessions"]
-  VEC[("Vector · dauerhaft<br/>BM25 + Cosine")]
-  WORK["Workspace<br/>Temp · Perm Artefakte"]
+  HOT["HOT · Session<br/>Messages · Fakten · Canvas"]:::hot
+  WARM["WARM · dauerhaft<br/>Fakten · Flex-Wünsche"]:::warm
+  COLD["COLD · Archiv<br/>alte Sessions"]:::cold
+  VEC[("Vector · dauerhaft<br/>BM25 + Cosine")]:::store
+  WORK["Workspace<br/>Temp · Perm Artefakte"]:::store
 
   HOT -->|"promote"| WARM
   HOT -->|"archive"| COLD
   HOT & WARM --> VEC
   WARM -.->|"Artefakte nach Execute"| WORK
 
-  classDef hot fill:#2a2218,stroke:#c9a227,color:#f5f0e6
-  classDef warm fill:#1e2a1e,stroke:#3a8f6e,color:#e6edf3
-  classDef cold fill:#1a1f2e,stroke:#6b7280,color:#e6edf3
-  class HOT hot
-  class WARM warm
-  class COLD,VEC cold
+  classDef hot fill:#2a2218,stroke:#c9a227,color:#f5f0e6,stroke-width:1px
+  classDef warm fill:#1e2a1e,stroke:#3a8f6e,color:#e6edf3,stroke-width:1px
+  classDef cold fill:#1a1f2e,stroke:#6b7280,color:#c9cdd4,stroke-width:1px
+  classDef store fill:#1a2433,stroke:#7c9cbf,color:#e6edf3,stroke-width:1px
 ```
 
 | Schicht | Lebensdauer | Zweck |
