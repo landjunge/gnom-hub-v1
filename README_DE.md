@@ -196,23 +196,62 @@ Mitgeliefert: `echo`, `install_tool`, `text_stats` · Vorlage: `plugins/_templat
 
 ## So funktioniert es
 
-```
-Browser-SPA (app.js ← parts/*)
-       │  REST + Job-Polling
-       ▼
-FastAPI  →  Hub (Composition + Mixins)
-              ├── EventBus · Orchestrator · 8 Agenten
-              ├── LLM-Manager (DeepSeek / Ollama + Auth)
-              ├── Memory HOT / WARM / COLD / Vector
-              ├── ToolRegistry + PluginLoader
-              ├── Workspace · Packs · Jobs
-              └── Computer-Use + God-Mode
+### Systemübersicht
+
+```mermaid
+flowchart TB
+  subgraph Client["Browser-SPA"]
+    UI["UI · app.js"]
+    Badges["LLM · Tools · God Badges"]
+  end
+
+  subgraph API["FastAPI :8080"]
+    REST["REST + Job-Polling"]
+  end
+
+  subgraph Hub["Hub Composition"]
+    Bus["EventBus"]
+    Orch["Orchestrator"]
+    Agents["8 Rollen-Agenten"]
+    LLM["LLM-Manager\nDeepSeek / Ollama"]
+    Mem["Memory\nHOT · WARM · COLD · Vector"]
+    Tools["ToolRegistry + Plugins"]
+    WS["Workspace · Packs · Jobs"]
+    CU["Computer-Use + God-Mode"]
+  end
+
+  UI --> REST
+  Badges --> REST
+  REST --> Hub
+  Orch --> Agents
+  Agents --> LLM
+  Orch --> Mem
+  Orch --> Tools
+  Agents --> Tools
+  Tools --> WS
+  Tools --> CU
+  Bus --- Orch
 ```
 
 ### Pipeline
 
+```mermaid
+flowchart LR
+  M[memory] --> B[brainstorm]
+  B --> D[distill]
+  D --> C{clarify?}
+  C -->|ja| CL[clarify]
+  C -->|nein| F[flex]
+  CL --> F
+  F --> CO[coordinate]
+  CO --> W[work]
+  W --> DONE[done]
 ```
-memory → brainstorm → distill → [clarify] → flex → coordinate → work → done
+
+```
+Send     → nur Brainstorm (+ Flex-Wünsche / optional auto-Execute)
+Execute  → Distill → Flex-Inject → Plan → Prefetch-Tools → Worker → Nudge
+Telegram → One-Shot /do
 ```
 
 | Pfad | Verhalten |
@@ -222,6 +261,21 @@ memory → brainstorm → distill → [clarify] → flex → coordinate → work
 | **Telegram / Tests** | One-Shot `/do` |
 
 ### Memory
+
+```mermaid
+flowchart TB
+  HOT["HOT · Session\nMessages · Fakten · Canvas"]
+  WARM["WARM · dauerhaft\nFakten · Flex-Wünsche"]
+  COLD["COLD · Archiv\nalte Sessions"]
+  VEC["Vector · dauerhaft\nBM25 + Cosine"]
+  WORK["Workspace\nTemp · Perm Artefakte"]
+
+  HOT -->|promote| WARM
+  HOT -->|archive| COLD
+  WARM --> VEC
+  HOT --> VEC
+  WARM -.-> WORK
+```
 
 | Schicht | Lebensdauer | Zweck |
 |---------|-------------|--------|
