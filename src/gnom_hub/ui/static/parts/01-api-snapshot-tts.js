@@ -587,8 +587,10 @@
     if (qEl) qEl.textContent = qText;
     if (hintEl) {
       hintEl.textContent =
-        p.hint || "Rechts = Flex lernt & steuert den nächsten Schritt";
+        p.hint || "Rechts = Flex lernt · Notiz + Button = Wunsch";
     }
+    const noteRow = document.getElementById("flex-review-note-row");
+    if (noteRow) noteRow.hidden = !active;
 
     btnsEl.innerHTML = "";
     const buttons = active ? p.buttons || [] : [];
@@ -644,10 +646,14 @@
     const label = (btnSpec && btnSpec.label) || id;
     try {
       toast("Flex… " + label, "info");
+      const noteEl = document.getElementById("flex-review-note");
+      const note = (noteEl && noteEl.value ? noteEl.value : "").trim();
       const res = await api("POST", "/api/flex/feedback", {
         button_id: id,
         label: label,
+        note: note,
       });
+      if (noteEl && res.ok) noteEl.value = "";
       if (res.message) appendChat("system", res.message);
       // Flex answers by voice (DE) after each button
       if (res.message && typeof speakOrQueue === "function") {
@@ -684,7 +690,37 @@
     }
   }
 
+
+  // Save free-text flag as Flex wish without rebuilding
+  (function wireFlexNoteSave() {
+    const btn = document.getElementById("flex-review-note-save");
+    if (!btn || btn.dataset.wired) return;
+    btn.dataset.wired = "1";
+    btn.addEventListener("click", async function () {
+      const noteEl = document.getElementById("flex-review-note");
+      const note = (noteEl && noteEl.value ? noteEl.value : "").trim();
+      if (!note) {
+        toast("Notiz eingeben, dann Merken", "info");
+        return;
+      }
+      try {
+        const res = await api("POST", "/api/flex/feedback", {
+          button_id: "custom_note",
+          label: "Notiz",
+          note: note,
+        });
+        if (res.message) appendChat("system", res.message);
+        if (noteEl) noteEl.value = "";
+        toast(res.learned ? "Wish gespeichert" : res.message || "Flex", "ok");
+        if (res.snapshot) applySnapshot(res.snapshot);
+      } catch (err) {
+        toast("Merken: " + (err.message || err), "error");
+      }
+    });
+  })();
+
   async function setAgentTts(id, on) {
+
     const a = findAgent(id);
     if (!a || a.parked) return;
     a.tts = on;

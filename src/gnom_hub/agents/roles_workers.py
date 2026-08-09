@@ -28,7 +28,7 @@ class WorkerAgent(BaseAgent):
             if self.has_llm():
                 try:
                     body = f"Aufgabe: {task}\nOriginal: {user_text}\nAnforderungen:\n" + "\n".join(
-                        f"- {r}" for r in requirements[:5]
+                        f"- {r}" for r in requirements[:12]
                     )
                     blob = f"{task}\n{user_text}".lower()
                     wants_html = any(
@@ -62,7 +62,13 @@ class WorkerAgent(BaseAgent):
                             "  - At least one real interaction "
                             "(onclick= or addEventListener or form submit handler)\n"
                             "  - Prefer working demo over pretty design\n"
-                            "Work on the USER task only. Match user language."
+                            "Work on the USER task only. Match user language.\n"
+                            "STANDING USER WISHES (Flex-wish / User: lines) are ABSOLUTE ORDERS:\n"
+                            "  - Implement them fully in the deliverable — no debate, no skip,\n"
+                            "    no 'optional', no 'if space allows'.\n"
+                            "  - Do not contradict, weaken, or postpone them.\n"
+                            "  - If a wish conflicts with decoration, drop decoration, keep the wish.\n"
+                            "  - Dark theme / language / always-rules must be visible in the result."
                         ),
                         user=_with_memory(body, memory_ctx),
                         max_tokens=max_tok,

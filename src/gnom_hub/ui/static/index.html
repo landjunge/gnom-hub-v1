@@ -212,7 +212,10 @@
             Cancel
           </button>
         </div>
-        <p class="kbd-hint">Chat-Layer = Crux · Agent-Klick wechselt · Enter = Send</p>
+        <div id="chat-flags" class="chat-flags" role="group" aria-label="Wunsch-Flags">
+            <span class="chat-flags-label" title="Klick = an nächste Nachricht anhängen">Flags</span>
+          </div>
+          <p class="kbd-hint">Chat-Layer = Crux · kleine Quadrate = stehende Wünsche · Enter = Send</p>
       </section>
       <aside
         id="flex-review"
@@ -229,8 +232,21 @@
         <div class="flex-review-btns" id="flex-review-btns" role="group" aria-label="Flex Aktionen">
           <!-- dynamic buttons after Execute done -->
         </div>
+        <div class="flex-review-note-row" id="flex-review-note-row" hidden>
+          <input
+            type="text"
+            id="flex-review-note"
+            class="flex-review-note"
+            maxlength="200"
+            placeholder="Flag/Notiz zum Button (z.B. dunkler, mehr DE)…"
+            autocomplete="off"
+          />
+          <button type="button" id="flex-review-note-save" class="flex-review-note-save" title="Nur als Wish speichern">
+            Merken
+          </button>
+        </div>
         <p class="flex-review-hint muted" id="flex-review-hint">
-          Rechts = Flex lernt &amp; steuert den nächsten Schritt
+          Rechts = Flex lernt · Notiz + Button = Wunsch speichern
         </p>
       </aside>
     </section>

@@ -1158,6 +1158,12 @@ def _definition_of_done(user_text: str, requirements: list[str]) -> str:
     if reqs:
         lines.append("Requirements (MUSS):")
         lines.extend(f"  [ ] {r}" for r in reqs)
+        wish_lines = [
+            r for r in reqs if str(r).lower().startswith(("flex-wish:", "user:", "wish:"))
+        ]
+        if wish_lines:
+            lines.append("STANDING WISHES — ABSOLUTE (no pushback, implement fully):")
+            lines.extend(f"  [!] {r}" for r in wish_lines)
     if (user_text or "").strip():
         lines.append(f"User task: {(user_text or '').strip()[:400]}")
     lines.append("=== END DoD ===")

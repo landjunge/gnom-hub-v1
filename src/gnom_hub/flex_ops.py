@@ -144,13 +144,16 @@ class FlexOpsMixin:
             if str(b.get("id")) == str(button_id):
                 btn = b
                 break
-        if btn is None and not label and not note:
+        if btn is None and not label and not note and str(button_id) != "custom_note":
             raise ValueError("unknown flex feedback button")
 
         action = str((btn or {}).get("action") or "learn")
         learn = str((btn or {}).get("learn") or "").strip()
         if note.strip():
+            # Free-text flag/note is always a standing wish fragment
             learn = (learn + " · " if learn else "") + f"User: {note.strip()[:200]}"
+        elif str(button_id) == "custom_note":
+            raise ValueError("Notiz leer")
         if not learn and label:
             learn = f"User feedback: {label.strip()[:160]}"
 

@@ -1250,8 +1250,10 @@
     if (qEl) qEl.textContent = qText;
     if (hintEl) {
       hintEl.textContent =
-        p.hint || "Rechts = Flex lernt & steuert den nächsten Schritt";
+        p.hint || "Rechts = Flex lernt · Notiz + Button = Wunsch";
     }
+    const noteRow = document.getElementById("flex-review-note-row");
+    if (noteRow) noteRow.hidden = !active;
 
     btnsEl.innerHTML = "";
     const buttons = active ? p.buttons || [] : [];
@@ -1307,10 +1309,14 @@
     const label = (btnSpec && btnSpec.label) || id;
     try {
       toast("Flex… " + label, "info");
+      const noteEl = document.getElementById("flex-review-note");
+      const note = (noteEl && noteEl.value ? noteEl.value : "").trim();
       const res = await api("POST", "/api/flex/feedback", {
         button_id: id,
         label: label,
+        note: note,
       });
+      if (noteEl && res.ok) noteEl.value = "";
       if (res.message) appendChat("system", res.message);
       // Flex answers by voice (DE) after each button
       if (res.message && typeof speakOrQueue === "function") {
@@ -1347,7 +1353,37 @@
     }
   }
 
+
+  // Save free-text flag as Flex wish without rebuilding
+  (function wireFlexNoteSave() {
+    const btn = document.getElementById("flex-review-note-save");
+    if (!btn || btn.dataset.wired) return;
+    btn.dataset.wired = "1";
+    btn.addEventListener("click", async function () {
+      const noteEl = document.getElementById("flex-review-note");
+      const note = (noteEl && noteEl.value ? noteEl.value : "").trim();
+      if (!note) {
+        toast("Notiz eingeben, dann Merken", "info");
+        return;
+      }
+      try {
+        const res = await api("POST", "/api/flex/feedback", {
+          button_id: "custom_note",
+          label: "Notiz",
+          note: note,
+        });
+        if (res.message) appendChat("system", res.message);
+        if (noteEl) noteEl.value = "";
+        toast(res.learned ? "Wish gespeichert" : res.message || "Flex", "ok");
+        if (res.snapshot) applySnapshot(res.snapshot);
+      } catch (err) {
+        toast("Merken: " + (err.message || err), "error");
+      }
+    });
+  })();
+
   async function setAgentTts(id, on) {
+
     const a = findAgent(id);
     if (!a || a.parked) return;
     a.tts = on;
@@ -3995,11 +4031,103 @@
     }
   }
 
+
+  /** Colored flag chips: standing wishes attached to next Send/Execute */
+  const CHAT_FLAG_DEFS = [
+    { id: "dark", color: "#7c5cff", label: "Dunkel", wish: "User: always enable dark theme" },
+    { id: "de", color: "#5b9cff", label: "Deutsch", wish: "User: prefers German language answers" },
+    { id: "interact", color: "#3dd68c", label: "Klicks", wish: "User: wants real interactions (onclick / JS)" },
+    { id: "short", color: "#f0b429", label: "Knapp", wish: "User: prefers short answers and lean UI" },
+    { id: "strict", color: "#f07178", label: "Strikt", wish: "User: standing wishes are absolute — implement fully" },
+  ];
+  let activeChatFlags = {};
+
+  function renderChatFlags() {
+    const root = document.getElementById("chat-flags");
+    if (!root) return;
+    let label = root.querySelector(".chat-flags-label");
+    root.innerHTML = "";
+    if (!label) {
+      label = document.createElement("span");
+      label.className = "chat-flags-label";
+      label.title = "Klick = an nächste Nachricht anhängen";
+      label.textContent = "Flags";
+    }
+    root.appendChild(label);
+    CHAT_FLAG_DEFS.forEach(function (f) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "chat-flag" + (activeChatFlags[f.id] ? " is-on" : "");
+      b.style.setProperty("--flag-color", f.color);
+      b.title = f.label + " — " + f.wish;
+      b.setAttribute("aria-label", f.label);
+      b.dataset.id = f.id;
+      b.addEventListener("click", function () {
+        if (activeChatFlags[f.id]) delete activeChatFlags[f.id];
+        else activeChatFlags[f.id] = f;
+        renderChatFlags();
+      });
+      root.appendChild(b);
+    });
+  }
+
+  function composeChatWithFlags(text) {
+    const t = (text || "").trim();
+    const flags = Object.keys(activeChatFlags)
+      .map(function (k) {
+        return activeChatFlags[k];
+      })
+      .filter(Boolean);
+    if (!flags.length) return t;
+    const block = flags
+      .map(function (f) {
+        return f.wish;
+      })
+      .join("\n");
+    // Keep flags selected so Execute also sees them; user toggles off manually
+    return (t + "\n\n" + block).trim();
+  }
+
+  function clearChatFlags() {
+    activeChatFlags = {};
+    renderChatFlags();
+  }
+
+  // init chips once DOM ready (script is deferred/end)
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", renderChatFlags);
+  } else {
+    renderChatFlags();
+  }
+
+
+  async function persistActiveFlagsAsWishes() {
+    const flags = Object.keys(activeChatFlags).map(function (k) {
+      return activeChatFlags[k];
+    });
+    if (!flags.length) return;
+    for (let i = 0; i < flags.length; i++) {
+      const f = flags[i];
+      if (!f || !f.wish) continue;
+      try {
+        await api("POST", "/api/flex/feedback", {
+          button_id: "custom_note",
+          label: f.label || f.id,
+          note: f.wish.replace(/^User:\s*/i, ""),
+        });
+      } catch (_e) {
+        /* ignore single flag fail */
+      }
+    }
+  }
+
   async function sendChat() {
-    const text = (els.chatInput.value || "").trim();
-    if (!text || chatBusy) return;
+
+    const raw = (els.chatInput.value || "").trim();
+    if (!raw || chatBusy) return;
+    const text = composeChatWithFlags(raw);
     appendChat("you", text);
-    pushChatHist(text);
+    pushChatHist(raw);
     els.chatInput.value = "";
     chatHistIdx = -1;
     chatDraft = "";
@@ -4072,6 +4200,12 @@
     }
     setChatBusy(true);
     appendChat("system", "Execute started (distill → flex → workers)…");
+    try {
+      await persistActiveFlagsAsWishes();
+    } catch (_e) {
+      /* non-fatal */
+    }
+
     toast("Executing…", "info");
     try {
       const start = await api("POST", "/api/execute");
