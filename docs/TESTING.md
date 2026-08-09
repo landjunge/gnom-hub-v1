@@ -75,3 +75,5 @@ python scripts/smoke_e2e.py        # optional local
 
 Optimizations: lint ∥ test · no `build` on matrix · junit artifact only on failure · smoke once.
 
+Python/pip caching: [PYTHON_CACHE.md](PYTHON_CACHE.md) · `requirements/ci-lint.txt` · `requirements/ci-dev.txt`.
+

@@ -1,0 +1,14 @@
+# CI test matrix — mirrors pyproject optional dev pins for stable cache keys.
+# Prefer: pip install -e ".[dev]" (source of truth stays pyproject.toml).
+# This file exists so cache-dependency-path can hash an explicit lock-ish list
+# without pulling computer-use extras.
+#
+# When bumping dev deps in pyproject.toml, update pins here too (CI cache).
+ruff==0.16.1
+pytest==8.3.5
+pytest-asyncio==0.25.3
+httpx>=0.27,<1
+mutmut==2.4.5
+fastapi>=0.110,<1
+uvicorn[standard]>=0.27,<1
+pydantic>=2.0,<3

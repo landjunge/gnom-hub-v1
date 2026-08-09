@@ -389,6 +389,7 @@ Flex-Vertrag: [docs/AGENTS_DEFINITION.md](docs/AGENTS_DEFINITION.md) · Tests: [
 | [docs/BASIC_USER_TEST.md](docs/BASIC_USER_TEST.md) | User-E2E |
 | [docs/STABILITY.md](docs/STABILITY.md) | Stabilitäts-Checkliste |
 | [docs/TESTING.md](docs/TESTING.md) / [MUTMUT.md](docs/MUTMUT.md) | pytest · Mutation |
+| [docs/PYTHON_CACHE.md](docs/PYTHON_CACHE.md) | pip/venv CI-Cache-Strategien |
 | [docs/V1_SCOPE.md](docs/V1_SCOPE.md) / [ROADMAP.md](docs/ROADMAP.md) | Scope · Historie |
 
 ---

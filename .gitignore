@@ -50,3 +50,6 @@ bench_data/
 html/
 mutmut-junit.xml
 *.mutmut-backup
+
+# Tool / pip caches
+.cache/
