@@ -199,22 +199,29 @@ Mitgeliefert: `echo`, `install_tool`, `text_stats` · Vorlage: `plugins/_templat
 ### Systemübersicht
 
 ```mermaid
+---
+title: Gnom-Hub Runtime
+---
 flowchart TB
   subgraph Client["Browser-SPA"]
+    direction TB
     UI["UI · app.js"]
     Badges["LLM · Tools · God Badges"]
   end
 
   subgraph API["FastAPI :8080"]
-    REST["REST + Job-Polling"]
+    direction LR
+    REST["REST"]
+    Poll["Job-Polling"]
   end
 
   subgraph Hub["Hub Composition"]
-    Bus["EventBus"]
+    direction TB
+    Bus((EventBus))
     Orch["Orchestrator"]
     Agents["8 Rollen-Agenten"]
-    LLM["LLM-Manager\nDeepSeek / Ollama"]
-    Mem["Memory\nHOT · WARM · COLD · Vector"]
+    LLM["LLM-Manager<br/>DeepSeek / Ollama"]
+    Mem["Memory<br/>HOT · WARM · COLD · Vector"]
     Tools["ToolRegistry + Plugins"]
     WS["Workspace · Packs · Jobs"]
     CU["Computer-Use + God-Mode"]
@@ -222,7 +229,10 @@ flowchart TB
 
   UI --> REST
   Badges --> REST
-  REST --> Hub
+  REST --> Poll
+  Poll --> Orch
+  REST --> Orch
+  Bus <-.-> Orch
   Orch --> Agents
   Agents --> LLM
   Orch --> Mem
@@ -230,14 +240,38 @@ flowchart TB
   Agents --> Tools
   Tools --> WS
   Tools --> CU
-  Bus --- Orch
+
+  classDef edge fill:#1a1f2e,stroke:#5b8def,color:#e6edf3
+  classDef core fill:#1e2a1e,stroke:#3a8f6e,color:#e6edf3
+  class Orch,Agents,LLM core
+  class UI,REST edge
 ```
 
 ### Pipeline
 
 ```mermaid
+---
+title: Pipeline-Stages
+---
+stateDiagram-v2
+  [*] --> memory
+  memory --> brainstorm
+  brainstorm --> distill
+  distill --> clarify: needs clarify
+  distill --> flex: skip clarify
+  clarify --> flex
+  flex --> coordinate
+  coordinate --> work
+  work --> done
+  done --> [*]
+
+  note right of brainstorm: Send bleibt hier
+  note right of work: Execute + Tools
+```
+
+```mermaid
 flowchart LR
-  M[memory] --> B[brainstorm]
+  M([memory]) --> B[brainstorm]
   B --> D[distill]
   D --> C{clarify?}
   C -->|ja| CL[clarify]
@@ -245,7 +279,7 @@ flowchart LR
   CL --> F
   F --> CO[coordinate]
   CO --> W[work]
-  W --> DONE[done]
+  W --> DONE([done])
 ```
 
 ```
@@ -263,18 +297,27 @@ Telegram → One-Shot /do
 ### Memory
 
 ```mermaid
+---
+title: Memory-Schichten
+---
 flowchart TB
-  HOT["HOT · Session\nMessages · Fakten · Canvas"]
-  WARM["WARM · dauerhaft\nFakten · Flex-Wünsche"]
-  COLD["COLD · Archiv\nalte Sessions"]
-  VEC["Vector · dauerhaft\nBM25 + Cosine"]
-  WORK["Workspace\nTemp · Perm Artefakte"]
+  HOT["HOT · Session<br/>Messages · Fakten · Canvas"]
+  WARM["WARM · dauerhaft<br/>Fakten · Flex-Wünsche"]
+  COLD["COLD · Archiv<br/>alte Sessions"]
+  VEC[("Vector · dauerhaft<br/>BM25 + Cosine")]
+  WORK["Workspace<br/>Temp · Perm Artefakte"]
 
-  HOT -->|promote| WARM
-  HOT -->|archive| COLD
-  WARM --> VEC
-  HOT --> VEC
-  WARM -.-> WORK
+  HOT -->|"promote"| WARM
+  HOT -->|"archive"| COLD
+  HOT & WARM --> VEC
+  WARM -.->|"Artefakte nach Execute"| WORK
+
+  classDef hot fill:#2a2218,stroke:#c9a227,color:#f5f0e6
+  classDef warm fill:#1e2a1e,stroke:#3a8f6e,color:#e6edf3
+  classDef cold fill:#1a1f2e,stroke:#6b7280,color:#e6edf3
+  class HOT hot
+  class WARM warm
+  class COLD,VEC cold
 ```
 
 | Schicht | Lebensdauer | Zweck |
@@ -327,6 +370,7 @@ Flex-Vertrag: [docs/AGENTS_DEFINITION.md](docs/AGENTS_DEFINITION.md) · Tests: [
 | [README.md](README.md) | English README |
 | [AGENTS.md](AGENTS.md) | Coding-Regeln · Push-Gate |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Systemkarte |
+| [docs/MERMAID.md](docs/MERMAID.md) | Mermaid-Konventionen |
 | [docs/CODE_ANALYSIS_FOR_AI.md](docs/CODE_ANALYSIS_FOR_AI.md) | Voller KI-Handoff |
 | [docs/KEYS_AND_MODELS.md](docs/KEYS_AND_MODELS.md) | Keys & Modelle |
 | [docs/PLUGIN_SECURITY.md](docs/PLUGIN_SECURITY.md) | Plugin-Trust & Authoring |
