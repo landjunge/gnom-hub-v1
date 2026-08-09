@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from gnom_hub.hub import get_hub
+from gnom_hub.plugins.retry import ToolFailed
 
 STATIC_DIR = Path(__file__).resolve().parents[1] / "ui" / "static"
 
@@ -951,6 +952,9 @@ def create_app() -> FastAPI:
             result = get_hub().tools.call(body.name, body.arguments)
         except KeyError as e:
             raise HTTPException(status_code=404, detail=str(e)) from e
+        except ToolFailed as e:
+            # Terminal after retries (or permanent tool error)
+            raise HTTPException(status_code=422, detail=str(e)) from e
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
         return {"ok": True, "result": result}
