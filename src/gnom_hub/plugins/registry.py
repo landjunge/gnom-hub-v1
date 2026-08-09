@@ -6,6 +6,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from gnom_hub.plugins.retry import ToolFailed, ToolRetry, call_with_retry
+
 
 @dataclass
 class ToolSpec:
@@ -14,6 +16,8 @@ class ToolSpec:
     handler: Callable[..., Any]
     input_schema: dict[str, Any] = field(default_factory=dict)
     plugin: str = "core"
+    # Extra attempts after first call when handler raises ToolRetry
+    retries: int = 2
 
 
 class ToolRegistry:
@@ -44,14 +48,39 @@ class ToolRegistry:
                 "description": t.description,
                 "input_schema": t.input_schema,
                 "plugin": t.plugin,
+                "retries": t.retries,
             }
             for t in self._tools.values()
         ]
 
-    def call(self, name: str, arguments: dict[str, Any] | None = None) -> Any:
+    def call(
+        self,
+        name: str,
+        arguments: dict[str, Any] | None = None,
+        *,
+        retries: int | None = None,
+    ) -> Any:
+        """Call a tool; honor ToolRetry up to budget, then raise ToolFailed.
+
+        ``retries`` overrides the per-tool default from ToolSpec (default 2).
+        KeyError if unknown. ToolFailed is terminal. Other exceptions propagate.
+        """
         if name not in self._tools:
             raise KeyError(f"Unknown tool: {name}")
-        return self._tools[name].handler(**(arguments or {}))
+        spec = self._tools[name]
+        budget = spec.retries if retries is None else retries
+        try:
+            return call_with_retry(
+                spec.handler,
+                arguments,
+                retries=budget,
+                tool_name=name,
+            )
+        except ToolFailed:
+            raise
+        except ToolRetry as exc:
+            # call_with_retry should already convert; keep defensive
+            raise ToolFailed(str(exc.message or exc)) from exc
 
     def mcp_manifest(self) -> dict[str, Any]:
         """Minimal MCP-style tools/list payload."""
