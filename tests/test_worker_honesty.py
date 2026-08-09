@@ -24,6 +24,7 @@ def test_placeholder_keys_not_usable():
     assert not is_usable_api_key("sk-your-system-deepseek-key")
     assert not is_usable_api_key("sk-your-worker-deepseek-key")
     assert not is_usable_api_key("changeme")
+    assert is_usable_api_key("sk-test")
     assert is_usable_api_key("sk-" + "a" * 40)
 
 

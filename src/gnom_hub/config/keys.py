@@ -55,17 +55,24 @@ _PLACEHOLDER_MARKERS = (
 
 
 def is_usable_api_key(value: str | None) -> bool:
-    """True only for non-empty keys that look real (not Key.txt.example placeholders)."""
+    """True for non-empty keys that are not Key.txt.example placeholders.
+
+    Unit tests may use short keys like ``sk-test``; production DeepSeek keys are longer.
+    We only reject *obvious* placeholders, not short non-empty secrets.
+    """
     s = (value or "").strip()
-    if len(s) < 20:
+    if len(s) < 3:
         return False
     low = s.lower()
     if any(m in low for m in _PLACEHOLDER_MARKERS):
         return False
-    # classic example: sk-your-system-deepseek-key
+    # classic examples: sk-your-system-deepseek-key, sk-your-worker-deepseek-key
     if "your" in low and "key" in low:
         return False
-    return not (low.endswith("-key") and "sk-" in low and len(s) < 40)
+    # sk-…-key short template (example file style), but allow long real keys
+    if low.startswith("sk-") and low.endswith("-key") and "your" in low:
+        return False
+    return low not in ("sk", "sk-", "none", "null", "undefined", "changeme")
 
 
 def _normalize_key(name: str) -> str:

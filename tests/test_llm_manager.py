@@ -101,7 +101,7 @@ def test_deepseek_http_error():
 
 
 def test_has_provider():
-    assert LLMManager(keys={"DEEPSEEK_API_KEY": "sk"}).has_provider("deepseek")
+    assert LLMManager(keys={"DEEPSEEK_API_KEY": "sk-test"}).has_provider("deepseek")
     assert not LLMManager(keys={}).has_provider("deepseek")
 
 
