@@ -10,7 +10,7 @@ def on_load(info: dict) -> None:
     _ = info
 
 
-def run(input: str = "") -> dict:  # noqa: A002 — schema field name
+def run(input: str = "") -> dict:
     if not str(input).strip():
         return fail("input is required")
     return ok(result=str(input), plugin="my_plugin")

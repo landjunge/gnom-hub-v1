@@ -42,8 +42,9 @@ Minimal `main.py`:
 ```python
 from gnom_hub.plugins.sdk import ok, fail, retry, ToolRetry, ToolFailed
 
-def on_load(info: dict) -> None:
-    ...
+
+def on_load(info: dict) -> None: ...
+
 
 def run(text: str = "") -> dict:
     if not text:

@@ -10,8 +10,8 @@ from gnom_hub.config.paths import project_root
 from gnom_hub.plugins.loader import PluginLoader
 from gnom_hub.plugins.manifest import ManifestError, validate_manifest
 from gnom_hub.plugins.registry import ToolRegistry
-from gnom_hub.plugins.sdk import fail, ok
 from gnom_hub.plugins.retry import ToolRetry
+from gnom_hub.plugins.sdk import fail, ok
 
 
 def test_validate_manifest_ok():
