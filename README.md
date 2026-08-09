@@ -42,12 +42,14 @@ That split is the product: exploration stays cheap and reversible; workers (cost
 | **Brainstorm → Execute** | Send is dialogue only. Workers run after **Execute** (or Send+Exec). |
 | **Visible multi-agent desk** | Eight fixed roles as cards + three boxes — you see who is active and where output lands. |
 | **One HTML page, not four** | Landing/page tasks assign **one worker** and **one complete** single-file HTML document. |
-| **Local & portable** | Runs on your machine; keys in `Key.txt`; USB-friendly `data/`; no cloud lock-in required. |
+| **Local & portable** | Runs on your machine; keys in `User/Key.txt`; USB-friendly `data/`; no cloud lock-in required. |
+| **Honest LLM / auth** | Placeholder keys (`sk-your-…`) are not “ready”. Workers return **FEHLER**, not fake stubs. Session blocks dead keys after 401. |
 | **Safety by default** | Mouse / keyboard / shell are **dry-run** until **God-Mode** is explicitly on. |
+| **Tools you can see** | Registry + plugins; worker **prefetch** (`web_fetch`, `memory_search`, `install_tool`); UI **Tools** badge + light trace. |
 | **Operator ops** | HOT / WARM / COLD memory, workspace, backups, session packs, jobs, soft-cancel, light trace, budget guard. |
 | **Lean orchestration** | One fixed pipeline. Team/worker **presets** + `plan_mode` only — no second workflow engine. |
-| **Memory hygiene** | Durable facts go to WARM; Flex wishes (`source=flex`) survive HOT clear / warm_trim reserve; HTML/meta junk filtered. |
-| **Flex as operator proxy** | Locked agent: stores only your wishes, co-writes in brainstorm, can press Execute, injects binding wishes for workers. |
+| **Memory hygiene** | Durable facts go to WARM; Flex wishes (`source=flex`) survive HOT clear; HTML/meta junk filtered. |
+| **Flex as operator proxy** | Locked agent: stores only your wishes as **absolute** orders, co-writes in brainstorm, can press Execute, nudges workers (skips useless re-runs on auth fail). |
 
 ### Who it is for
 
@@ -68,20 +70,29 @@ That split is the product: exploration stays cheap and reversible; workers (cost
 ```bash
 cd gnom-hub-v1
 ./scripts/install.sh && source .venv/bin/activate
-# Keys → Key.txt  (see docs/KEYS_AND_MODELS.md)
+# Keys → personal WS User/Key.txt  (see docs/KEYS_AND_MODELS.md)
 ./scripts/start.sh
 # open http://127.0.0.1:8080/
 ```
 
-Copy `Key.txt.example` → `Key.txt` and set at least:
+Copy `Key.txt.example` → **`User/Key.txt`** (or root `Key.txt` for legacy) and set at least:
 
 - `DEEPSEEK_API_KEY` — system agents (brainstorm, memory, flex, coordinator)  
-- `WORKER_API_KEY` — workers (can be the same key)  
+- `WORKER_API_KEY` — workers (optional; falls back to system key if empty)  
 - `DEEPSEEK_MODEL=deepseek-v4-flash`  
 
-Never commit `Key.txt` or `.env`.
+**Never** paste example placeholders (`sk-your-system-deepseek-key`) — the hub treats them as missing.  
+Never commit `Key.txt`, `User/`, or `.env`.
 
-Without API keys, the pipeline still runs with **stubs** (for tests / smoke).
+Without a **usable** API key (and without Ollama), workers report **FEHLER — kein Deliverable** instead of pretending success. Pipeline stages still run for smoke tests.
+
+Header badges:
+
+| Badge | Meaning |
+|-------|---------|
+| **LLM: …** | Live provider / placeholder / blocked / no key |
+| **Tools: N** | Tool calls this pipeline run (prefetch + registry) |
+| **God / Mem / Vec / Cold / Stage** | Ops surface |
 
 ---
 
@@ -96,6 +107,8 @@ Without API keys, the pipeline still runs with **stubs** (for tests / smoke).
 | **Send+Exec** | Both in sequence |
 | **Mic** | Browser speech-to-text |
 | **Cancel** | Soft-cancel the running job |
+
+Chat supports **flag chips** (colors attach intent) and free-text notes on results where enabled.
 
 ### Boxes
 
@@ -133,23 +146,66 @@ Details: [docs/TOOLS_PORTFOLIO.md](docs/TOOLS_PORTFOLIO.md).
 
 ---
 
+## Tools & plugins
+
+### Core tools (always registered)
+
+| Tool | Purpose |
+|------|---------|
+| `hub_status` | Compact stage / auth / tool_calls / god |
+| `tools_list` | List tools (optional `tag` filter) |
+| `memory_search` | Vector / lexical search |
+| `pipeline_do` | Full pipeline with a task text |
+| `pipeline_info` | Stage, tool_calls, quality head |
+| `web_fetch` | Public HTTP(S) → text (SSRF-safe defaults) |
+| `workspace_list` / `workspace_read` | Hub workspace zones |
+| `trace_tail` | Last light-trace events |
+
+API: `GET /api/plugins`, `POST /api/tools/call`, `GET /api/mcp/tools`.
+
+### Worker prefetch
+
+On **Execute**, workers may auto-call (and log as `pipeline.tool_call`):
+
+- `web_fetch` when the task contains URLs  
+- `memory_search` for standing context  
+- `install_tool` (plugin) for missing allowlisted packages (e.g. Playwright) — dry-run first  
+
+### Plugins
+
+Trusted packs under `plugins/<id>/` with `plugin.json` + `main.py`.
+
+```bash
+python scripts/new_plugin.py my_tool   # from plugins/_template
+# edit plugins/my_tool/ · restart or:
+# POST /api/plugins/reload?plugin_id=my_tool
+```
+
+Helpers: `from gnom_hub.plugins.sdk import ok, fail, retry`.  
+Security & authoring: [docs/PLUGIN_SECURITY.md](docs/PLUGIN_SECURITY.md).
+
+Bundled examples: `echo`, `install_tool`, `text_stats` (`_template` is not loaded).
+
+---
+
 ## Architecture
 
 ```
 Browser SPA (app.js ← parts/* via build_ui_js.py)
        │  REST + job polling
        ▼
-FastAPI  ──►  Hub (~180 LOC composition root + mixins)
+FastAPI  ──►  Hub (composition root + mixins)
                  ├── EventBus (sync)
                  ├── Orchestrator (stages)
                  ├── 8 role agents
-                 ├── LLM manager (DeepSeek / Ollama)
+                 ├── LLM manager (DeepSeek / Ollama + auth snapshot)
                  ├── Memory (HOT / WARM / COLD / vector)
+                 ├── ToolRegistry + PluginLoader
                  ├── Workspace · packs · backups · jobs
                  └── Computer-use kit (+ God-Mode)
 ```
 
-Hub public methods live on focused mixins (`pipeline_api`, `jobs`, `session_pack`, `presets`, …). API routes stay thin.
+Hub public methods live on focused mixins (`pipeline_api`, `jobs`, `session_pack`, `presets`, `tools_ops`, …). API routes stay thin.
 
 ### Pipeline stages
 
@@ -158,7 +214,7 @@ memory → brainstorm → distill → [clarify] → flex → coordinate → work
 ```
 
 - **Brainstorm** (Send): dialogue only; Flex absorbs wishes + co-talk; may auto-Execute when intent is clear.  
-- **Execute**: distill → optional clarify → Flex briefing + wish inject → plan → workers → Flex nudge.  
+- **Execute**: distill → optional clarify → Flex briefing + absolute wish inject → plan → prefetch tools → workers → quality gates / retries → Flex nudge.  
 - Full one-shot path exists for tests / Telegram (`/do`).  
 
 ### Memory layers
@@ -196,13 +252,17 @@ ruff format .
 ruff format --check .
 pytest tests/ -q --tb=short
 
+# Local pre-push gate (also via git hooks)
+./scripts/prepush_gate.sh
+./scripts/install_git_hooks.sh   # pre-commit + pre-push + safe.directory
+
 # Mutation testing (test the tests)
 python scripts/mutation_check.py              # fast scoped helpers — must kill all
 # optional deep: ./scripts/run_mutmut.sh      # see docs/MUTMUT.md
 
 ./scripts/quality_check.sh
 python scripts/basic_tests.py          # needs server on :8080
-python scripts/user_landing_e2e.py     # Playwright + live key
+python scripts/user_scenarios_e2e.py   # Playwright scenarios
 python -m gnom_hub.main --smoke        # brainstorm → execute without UI
 ```
 
@@ -221,6 +281,7 @@ Flex role contract: [docs/AGENTS_DEFINITION.md](docs/AGENTS_DEFINITION.md). Test
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Short system map |
 | [docs/CODE_ANALYSIS_FOR_AI.md](docs/CODE_ANALYSIS_FOR_AI.md) | Full architecture for external AIs |
 | [docs/KEYS_AND_MODELS.md](docs/KEYS_AND_MODELS.md) | Keys & model IDs |
+| [docs/PLUGIN_SECURITY.md](docs/PLUGIN_SECURITY.md) | Plugins: trust, authoring, reload |
 | [docs/BASIC_USER_TEST.md](docs/BASIC_USER_TEST.md) | Canonical user E2E |
 | [docs/STABILITY.md](docs/STABILITY.md) | Stability checklist |
 | [docs/TOOLS_PORTFOLIO.md](docs/TOOLS_PORTFOLIO.md) | Computer-use libraries |

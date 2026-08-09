@@ -42,12 +42,14 @@ Diese Trennung ist das Kernprodukt: Exploration bleibt günstig und umkehrbar; W
 | **Brainstorm → Execute** | Send ist nur Dialog. Worker laufen erst nach **Execute** (oder Send+Exec). |
 | **Sichtbarer Multi-Agenten-Tisch** | Acht feste Rollen als Karten + drei Boxen — du siehst wer arbeitet und wo das Ergebnis landet. |
 | **Eine HTML-Seite, nicht vier** | Bei Landing/Page: **ein** Worker, **eine** komplette Single-File-HTML. |
-| **Lokal & portabel** | Läuft auf deinem Rechner; Keys in `Key.txt`; USB-taugliches `data/`; kein Cloud-Zwang. |
+| **Lokal & portabel** | Läuft auf deinem Rechner; Keys in `User/Key.txt`; USB-taugliches `data/`; kein Cloud-Zwang. |
+| **Ehrliche LLM / Auth** | Platzhalter (`sk-your-…`) zählen nicht als „ready“. Worker liefern **FEHLER**, keine Fake-Stubs. Session blockt tote Keys nach 401. |
 | **Sicherheit by default** | Maus / Tastatur / Shell nur **Dry-Run**, bis **God-Mode** bewusst an ist. |
+| **Sichtbare Tools** | Registry + Plugins; Worker-**Prefetch** (`web_fetch`, `memory_search`, `install_tool`); UI-Badge **Tools** + Light-Trace. |
 | **Operator-Ops** | HOT / WARM / COLD-Memory, Workspace, Backups, Session-Packs, Jobs, Soft-Cancel, Light-Trace, Budget-Schutz. |
 | **Schlanke Orchestrierung** | Eine feste Pipeline. Team-/Worker-**Presets** + `plan_mode` — keine zweite Workflow-Engine. |
-| **Sauberes Memory** | Dauerhafte Fakten nach WARM; Flex-Wünsche (`source=flex`) überleben HOT-Clear / warm_trim-Reserve; HTML/Meta-Müll gefiltert. |
-| **Flex als Operator-Proxy** | Gesperrter Agent: speichert nur deine Wünsche, schreibt im Brainstorm mit, kann Execute auslösen, injiziert binding wishes für Worker. |
+| **Sauberes Memory** | Dauerhafte Fakten nach WARM; Flex-Wünsche (`source=flex`) überleben HOT-Clear; HTML/Meta-Müll gefiltert. |
+| **Flex als Operator-Proxy** | Gesperrter Agent: speichert nur deine Wünsche als **absolute** Aufträge, schreibt im Brainstorm mit, kann Execute auslösen, nudgt Worker (kein sinnloser Re-Run bei Auth-Fail). |
 
 ### Für wen
 
@@ -68,20 +70,29 @@ Diese Trennung ist das Kernprodukt: Exploration bleibt günstig und umkehrbar; W
 ```bash
 cd gnom-hub-v1
 ./scripts/install.sh && source .venv/bin/activate
-# Keys → Key.txt  (siehe docs/KEYS_AND_MODELS.md)
+# Keys → persönliche WS User/Key.txt  (siehe docs/KEYS_AND_MODELS.md)
 ./scripts/start.sh
 # öffnen: http://127.0.0.1:8080/
 ```
 
-`Key.txt.example` → `Key.txt` und mindestens setzen:
+`Key.txt.example` → **`User/Key.txt`** (oder Root-`Key.txt` legacy) und mindestens setzen:
 
 - `DEEPSEEK_API_KEY` — System-Agenten (Brainstorm, Memory, Flex, Coordinator)  
-- `WORKER_API_KEY` — Worker (kann derselbe Key sein)  
+- `WORKER_API_KEY` — Worker (optional; fällt auf System-Key zurück)  
 - `DEEPSEEK_MODEL=deepseek-v4-flash`  
 
-Nie `Key.txt` oder `.env` committen.
+**Keine** Example-Platzhalter (`sk-your-system-deepseek-key`) — der Hub wertet sie als fehlend.  
+Nie `Key.txt`, `User/` oder `.env` committen.
 
-Ohne API-Keys läuft die Pipeline mit **Stubs** (Tests / Smoke).
+Ohne **nutzbaren** API-Key (und ohne Ollama) melden Worker **FEHLER — kein Deliverable** statt Erfolgs-Simulation. Stages laufen weiter für Smoke-Tests.
+
+Header-Badges:
+
+| Badge | Bedeutung |
+|-------|-----------|
+| **LLM: …** | Live-Provider / Platzhalter / blockiert / kein Key |
+| **Tools: N** | Tool-Calls in diesem Pipeline-Lauf |
+| **God / Mem / Vec / Cold / Stage** | Ops-Oberfläche |
 
 ---
 
@@ -96,6 +107,8 @@ Ohne API-Keys läuft die Pipeline mit **Stubs** (Tests / Smoke).
 | **Send+Exec** | Beides nacheinander |
 | **Mic** | Browser Speech-to-Text |
 | **Cancel** | Laufenden Job soft abbrechen |
+
+Chat: **Flag-Chips** (Farben = Intent) und Freitext-Notizen am Resultat, wo aktiviert.
 
 ### Boxen
 
@@ -133,23 +146,66 @@ Details: [docs/TOOLS_PORTFOLIO.md](docs/TOOLS_PORTFOLIO.md).
 
 ---
 
+## Tools & Plugins
+
+### Core-Tools (immer registriert)
+
+| Tool | Zweck |
+|------|--------|
+| `hub_status` | Kompakt: Stage / Auth / tool_calls / God |
+| `tools_list` | Tool-Katalog (optional `tag`) |
+| `memory_search` | Vector- / Lexik-Suche |
+| `pipeline_do` | Volle Pipeline mit Task-Text |
+| `pipeline_info` | Stage, tool_calls, Quality-Head |
+| `web_fetch` | Öffentliches HTTP(S) → Text (SSRF-sichere Defaults) |
+| `workspace_list` / `workspace_read` | Hub-Workspace-Zonen |
+| `trace_tail` | Letzte Light-Trace-Events |
+
+API: `GET /api/plugins`, `POST /api/tools/call`, `GET /api/mcp/tools`.
+
+### Worker-Prefetch
+
+Bei **Execute** können Worker automatisch (und als `pipeline.tool_call` geloggt):
+
+- `web_fetch` bei URLs in der Aufgabe  
+- `memory_search` für stehenden Kontext  
+- `install_tool` (Plugin) für fehlende Allowlist-Pakete (z. B. Playwright) — zuerst dry-run  
+
+### Plugins
+
+Vertrauenswürdige Packs unter `plugins/<id>/` mit `plugin.json` + `main.py`.
+
+```bash
+python scripts/new_plugin.py my_tool   # aus plugins/_template
+# plugins/my_tool/ editieren · Restart oder:
+# POST /api/plugins/reload?plugin_id=my_tool
+```
+
+Helfer: `from gnom_hub.plugins.sdk import ok, fail, retry`.  
+Sicherheit & Authoring: [docs/PLUGIN_SECURITY.md](docs/PLUGIN_SECURITY.md).
+
+Mitgeliefert: `echo`, `install_tool`, `text_stats` (`_template` wird nicht geladen).
+
+---
+
 ## Architektur
 
 ```
 Browser-SPA (app.js ← parts/* via build_ui_js.py)
        │  REST + Job-Polling
        ▼
-FastAPI  ──►  Hub (~180 LOC Composition Root + Mixins)
+FastAPI  ──►  Hub (Composition Root + Mixins)
                  ├── EventBus (sync)
                  ├── Orchestrator (Stages)
                  ├── 8 Rollen-Agenten
-                 ├── LLM-Manager (DeepSeek / Ollama)
+                 ├── LLM-Manager (DeepSeek / Ollama + Auth-Snapshot)
                  ├── Memory (HOT / WARM / COLD / Vector)
+                 ├── ToolRegistry + PluginLoader
                  ├── Workspace · Packs · Backups · Jobs
                  └── Computer-Use-Kit (+ God-Mode)
 ```
 
-Öffentliche Hub-Methoden liegen in fokussierten Mixins (`pipeline_api`, `jobs`, `session_pack`, `presets`, …). API bleibt dünn.
+Öffentliche Hub-Methoden liegen in fokussierten Mixins (`pipeline_api`, `jobs`, `session_pack`, `presets`, `tools_ops`, …). API bleibt dünn.
 
 ### Pipeline-Stages
 
@@ -158,7 +214,7 @@ memory → brainstorm → distill → [clarify] → flex → coordinate → work
 ```
 
 - **Brainstorm** (Send): nur Dialog; Flex speichert Wünsche + schreibt mit; kann bei klarem Intent auto-Execute.  
-- **Execute**: Distill → optional Clarify → Flex-Briefing + Wish-Inject → Plan → Worker → Flex-Nudge.  
+- **Execute**: Distill → optional Clarify → Flex-Briefing + absolute Wish-Inject → Plan → Prefetch-Tools → Worker → Quality-Gates / Retries → Flex-Nudge.  
 - One-Shot-Pfad für Tests / Telegram (`/do`).  
 
 ### Memory-Schichten
@@ -196,13 +252,17 @@ ruff format .
 ruff format --check .
 pytest tests/ -q --tb=short
 
+# Lokales Pre-Push-Gate (auch per Git-Hooks)
+./scripts/prepush_gate.sh
+./scripts/install_git_hooks.sh   # pre-commit + pre-push + safe.directory
+
 # Mutationstests (Tests der Tests)
 python scripts/mutation_check.py              # schnelle Helper — alle Mutanten killen
 # optional tief: ./scripts/run_mutmut.sh      # siehe docs/MUTMUT.md
 
 ./scripts/quality_check.sh
 python scripts/basic_tests.py          # braucht Server :8080
-python scripts/user_landing_e2e.py     # Playwright + Live-Key
+python scripts/user_scenarios_e2e.py   # Playwright-Szenarien
 python -m gnom_hub.main --smoke        # Brainstorm → Execute ohne UI
 ```
 
@@ -221,6 +281,7 @@ Flex-Vertrag: [docs/AGENTS_DEFINITION.md](docs/AGENTS_DEFINITION.md). Tests: [do
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Kurze Systemkarte |
 | [docs/CODE_ANALYSIS_FOR_AI.md](docs/CODE_ANALYSIS_FOR_AI.md) | Volle Architektur für externe KIs |
 | [docs/KEYS_AND_MODELS.md](docs/KEYS_AND_MODELS.md) | Keys & Modell-IDs |
+| [docs/PLUGIN_SECURITY.md](docs/PLUGIN_SECURITY.md) | Plugins: Trust, Authoring, Reload |
 | [docs/BASIC_USER_TEST.md](docs/BASIC_USER_TEST.md) | Canonical User-E2E |
 | [docs/STABILITY.md](docs/STABILITY.md) | Stabilitäts-Checkliste |
 | [docs/TOOLS_PORTFOLIO.md](docs/TOOLS_PORTFOLIO.md) | Computer-Use-Bibliotheken |
