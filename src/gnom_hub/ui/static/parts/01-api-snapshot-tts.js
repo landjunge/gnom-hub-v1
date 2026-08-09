@@ -576,6 +576,8 @@
     const p = panel || {};
     const active = !!p.active;
     root.classList.toggle("is-active", active);
+    root.classList.toggle("ring-1", active);
+    root.classList.toggle("ring-gnom-flex/40", active);
     if (titleEl) titleEl.textContent = p.title || "Flex";
     if (badgeEl) {
       badgeEl.hidden = !active;
@@ -602,7 +604,14 @@
       if (!b || !b.id) return;
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "flex-review-btn";
+      btn.className =
+        "flex-review-btn rounded-md border border-gnom-border bg-gnom-card px-2.5 py-1.5 " +
+        "text-xs leading-tight text-gnom-text transition hover:border-gnom-flex hover:text-gnom-flex " +
+        (String(b.action || "") === "execute"
+          ? "border-gnom-ok/50 hover:border-gnom-ok hover:text-gnom-ok "
+          : String(b.action || "") === "brainstorm"
+            ? "border-gnom-accent/50 hover:border-gnom-accent hover:text-gnom-accent "
+            : "");
       btn.dataset.id = String(b.id);
       btn.dataset.action = String(b.action || "learn");
       btn.textContent = String(b.label || b.id);

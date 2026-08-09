@@ -2460,3 +2460,32 @@ body.phase3-off .btn-archive {
   border-color: var(--flex, #7c5cff);
   color: var(--flex, #a78bfa);
 }
+
+
+/* tailwind chat bridge — layout anchors + flag color */
+#chat-mod.chat-mod {
+  height: var(--chat-h);
+  min-height: 120px;
+  flex: 0 0 var(--chat-h);
+}
+#chat-mod .chat-agent-layer {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+#chat-mod .chat-agent-layer.is-active {
+  display: flex;
+  z-index: 1;
+}
+#chat-mod .chat-flag {
+  background: var(--flag-color, #888);
+}
+#chat-mod .btn-mic.listening {
+  background: #862e2e;
+  border-color: #e03131;
+  color: #ffa8a8;
+  animation: pulse-card 1s ease-in-out infinite;
+}

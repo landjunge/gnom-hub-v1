@@ -187,7 +187,7 @@
         "Chat layer " + (idx + 1) + " · " + agent.label
       );
       const log = document.createElement("div");
-      log.className = "chat-log";
+      log.className = "chat-log flex-1 min-h-0 space-y-0 overflow-y-auto px-2.5 py-2 text-xs text-gnom-muted";
       log.id = "chat-log-" + agent.id;
       if (agent.id === "brainstorm") log.id = "chat-log";
       log.dataset.agent = agent.id;

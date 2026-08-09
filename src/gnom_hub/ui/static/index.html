@@ -4,7 +4,35 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=150" />
+  <link rel="stylesheet" href="/static/app.css?v=151" />
+  <!-- Tailwind utilities for Chat module (preflight OFF) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      corePlugins: { preflight: false },
+      theme: {
+        extend: {
+          colors: {
+            gnom: {
+              bg: "#121316",
+              panel: "#1a1b1f",
+              card: "#1e1f24",
+              elev: "#22242a",
+              border: "#2c2e34",
+              text: "#d8dbe0",
+              muted: "#7a7f88",
+              flex: "#a78bfa",
+              ok: "#3dd68c",
+              accent: "#4dabf7",
+            },
+          },
+          fontSize: {
+            "2xs": ["10px", "1.3"],
+          },
+        },
+      },
+    };
+  </script>
 </head>
 <body>
   <div id="app">
@@ -183,69 +211,137 @@
       </div>
     </section>
 
-    <!-- Crux: Chat-Layer pro Agent | Platz L/R -->
-    <section id="chat-mod" class="chat-mod" aria-label="Chat module">
-      <div class="chat-mod-platz chat-mod-platz-l" aria-label="Platzhalter unter Box 1">
-        <button type="button" class="chat-mod-slot-btn" disabled title="Platzhalter">·</button>
-        <button type="button" class="chat-mod-slot-btn" disabled title="Platzhalter">·</button>
-        <button type="button" class="chat-mod-slot-btn" disabled title="Platzhalter">·</button>
+    <!-- Crux: Chat-Layer pro Agent | Platz L/R — Tailwind-styled -->
+    <section
+      id="chat-mod"
+      class="chat-mod flex w-full shrink-0 overflow-hidden rounded-lg border border-gnom-border bg-gnom-panel shadow-lg shadow-black/20"
+      style="height: var(--chat-h); min-height: 120px; flex: 0 0 var(--chat-h)"
+      aria-label="Chat module"
+    >
+      <!-- Left Platz -->
+      <div
+        class="chat-mod-platz chat-mod-platz-l flex w-1/3 min-w-0 flex-row flex-wrap items-end justify-center gap-1.5 border-r border-gnom-border bg-gnom-panel/80 p-1.5"
+        aria-label="Platzhalter unter Box 1"
+      >
+        <button type="button" class="chat-mod-slot-btn h-7 min-w-9 rounded border border-dashed border-gnom-border bg-gnom-card px-2.5 text-xs text-gnom-muted opacity-55" disabled title="Platzhalter">·</button>
+        <button type="button" class="chat-mod-slot-btn h-7 min-w-9 rounded border border-dashed border-gnom-border bg-gnom-card px-2.5 text-xs text-gnom-muted opacity-55" disabled title="Platzhalter">·</button>
+        <button type="button" class="chat-mod-slot-btn h-7 min-w-9 rounded border border-dashed border-gnom-border bg-gnom-card px-2.5 text-xs text-gnom-muted opacity-55" disabled title="Platzhalter">·</button>
       </div>
-      <section id="chat" class="chat-mod-chat chat" data-tooltip-id="chat" aria-label="Chat layer">
-        <div id="chat-layers" class="chat-layer-stack" aria-label="Per-agent chat layers"></div>
-        <div class="chat-input-row">
-          <button type="button" id="btn-mic" class="btn-mic" title="Speech to text (browser)">Mic</button>
+
+      <!-- Center chat -->
+      <section
+        id="chat"
+        class="chat-mod-chat chat flex w-1/3 min-w-0 flex-col overflow-hidden bg-gnom-panel"
+        data-tooltip-id="chat"
+        aria-label="Chat layer"
+      >
+        <div
+          id="chat-layers"
+          class="chat-layer-stack relative min-h-0 flex-1 overflow-hidden"
+          aria-label="Per-agent chat layers"
+        ></div>
+
+        <div
+          class="chat-input-row flex shrink-0 flex-wrap items-center justify-center gap-1.5 border-t border-gnom-border bg-gnom-elev/60 px-2 py-1.5"
+        >
+          <button
+            type="button"
+            id="btn-mic"
+            class="btn-mic h-8 shrink-0 rounded-md border border-gnom-border bg-gnom-card px-2.5 text-xs font-medium text-gnom-text transition hover:border-gnom-accent hover:text-gnom-accent"
+            title="Speech to text (browser)"
+          >Mic</button>
           <input
             type="text"
             id="chat-input"
-            class="chat-input"
+            class="chat-input h-8 min-w-[80px] flex-1 rounded-md border border-gnom-border bg-gnom-bg px-2.5 text-[13px] text-gnom-text placeholder:text-gnom-muted focus:border-gnom-accent focus:outline-none focus:ring-1 focus:ring-gnom-accent/50"
             placeholder="Chat-Layer (Crux) — Agent-Klick wechselt Layer"
             autocomplete="off"
           />
-          <button type="button" id="btn-send" class="btn-send">Send</button>
-          <button type="button" id="btn-execute" class="btn-execute" title="Run distill + workers from brainstorm (Ctrl+Enter)" disabled>
-            Execute
-          </button>
-          <button type="button" id="btn-send-exec" class="btn-send-exec" title="Send brainstorm turn then Execute">
-            Send+Exec
-          </button>
-          <button type="button" id="btn-cancel" class="btn-cancel" title="Cancel running job (Esc)" hidden>
-            Cancel
-          </button>
+          <button
+            type="button"
+            id="btn-send"
+            class="btn-send h-8 shrink-0 rounded-md border border-gnom-border bg-gnom-card px-3 text-[13px] font-medium text-gnom-text transition hover:border-gnom-accent hover:bg-gnom-elev"
+          >Send</button>
+          <button
+            type="button"
+            id="btn-execute"
+            class="btn-execute h-8 shrink-0 rounded-md border border-gnom-ok/40 bg-gnom-elev px-3 text-xs font-semibold text-gnom-text transition hover:border-gnom-ok hover:text-gnom-ok disabled:cursor-not-allowed disabled:opacity-40"
+            title="Run distill + workers from brainstorm (Ctrl+Enter)"
+            disabled
+          >Execute</button>
+          <button
+            type="button"
+            id="btn-send-exec"
+            class="btn-send-exec h-8 shrink-0 rounded-md border border-gnom-accent/40 bg-gnom-card px-2.5 text-xs font-medium text-gnom-text transition hover:border-gnom-accent hover:text-gnom-accent"
+            title="Send brainstorm turn then Execute"
+          >Send+Exec</button>
+          <button
+            type="button"
+            id="btn-cancel"
+            class="btn-cancel h-8 shrink-0 rounded-md border border-red-500/50 bg-red-950/40 px-2.5 text-xs font-medium text-red-300 transition hover:bg-red-900/50"
+            title="Cancel running job (Esc)"
+            hidden
+          >Cancel</button>
         </div>
-        <div id="chat-flags" class="chat-flags" role="group" aria-label="Wunsch-Flags">
-            <span class="chat-flags-label" title="Klick = an nächste Nachricht anhängen">Flags</span>
-          </div>
-          <p class="kbd-hint">Chat-Layer = Crux · kleine Quadrate = stehende Wünsche · Enter = Send</p>
+
+        <div
+          id="chat-flags"
+          class="chat-flags flex shrink-0 flex-wrap items-center gap-1.5 border-t border-gnom-border/60 bg-gnom-bg/40 px-2 py-1"
+          role="group"
+          aria-label="Wunsch-Flags"
+        >
+          <span
+            class="chat-flags-label text-2xs uppercase tracking-wide text-gnom-muted"
+            title="Klick = an nächste Nachricht anhängen"
+          >Flags</span>
+        </div>
+        <p class="kbd-hint m-0 shrink-0 px-2 pb-1 text-2xs text-gnom-muted">
+          Chat-Layer = Crux · kleine Quadrate = stehende Wünsche · Enter = Send
+        </p>
       </section>
+
+      <!-- Right Flex review -->
       <aside
         id="flex-review"
-        class="chat-mod-platz chat-mod-platz-r flex-review"
+        class="chat-mod-platz chat-mod-platz-r flex-review flex w-1/3 min-w-0 flex-col items-stretch justify-start gap-2 overflow-auto border-l border-gnom-border bg-gnom-panel p-2.5"
         aria-label="Flex Feedback rechts neben Chat"
       >
-        <div class="flex-review-head">
-          <span class="flex-review-title" id="flex-review-title">Flex</span>
-          <span class="flex-review-badge" id="flex-review-badge" hidden>Feedback</span>
+        <div class="flex-review-head flex items-center justify-between gap-2">
+          <span class="flex-review-title text-[13px] font-semibold text-gnom-flex" id="flex-review-title">Flex</span>
+          <span
+            class="flex-review-badge rounded-full bg-violet-500/25 px-1.5 py-0.5 text-2xs uppercase tracking-wide text-gnom-text"
+            id="flex-review-badge"
+            hidden
+          >Feedback</span>
         </div>
-        <p class="flex-review-q" id="flex-review-q">
+        <p class="flex-review-q m-0 whitespace-pre-wrap text-xs leading-snug text-gnom-text" id="flex-review-q">
           Nach einem Ergebnis fragt Flex hier nach Feedback.
         </p>
-        <div class="flex-review-btns" id="flex-review-btns" role="group" aria-label="Flex Aktionen">
+        <div
+          class="flex-review-btns flex flex-wrap gap-1.5"
+          id="flex-review-btns"
+          role="group"
+          aria-label="Flex Aktionen"
+        >
           <!-- dynamic buttons after Execute done -->
         </div>
-        <div class="flex-review-note-row" id="flex-review-note-row" hidden>
+        <div class="flex-review-note-row flex items-center gap-1.5" id="flex-review-note-row" hidden>
           <input
             type="text"
             id="flex-review-note"
-            class="flex-review-note"
+            class="flex-review-note h-8 min-w-0 flex-1 rounded-md border border-gnom-border bg-gnom-card px-2 text-xs text-gnom-text placeholder:text-gnom-muted focus:border-gnom-flex focus:outline-none focus:ring-1 focus:ring-gnom-flex/40"
             maxlength="200"
             placeholder="Flag/Notiz zum Button (z.B. dunkler, mehr DE)…"
             autocomplete="off"
           />
-          <button type="button" id="flex-review-note-save" class="flex-review-note-save" title="Nur als Wish speichern">
-            Merken
-          </button>
+          <button
+            type="button"
+            id="flex-review-note-save"
+            class="flex-review-note-save h-8 shrink-0 rounded-md border border-gnom-border bg-gnom-card px-2.5 text-[11px] text-gnom-text transition hover:border-gnom-flex hover:text-gnom-flex"
+            title="Nur als Wish speichern"
+          >Merken</button>
         </div>
-        <p class="flex-review-hint muted" id="flex-review-hint">
+        <p class="flex-review-hint muted m-0 text-[11px] text-gnom-muted" id="flex-review-hint">
           Rechts = Flex lernt · Notiz + Button = Wunsch speichern
         </p>
       </aside>

@@ -187,7 +187,7 @@
         "Chat layer " + (idx + 1) + " · " + agent.label
       );
       const log = document.createElement("div");
-      log.className = "chat-log";
+      log.className = "chat-log flex-1 min-h-0 space-y-0 overflow-y-auto px-2.5 py-2 text-xs text-gnom-muted";
       log.id = "chat-log-" + agent.id;
       if (agent.id === "brainstorm") log.id = "chat-log";
       log.dataset.agent = agent.id;
@@ -1239,6 +1239,8 @@
     const p = panel || {};
     const active = !!p.active;
     root.classList.toggle("is-active", active);
+    root.classList.toggle("ring-1", active);
+    root.classList.toggle("ring-gnom-flex/40", active);
     if (titleEl) titleEl.textContent = p.title || "Flex";
     if (badgeEl) {
       badgeEl.hidden = !active;
@@ -1265,7 +1267,14 @@
       if (!b || !b.id) return;
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "flex-review-btn";
+      btn.className =
+        "flex-review-btn rounded-md border border-gnom-border bg-gnom-card px-2.5 py-1.5 " +
+        "text-xs leading-tight text-gnom-text transition hover:border-gnom-flex hover:text-gnom-flex " +
+        (String(b.action || "") === "execute"
+          ? "border-gnom-ok/50 hover:border-gnom-ok hover:text-gnom-ok "
+          : String(b.action || "") === "brainstorm"
+            ? "border-gnom-accent/50 hover:border-gnom-accent hover:text-gnom-accent "
+            : "");
       btn.dataset.id = String(b.id);
       btn.dataset.action = String(b.action || "learn");
       btn.textContent = String(b.label || b.id);
@@ -3805,22 +3814,46 @@
       }
     }
     if (!els.chatLog) return null;
-    const line = document.createElement("p");
-    line.className = "chat-line chat-who-" + String(who).replace(/\W+/g, "");
+    const w = String(who || "system").replace(/\W+/g, "");
+    const line = document.createElement("div");
+    const isYou = w === "you";
+    const isSys = w === "system";
+    line.className =
+      "chat-line chat-who-" +
+      w +
+      " mb-1.5 flex w-full gap-2 " +
+      (isYou ? "justify-end" : "justify-start");
     line.dataset.who = who;
     line.dataset.text = text;
     line.dataset.ts = ts || "";
+
+    const bubble = document.createElement("div");
+    bubble.className =
+      "chat-body max-w-[92%] rounded-lg px-2.5 py-1.5 text-[12px] leading-snug shadow-sm " +
+      (isYou
+        ? "bg-gnom-accent/15 border border-gnom-accent/30 text-gnom-text rounded-br-sm"
+        : isSys
+          ? "bg-gnom-elev/80 border border-gnom-border text-gnom-muted rounded-bl-sm"
+          : "bg-gnom-card border border-gnom-border text-gnom-text rounded-bl-sm");
+
     if (ts) {
       const tsel = document.createElement("span");
-      tsel.className = "chat-ts";
+      tsel.className = "chat-ts mr-1.5 text-2xs tabular-nums text-gnom-muted opacity-75";
       tsel.textContent = ts;
-      line.appendChild(tsel);
-      line.appendChild(document.createTextNode(" "));
+      bubble.appendChild(tsel);
     }
+    const label = document.createElement("span");
+    label.className =
+      "chat-who-label mr-1 text-2xs font-semibold uppercase tracking-wide " +
+      (isYou ? "text-gnom-accent" : isSys ? "text-gnom-muted" : "text-gnom-flex");
+    label.textContent = who;
+    bubble.appendChild(label);
     const body = document.createElement("span");
-    body.className = "chat-body";
-    body.textContent = who + ": " + text;
-    line.appendChild(body);
+    body.className = "chat-text whitespace-pre-wrap break-words";
+    body.textContent = text;
+    bubble.appendChild(document.createTextNode(" "));
+    bubble.appendChild(body);
+    line.appendChild(bubble);
     els.chatLog.appendChild(line);
     return line;
   }
@@ -4049,7 +4082,8 @@
     root.innerHTML = "";
     if (!label) {
       label = document.createElement("span");
-      label.className = "chat-flags-label";
+      label.className =
+        "chat-flags-label text-2xs uppercase tracking-wide text-gnom-muted";
       label.title = "Klick = an nächste Nachricht anhängen";
       label.textContent = "Flags";
     }
@@ -4057,8 +4091,14 @@
     CHAT_FLAG_DEFS.forEach(function (f) {
       const b = document.createElement("button");
       b.type = "button";
-      b.className = "chat-flag" + (activeChatFlags[f.id] ? " is-on" : "");
+      b.className =
+        "chat-flag h-4 w-4 shrink-0 rounded-sm border border-black/40 shadow-sm transition " +
+        "hover:scale-110 hover:opacity-100 " +
+        (activeChatFlags[f.id]
+          ? "is-on opacity-100 ring-2 ring-gnom-text ring-offset-1 ring-offset-gnom-bg"
+          : "opacity-55");
       b.style.setProperty("--flag-color", f.color);
+      b.style.background = f.color;
       b.title = f.label + " — " + f.wish;
       b.setAttribute("aria-label", f.label);
       b.dataset.id = f.id;
