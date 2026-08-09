@@ -136,54 +136,236 @@ flowchart LR
 | **Execute** | Distill → clarify? → Flex briefing + wish inject → plan → **prefetch tools** → workers → quality + Flex nudge |
 | **One-shot** | Tests / Telegram `/do` full path |
 
-### Execute path (detail)
+### Paths over time (sequence)
+
+Rect colors match the palette in [MERMAID.md](MERMAID.md):  
+`rgb(26,31,46)` = **ui** · `rgb(30,42,30)` = **core** · `rgb(42,34,24)` = **locked/hot** · `rgb(42,24,24)` = **danger**.
+
+#### Send (brainstorm only)
 
 ```mermaid
 ---
-title: Execute sequence
+title: Send · brainstorm turn
 ---
 sequenceDiagram
   autonumber
-  participant U as User
+  actor U as User
+  participant SPA as SPA
+  participant API as FastAPI
+  participant O as Orchestrator
+  participant B as Brainstorm
+  participant F as Flex
+  participant M as Memory
+  participant L as LLM
+
+  U->>SPA: Send message
+  SPA->>API: POST chat / job
+  API->>O: brainstorm turn
+
+  rect rgb(26, 31, 46)
+    Note over SPA,API: ui · request edge
+    API-->>SPA: job id / poll
+  end
+
+  rect rgb(30, 42, 30)
+    Note over O,L: core · dialogue
+    activate O
+    O->>M: load HOT / WARM context
+    M-->>O: context
+    O->>B: next turn
+    activate B
+    B->>L: chat
+    L-->>B: reply
+    B-->>O: brainstorm text
+    deactivate B
+  end
+
+  rect rgb(42, 34, 24)
+    Note over F,M: locked · Flex wishes
+    O->>F: absorb / co-talk
+    activate F
+    F->>M: store source=flex wishes
+    M-->>F: ok
+    F-->>O: optional auto-Execute?
+    deactivate F
+  end
+
+  alt auto-Execute intent clear
+    O->>O: hand off to Execute path
+  else stay in dialogue
+    O-->>API: Box 2 update
+    API-->>SPA: stage=brainstorm
+    SPA-->>U: show Box 2
+  end
+  deactivate O
+```
+
+#### Execute (workers + tools)
+
+```mermaid
+---
+title: Execute · full path
+---
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant SPA as SPA
+  participant API as FastAPI
   participant O as Orchestrator
   participant F as Flex
   participant C as Coordinator
   participant P as Prefetch
   participant W as Worker(s)
   participant T as ToolRegistry
+  participant M as Memory
+  participant L as LLM
 
-  U->>O: Execute
-  O->>O: distill requirements
-  O->>F: briefing + absolute wishes
-  F-->>O: binding_wishes
-  O->>C: plan tasks
-  C-->>O: worker plan
+  U->>SPA: Execute
+  SPA->>API: POST execute / job
+  API->>O: run pipeline
+
+  rect rgb(26, 31, 46)
+    Note over SPA,API: ui
+    API-->>SPA: poll snapshots
+  end
+
+  activate O
+  O->>M: pipeline_context
+  M-->>O: HOT + WARM + FLEX_WISHES
 
   rect rgb(30, 42, 30)
-    Note over P,T: core · worker prefetch
-    O->>P: tool_calls_needed
-    P->>T: web_fetch / memory_search / install_tool
-    T-->>P: results
+    Note over O,L: core · distill
+    O->>L: distill requirements
+    L-->>O: requirements
   end
 
-  O->>W: run with context + wishes
-  opt worker tools
-    W->>T: optional call
-    T-->>W: result
+  rect rgb(42, 34, 24)
+    Note over F: locked · absolute wishes
+    O->>F: briefing + inject wishes
+    activate F
+    F-->>O: binding_wishes
+    deactivate F
   end
-  W-->>O: draft or FEHLER
 
-  alt fixable quality gap
-    O->>O: quality gates · soft retries
-    O->>F: nudge
-    F-->>W: correction
-  else auth / non-fixable
-    rect rgb(42, 24, 24)
-      Note over O,U: danger · honest FEHLER
-      O-->>U: FEHLER (no fake stub)
+  O->>C: plan worker tasks
+  activate C
+  C->>L: plan / plan_mode
+  L-->>C: tasks
+  C-->>O: worker plan
+  deactivate C
+
+  rect rgb(30, 42, 30)
+    Note over P,T: core · prefetch
+    O->>P: tool_calls_needed(task)
+    activate P
+    opt URL in task
+      P->>T: web_fetch
+      T-->>P: page text
     end
+    opt memory hints
+      P->>T: memory_search
+      T-->>P: hits
+    end
+    opt missing allowlisted dep
+      P->>T: install_tool dry_run then install
+      T-->>P: installed?
+    end
+    P-->>O: tool_calls[] + context
+    deactivate P
   end
-  O-->>U: Box 3 + Memory
+
+  loop each planned worker
+    O->>W: run(task, wishes, tool context)
+    activate W
+    alt usable LLM key
+      W->>L: generate deliverable
+      L-->>W: draft
+    else placeholder / 401 / no key
+      rect rgb(42, 24, 24)
+        Note over W,L: danger · no fake stub
+        W-->>O: FEHLER (honest)
+      end
+    end
+    opt worker-initiated tool
+      W->>T: tools.call
+      T-->>W: result
+    end
+    W-->>O: draft or FEHLER
+    deactivate W
+  end
+
+  alt FEHLER auth / non-fixable
+    rect rgb(42, 24, 24)
+      Note over O,U: danger · skip Flex re-run
+      O-->>API: stage done/error + FEHLER
+    end
+  else quality gap fixable
+    O->>O: quality gates
+    loop soft retries max 2
+      O->>W: rewrite
+      W-->>O: draft
+    end
+    opt still gaps
+      O->>F: nudge_gaps
+      F-->>W: correction hint
+      W-->>O: revised draft
+    end
+    O->>M: write results / facts
+    M-->>O: ok
+    O-->>API: Box 3 + quality_notes
+  else quality ok
+    O->>M: write results / facts
+    M-->>O: ok
+    O-->>API: Box 3 deliverable
+  end
+
+  deactivate O
+  API-->>SPA: snapshot (Tools badge, stage)
+  SPA-->>U: Preview / Source
+```
+
+#### Tools API (manual call)
+
+```mermaid
+---
+title: Tools modal / API call
+---
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant SPA as SPA
+  participant API as FastAPI
+  participant T as ToolRegistry
+  participant Plug as Plugin handler
+
+  U->>SPA: Tools modal · Call
+  SPA->>API: POST /api/tools/call
+
+  rect rgb(26, 31, 46)
+    Note over SPA,API: ui
+  end
+
+  API->>T: call(name, args)
+  activate T
+  T->>T: validate required args
+  alt unknown tool
+    T-->>API: KeyError + available list
+  else core tool
+    rect rgb(30, 42, 30)
+      T->>T: handler
+    end
+    T-->>API: result
+  else plugin tool
+    rect rgb(34, 26, 46)
+      Note over T,Plug: plugin
+      T->>Plug: run(...)
+      Plug-->>T: ok/fail payload
+    end
+    T-->>API: result
+  end
+  deactivate T
+  API-->>SPA: JSON
+  SPA-->>U: show result
 ```
 
 ## Agents (fixed roster)

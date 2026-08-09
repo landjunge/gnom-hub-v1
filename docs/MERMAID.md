@@ -101,11 +101,101 @@ linkStyle 0 stroke:#3a8f6e,stroke-width:2px
 
 ### Sequence diagrams
 
-`classDef` does **not** apply to sequence participants. Use:
+`classDef` / `:::` do **not** apply to sequence participants. Style with **`rect`**, **`Note`**, and control blocks.
 
-- `rect rgb(30, 42, 30)` — core / prefetch zone (greenish)
-- `rect rgb(42, 24, 24)` — danger / auth fail
-- `rect rgb(26, 31, 46)` — UI / API note
+#### Rect colors (= flowchart palette)
+
+| rgb | Class token | Use |
+|-----|-------------|-----|
+| `rgb(26, 31, 46)` | **ui** | SPA · REST · badges · modal |
+| `rgb(30, 42, 30)` | **core** | Orchestrator · distill · prefetch · registry |
+| `rgb(42, 34, 24)` | **locked / hot** | Flex wishes · Memory absorb |
+| `rgb(34, 26, 46)` | **plugin** | Plugin handler body |
+| `rgb(42, 24, 24)` | **danger** | God-Mode risk · auth FEHLER · no stub |
+
+#### Participants
+
+```text
+actor U as User              preferred for human
+participant SPA as SPA
+participant O as Orchestrator
+```
+
+- Short **id**, readable **label** (`as …`)
+- Keep count ≤ ~10 per diagram (split Send vs Execute vs Tools)
+- Order left→right ≈ call stack depth (User → SPA → API → Hub …)
+
+#### Messages
+
+| Arrow | Meaning |
+|-------|---------|
+| `A->>B: text` | Sync request |
+| `A-->>B: text` | Response / async reply |
+| `A-)B: text` | Async fire-and-forget (rare here) |
+
+#### Activation
+
+```text
+activate O
+O->>W: run
+deactivate O
+```
+
+Shows who is “busy”. Pair every `activate` with `deactivate`.
+
+#### Control blocks (GitHub-safe)
+
+| Block | Use in Gnom |
+|-------|-------------|
+| `opt` | URL prefetch, optional tool, auto-Execute |
+| `alt` / `else` | usable key vs FEHLER; fixable vs auth |
+| `loop` | workers · soft retries |
+| `par` | avoid unless truly parallel (workers are sequential in V1) |
+| `critical` | avoid — poor GH support |
+| `break` | avoid — uneven support |
+
+#### Notes
+
+```text
+Note over O,T: core · prefetch
+Note left of U: user sees Box 3
+Note right of F: locked wishes
+```
+
+Prefix notes with palette token when helpful: `ui ·` / `core ·` / `danger ·`.
+
+#### Canonical Execute skeleton
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant O as Orchestrator
+  participant W as Worker
+  participant L as LLM
+
+  U->>O: Execute
+  activate O
+  rect rgb(30, 42, 30)
+    Note over O: core · distill + plan
+    O->>O: plan
+  end
+  alt usable key
+    O->>W: run
+    W->>L: chat
+    L-->>W: draft
+    W-->>O: draft
+  else auth fail
+    rect rgb(42, 24, 24)
+      Note over W,U: danger · FEHLER
+      W-->>O: FEHLER
+      O-->>U: no stub
+    end
+  end
+  deactivate O
+```
+
+Full diagrams: [ARCHITECTURE.md](ARCHITECTURE.md) (Send · Execute · Tools API).
 
 ### State diagrams
 
@@ -119,7 +209,7 @@ Limited styling. Prefer notes + clear transition labels over `classDef`.
 |------|---------|---------|
 | Flowchart | `flowchart TB` / `LR` | Runtime, memory, tools |
 | State machine | `stateDiagram-v2` | Pipeline stages |
-| Sequence | `sequenceDiagram` | Execute path over time |
+| Sequence | `sequenceDiagram` | Send · Execute · Tools API (see ARCHITECTURE) |
 
 Avoid: `gitGraph`, `journey`, `gantt`, `pie`, `mindmap`, click handlers, heavy `init` themes.
 
@@ -197,22 +287,7 @@ stateDiagram-v2
 
 ## Sequence diagrams
 
-```mermaid
-sequenceDiagram
-  autonumber
-  participant U as User
-  participant O as Orchestrator
-  U->>O: Execute
-  rect rgb(30, 42, 30)
-    Note over O: core path
-    O->>O: distill
-  end
-  alt fixable
-    O->>O: retry
-  else auth fail
-    O-->>U: FEHLER
-  end
-```
+See **Sequence diagrams** above and full flows in [ARCHITECTURE.md](ARCHITECTURE.md#paths-over-time-sequence).
 
 ## Checklist before commit
 

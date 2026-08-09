@@ -298,6 +298,7 @@ Execute  → Distill → Flex-Inject → Plan → Prefetch-Tools → Worker → 
 Telegram → One-Shot /do
 ```
 
+Sequenz-Diagramme (Send · Execute · Tools): [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#paths-over-time-sequence).
 | Pfad | Verhalten |
 |------|-----------|
 | **Send** | nur Dialog; Flex speichert Wünsche / kann auto-Execute |

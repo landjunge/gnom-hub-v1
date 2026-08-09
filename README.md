@@ -298,6 +298,7 @@ Execute  → distill → flex inject → plan → prefetch tools → workers →
 Telegram → one-shot /do
 ```
 
+Deep sequences (Send · Execute · Tools): [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#paths-over-time-sequence).
 | Path | Behavior |
 |------|----------|
 | **Send** | Dialogue only; Flex may absorb wishes / auto-Execute when clear |
