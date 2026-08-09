@@ -60,3 +60,13 @@ jobs:
             tests/test_mutmut_hooks.py \
             tests/test_vector_rank_eval.py \
             tests/test_vector_bm25.py -q --tb=short
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "## Mutation nightly"
+            echo ""
+            echo "- mutation_check.py · vector_rank_eval · mutmut core (soft)"
+          } >> "$GITHUB_STEP_SUMMARY"
+

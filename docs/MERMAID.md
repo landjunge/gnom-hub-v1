@@ -545,6 +545,18 @@ Der Checker erzwingt:
 
 Inventory (generiert): [generated/mermaid_inventory.md](generated/mermaid_inventory.md).
 
+### CI
+
+GitHub Actions **lint** job runs the same gate as local:
+
+```text
+./scripts/prepush_gate.sh          # Ruff + mermaid_check
+python scripts/mermaid_check.py --write-inventory …
+git diff --exit-code docs/generated/mermaid_inventory.md
+```
+
+Workflow: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
+
 ## Siehe auch
 
 | Doc | Inhalt |

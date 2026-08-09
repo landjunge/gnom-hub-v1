@@ -52,3 +52,20 @@ python scripts/user_scenarios_e2e.py --all
 | Mutation Nightly | Single group `mutation-nightly`, no cancel mid-run |
 
 Do **not** use a bare `actions/cache` key without `${{ matrix.python-version }}` for matrix jobs — parallel cells overwrite each other.
+
+## CI pipeline
+
+| Job | What |
+|-----|------|
+| **lint** | `./scripts/prepush_gate.sh` (Ruff + Mermaid) + inventory drift |
+| **test** | Pytest matrix 3.10–3.12 · smoke_e2e · optional live smoke |
+| **ci-ok** | Single green gate for branch protection |
+| **mutation-nightly** | Deep mutmut + rank-eval (schedule) |
+
+Local parity:
+
+```bash
+./scripts/prepush_gate.sh
+pytest tests/ -q
+python scripts/smoke_e2e.py
+```

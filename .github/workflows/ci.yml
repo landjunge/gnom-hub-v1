@@ -2,22 +2,27 @@ name: CI/CD
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
     tags:
-      - 'v*'
+      - "v*"
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
+  workflow_dispatch:
 
-# One active run per ref: new commits cancel outdated matrix runs (avoids
-# stacked PR/main CI fighting the same runners/caches).
+# One active run per ref: new commits cancel outdated matrix runs.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
-  # Lint once — not 3× in the matrix (faster, no parallel format races).
+  # Mirrors local ./scripts/prepush_gate.sh (Ruff + Mermaid).
   lint:
+    name: Lint · Ruff · Mermaid
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -35,15 +40,53 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
-      - name: Ruff
+      - name: Pre-push gate (Ruff + Mermaid)
+        env:
+          # Match AGENTS.md / local hooks; pytest stays in matrix job.
+          GNOM_PREPUSH_MERMAID: "1"
+          GNOM_PREPUSH_PYTEST: "0"
         run: |
-          ruff check .
-          ruff format --check .
+          chmod +x scripts/prepush_gate.sh scripts/mermaid_check.py
+          ./scripts/prepush_gate.sh
 
-  # Matrix tests: isolated caches per Python version (no shared pip-cache race).
+      - name: Mermaid inventory drift
+        env:
+          PYTHONPATH: src
+        run: |
+          python scripts/mermaid_check.py --list
+          python scripts/mermaid_check.py --write-inventory docs/generated/mermaid_inventory.md
+          if ! git diff --exit-code -- docs/generated/mermaid_inventory.md; then
+            echo "::error::mermaid_inventory.md out of date — run:"
+            echo "  python scripts/mermaid_check.py --write-inventory docs/generated/mermaid_inventory.md"
+            echo "  git add docs/generated/mermaid_inventory.md && git commit"
+            exit 1
+          fi
+
+      - name: Job summary
+        if: always()
+        env:
+          PYTHONPATH: src
+        run: |
+          {
+            echo "## Lint summary"
+            echo ""
+            echo "- Ruff + Mermaid: prepush_gate.sh"
+            echo "- Inventory: \`docs/generated/mermaid_inventory.md\`"
+            echo ""
+            python scripts/mermaid_check.py --json | python -c "
+          import json,sys
+          d=json.load(sys.stdin)
+          print(f\"- Mermaid blocks: **{d['blocks']}** in {d['files']} files\")
+          print(f\"- Errors: {d['errors']} · Warnings: {d['warnings']}\")
+          "
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Matrix tests: isolated caches per Python version.
   test:
+    name: Test · Py${{ matrix.python-version }}
     needs: lint
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -56,7 +99,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          # setup-python cache is version-scoped — safe under parallel matrix.
           cache: pip
           cache-dependency-path: |
             pyproject.toml
@@ -70,12 +112,10 @@ jobs:
 
       - name: Pytest
         env:
-          # Isolate pytest temp / cache per matrix cell if jobs share a runner disk.
           PYTEST_ADDOPTS: "-q --tb=short"
           PYTHONPATH: src
         run: |
           if [ -d "tests" ]; then
-            # Unique junit/tmp per matrix to avoid parallel artifact clobber.
             export TMPDIR="${RUNNER_TEMP}/pytest-${{ matrix.python-version }}"
             mkdir -p "$TMPDIR"
             pytest tests/ \
@@ -100,7 +140,7 @@ jobs:
           fi
           python scripts/smoke_live.py || echo "LIVE smoke non-blocking failure"
 
-      - name: Upload junit (debug flaky matrix)
+      - name: Upload junit
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -109,8 +149,18 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  # Single gate for branch protection / release (avoids "3 statuses" race).
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "## Test Py${{ matrix.python-version }}"
+            echo ""
+            echo "- Pytest + smoke_e2e completed (see logs if red)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Single gate for branch protection / release.
   ci-ok:
+    name: CI OK
     needs: [lint, test]
     runs-on: ubuntu-latest
     if: always()
@@ -121,17 +171,29 @@ jobs:
           test "${{ needs.lint.result }}" = "success"
           test "${{ needs.test.result }}" = "success"
 
+      - name: Gate summary
+        if: always()
+        run: |
+          {
+            echo "## CI gate"
+            echo ""
+            echo "| Job | Result |"
+            echo "|-----|--------|"
+            echo "| lint | \`${{ needs.lint.result }}\` |"
+            echo "| test | \`${{ needs.test.result }}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   release:
     name: Create GitHub Release & Publish Package
     needs: ci-ok
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
+    timeout-minutes: 20
 
     permissions:
       contents: write
       packages: write
 
-    # Tags must not race each other.
     concurrency:
       group: release-${{ github.ref }}
       cancel-in-progress: false
