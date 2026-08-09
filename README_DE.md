@@ -1,67 +1,62 @@
 # Gnom-Hub
 
-**Lokaler Multi-Agenten-Steuerungs-Hub** — erst brainstormen, ausführen nur wenn du es sagst.
+**Lokaler Multi-Agenten-Steuerungs-Hub** — frei brainstormen, ausführen nur wenn du es sagst.
 
 | | |
 |--|--|
 | **Version** | 3.7.1 |
 | **Stack** | Python ≥3.10 · FastAPI · Desktop-SPA |
 | **UI** | `http://127.0.0.1:8080/` |
-| **LLM** | DeepSeek (`deepseek-v4-flash`, Thinking aus) · optional Ollama |
+| **LLM** | DeepSeek (`deepseek-v4-flash`) · optional Ollama |
 | **Lizenz** | Private Nutzung |
 
-**English:** [README.md](README.md)  
-**Tiefe Code-Analyse (für andere KIs):** [docs/CODE_ANALYSIS_FOR_AI.md](docs/CODE_ANALYSIS_FOR_AI.md)
+**English:** [README.md](README.md) · **KI-Handoff:** [docs/CODE_ANALYSIS_FOR_AI.md](docs/CODE_ANALYSIS_FOR_AI.md)
 
 ---
+
+## Inhalt
+
+1. [Was es ist](#was-es-ist)
+2. [Schnellstart](#schnellstart)
+3. [Desk bedienen](#desk-bedienen)
+4. [Tools & Plugins](#tools--plugins)
+5. [So funktioniert es](#so-funktioniert-es)
+6. [Entwickeln & Qualität](#entwickeln--qualität)
+7. [Dokumentation](#dokumentation)
+
+---
+
+## Was es ist
+
+Produktregel:
+
+> **Frei brainstormen. Ausführen nur, wenn du Execute drückst.**
+
+Exploration bleibt günstig und umkehrbar. Worker (Kosten, Dateien, Nebenwirkungen) starten nur bewusst.
+
+| Stärken | |
+|---------|--|
+| **Brainstorm → Execute** | Send = nur Dialog; Worker erst nach **Execute** |
+| **Sichtbarer Tisch** | 8 Agenten-Karten · 3 Boxen · wer wo arbeitet |
+| **Eine HTML-Datei** | Landing → ein Worker, eine komplette Seite |
+| **Lokal & portabel** | `User/Key.txt` · USB-taugliches `data/` · kein Cloud-Zwang |
+| **Ehrliche Auth** | Platzhalter (`sk-your-…`) ≠ ready; Worker sagen **FEHLER**, keine Fake-Stubs |
+| **Sicheres Computer-Use** | Maus/Tastatur/Shell dry-run bis **God-Mode** |
+| **Sichtbare Tools** | Registry · Plugins · Prefetch · Badge **Tools** · Light-Trace |
+| **Flex** | Dauerwünsche als absolute Aufträge · Inject + Nudge für Worker |
+
+**Für:** Desktop-Multi-Agenten-Steuerung, HTML-Ergebnisse mit Preview, Kosten/Key/Cancel-Ops.  
+**Nicht für:** unattended Vollautonomie, LangGraph-Drop-in, stille PC-Steuerung bei jeder Nachricht.
 
 ### Screenshots
 
 ![Gnom-Hub Desktop-UI](docs/assets/gnom-hub-ui.png)
 
-*Acht Agenten-Karten · drei Arbeitsboxen · Chat — lokal am Desktop*
+*Agenten-Karten · Arbeitsboxen · Chat*
 
 ![Tools · Computer use](docs/assets/gnom-hub-tools.png)
 
-*Tools-Modal: Core-Tools + Computer-Use (Inspect / Click / Type / Shell)*
-
----
-
-## Warum Gnom?
-
-Viele Agenten-Produkte **starten Tools bei jeder Nachricht** oder verstecken Steuerung in schweren Frameworks. Gnom folgt einer klaren Produktregel:
-
-> **Frei brainstormen. Ausführen nur, wenn du Execute drückst.**
-
-Diese Trennung ist das Kernprodukt: Exploration bleibt günstig und umkehrbar; Worker (Kosten, Dateien, Nebenwirkungen) starten nur bewusst.
-
-### Was besonders gut ist
-
-| Stärke | In der Praxis |
-|--------|----------------|
-| **Brainstorm → Execute** | Send ist nur Dialog. Worker laufen erst nach **Execute** (oder Send+Exec). |
-| **Sichtbarer Multi-Agenten-Tisch** | Acht feste Rollen als Karten + drei Boxen — du siehst wer arbeitet und wo das Ergebnis landet. |
-| **Eine HTML-Seite, nicht vier** | Bei Landing/Page: **ein** Worker, **eine** komplette Single-File-HTML. |
-| **Lokal & portabel** | Läuft auf deinem Rechner; Keys in `User/Key.txt`; USB-taugliches `data/`; kein Cloud-Zwang. |
-| **Ehrliche LLM / Auth** | Platzhalter (`sk-your-…`) zählen nicht als „ready“. Worker liefern **FEHLER**, keine Fake-Stubs. Session blockt tote Keys nach 401. |
-| **Sicherheit by default** | Maus / Tastatur / Shell nur **Dry-Run**, bis **God-Mode** bewusst an ist. |
-| **Sichtbare Tools** | Registry + Plugins; Worker-**Prefetch** (`web_fetch`, `memory_search`, `install_tool`); UI-Badge **Tools** + Light-Trace. |
-| **Operator-Ops** | HOT / WARM / COLD-Memory, Workspace, Backups, Session-Packs, Jobs, Soft-Cancel, Light-Trace, Budget-Schutz. |
-| **Schlanke Orchestrierung** | Eine feste Pipeline. Team-/Worker-**Presets** + `plan_mode` — keine zweite Workflow-Engine. |
-| **Sauberes Memory** | Dauerhafte Fakten nach WARM; Flex-Wünsche (`source=flex`) überleben HOT-Clear; HTML/Meta-Müll gefiltert. |
-| **Flex als Operator-Proxy** | Gesperrter Agent: speichert nur deine Wünsche als **absolute** Aufträge, schreibt im Brainstorm mit, kann Execute auslösen, nudgt Worker (kein sinnloser Re-Run bei Auth-Fail). |
-
-### Für wen
-
-- Builder mit **Desktop-Steuerfläche** für Multi-Agenten-Arbeit  
-- Leute, die **HTML-Ergebnisse** direkt in der Box previewen wollen  
-- Operatoren, die **Kosten, Keys, Cancel und Überblick** brauchen — nicht nur Vibe-Chat  
-
-### Nicht für
-
-- Vollautonome Agenten ohne menschliche Freigabe  
-- Drop-in-Ersatz für LangGraph / CrewAI-Research-Stacks  
-- Stille PC-Steuerung bei jeder Chat-Nachricht  
+*Tools-Modal: Core-Tools + Computer-Use*
 
 ---
 
@@ -70,227 +65,224 @@ Diese Trennung ist das Kernprodukt: Exploration bleibt günstig und umkehrbar; W
 ```bash
 cd gnom-hub-v1
 ./scripts/install.sh && source .venv/bin/activate
-# Keys → persönliche WS User/Key.txt  (siehe docs/KEYS_AND_MODELS.md)
 ./scripts/start.sh
-# öffnen: http://127.0.0.1:8080/
+# → http://127.0.0.1:8080/
 ```
 
-`Key.txt.example` → **`User/Key.txt`** (oder Root-`Key.txt` legacy) und mindestens setzen:
+### Keys
 
-- `DEEPSEEK_API_KEY` — System-Agenten (Brainstorm, Memory, Flex, Coordinator)  
-- `WORKER_API_KEY` — Worker (optional; fällt auf System-Key zurück)  
-- `DEEPSEEK_MODEL=deepseek-v4-flash`  
+1. `Key.txt.example` → **`User/Key.txt`** (Root-`Key.txt` geht legacy noch).
+2. **Echten** Key setzen (nicht `sk-your-…`):
 
-**Keine** Example-Platzhalter (`sk-your-system-deepseek-key`) — der Hub wertet sie als fehlend.  
-Nie `Key.txt`, `User/` oder `.env` committen.
+```text
+DEEPSEEK_API_KEY=sk-...          # System-Agenten
+WORKER_API_KEY=sk-...            # optional; sonst System-Key
+DEEPSEEK_MODEL=deepseek-v4-flash
+```
 
-Ohne **nutzbaren** API-Key (und ohne Ollama) melden Worker **FEHLER — kein Deliverable** statt Erfolgs-Simulation. Stages laufen weiter für Smoke-Tests.
+Nie `Key.txt`, `User/` oder `.env` committen. Details: [docs/KEYS_AND_MODELS.md](docs/KEYS_AND_MODELS.md).
 
-Header-Badges:
-
-| Badge | Bedeutung |
-|-------|-----------|
-| **LLM: …** | Live-Provider / Platzhalter / blockiert / kein Key |
-| **Tools: N** | Tool-Calls in diesem Pipeline-Lauf |
-| **God / Mem / Vec / Cold / Stage** | Ops-Oberfläche |
+Ohne nutzbaren Key (und ohne Ollama) melden Worker **FEHLER — kein Deliverable** statt Erfolgs-Simulation.
 
 ---
 
 ## Desk bedienen
 
-### Chat-Steuerung
+### Chat
 
 | Steuerung | Aktion |
 |-----------|--------|
 | **Send** | Ein Brainstorm-Turn → Box 2 |
-| **Execute** | Distill → Flex → Coordinator-Plan → Worker → Box 3 + Memory |
+| **Execute** | Distill → Flex → Plan → Worker → Box 3 + Memory |
 | **Send+Exec** | Beides nacheinander |
 | **Mic** | Browser Speech-to-Text |
-| **Cancel** | Laufenden Job soft abbrechen |
+| **Cancel** | Job soft abbrechen |
 
-Chat: **Flag-Chips** (Farben = Intent) und Freitext-Notizen am Resultat, wo aktiviert.
+Flag-Chips im Chat hängen Intent-Farben an (wo aktiv).
 
 ### Boxen
 
 | Box | Rolle |
 |-----|--------|
-| **1 · Arounder** | Hilfe / Tooltips · Clarify (Yes / No / Whatever / Later) |
+| **1 · Arounder** | Hilfe · Clarify (Yes / No / Whatever / Later) |
 | **2 · Brainstorm** | Mehrturn-Dialog |
-| **3 · Workers** | Ergebnis — HTML-**Preview** / Source / Copy |
+| **3 · Workers** | Ergebnis — HTML Preview / Source / Copy |
 
-### Agenten (festes Roster)
+### Header-Badges
+
+| Badge | Bedeutung |
+|-------|-----------|
+| **LLM** | Live / Platzhalter / blockiert / kein Key |
+| **Tools: N** | Tool-Calls in diesem Pipeline-Lauf |
+| **God · Mem · Vec · Cold · Stage** | Ops-Status |
+
+### Agenten
 
 | Agent | Rolle | Default |
 |-------|------|---------|
-| Brainstorm | Freier Mehrturn-Partner | an |
-| Memory | Recall + dauerhafte Fakten | an (gesperrt) |
-| Flex | **Fest** persönlicher Companion: Wünsche → WARM, Mitreden, Execute-Trigger, Worker-Nudge | an (**gesperrt**) |
-| Coordinator | Requirements destillieren · Worker planen | an |
-| Worker 1–2 | Lieferobjekte erzeugen | an |
-| Worker 3–4 | Extra-Kapazität | an (toggelbar) |
+| Brainstorm | Mehrturn-Partner | an |
+| Memory | Recall + Dauerfakten | an (gesperrt) |
+| Flex | Wünsche → WARM · Mitreden · Execute · Worker-Nudge | an (**gesperrt**) |
+| Coordinator | Distill · Worker planen | an |
+| Worker 1–4 | Lieferobjekte (3–4 toggelbar) | an |
 
 ### Computer-Use
 
 **Tools → Computer use** — Inspect · Click · Type · Shell.
 
-| Modus | Verhalten |
-|-------|-----------|
-| God **aus** | nur Dry-Run (sicherer Default) |
-| God **an** | echte Maus / Tastatur / Allowlist-Shell |
+| God-Mode | Verhalten |
+|----------|-----------|
+| **aus** | nur Dry-Run (Default) |
+| **an** | echte Maus / Tastatur / Allowlist-Shell |
 
 ```bash
-pip install -e ".[computer]"   # optionale Extras
+pip install -e ".[computer]"   # optional
 ```
 
-Details: [docs/TOOLS_PORTFOLIO.md](docs/TOOLS_PORTFOLIO.md).
+→ [docs/TOOLS_PORTFOLIO.md](docs/TOOLS_PORTFOLIO.md)
 
 ---
 
 ## Tools & Plugins
 
-### Core-Tools (immer registriert)
+### Core-Tools
 
 | Tool | Zweck |
 |------|--------|
-| `hub_status` | Kompakt: Stage / Auth / tool_calls / God |
-| `tools_list` | Tool-Katalog (optional `tag`) |
+| `hub_status` | Stage · Auth · tool_calls · God |
+| `tools_list` | Katalog (optional `tag`) |
 | `memory_search` | Vector- / Lexik-Suche |
-| `pipeline_do` | Volle Pipeline mit Task-Text |
-| `pipeline_info` | Stage, tool_calls, Quality-Head |
-| `web_fetch` | Öffentliches HTTP(S) → Text (SSRF-sichere Defaults) |
-| `workspace_list` / `workspace_read` | Hub-Workspace-Zonen |
+| `pipeline_do` | Volle Pipeline aus Task-Text |
+| `pipeline_info` | Stage · tool_calls · Quality-Head |
+| `web_fetch` | Öffentliches HTTP(S) → Text |
+| `workspace_list` / `workspace_read` | Hub-Workspace |
 | `trace_tail` | Letzte Light-Trace-Events |
 
-API: `GET /api/plugins`, `POST /api/tools/call`, `GET /api/mcp/tools`.
+API: `GET /api/plugins` · `POST /api/tools/call` · `GET /api/mcp/tools`
 
-### Worker-Prefetch
+### Worker-Prefetch (bei Execute)
 
-Bei **Execute** können Worker automatisch (und als `pipeline.tool_call` geloggt):
+| Wann | Tool |
+|------|------|
+| URLs in der Aufgabe | `web_fetch` |
+| Stehender Kontext | `memory_search` |
+| Fehlende Allowlist-Deps | `install_tool` (zuerst dry-run) |
 
-- `web_fetch` bei URLs in der Aufgabe  
-- `memory_search` für stehenden Kontext  
-- `install_tool` (Plugin) für fehlende Allowlist-Pakete (z. B. Playwright) — zuerst dry-run  
+Calls erscheinen als `pipeline.tool_call` und im Badge **Tools**.
 
 ### Plugins
 
-Vertrauenswürdige Packs unter `plugins/<id>/` mit `plugin.json` + `main.py`.
+Vertrauenswürdige Packs: `plugins/<id>/plugin.json` + `main.py`.
 
 ```bash
-python scripts/new_plugin.py my_tool   # aus plugins/_template
+python scripts/new_plugin.py my_tool
 # plugins/my_tool/ editieren · Restart oder:
 # POST /api/plugins/reload?plugin_id=my_tool
 ```
 
-Helfer: `from gnom_hub.plugins.sdk import ok, fail, retry`.  
-Sicherheit & Authoring: [docs/PLUGIN_SECURITY.md](docs/PLUGIN_SECURITY.md).
+```python
+from gnom_hub.plugins.sdk import ok, fail, retry
 
-Mitgeliefert: `echo`, `install_tool`, `text_stats` (`_template` wird nicht geladen).
+def run(text: str = "") -> dict:
+    if not text.strip():
+        return fail("text required")
+    return ok(result=text)
+```
+
+Mitgeliefert: `echo`, `install_tool`, `text_stats` · Vorlage: `plugins/_template/` (wird nicht geladen).  
+→ [docs/PLUGIN_SECURITY.md](docs/PLUGIN_SECURITY.md)
 
 ---
 
-## Architektur
+## So funktioniert es
 
 ```
-Browser-SPA (app.js ← parts/* via build_ui_js.py)
+Browser-SPA (app.js ← parts/*)
        │  REST + Job-Polling
        ▼
-FastAPI  ──►  Hub (Composition Root + Mixins)
-                 ├── EventBus (sync)
-                 ├── Orchestrator (Stages)
-                 ├── 8 Rollen-Agenten
-                 ├── LLM-Manager (DeepSeek / Ollama + Auth-Snapshot)
-                 ├── Memory (HOT / WARM / COLD / Vector)
-                 ├── ToolRegistry + PluginLoader
-                 ├── Workspace · Packs · Backups · Jobs
-                 └── Computer-Use-Kit (+ God-Mode)
+FastAPI  →  Hub (Composition + Mixins)
+              ├── EventBus · Orchestrator · 8 Agenten
+              ├── LLM-Manager (DeepSeek / Ollama + Auth)
+              ├── Memory HOT / WARM / COLD / Vector
+              ├── ToolRegistry + PluginLoader
+              ├── Workspace · Packs · Jobs
+              └── Computer-Use + God-Mode
 ```
 
-Öffentliche Hub-Methoden liegen in fokussierten Mixins (`pipeline_api`, `jobs`, `session_pack`, `presets`, `tools_ops`, …). API bleibt dünn.
-
-### Pipeline-Stages
+### Pipeline
 
 ```
 memory → brainstorm → distill → [clarify] → flex → coordinate → work → done
 ```
 
-- **Brainstorm** (Send): nur Dialog; Flex speichert Wünsche + schreibt mit; kann bei klarem Intent auto-Execute.  
-- **Execute**: Distill → optional Clarify → Flex-Briefing + absolute Wish-Inject → Plan → Prefetch-Tools → Worker → Quality-Gates / Retries → Flex-Nudge.  
-- One-Shot-Pfad für Tests / Telegram (`/do`).  
+| Pfad | Verhalten |
+|------|-----------|
+| **Send** | nur Dialog; Flex speichert Wünsche / kann auto-Execute |
+| **Execute** | Distill · Wish-Inject · Plan · Prefetch · Worker · Gates · Flex-Nudge |
+| **Telegram / Tests** | One-Shot `/do` |
 
-### Memory-Schichten
+### Memory
 
 | Schicht | Lebensdauer | Zweck |
 |---------|-------------|--------|
-| **HOT** | Session | Messages, Session-Fakten, Mermaid-Canvas |
-| **WARM** | Dauerhaft | Langzeit-Fakten (überleben HOT-Clear / Clean) |
+| **HOT** | Session | Messages · Session-Fakten · Canvas |
+| **WARM** | Dauerhaft | Dauerfakten / Flex-Wünsche |
 | **COLD** | Archiv | Gespeicherte Sessions |
-| **Vector** | Dauerhaft | Hybrid BM25 + Cosine (Short-Facts; Flex-Boost) |
+| **Vector** | Dauerhaft | Hybrid BM25 + Cosine |
 | **Workspace** | Artefakte | Temp / permanent nach Execute |
 
-Clean / Reset leert HOT + Temp-Workspace + Pipeline; **WARM bleibt**, außer explizit geleert.
+Clean / Reset: HOT + Temp-Workspace + Pipeline; **WARM bleibt**, außer explizit geleert.
 
 ### Plan-Modi (Presets)
 
-Über Team-Presets — keine zweite Orchestrierungs-Runtime:
-
 | Modus | Verhalten |
 |-------|-----------|
-| `default` | Auto HTML-Full-Page wenn Task wie eine Seite wirkt; sonst LLM/Stub-Split |
-| `full_page_html` | Genau **ein** Worker baut eine komplette HTML-Seite |
-| `plan_qa` | Deterministische QA-Task-Templates |
-| `diagnosis` | Deterministische Diagnose-Templates |
+| `default` | Auto Full-Page-HTML wenn Task wie Seite wirkt |
+| `full_page_html` | Genau ein Worker · eine komplette HTML-Seite |
+| `plan_qa` / `diagnosis` | Deterministische Task-Templates |
 
-Siehe [docs/WORKFLOWS_AND_PRESETS.md](docs/WORKFLOWS_AND_PRESETS.md).
+→ [docs/WORKFLOWS_AND_PRESETS.md](docs/WORKFLOWS_AND_PRESETS.md)
 
 ---
 
-## Qualität & Mitarbeit
+## Entwickeln & Qualität
 
 ```bash
-ruff check .
-ruff format .
-ruff format --check .
+ruff check . && ruff format --check .
 pytest tests/ -q --tb=short
 
-# Lokales Pre-Push-Gate (auch per Git-Hooks)
 ./scripts/prepush_gate.sh
 ./scripts/install_git_hooks.sh   # pre-commit + pre-push + safe.directory
 
-# Mutationstests (Tests der Tests)
-python scripts/mutation_check.py              # schnelle Helper — alle Mutanten killen
-# optional tief: ./scripts/run_mutmut.sh      # siehe docs/MUTMUT.md
-
+python scripts/mutation_check.py
 ./scripts/quality_check.sh
-python scripts/basic_tests.py          # braucht Server :8080
-python scripts/user_scenarios_e2e.py   # Playwright-Szenarien
-python -m gnom_hub.main --smoke        # Brainstorm → Execute ohne UI
+python scripts/basic_tests.py          # Server :8080
+python scripts/user_scenarios_e2e.py   # Playwright
+python -m gnom_hub.main --smoke
 ```
 
-Coding-Agenten: [AGENTS.md](AGENTS.md) — ruff + pytest grün vor jedem Push; nach jedem fertigen Schritt committen und pushen; keine Secrets committen.
-
-Flex-Vertrag: [docs/AGENTS_DEFINITION.md](docs/AGENTS_DEFINITION.md). Tests: [docs/TESTING.md](docs/TESTING.md).
+Coding-Agenten: [AGENTS.md](AGENTS.md) — ruff + pytest grün vor jedem Push; keine Secrets.  
+Flex-Vertrag: [docs/AGENTS_DEFINITION.md](docs/AGENTS_DEFINITION.md) · Tests: [docs/TESTING.md](docs/TESTING.md)
 
 ---
 
 ## Dokumentation
 
-| Dokument | Inhalt |
+| Dokument | Thema |
 |----------|--------|
 | [README.md](README.md) | English README |
-| [AGENTS.md](AGENTS.md) | Coding-Regeln / Push-Gate |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Kurze Systemkarte |
-| [docs/CODE_ANALYSIS_FOR_AI.md](docs/CODE_ANALYSIS_FOR_AI.md) | Volle Architektur für externe KIs |
-| [docs/KEYS_AND_MODELS.md](docs/KEYS_AND_MODELS.md) | Keys & Modell-IDs |
-| [docs/PLUGIN_SECURITY.md](docs/PLUGIN_SECURITY.md) | Plugins: Trust, Authoring, Reload |
-| [docs/BASIC_USER_TEST.md](docs/BASIC_USER_TEST.md) | Canonical User-E2E |
+| [AGENTS.md](AGENTS.md) | Coding-Regeln · Push-Gate |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Systemkarte |
+| [docs/CODE_ANALYSIS_FOR_AI.md](docs/CODE_ANALYSIS_FOR_AI.md) | Voller KI-Handoff |
+| [docs/KEYS_AND_MODELS.md](docs/KEYS_AND_MODELS.md) | Keys & Modelle |
+| [docs/PLUGIN_SECURITY.md](docs/PLUGIN_SECURITY.md) | Plugin-Trust & Authoring |
+| [docs/TOOLS_PORTFOLIO.md](docs/TOOLS_PORTFOLIO.md) | Computer-Use-Libs |
+| [docs/AGENTS_DEFINITION.md](docs/AGENTS_DEFINITION.md) | Agenten-Roster · Flex |
+| [docs/WORKFLOWS_AND_PRESETS.md](docs/WORKFLOWS_AND_PRESETS.md) | Presets · plan_mode |
+| [docs/BASIC_USER_TEST.md](docs/BASIC_USER_TEST.md) | User-E2E |
 | [docs/STABILITY.md](docs/STABILITY.md) | Stabilitäts-Checkliste |
-| [docs/TOOLS_PORTFOLIO.md](docs/TOOLS_PORTFOLIO.md) | Computer-Use-Bibliotheken |
-| [docs/AGENTS_DEFINITION.md](docs/AGENTS_DEFINITION.md) | Agenten-Roster · **Flex fixed** |
-| [docs/WORKFLOWS_AND_PRESETS.md](docs/WORKFLOWS_AND_PRESETS.md) | Presets & plan_mode |
-| [docs/TESTING.md](docs/TESTING.md) | pytest + Mutation-Überblick |
-| [docs/MUTMUT.md](docs/MUTMUT.md) | mutmut-Config · Profile · Hooks |
-| [docs/V1_SCOPE.md](docs/V1_SCOPE.md) | Produkt-Scope |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | Release-Historie |
+| [docs/TESTING.md](docs/TESTING.md) / [MUTMUT.md](docs/MUTMUT.md) | pytest · Mutation |
+| [docs/V1_SCOPE.md](docs/V1_SCOPE.md) / [ROADMAP.md](docs/ROADMAP.md) | Scope · Historie |
 
 ---
 
