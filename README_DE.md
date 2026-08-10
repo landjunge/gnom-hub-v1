@@ -4,8 +4,9 @@
 
 | | |
 |--|--|
-| **Version** | 3.10.1 ([notes](docs/CHANGELOG_3.9.md)) |
-| **Docs** | [Hub-Architektur](docs/HUB_ARCHITECTURE.md) · [Plugins](docs/PLUGINS.md) · [Merges](docs/MERGE_STATUS.md) |
+| **Version** | 3.10.1 ([Changelog](docs/CHANGELOG_3.10.md) · [Release-Notes](docs/GITHUB_HOLDER_3.10.md)) |
+| **Docs-Index** | **[docs/INDEX.md](docs/INDEX.md)** — durchsuchbare Keyword-Karte (alle Docs) |
+| **Kern-Docs** | [Install](docs/INSTALL_SIMPLE.md) · [Hub-Architektur](docs/HUB_ARCHITECTURE.md) · [Orchestrierung](docs/ORCHESTRATION.md) · [Skills](docs/SKILLS.md) · [Plugins](docs/PLUGINS.md) · [UI-Qualität](docs/UI_QUALITY.md) · [Stabilität](docs/STABILITY.md) |
 | **Stack** | Python ≥3.10 · FastAPI · Desktop-SPA |
 | **UI** | `http://127.0.0.1:8080/` |
 | **LLM** | DeepSeek (`deepseek-v4-flash`) · optional Ollama |
@@ -20,10 +21,11 @@
 1. [Was es ist](#was-es-ist)
 2. [Schnellstart](#schnellstart)
 3. [Desk bedienen](#desk-bedienen)
-4. [Tools & Plugins](#tools--plugins)
-5. [So funktioniert es](#so-funktioniert-es)
-6. [Entwickeln & Qualität](#entwickeln--qualität)
-7. [Dokumentation](#dokumentation)
+4. [Skills · Memory · Suche](#skills--memory--suche)
+5. [Tools & Plugins](#tools--plugins)
+6. [So funktioniert es](#so-funktioniert-es)
+7. [Entwickeln & Qualität](#entwickeln--qualität)
+8. [Dokumentation](#dokumentation)
 
 ---
 
@@ -45,6 +47,9 @@ Exploration bleibt günstig und umkehrbar. Worker (Kosten, Dateien, Nebenwirkung
 | **Sicheres Computer-Use** | Maus/Tastatur/Shell dry-run bis **God-Mode** |
 | **Sichtbare Tools** | Registry · Plugins · Prefetch · Badge **Tools** · Light-Trace |
 | **Flex** | Dauerwünsche als absolute Aufträge · Inject + Nudge für Worker |
+| **Playbook-Skills** | Markdown-Skills (Inject) · aus Execute lernen · lokaler Katalog |
+| **Vector-Suche** | bow default · optional **fastembed** neural · Vector-Modal |
+| **UI-Feinschliff** | stimmige Agentenfarben · adaptives Job-Polling · Mobile-Tabs |
 
 **Für:** Desktop-Multi-Agenten-Steuerung, HTML-Ergebnisse mit Preview, Kosten/Key/Cancel-Ops.  
 **Nicht für:** Docker/K8s-Deploys, unattended Vollautonomie, LangGraph-Drop-in, stille PC-Steuerung bei jeder Nachricht.
@@ -67,6 +72,7 @@ Exploration bleibt günstig und umkehrbar. Worker (Kosten, Dateien, Nebenwirkung
 # Kein Docker — nur venv + lokales FastAPI
 cd gnom-hub-v1
 ./scripts/install.sh && source .venv/bin/activate
+# optional bessere Suche: ./scripts/install_embeddings.sh
 ./scripts/start.sh
 # → http://127.0.0.1:8080/
 ```
@@ -116,7 +122,7 @@ Flag-Chips im Chat hängen Intent-Farben an (wo aktiv).
 |-------|-----------|
 | **LLM** | Live / Platzhalter / blockiert / kein Key |
 | **Tools: N** | Tool-Calls in diesem Pipeline-Lauf |
-| **God · Mem · Vec · Cold · Stage** | Ops-Status |
+| **God · Mem · Vec · Skills · Cold · Stage** | Ops-Status |
 
 ### Agenten
 
@@ -142,6 +148,41 @@ pip install -e ".[computer]"   # optional
 ```
 
 → [docs/TOOLS_PORTFOLIO.md](docs/TOOLS_PORTFOLIO.md)
+
+---
+
+## Skills · Memory · Suche
+
+### Playbook-Skills (kein Workflow-Engine)
+
+Skills sind **Markdown-Playbooks** im System-Prompt. Sie ändern **keine** Pipeline-Stages.
+
+| Aktion | Wie |
+|--------|-----|
+| Liste / Toggle | Badge **Skills** → Modal |
+| Ordner installieren | Skills-Modal Pfad + Install (nur Text-Packs) |
+| Aus letztem Lauf lernen | **Als Skill speichern** / `POST /api/skills/learn_from_last` |
+| Seeds | `html_landing` · `tool_honesty` · `de_desk` · `qa_checklist` |
+
+→ [docs/SKILLS.md](docs/SKILLS.md) · Freeze: [WORKFLOWS_AND_PRESETS.md](docs/WORKFLOWS_AND_PRESETS.md)
+
+### Memory-Schichten
+
+| Schicht | Rolle |
+|---------|--------|
+| **HOT** | Session / kurzer Kontext |
+| **WARM** | Dauerhafte Fakten + Flex-Wünsche |
+| **COLD** | Archive |
+| **Vector** | Durchsuchbare Docs (Embedder umschaltbar) |
+
+### Neural Embeddings (optional)
+
+```bash
+./scripts/install_embeddings.sh
+# oder Desk: Vector → Install neural → fastembed → Apply + reindex
+```
+
+Ohne Install: Default **bow**. Modelle vs. Vector-DBs: [docs/VECTORS_AND_RUST.md](docs/VECTORS_AND_RUST.md).
 
 ---
 
@@ -191,8 +232,8 @@ def run(text: str = "") -> dict:
     return ok(result=text)
 ```
 
-Mitgeliefert: `echo`, `install_tool`, `text_stats` · Vorlage: `plugins/_template/` (wird nicht geladen).  
-→ [docs/PLUGIN_SECURITY.md](docs/PLUGIN_SECURITY.md)
+Mitgeliefert u.a.: `echo`, `install_tool`, `text_stats`, `embeddings_lite`, `embeddings_neural`, Browser/File/Git/Shell · Vorlage: `plugins/_template/` (wird nicht geladen).  
+→ [docs/PLUGINS.md](docs/PLUGINS.md) · [PLUGIN_SECURITY.md](docs/PLUGIN_SECURITY.md)
 
 ---
 
@@ -376,25 +417,34 @@ Flex-Vertrag: [docs/AGENTS_DEFINITION.md](docs/AGENTS_DEFINITION.md) · Tests: [
 
 ## Dokumentation
 
+**Vollständiger, durchsuchbarer Index:** [docs/INDEX.md](docs/INDEX.md) (Keywords + A–Z).
+
 | Dokument | Thema |
 |----------|--------|
 | [README.md](README.md) | English README |
+| [docs/INDEX.md](docs/INDEX.md) | **Alle Docs · Keywords · A–Z** |
+| [docs/INSTALL_SIMPLE.md](docs/INSTALL_SIMPLE.md) | Ein-Befehl-Install · Embeddings |
+| [docs/HUB_ARCHITECTURE.md](docs/HUB_ARCHITECTURE.md) | Exakte Desk-Schichten |
+| [docs/ORCHESTRATION.md](docs/ORCHESTRATION.md) | Pipeline · Agenten · Skill-Inject |
+| [docs/SKILLS.md](docs/SKILLS.md) | Playbook-Skills API & Authoring |
+| [docs/PLUGINS.md](docs/PLUGINS.md) | Plugin-Katalog · Neural Embeddings |
+| [docs/UI_QUALITY.md](docs/UI_QUALITY.md) | Farben · Poll · A11y |
+| [docs/STABILITY.md](docs/STABILITY.md) | Stabilitäts- / Quality-Gates |
+| [docs/VECTORS_AND_RUST.md](docs/VECTORS_AND_RUST.md) | Embedder vs. DBs · Tauri später |
 | [AGENTS.md](AGENTS.md) | Coding-Regeln · Push-Gate |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Systemkarte |
-| [docs/MERMAID.md](docs/MERMAID.md) | Mermaid-Syntax-Referenz · Klassen-Palette |
 | [docs/CODE_ANALYSIS_FOR_AI.md](docs/CODE_ANALYSIS_FOR_AI.md) | Voller KI-Handoff |
 | [docs/KEYS_AND_MODELS.md](docs/KEYS_AND_MODELS.md) | Keys & Modelle |
-| [docs/PLUGIN_SECURITY.md](docs/PLUGIN_SECURITY.md) | Plugin-Trust & Authoring |
-| [docs/ERROR_HANDLING.md](docs/ERROR_HANDLING.md) | Fehler-Schichten · Envelopes · Retries |
-| [docs/MCP_ARCHITECTURE.md](docs/MCP_ARCHITECTURE.md) | MCP-lite Server-Architektur |
-| [docs/TOOLS_PORTFOLIO.md](docs/TOOLS_PORTFOLIO.md) | Computer-Use-Libs |
+| [docs/PLUGIN_SECURITY.md](docs/PLUGIN_SECURITY.md) | Plugin-Trust |
+| [docs/ERROR_HANDLING.md](docs/ERROR_HANDLING.md) | Fehler · Retries |
+| [docs/MCP_ARCHITECTURE.md](docs/MCP_ARCHITECTURE.md) | MCP-lite |
+| [docs/TOOLS_PORTFOLIO.md](docs/TOOLS_PORTFOLIO.md) | Computer-Use |
 | [docs/AGENTS_DEFINITION.md](docs/AGENTS_DEFINITION.md) | Agenten-Roster · Flex |
-| [docs/WORKFLOWS_AND_PRESETS.md](docs/WORKFLOWS_AND_PRESETS.md) | Presets · plan_mode |
-| [docs/BASIC_USER_TEST.md](docs/BASIC_USER_TEST.md) | User-E2E |
-| [docs/STABILITY.md](docs/STABILITY.md) | Stabilitäts-Checkliste |
-| [docs/TESTING.md](docs/TESTING.md) / [MUTMUT.md](docs/MUTMUT.md) | pytest · Mutation |
-| [docs/PYTHON_CACHE.md](docs/PYTHON_CACHE.md) | pip/venv CI-Cache-Strategien |
-| [docs/V1_SCOPE.md](docs/V1_SCOPE.md) / [ROADMAP.md](docs/ROADMAP.md) | Scope · Historie |
+| [docs/WORKFLOWS_AND_PRESETS.md](docs/WORKFLOWS_AND_PRESETS.md) | Presets · plan_mode-Freeze |
+| [docs/TESTING.md](docs/TESTING.md) · [MUTMUT.md](docs/MUTMUT.md) | pytest · Mutation |
+| [docs/CHANGELOG_3.10.md](docs/CHANGELOG_3.10.md) · [GITHUB_HOLDER_3.10.md](docs/GITHUB_HOLDER_3.10.md) | 3.10-Notes |
+| [docs/V1_SCOPE.md](docs/V1_SCOPE.md) · [ROADMAP.md](docs/ROADMAP.md) · [V4_PLAN.md](docs/V4_PLAN.md) | Scope · Roadmap |
+| [docs/MERGE_STATUS.md](docs/MERGE_STATUS.md) | PR-Merge-Status |
 
 ---
 

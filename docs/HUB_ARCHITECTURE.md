@@ -1,5 +1,7 @@
 # Gnom-Hub — exact architecture overview
 
+Doc map: [INDEX.md](INDEX.md) (searchable).
+
 Companion to [ARCHITECTURE.md](ARCHITECTURE.md) (runtime diagrams) and
 [CODE_ANALYSIS_FOR_AI.md](CODE_ANALYSIS_FOR_AI.md) (deep dive).
 

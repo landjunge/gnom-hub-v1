@@ -4,8 +4,9 @@
 
 | | |
 |--|--|
-| **Version** | 3.10.1 ([notes](docs/CHANGELOG_3.10.md)) |
-| **Docs** | [Hub arch](docs/HUB_ARCHITECTURE.md) · [Plugins](docs/PLUGINS.md) · [Merges](docs/MERGE_STATUS.md) · [V4 plan](docs/V4_PLAN.md) · [Orchestration](docs/ORCHESTRATION.md) · [GitHub 3.10](docs/GITHUB_HOLDER_3.10.md) · [Simple install](docs/INSTALL_SIMPLE.md) |
+| **Version** | 3.10.1 ([changelog](docs/CHANGELOG_3.10.md) · [release notes](docs/GITHUB_HOLDER_3.10.md)) |
+| **Docs index** | **[docs/INDEX.md](docs/INDEX.md)** — searchable keyword map (all docs) |
+| **Core docs** | [Install](docs/INSTALL_SIMPLE.md) · [Hub arch](docs/HUB_ARCHITECTURE.md) · [Orchestration](docs/ORCHESTRATION.md) · [Skills](docs/SKILLS.md) · [Plugins](docs/PLUGINS.md) · [UI quality](docs/UI_QUALITY.md) · [Stability](docs/STABILITY.md) |
 | **Stack** | Python ≥3.10 · FastAPI · desktop SPA |
 | **UI** | `http://127.0.0.1:8080/` |
 | **LLM** | DeepSeek (`deepseek-v4-flash`) · optional Ollama |
@@ -20,10 +21,11 @@
 1. [What it is](#what-it-is)
 2. [Quick start](#quick-start)
 3. [Using the desk](#using-the-desk)
-4. [Tools & plugins](#tools--plugins)
-5. [How it works](#how-it-works)
-6. [Develop & quality](#develop--quality)
-7. [Documentation](#documentation)
+4. [Skills · memory · search](#skills--memory--search)
+5. [Tools & plugins](#tools--plugins)
+6. [How it works](#how-it-works)
+7. [Develop & quality](#develop--quality)
+8. [Documentation](#documentation)
 
 ---
 
@@ -45,6 +47,9 @@ Exploration stays cheap and reversible. Workers (cost, files, side effects) star
 | **Safe computer-use** | Mouse/keyboard/shell dry-run until **God-Mode** |
 | **Visible tools** | Registry · plugins · prefetch · **Tools** badge · light trace |
 | **Flex** | Standing wishes as absolute orders · inject + nudge workers |
+| **Playbook skills** | Markdown skills (inject) · learn from Execute · local catalog |
+| **Vector search** | bow default · optional **fastembed** neural · Vector modal |
+| **UI polish** | Coherent agent colors · adaptive job poll · mobile tabs |
 
 **For:** desktop multi-agent control, HTML deliverables with preview, cost/key/cancel ops.  
 **Not for:** Docker/K8s deploys, unattended full autonomy, LangGraph drop-in, silent PC control on every message.
@@ -117,7 +122,7 @@ Flag chips in chat attach intent colors where enabled.
 |-------|---------|
 | **LLM** | Live / placeholder / blocked / no key |
 | **Tools: N** | Tool calls this pipeline run |
-| **God · Mem · Vec · Cold · Stage** | Ops status |
+| **God · Mem · Vec · Skills · Cold · Stage** | Ops status |
 
 ### Agents
 
@@ -143,6 +148,41 @@ pip install -e ".[computer]"   # optional
 ```
 
 → [docs/TOOLS_PORTFOLIO.md](docs/TOOLS_PORTFOLIO.md)
+
+---
+
+## Skills · memory · search
+
+### Playbook skills (not a workflow engine)
+
+Skills are **markdown playbooks** injected into agent prompts. They do **not** change pipeline stages.
+
+| Action | How |
+|--------|-----|
+| List / toggle | Badge **Skills** → modal |
+| Install folder | Skills modal path + Install (text-only packs) |
+| Learn from last run | **Als Skill speichern** / `POST /api/skills/learn_from_last` |
+| Seeds | `html_landing` · `tool_honesty` · `de_desk` · `qa_checklist` |
+
+→ [docs/SKILLS.md](docs/SKILLS.md) · freeze: [WORKFLOWS_AND_PRESETS.md](docs/WORKFLOWS_AND_PRESETS.md)
+
+### Memory tiers
+
+| Tier | Role |
+|------|------|
+| **HOT** | Session / short context |
+| **WARM** | Durable facts + Flex wishes |
+| **COLD** | Archives |
+| **Vector** | Searchable docs (embedder switchable) |
+
+### Neural embeddings (optional)
+
+```bash
+./scripts/install_embeddings.sh
+# or desk: Vector → Install neural → fastembed → Apply + reindex
+```
+
+Default without install: **bow**. Models vs vector DBs: [docs/VECTORS_AND_RUST.md](docs/VECTORS_AND_RUST.md).
 
 ---
 
@@ -192,8 +232,8 @@ def run(text: str = "") -> dict:
     return ok(result=text)
 ```
 
-Bundled: `echo`, `install_tool`, `text_stats` · template: `plugins/_template/` (not loaded).  
-→ [docs/PLUGIN_SECURITY.md](docs/PLUGIN_SECURITY.md)
+Bundled includes: `echo`, `install_tool`, `text_stats`, `embeddings_lite`, `embeddings_neural`, browser/file/git/shell packs · template: `plugins/_template/` (not loaded).  
+→ [docs/PLUGINS.md](docs/PLUGINS.md) · [PLUGIN_SECURITY.md](docs/PLUGIN_SECURITY.md)
 
 ---
 
@@ -377,25 +417,34 @@ Flex contract: [docs/AGENTS_DEFINITION.md](docs/AGENTS_DEFINITION.md) · Tests: 
 
 ## Documentation
 
+**Full searchable index:** [docs/INDEX.md](docs/INDEX.md) (keyword map + A–Z).
+
 | Document | Topic |
 |----------|--------|
 | [README_DE.md](README_DE.md) | German README |
+| [docs/INDEX.md](docs/INDEX.md) | **All docs · keywords · A–Z** |
+| [docs/INSTALL_SIMPLE.md](docs/INSTALL_SIMPLE.md) | One-command install · embeddings |
+| [docs/HUB_ARCHITECTURE.md](docs/HUB_ARCHITECTURE.md) | Exact desk layers |
+| [docs/ORCHESTRATION.md](docs/ORCHESTRATION.md) | Pipeline · agents · skills inject |
+| [docs/SKILLS.md](docs/SKILLS.md) | Playbook skills API & authoring |
+| [docs/PLUGINS.md](docs/PLUGINS.md) | Plugin catalog · neural embeddings |
+| [docs/UI_QUALITY.md](docs/UI_QUALITY.md) | Colors · poll · a11y |
+| [docs/STABILITY.md](docs/STABILITY.md) | Stability / quality gates |
+| [docs/VECTORS_AND_RUST.md](docs/VECTORS_AND_RUST.md) | Embedders vs DBs · Tauri deferred |
 | [AGENTS.md](AGENTS.md) | Coding rules · push gate |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System map |
-| [docs/MERMAID.md](docs/MERMAID.md) | Mermaid syntax reference · class palette |
 | [docs/CODE_ANALYSIS_FOR_AI.md](docs/CODE_ANALYSIS_FOR_AI.md) | Full AI handoff |
 | [docs/KEYS_AND_MODELS.md](docs/KEYS_AND_MODELS.md) | Keys & models |
-| [docs/PLUGIN_SECURITY.md](docs/PLUGIN_SECURITY.md) | Plugin trust & authoring |
-| [docs/ERROR_HANDLING.md](docs/ERROR_HANDLING.md) | Error layers · envelopes · retries |
-| [docs/MCP_ARCHITECTURE.md](docs/MCP_ARCHITECTURE.md) | MCP-lite server architecture |
-| [docs/TOOLS_PORTFOLIO.md](docs/TOOLS_PORTFOLIO.md) | Computer-use libraries |
+| [docs/PLUGIN_SECURITY.md](docs/PLUGIN_SECURITY.md) | Plugin trust |
+| [docs/ERROR_HANDLING.md](docs/ERROR_HANDLING.md) | Errors · retries |
+| [docs/MCP_ARCHITECTURE.md](docs/MCP_ARCHITECTURE.md) | MCP-lite |
+| [docs/TOOLS_PORTFOLIO.md](docs/TOOLS_PORTFOLIO.md) | Computer-use |
 | [docs/AGENTS_DEFINITION.md](docs/AGENTS_DEFINITION.md) | Agent roster · Flex |
-| [docs/WORKFLOWS_AND_PRESETS.md](docs/WORKFLOWS_AND_PRESETS.md) | Presets · plan_mode |
-| [docs/BASIC_USER_TEST.md](docs/BASIC_USER_TEST.md) | User E2E |
-| [docs/STABILITY.md](docs/STABILITY.md) | Stability checklist |
-| [docs/TESTING.md](docs/TESTING.md) / [MUTMUT.md](docs/MUTMUT.md) | pytest · mutation |
-| [docs/PYTHON_CACHE.md](docs/PYTHON_CACHE.md) | pip/venv CI cache strategies |
-| [docs/V1_SCOPE.md](docs/V1_SCOPE.md) / [ROADMAP.md](docs/ROADMAP.md) | Scope · history |
+| [docs/WORKFLOWS_AND_PRESETS.md](docs/WORKFLOWS_AND_PRESETS.md) | Presets · plan_mode freeze |
+| [docs/TESTING.md](docs/TESTING.md) · [MUTMUT.md](docs/MUTMUT.md) | pytest · mutation |
+| [docs/CHANGELOG_3.10.md](docs/CHANGELOG_3.10.md) · [GITHUB_HOLDER_3.10.md](docs/GITHUB_HOLDER_3.10.md) | 3.10 notes |
+| [docs/V1_SCOPE.md](docs/V1_SCOPE.md) · [ROADMAP.md](docs/ROADMAP.md) · [V4_PLAN.md](docs/V4_PLAN.md) | Scope · roadmap |
+| [docs/MERGE_STATUS.md](docs/MERGE_STATUS.md) | PR merge status |
 
 ---
 

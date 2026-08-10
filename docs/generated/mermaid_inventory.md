@@ -5,14 +5,14 @@ Blocks: **32**
 
 | File | # | Line | Kind | Errors | Warnings |
 |------|---|------|------|--------|----------|
-| `README.md` | 1 | 204 | `flowchart` | 0 | 0 |
-| `README.md` | 2 | 258 | `stateDiagram-v2` | 0 | 0 |
-| `README.md` | 3 | 278 | `flowchart` | 0 | 0 |
-| `README.md` | 4 | 313 | `flowchart` | 0 | 0 |
-| `README_DE.md` | 1 | 203 | `flowchart` | 0 | 0 |
-| `README_DE.md` | 2 | 257 | `stateDiagram-v2` | 0 | 0 |
-| `README_DE.md` | 3 | 277 | `flowchart` | 0 | 0 |
-| `README_DE.md` | 4 | 312 | `flowchart` | 0 | 0 |
+| `README.md` | 1 | 244 | `flowchart` | 0 | 0 |
+| `README.md` | 2 | 298 | `stateDiagram-v2` | 0 | 0 |
+| `README.md` | 3 | 318 | `flowchart` | 0 | 0 |
+| `README.md` | 4 | 353 | `flowchart` | 0 | 0 |
+| `README_DE.md` | 1 | 244 | `flowchart` | 0 | 0 |
+| `README_DE.md` | 2 | 298 | `stateDiagram-v2` | 0 | 0 |
+| `README_DE.md` | 3 | 318 | `flowchart` | 0 | 0 |
+| `README_DE.md` | 4 | 353 | `flowchart` | 0 | 0 |
 | `docs/ARCHITECTURE.md` | 1 | 15 | `flowchart` | 0 | 0 |
 | `docs/ARCHITECTURE.md` | 2 | 88 | `stateDiagram-v2` | 0 | 0 |
 | `docs/ARCHITECTURE.md` | 3 | 114 | `flowchart` | 0 | 0 |
