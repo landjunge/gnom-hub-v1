@@ -11,7 +11,10 @@
     "lint:js:all": "eslint \"src/gnom_hub/ui/static/**/*.js\""
   },
   "devDependencies": {
+    "@eslint/js": "^9.22.0",
     "eslint": "9.22.0",
+    "eslint-plugin-no-unsanitized": "^4.1.2",
+    "eslint-plugin-promise": "^7.2.1",
     "globals": "16.0.0"
   }
 }

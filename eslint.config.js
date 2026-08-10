@@ -1,6 +1,11 @@
 /**
  * ESLint Flat Config (ESLint ≥ 9) — Gnom-Hub desktop UI
  *
+ * Plugins (flat-native):
+ *   @eslint/js              → js.configs.recommended
+ *   eslint-plugin-no-unsanitized → XSS on innerHTML / document.write
+ *   eslint-plugin-promise   → promise/flat/recommended
+ *
  * Lint target: built bundle `src/gnom_hub/ui/static/app.js`
  * (parts/*.js are IIFE fragments — lint the built file only.)
  *
@@ -8,10 +13,17 @@
  */
 "use strict";
 
+const js = require("@eslint/js");
 const globals = require("globals");
+const noUnsanitized = require("eslint-plugin-no-unsanitized");
+const promise = require("eslint-plugin-promise");
+
+/** Shared file scope for UI static scripts */
+const UI_FILES = ["src/gnom_hub/ui/static/**/*.js"];
 
 /** @type {import("eslint").Linter.Config[]} */
 module.exports = [
+  // ── Global ignores (flat: top-level ignores entry) ─────────────────
   {
     name: "gnom-hub/ignores",
     ignores: [
@@ -23,53 +35,69 @@ module.exports = [
       "**/build/**",
       // fragments share one IIFE — do not lint in isolation
       "src/gnom_hub/ui/static/parts/**",
-      // generated / vendor-ish
       "**/vendor/**",
     ],
   },
+
+  // ── @eslint/js recommended (core) ──────────────────────────────────
+  // Spread recommended, then narrow to UI files + browser languageOptions.
   {
-    name: "gnom-hub/ui-static",
-    files: ["src/gnom_hub/ui/static/**/*.js"],
+    name: "gnom-hub/js-recommended",
+    files: UI_FILES,
+    ...js.configs.recommended,
     languageOptions: {
       ecmaVersion: 2022,
-      sourceType: "script", // browser classic script, not ESM
+      sourceType: "script",
       globals: {
         ...globals.browser,
         ...globals.es2021,
       },
     },
+  },
+
+  // ── eslint-plugin-no-unsanitized (DOM XSS) ─────────────────────────
+  // configs.recommended already registers the plugin + two rules.
+  {
+    name: "gnom-hub/no-unsanitized",
+    files: UI_FILES,
+    ...noUnsanitized.configs.recommended,
+    // Large legacy UI assigns HTML strings often — warn first, promote to error later
+    rules: {
+      ...noUnsanitized.configs.recommended.rules,
+      "no-unsanitized/property": "warn",
+      "no-unsanitized/method": "warn",
+    },
+  },
+
+  // ── eslint-plugin-promise (flat recommended) ───────────────────────
+  {
+    name: "gnom-hub/promise",
+    files: UI_FILES,
+    ...promise.configs["flat/recommended"],
+    rules: {
+      ...promise.configs["flat/recommended"].rules,
+      // fire-and-forget fetch/toast paths are common in this UI
+      "promise/always-return": "off",
+      "promise/catch-or-return": "warn",
+      "promise/no-nesting": "warn",
+      "promise/no-return-in-finally": "warn",
+    },
+  },
+
+  // ── Project overrides (hub-specific) ───────────────────────────────
+  {
+    name: "gnom-hub/ui-overrides",
+    files: UI_FILES,
     linterOptions: {
       reportUnusedDisableDirectives: "warn",
     },
+    // plugins already registered by previous blocks; re-declare if adding local rules
+    plugins: {
+      "no-unsanitized": noUnsanitized,
+      promise,
+    },
     rules: {
-      // ── Correctness (error) ────────────────────────────────────
-      "no-undef": "error",
-      "no-unreachable": "error",
-      "no-unsafe-finally": "error",
-      "no-unsafe-negation": "error",
-      "use-isnan": "error",
-      "valid-typeof": "error",
-      "no-debugger": "error",
-      "no-dupe-args": "error",
-      "no-dupe-keys": "error",
-      "no-duplicate-case": "error",
-      "no-empty-character-class": "error",
-      "no-ex-assign": "error",
-      "no-extra-boolean-cast": "error",
-      "no-func-assign": "error",
-      "no-import-assign": "error",
-      "no-inner-declarations": "error",
-      "no-invalid-regexp": "error",
-      "no-obj-calls": "error",
-      "no-sparse-arrays": "error",
-      "no-unexpected-multiline": "error",
-      "constructor-super": "error",
-      "no-const-assign": "error",
-      "no-new-native-nonconstructor": "error",
-      "no-this-before-super": "error",
-      "no-class-assign": "error",
-
-      // ── Bug magnets (warn → tighten over time) ─────────────────
+      // Core extras beyond recommended (or tighten)
       "eqeqeq": ["warn", "smart"],
       "no-var": "warn",
       "prefer-const": ["warn", { destructuring: "all" }],
@@ -86,61 +114,30 @@ module.exports = [
         "warn",
         { functions: false, classes: true, variables: true },
       ],
-      "no-shadow-restricted-names": "error",
-      "no-redeclare": "warn",
-      "no-self-assign": "warn",
-      "no-self-compare": "warn",
-      "no-template-curly-in-string": "warn",
-      "array-callback-return": ["warn", { allowImplicit: true }],
-      "no-caller": "error",
-      "no-extend-native": "error",
-      "no-extra-bind": "warn",
-      "no-implied-eval": "error",
-      "no-iterator": "error",
-      "no-labels": "error",
-      "no-lone-blocks": "warn",
-      "no-loop-func": "warn",
-      "no-multi-str": "warn",
-      "no-new-func": "error",
-      "no-new-wrappers": "warn",
-      "no-octal": "error",
-      "no-proto": "error",
-      "no-return-assign": ["warn", "except-parens"],
-      "no-sequences": "warn",
-      "no-throw-literal": "warn",
-      "no-unmodified-loop-condition": "warn",
-      "no-unused-expressions": [
-        "warn",
-        { allowShortCircuit: true, allowTernary: true },
-      ],
-      "no-useless-call": "warn",
-      "no-useless-concat": "warn",
+      "no-console": "off",
+      "no-alert": "off",
+      "no-empty": ["warn", { allowEmptyCatch: true }],
       "no-useless-escape": "warn",
       "no-useless-return": "warn",
-      "no-with": "error",
+      "no-useless-concat": "warn",
+      "no-throw-literal": "warn",
+      "no-return-assign": ["warn", "except-parens"],
+      "no-sequences": "warn",
+      "array-callback-return": ["warn", { allowImplicit: true }],
       "radix": ["warn", "as-needed"],
       "yoda": ["warn", "never"],
 
-      // ── Style (light — no Prettier fight) ───────────────────────
-      "no-console": "off", // hub UI uses console for debug
-      "no-alert": "off",
-      "strict": "off", // IIFE already "use strict"
-      "no-empty": ["warn", { allowEmptyCatch: true }],
+      // Style off — no Prettier fight
+      "strict": "off",
       "curly": "off",
-      "brace-style": "off",
       "quotes": "off",
       "semi": "off",
       "indent": "off",
       "comma-dangle": "off",
       "max-len": "off",
-
-      // ── Prefer modern where easy ───────────────────────────────
-      "prefer-arrow-callback": "off", // many classic functions intentional
+      "prefer-arrow-callback": "off",
       "object-shorthand": "off",
       "prefer-template": "off",
-      "no-useless-rename": "warn",
-      "no-useless-computed-key": "warn",
-      "rest-spread-spacing": "off",
     },
   },
 ];

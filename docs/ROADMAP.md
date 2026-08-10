@@ -316,6 +316,7 @@
 | eslint.config.js flat config | **done** |
 | docs/ESLINT.md | **done** |
 | npm run lint:js on app.js | **done** (0 errors / warn baseline) |
+| Flat plugins: @eslint/js, no-unsanitized, promise | **done** |
 | CI hard gate max-warnings 0 | optional |
 
 ## Post-V3.7 (optional)

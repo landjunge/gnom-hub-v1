@@ -4178,8 +4178,8 @@
           job = await api("GET", "/api/jobs/" + encodeURIComponent(jobId));
         } catch (_pollErr) {
           // transient — retry until deadline
-          await new Promise(function (r) {
-            setTimeout(r, 600);
+          await new Promise(function (resolve) {
+            setTimeout(resolve, 600);
           });
           continue;
         }
@@ -4238,8 +4238,8 @@
           await resyncState();
           return job;
         }
-        await new Promise(function (r) {
-          setTimeout(r, 450);
+        await new Promise(function (resolve) {
+          setTimeout(resolve, 450);
         });
       }
       // Timeout: cancel orphan + resync so UI is not left mid-pipeline
