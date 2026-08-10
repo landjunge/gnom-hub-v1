@@ -296,6 +296,16 @@
 | PrefetchReport + context char cap | **done** |
 | docs/WORKER_PREFETCH.md | **done** |
 
+## V3.8.0 (planned) — DoD-Gate
+
+| Item | Status |
+|------|--------|
+| Plan: docs/DOD_GATE_PLAN.md | **done** |
+| Slice A: extract dod_gate.py parity | planned |
+| Slice C: wish + prefetch palette checks | planned |
+| Slice B: DoD prompt from same Spec | planned |
+| Slice D: UI checklist | planned |
+
 ## Post-V3.7 (optional)
 
 | Item | Notes |
