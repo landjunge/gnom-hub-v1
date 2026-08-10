@@ -59,6 +59,12 @@ Du hast nach **Rust als echte App** gefragt — Optionen:
 - Orchestrierung bleibt Python  
 - Sinnvoll **erst** wenn Profiling einen echten Engpass zeigt
 
+### Decision 2026-08-10 (product)
+
+**Tauri = endgame only.**  
+Do **not** start a desktop shell while the desk (pipeline, skills, embeddings install, quality) is still the focus.  
+When the hub “runs reasonably” in daily use → then thin Tauri wrapper. Not before.
+
 ### Empfehlung für Gnom
 
 1. **Jetzt:** Python-Desk + einfacher Install (dieses Repo)  

@@ -263,3 +263,9 @@ Body = Markdown instructions (DoD, anti-patterns, structure).
 ---
 
 *Ende V4 Plan — design. Implementation starts only after Phase 0 freeze wording is accepted.*
+
+
+## Desktop / Tauri (explicitly later)
+
+**Not part of V4 implementation.** Thin Tauri shell only after the desk is stable in real use.
+Details: [VECTORS_AND_RUST.md](VECTORS_AND_RUST.md).

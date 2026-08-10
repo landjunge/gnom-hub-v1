@@ -368,6 +368,15 @@
 | Phase 3 Neural embeddings optional plugin | **done** (plugin; needs extra) |
 | Phase 4 Mobile / responsive desk | **done** (CSS ≤640px) |
 
+## Desktop shell (endgame — deferred)
+
+| Item | Status |
+|------|--------|
+| Tauri wrapper (WebView + start/stop hub) | **deferred** — only after hub is solid in daily use |
+| Full Rust rewrite | **out** (not planned) |
+
+See [VECTORS_AND_RUST.md](VECTORS_AND_RUST.md).
+
 ## Post-V3.7 (optional)
 
 | Item | Notes |
