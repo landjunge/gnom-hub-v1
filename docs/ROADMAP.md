@@ -353,6 +353,8 @@
 | Version single source `__version__` = 3.9.1 | **done** |
 | Tool-loop cancel isolation (no sticky hub cancel) | **done** |
 | Expanded DE/EN page-intent scoring phrases | **done** |
+| Plan toast on Execute done (mode + score) | **done** |
+| docs/CHANGELOG_3.9.md | **done** |
 
 ## Post-V3.7 (optional)
 

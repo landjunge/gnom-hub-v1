@@ -227,6 +227,23 @@
     if (typeof renderToolStrip === "function") {
       renderToolStrip(p.tool_log || [], p.quality_notes || "");
     }
+    // One toast when plan mode resolved (debug + user-facing clarity)
+    if (p.stage === "done" && p.resolved_plan_mode) {
+      const pk =
+        String(p.resolved_plan_mode) +
+        "|" +
+        String(p.plan_html_score != null ? p.plan_html_score : "") +
+        "|" +
+        String((p.user_text || "").slice(0, 40));
+      if (pk !== lastPlanKey) {
+        lastPlanKey = pk;
+        let msg = "Plan: " + p.resolved_plan_mode;
+        if (p.plan_html_score != null && p.plan_html_score !== "") {
+          msg += " · score=" + p.plan_html_score;
+        }
+        toast(msg, "info");
+      }
+    }
     // One toast if tools ran dry-run while God is off
     if (p.stage === "done" && p.tool_log && p.tool_log.length) {
       const dry = p.tool_log.filter(function (e) {
