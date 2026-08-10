@@ -315,6 +315,177 @@ Track in PRs: *“compat surface: N extends left”* → goal **0**.
 
 ---
 
+
+
+---
+
+## 13. Override rules with FlatCompat
+
+FlatCompat only **expands** legacy configs. **Your policy** still lives in later flat blocks.
+
+### 13.1 Three places you can set rules
+
+| Layer | Where | Wins when? |
+|-------|--------|------------|
+| **L1** Inside `compat.config({ rules })` | merged into expanded blocks | Early — can be overwritten |
+| **L2** Map/patch after `extends()` | mutate each expanded object | Middle |
+| **L3** Native flat block **last** | `{ files, rules: {…} }` | **Always preferred** |
+
+```
+compat.extends / compat.config     ← L1 (legacy defaults + inline rules)
+        │
+        ▼
+scope + optional patchRules()      ← L2
+        │
+        ▼
+{ name: "overrides", rules: … }    ← L3  ★ put project policy here
+```
+
+### 13.2 L3 — Native overrides (recommended)
+
+```js
+module.exports = [
+  ...scopeToUi(compat.extends("plugin:promise/recommended")),
+  {
+    name: "overrides/promise-policy",
+    files: UI_FILES,
+    rules: {
+      // demote
+      "promise/catch-or-return": "warn",
+      // disable for hub fire-and-forget
+      "promise/always-return": "off",
+      // tighten
+      "promise/param-names": "error",
+    },
+  },
+];
+```
+
+Same rule name as compat → **later entry wins**. You do **not** need to re-register the plugin if an earlier block already did.
+
+### 13.3 L1 — Rules inside `compat.config`
+
+```js
+compat.config({
+  extends: ["eslint:recommended", "plugin:promise/recommended"],
+  rules: {
+    "no-console": "off",           // legacy-style override
+    "promise/always-return": "off",
+  },
+});
+```
+
+Good for 1:1 eslintrc paste. Still add L3 for anything you consider **project law**, so future `extends` changes don’t silently re-enable a rule.
+
+### 13.4 L2 — Patch helper after expand
+
+```js
+function withRuleOverrides(configs, rules, files = UI_FILES) {
+  return [
+    ...configs.map((c) => ({
+      ...c,
+      files: c.files || files,
+    })),
+    {
+      name: "overrides/patched",
+      files,
+      rules,
+    },
+  ];
+}
+
+module.exports = [
+  { ignores: ["**/node_modules/**"] },
+  ...withRuleOverrides(
+    compat.extends("eslint:recommended", "plugin:promise/recommended"),
+    {
+      "no-unused-vars": "warn",
+      "promise/always-return": "off",
+      "no-console": "off",
+    },
+  ),
+];
+```
+
+### 13.5 File-scoped overrides (like eslintrc `overrides[]`)
+
+Legacy:
+
+```json
+{
+  "rules": { "no-console": "error" },
+  "overrides": [
+    { "files": ["scripts/**"], "rules": { "no-console": "off" } }
+  ]
+}
+```
+
+Flat + compat:
+
+```js
+[
+  ...scope(compat.extends("eslint:recommended"), ["**/*.js"]),
+  {
+    name: "overrides/default",
+    files: ["**/*.js"],
+    rules: { "no-console": "error" },
+  },
+  {
+    name: "overrides/scripts",
+    files: ["scripts/**/*.js"],
+    rules: { "no-console": "off" },
+  },
+]
+```
+
+More specific paths don’t auto-win by specificity — **array order** does. Put special cases **after** general overrides.
+
+### 13.6 Severity recipe (hub policy)
+
+| Goal | Example |
+|------|---------|
+| Turn off legacy noise | `"rule": "off"` |
+| Keep signal, don’t fail CI | `"rule": "warn"` |
+| Must never ship | `"rule": "error"` |
+| Options without changing severity | `["warn", { allowEmptyCatch: true }]` |
+
+Gnom-Hub UI baseline (production native config):
+
+- XSS plugin rules → **warn** (until sanitizer helper)
+- `promise/always-return` → **off**
+- `promise/catch-or-return` → **warn**
+- core `no-undef` etc. → **error** (from recommended)
+
+### 13.7 Override conflict debug
+
+```bash
+npx eslint --print-config src/gnom_hub/ui/static/app.js | grep -A2 '"promise/always-return"'
+```
+
+If severity is wrong: a **later** block re-set it, or compat expand order put recommended after your L1 rules (fix with L3).
+
+### 13.8 What not to do
+
+| Anti-pattern | Why |
+|--------------|-----|
+| Only L1, no L3 | Next `extends` bump resurrects rules |
+| Overrides **before** compat spread | Compat overwrites you |
+| Re-`plugins: {}` empty in override | Can wipe plugin refs in some merges — only set `rules` in L3 |
+| Assume path specificity | Flat config is **not** eslintrc cascade-by-path depth |
+
+### 13.9 Gnom-Hub example file
+
+`eslint.flatcompat.example.js` demonstrates:
+
+1. L1 rules inside `compat.config`  
+2. `scopeToUi` (files scoping)  
+3. L3 `example/overrides/*` blocks for promise + style policy  
+
+```bash
+npm run lint:js:compat
+```
+
+
 ## 12. Quick reference
 
 ```js
