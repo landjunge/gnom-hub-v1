@@ -279,13 +279,15 @@ def _pipeline_cancel_requested() -> bool:
         from gnom_hub.hub import get_hub
 
         hub = get_hub()
+        # No in-flight job → never treat tool loops as cancelled
+        if not getattr(hub, "_active_job_id", None):
+            return False
         pipe = getattr(hub, "pipeline", None)
         if pipe is None:
             return False
         fn = getattr(pipe, "cancel_check", None)
         if not callable(fn):
             return False
-        # Sticky True after cancel_job was a real bug; still tolerate exceptions.
         return bool(fn())
     except Exception:  # noqa: BLE001
         return False
