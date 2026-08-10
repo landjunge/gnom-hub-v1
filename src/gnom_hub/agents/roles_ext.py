@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from gnom_hub.agents.base import BaseAgent
-from gnom_hub.agents.plan_fast_path import resolve_plan_mode
+from gnom_hub.agents.plan_fast_path import _html_page_score, resolve_plan_mode
 from gnom_hub.agents.roles_helpers import (
     _is_flex_meta_requirement,
     _lines,
@@ -110,14 +110,17 @@ class CoordinatorAgent(BaseAgent):
                     "fast_path": True,
                     "requested_mode": mode,
                     "task_kind": kind,
+                    "html_score": 0,
                 }
                 return planned
             effective, fast_path = resolve_plan_mode(mode, user_text, clean)
+            html_score = _html_page_score(user_text, clean)
             self.last_plan_meta = {
                 "plan_mode": effective,
                 "fast_path": fast_path,
                 "requested_mode": mode,
                 "task_kind": kind,
+                "html_score": html_score,
             }
             if effective == "full_page_html":
                 return _html_full_page_plan(user_text, worker_ids, clean)
@@ -150,9 +153,11 @@ class CoordinatorAgent(BaseAgent):
                 )
             if self.has_llm():
                 try:
-                    teamish = effective == "team" or len(worker_ids) >= 2
+                    # Only force multi-worker HTML split when plan_mode is explicitly team.
+                    # Otherwise prefer single-worker full pages (coord quality / no section-split).
+                    teamish = effective == "team"
                     sys = (
-                        "You are the Coordinator designing a TEAM plan. "
+                        "You are the Coordinator designing a work plan. "
                         "Output exactly one line per worker: workerN | task. "
                         "No other text. "
                     )
@@ -165,7 +170,12 @@ class CoordinatorAgent(BaseAgent):
                             "Never assign only one worker for a full landing page."
                         )
                     else:
-                        sys += "Assign clear concrete tasks."
+                        sys += (
+                            "Prefer a single clear concrete task on worker1 when the user "
+                            "wants a page/UI/landing. Only split across workers for clearly "
+                            "independent non-HTML workstreams (research vs implement is OK "
+                            "only if plan_mode is team)."
+                        )
                     raw = self.ask(
                         system=sys,
                         user=(
@@ -220,17 +230,19 @@ def _html_full_page_plan(
     if not worker_ids:
         return []
     primary = (
-        f"ONE complete single-file HTML page for: {topic}. "
-        "Include ALL requested sections in the SAME file "
-        "(hero/features/footer as applicable). "
-        "<!DOCTYPE html> … </html>. "
-        "Strong visual design (dark product UI, CSS grid, gradients, "
-        "at least one motion/effect with prefers-reduced-motion). "
-        "At least one real interaction (onclick or addEventListener). "
-        "Never truncate — always close </html>."
+        f"Produce ONE complete, self-contained single-file HTML document for: {topic}.\n"
+        "Hard requirements:\n"
+        "1. Output starts with <!DOCTYPE html> and MUST end with a real </html> — never truncate.\n"
+        "2. ALL sections (hero, features, footer, CTA …) live in the SAME file.\n"
+        "3. Strong visual design: dark product UI preferred, CSS grid/flex, gradients or glass, "
+        "at least one motion/effect that respects prefers-reduced-motion.\n"
+        "4. At least one real user interaction (onclick or addEventListener).\n"
+        "5. Semantic HTML, readable contrast, viewport meta; no lorem if product facts exist.\n"
+        "Priority: complete structure → working interaction → design polish.\n"
+        "If approaching token limit: close the HTML properly rather than leave open tags."
     )
     if clean:
-        primary += "\nDoD:\n" + "\n".join(f"- {r}" for r in clean[:6])
+        primary += "\nBinding DoD (must satisfy):\n" + "\n".join(f"- {r}" for r in clean[:8])
     return [(worker_ids[0], primary)]
 
 

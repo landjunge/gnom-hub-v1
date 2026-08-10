@@ -550,15 +550,18 @@ def test_coordinator_html_plan_prefers_full_page():
     )
     assert len(tasks) == 1
     assert tasks[0][0] == "worker1"
-    assert "ONE complete single-file HTML" in tasks[0][1]
-    assert "ALL requested sections" in tasks[0][1]
+    assert any(
+        x in tasks[0][1]
+        for x in ("ONE complete single-file HTML", "self-contained single-file HTML")
+    )
+    assert "ALL sections" in tasks[0][1] or "ALL requested sections" in tasks[0][1]
     assert "hero section only" not in tasks[0][1].lower()
     assert _wants_one_html_page("landing page HTML")
     assert not _wants_one_html_page("write a business plan")
     forced = _html_full_page_plan("Landing HTML", ["worker1", "worker2", "worker3"], ["DoD line"])
     assert len(forced) == 1
     assert forced[0][0] == "worker1"
-    assert "DoD:" in forced[0][1]
+    assert "DoD" in forced[0][1]
     qa = coord.plan(
         "Review the checkout flow", ["tests"], ["worker1", "worker2"], plan_mode="plan_qa"
     )
@@ -569,7 +572,10 @@ def test_coordinator_html_plan_prefers_full_page():
         ["worker1"],
         plan_mode="full_page_html",
     )
-    assert "ONE complete single-file HTML" in html_forced[0][1]
+    assert any(
+        x in html_forced[0][1]
+        for x in ("ONE complete single-file HTML", "self-contained single-file HTML")
+    )
 
 
 def test_flex_execute_on_explicit_command():
