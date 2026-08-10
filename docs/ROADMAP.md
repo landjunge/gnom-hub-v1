@@ -302,8 +302,10 @@
 |------|--------|
 | Plan: docs/DOD_GATE_PLAN.md | **done** |
 | Lint rules: docs/DOD_LINT.md + dod_lint.py | **done** |
-| Slice A: extract dod_gate.py parity | planned |
-| Slice C: wish + prefetch palette checks | planned |
+| Auto gate + retry wiring (dod_gate.py) | **done** |
+| docs/DOD_GATE.md | **done** |
+| Slice A: extract dod_gate.py parity | **done** |
+| Slice C: wish + prefetch palette checks | **done** |
 | Slice B: DoD prompt from same Spec | planned |
 | Slice D: UI checklist | planned |
 

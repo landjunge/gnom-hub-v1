@@ -661,55 +661,76 @@ class Orchestrator:
             )
             retries = 0
             max_retries = 2
+            from gnom_hub.pipeline.dod_gate import format_retry_hint, should_retry
+
             while retries < max_retries:
-                gate0 = _validate_worker_draft(result, user_text=text, task=task)
+                gate0 = _validate_worker_draft(
+                    result,
+                    user_text=text,
+                    task=task,
+                    requirements=self._state.distilled_requirements,
+                    tool_calls=self._state.tool_calls,
+                )
                 # Auth / missing key: do not burn retries on the same dead key
                 if "worker_error" in (gate0.get("issues") or []) or (
                     "FEHLER" in (result or "") and "Deliverable" in (result or "")
                 ):
                     break
-                need_retry = False
-                retry_why = ""
-                if _wants_html_artifact(text, task) and not _html_complete(result):
-                    need_retry, retry_why = True, "incomplete_html"
-                elif "missing_required_interaction" in (gate0.get("issues") or []):
-                    need_retry, retry_why = True, "missing_interaction"
-                elif not gate0.get("ok", True) and _wants_html_artifact(text, task):
-                    need_retry, retry_why = True, "gate_fail"
+                need_retry, retry_why = should_retry(gate0, user_text=text, task=task)
+                # Cap soft palette retry to a single attempt
+                if retry_why == "prefetch_palette" and retries >= 1:
+                    need_retry = False
                 if not need_retry:
                     break
                 retries += 1
                 self.bus.emit(
                     "pipeline.quality_retry",
-                    {"worker": wid, "reason": retry_why, "attempt": retries},
+                    {
+                        "worker": wid,
+                        "reason": retry_why,
+                        "attempt": retries,
+                        "issues": gate0.get("issues") or [],
+                        "score": gate0.get("score"),
+                    },
+                )
+                self.bus.emit(
+                    "pipeline.dod_gate",
+                    {
+                        "worker": wid,
+                        "phase": "retry",
+                        "attempt": retries,
+                        "ok": gate0.get("ok"),
+                        "issues": gate0.get("issues") or [],
+                        "score": gate0.get("score"),
+                    },
                 )
                 self._check_cancel()
-                if retries == 1:
-                    hint = (
-                        "RETRY (mandatory): ONE complete HTML file "
-                        "<!DOCTYPE html>…</html>. "
-                        "PRIORITY: structure + working JS interactions FIRST, "
-                        "minimal CSS only. Empty/error states only after functions. "
-                        "Must include at least one onclick= or addEventListener. "
-                        "Never truncate mid-CSS. Finish with </html>."
-                    )
-                else:
-                    hint = (
-                        "RETRY 2 — SCOPE REDUCTION (mandatory):\n"
-                        "Deliver a SMALLER but COMPLETE HTML page.\n"
-                        "- Drop decorative CSS (only tiny layout)\n"
-                        "- Keep: shell + 1–3 core interactions + empty state\n"
-                        "- MUST end with </html>; no open tags\n"
-                        "- No long style blocks; functions first\n"
-                        f"Previous gate issues: {', '.join(gate0.get('issues') or [])}"
-                    )
+                hint = format_retry_hint(gate0, attempt=retries)
                 result = worker.run(
                     task_full + "\n\n" + hint,
                     text,
                     self._state.distilled_requirements,
                     mem,
                 )
-            gate = _validate_worker_draft(result, user_text=text, task=task)
+            gate = _validate_worker_draft(
+                result,
+                user_text=text,
+                task=task,
+                requirements=self._state.distilled_requirements,
+                tool_calls=self._state.tool_calls,
+            )
+            self.bus.emit(
+                "pipeline.dod_gate",
+                {
+                    "worker": wid,
+                    "phase": "final",
+                    "ok": gate.get("ok"),
+                    "issues": gate.get("issues") or [],
+                    "score": gate.get("score"),
+                    "retryable": gate.get("retryable"),
+                    "retries": retries,
+                },
+            )
             if retries:
                 gate = dict(gate)
                 gate["retries"] = retries
@@ -841,7 +862,13 @@ class Orchestrator:
             for o in outputs:
                 if str(o.get("worker") or "") == aid:
                     o["result"] = fixed
-                    o["validation"] = _validate_worker_draft(fixed, user_text=text, task=task)
+                    o["validation"] = _validate_worker_draft(
+                        fixed,
+                        user_text=text,
+                        task=task,
+                        requirements=self._state.distilled_requirements,
+                        tool_calls=self._state.tool_calls,
+                    )
                     o["flex_nudge"] = msg
                     break
             self.bus.emit(
@@ -1165,171 +1192,54 @@ def _prefetch_worker_tools(
 
 
 def _definition_of_done(user_text: str, requirements: list[str]) -> str:
-    from gnom_hub.agents.roles_helpers import _is_flex_meta_requirement
-    from gnom_hub.memory.dedupe import dedupe_texts
+    from gnom_hub.pipeline.dod_gate import definition_of_done
 
-    raw = [str(r) for r in (requirements or []) if r and not _is_flex_meta_requirement(str(r))]
-    reqs = dedupe_texts(raw, strategy="requirement", limit=6)
-    lines = [
-        "=== DEFINITION OF DONE (mandatory) ===",
-        "DONE means functional complete — not 'draft exists' or 'pretty CSS only'.",
-        (
-            "ORDER: (1) structure (2) core functions/interactions "
-            "(3) error/empty states (4) CSS last (~30% max)."
-        ),
-        "If HTML/page/landing/UI is required:",
-        "  [ ] Single complete document: <!DOCTYPE html> … </html>",
-        "  [ ] No mid-file truncation; close all tags/braces",
-        "  [ ] At least one working interaction (onclick / addEventListener / form)",
-        "  [ ] Empty/error states only AFTER core functions, never instead of them",
-        "  [ ] Prefer minimal CSS over incomplete JS",
-        "If code is required: runnable/readable end-to-end, not stubs-only.",
-        "If budget is tight: drop decoration, keep structure + functions + </html>.",
-    ]
-    if reqs:
-        lines.append("Requirements (MUSS):")
-        lines.extend(f"  [ ] {r}" for r in reqs)
-        wish_lines = [
-            r for r in reqs if str(r).lower().startswith(("flex-wish:", "user:", "wish:"))
-        ]
-        if wish_lines:
-            lines.append("STANDING WISHES — ABSOLUTE (no pushback, implement fully):")
-            lines.extend(f"  [!] {r}" for r in wish_lines)
-    if (user_text or "").strip():
-        lines.append(f"User task: {(user_text or '').strip()[:400]}")
-    lines.append("=== END DoD ===")
-    return "\n".join(lines)
+    return definition_of_done(user_text, requirements)
 
 
 def _wants_html_artifact(user_text: str, task: str = "") -> bool:
-    from gnom_hub.agents.plan_fast_path import _wants_one_html_page
+    from gnom_hub.pipeline.dod_gate import wants_html_artifact
 
-    return _wants_one_html_page(f"{user_text or ''} {task or ''}")
+    return wants_html_artifact(user_text, task)
 
 
 def _html_complete(body: str) -> bool:
-    """
-    True when body looks like a finished single-file HTML document.
+    from gnom_hub.pipeline.dod_gate import html_complete
 
-    M11: a lone ``</html>`` mid-stream (truncated doc) must not pass.
-    """
-    import re
-
-    s = (body or "").strip()
-    if not s:
-        return False
-    if "```" in s:
-        m = re.search(r"```(?:html)?\s*([\s\S]*?)```", s, re.IGNORECASE)
-        if m:
-            s = m.group(1).strip()
-    low = s.lower()
-    if "<!doctype" not in low and "<html" not in low:
-        return False
-    # Prefer last closing tag; reject if significant junk after it
-    close_idx = low.rfind("</html>")
-    if close_idx < 0:
-        return False
-    after = low[close_idx + len("</html>") :].strip()
-    # Allow only whitespace / trivial trailing commentary after </html>
-    if (
-        after
-        and not re.fullmatch(r"(<!--.*?-->|\s)*", after, flags=re.DOTALL)
-        and (len(after) > 40 or "<" in after)
-    ):
-        return False
-    # Closing tag must not appear too early relative to document size
-    # (very short docs that fully close are still OK)
-    if close_idx < max(40, int(len(low) * 0.35)) and len(low) > 120 and close_idx < len(low) * 0.5:
-        return False
-    if low.rstrip().endswith(("...", "…", "<!--", "<style", "<script", "{", "(")):
-        return False
-    # Unclosed style/script often means truncation before </html> was faked
-    if low.count("<script") > low.count("</script>"):
-        return False
-    if low.count("<style") > low.count("</style>"):
-        return False
-    open_tags = low.count("<")
-    close_tags = low.count(">")
-    return not (open_tags > 5 and close_tags < open_tags * 0.85)
+    return html_complete(body)
 
 
 def _has_interaction(body: str) -> bool:
-    low = (body or "").lower()
-    keys = (
-        "onclick=",
-        "onchange=",
-        "onsubmit=",
-        "addEventListener",
-        "addeventlistener",
-        "oninput=",
-        "ontoggle=",
-    )
-    return any(k.lower() in low for k in keys)
+    from gnom_hub.pipeline.dod_gate import has_interaction
+
+    return has_interaction(body)
 
 
 def _css_heavy_without_js(body: str) -> bool:
-    low = (body or "").lower()
-    style_n = low.count("<style") + low.count("stylesheet")
-    css_blocks = low.count("{")
-    js = low.count("<script") + low.count("function ") + low.count("=>")
-    interact = _has_interaction(body)
-    return bool(
-        style_n + (1 if css_blocks > 15 else 0) >= 1 and css_blocks > 20 and not interact and js < 2
+    from gnom_hub.pipeline.dod_gate import css_heavy_without_js
+
+    return css_heavy_without_js(body)
+
+
+def _validate_worker_draft(
+    body: str,
+    *,
+    user_text: str = "",
+    task: str = "",
+    requirements: list[str] | None = None,
+    tool_calls: list | None = None,
+) -> dict:
+    """Automated DoD gate (delegates to gnom_hub.pipeline.dod_gate)."""
+    from gnom_hub.pipeline.dod_gate import validate_worker_draft
+
+    return validate_worker_draft(
+        body,
+        user_text=user_text,
+        task=task,
+        requirements=requirements,
+        tool_calls=tool_calls,
     )
 
-
-def _validate_worker_draft(body: str, *, user_text: str = "", task: str = "") -> dict:
-    s = (body or "").strip()
-    issues: list[str] = []
-    ok = True
-    if len(s) < 40:
-        ok = False
-        issues.append("too_short")
-    if "FEHLER" in s and "Deliverable" in s:
-        ok = False
-        issues.append("worker_error")
-    if (s.startswith("Stub") or "Stub —" in s) and "FEHLER" not in s:
-        ok = False
-        issues.append("stub")
-    if _wants_html_artifact(user_text, task):
-        if not _html_complete(s):
-            ok = False
-            issues.append("incomplete_html")
-        if "</html>" not in s.lower():
-            issues.append("missing_html_close")
-        if _html_complete(s) and not _has_interaction(s):
-            issues.append("no_interaction")
-            blob = f"{user_text} {task}".lower()
-            if any(
-                k in blob
-                for k in (
-                    "interact",
-                    "click",
-                    "demo",
-                    "nav",
-                    "todo",
-                    "filter",
-                    "state",
-                    "klick",
-                    "dom",
-                )
-            ):
-                ok = False
-                issues.append("missing_required_interaction")
-        if _css_heavy_without_js(s):
-            issues.append("css_before_functions")
-    if s.rstrip().endswith(("...", "…")) and len(s) > 80:
-        ok = False
-        issues.append("truncated_ellipsis")
-    return {
-        "ok": ok,
-        "issues": issues,
-        "chars": len(s),
-        "html_complete": (
-            _html_complete(s) if ("<html" in s.lower() or "<!doctype" in s.lower()) else None
-        ),
-        "has_interaction": _has_interaction(s),
-    }
 
 
 def _quality_check(
@@ -1346,7 +1256,10 @@ def _quality_check(
         name = str(out.get("name") or out.get("worker") or "worker")
         body = str(out.get("result") or "").strip()
         gate = out.get("validation") or _validate_worker_draft(
-            body, user_text=user_text, task=str(out.get("task") or "")
+            body,
+            user_text=user_text,
+            task=str(out.get("task") or ""),
+            requirements=requirements,
         )
         score = 0
         notes: list[str] = list(gate.get("issues") or [])
