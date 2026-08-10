@@ -152,8 +152,17 @@
         if (uniq.indexOf(nm) < 0) uniq.push(nm);
       });
       if (els.toolsBadge) {
-        els.toolsBadge.textContent = n ? "Tools: " + n : "Tools: 0";
+        let nFail = 0;
+        calls.forEach(function (c) {
+          if (c && c.ok === false) nFail += 1;
+        });
+        els.toolsBadge.textContent = n
+          ? nFail
+            ? "Tools: " + n + "·" + nFail + "!"
+            : "Tools: " + n
+          : "Tools: 0";
         els.toolsBadge.classList.toggle("has-calls", n > 0);
+        els.toolsBadge.classList.toggle("has-fail", nFail > 0);
         els.toolsBadge.title =
           n > 0
             ? "This run: " +
@@ -161,9 +170,12 @@
               (n > uniq.length ? " (+)" : "") +
               " · " +
               n +
-              " call(s) — click for history"
+              " call(s)" +
+              (nFail ? " · " + nFail + " failed" : "") +
+              " — click for history"
             : "No tool calls this run — click for Tools modal";
       }
+      lastToolCalls = calls.slice();
       if (typeof renderToolsRunHistory === "function") {
         renderToolsRunHistory(calls);
       }

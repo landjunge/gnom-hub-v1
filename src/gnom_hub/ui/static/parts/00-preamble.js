@@ -130,6 +130,8 @@
   let lastNudgeKey = ""; // avoid re-spamming Flex corrections in chat
   let lastToolsKey = ""; // avoid re-toasting tool_calls
   let lastSnapshot = null; // latest hub snapshot (tools history etc.)
+  let lastToolCalls = []; // pipeline.tool_calls for Tools modal history
+  let manualToolCalls = []; // this browser session (Tools Run / Fetch)
   let currentJobId = null;
   let lastWorkerOutputs = [];
   let jobTimerStart = null;

@@ -284,6 +284,7 @@
 | Tools modal: this-run tool_call history | **done** |
 | Tools badge click → history | **done** |
 | Snapshot test for tool_calls UI contract | **done** |
+| Tool history: click JSON · copy · manual session log · fail badge | **done** |
 
 ## Post-V3.7 (optional)
 

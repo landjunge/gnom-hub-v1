@@ -533,9 +533,13 @@
         <button type="button" id="tools-close" class="modal-close" title="Close">×</button>
       </div>
       <p id="tools-count" class="system-line muted">Tools: 0</p>
-      <p class="system-line muted" style="margin-top:6px">This pipeline run</p>
-      <ul id="tools-run-history" class="ws-list tools-run-history" style="max-height:110px" title="Auto tool calls from Execute (prefetch)">
-        <li class="muted">(no tool calls yet — run Execute with URL / memory / install)</li>
+      <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px">
+        <p id="tools-run-summary" class="system-line muted" style="margin:0;flex:1">This run: 0 tool calls</p>
+        <button type="button" id="tools-hist-copy" class="btn-ws-sm" title="Copy tool history JSON">Copy hist</button>
+        <button type="button" id="tools-hist-refresh" class="btn-ws-sm" title="Refresh from last snapshot">↻</button>
+      </div>
+      <ul id="tools-run-history" class="ws-list tools-run-history" style="max-height:160px" title="Click a row for full JSON · auto tools from Execute">
+        <li class="muted">(no tool calls yet — Execute with URL / memory / install)</li>
       </ul>
       <ul id="tools-list" class="ws-list" style="max-height:140px"></ul>
       <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">

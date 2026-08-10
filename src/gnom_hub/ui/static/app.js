@@ -130,6 +130,8 @@
   let lastNudgeKey = ""; // avoid re-spamming Flex corrections in chat
   let lastToolsKey = ""; // avoid re-toasting tool_calls
   let lastSnapshot = null; // latest hub snapshot (tools history etc.)
+  let lastToolCalls = []; // pipeline.tool_calls for Tools modal history
+  let manualToolCalls = []; // this browser session (Tools Run / Fetch)
   let currentJobId = null;
   let lastWorkerOutputs = [];
   let jobTimerStart = null;
@@ -818,8 +820,17 @@
         if (uniq.indexOf(nm) < 0) uniq.push(nm);
       });
       if (els.toolsBadge) {
-        els.toolsBadge.textContent = n ? "Tools: " + n : "Tools: 0";
+        let nFail = 0;
+        calls.forEach(function (c) {
+          if (c && c.ok === false) nFail += 1;
+        });
+        els.toolsBadge.textContent = n
+          ? nFail
+            ? "Tools: " + n + "·" + nFail + "!"
+            : "Tools: " + n
+          : "Tools: 0";
         els.toolsBadge.classList.toggle("has-calls", n > 0);
+        els.toolsBadge.classList.toggle("has-fail", nFail > 0);
         els.toolsBadge.title =
           n > 0
             ? "This run: " +
@@ -827,9 +838,12 @@
               (n > uniq.length ? " (+)" : "") +
               " · " +
               n +
-              " call(s) — click for history"
+              " call(s)" +
+              (nFail ? " · " + nFail + " failed" : "") +
+              " — click for history"
             : "No tool calls this run — click for Tools modal";
       }
+      lastToolCalls = calls.slice();
       if (typeof renderToolsRunHistory === "function") {
         renderToolsRunHistory(calls);
       }
@@ -1954,23 +1968,60 @@
   }
 
 
+  function _toolCallsMerged() {
+    const pipe = (lastToolCalls || []).map(function (c, i) {
+      return Object.assign({ _src: "pipeline", _i: i }, c || {});
+    });
+    const man = (manualToolCalls || []).map(function (c, i) {
+      return Object.assign({ _src: "manual", _i: i }, c || {});
+    });
+    return pipe.concat(man);
+  }
+
   function renderToolsRunHistory(calls) {
+    if (calls) {
+      lastToolCalls = Array.isArray(calls) ? calls.slice() : [];
+    }
     const ul = document.getElementById("tools-run-history");
+    const sum = document.getElementById("tools-run-summary");
     if (!ul) return;
-    const list = calls || [];
+    const list = _toolCallsMerged();
+    const nPipe = (lastToolCalls || []).length;
+    const nMan = (manualToolCalls || []).length;
+    let nOk = 0;
+    let nFail = 0;
+    list.forEach(function (c) {
+      if (c && c.ok === false) nFail += 1;
+      else nOk += 1;
+    });
+    if (sum) {
+      sum.textContent =
+        "This run: " +
+        nPipe +
+        " pipeline" +
+        (nMan ? " · " + nMan + " manual" : "") +
+        " · " +
+        nOk +
+        " ok / " +
+        nFail +
+        " fail" +
+        (list.length ? " · click row for JSON" : "");
+    }
     ul.innerHTML = "";
     if (!list.length) {
       const li = document.createElement("li");
       li.className = "muted";
       li.textContent =
-        "(no tool calls yet — Execute with URL / memory / missing package)";
+        "(no tool calls yet — Execute with URL / memory / install, or Run below)";
       ul.appendChild(li);
       return;
     }
-    list.slice(0, 24).forEach(function (c, i) {
+    list.slice(0, 40).forEach(function (c, i) {
       const li = document.createElement("li");
       const ok = !c || c.ok !== false;
       li.className = ok ? "tool-ok" : "tool-fail";
+      li.setAttribute("data-idx", String(i));
+      li.title = "Click to show full JSON in result panel";
       const name = (c && c.name) || "?";
       const err = (c && c.error) || "";
       const args = (c && c.args) || {};
@@ -1986,12 +2037,17 @@
       else if (res.hits != null) resBit = res.hits + " hits";
       else if (res.text_len != null) resBit = res.text_len + " chars";
       else if (res.message) resBit = String(res.message).slice(0, 48);
+      else if (res.status != null) resBit = "status " + res.status;
+      const src = c && c._src === "manual" ? "manual" : "auto";
       const meta = [ok ? "ok" : "fail"]
         .concat(argBits)
         .concat(resBit ? [resBit] : [])
         .concat(err ? ["err:" + String(err).slice(0, 60)] : [])
         .join(" · ");
       li.innerHTML =
+        '<span class="tool-src">[' +
+        src +
+        "]</span>" +
         '<span class="tool-name">' +
         (i + 1) +
         ". " +
@@ -1999,19 +2055,108 @@
         '</span> <span class="tool-meta">' +
         meta +
         "</span>";
+      li.addEventListener("click", function () {
+        ul.querySelectorAll("li.selected").forEach(function (x) {
+          x.classList.remove("selected");
+        });
+        li.classList.add("selected");
+        const pre = document.getElementById("tools-result");
+        if (pre) {
+          const clean = Object.assign({}, c);
+          delete clean._src;
+          delete clean._i;
+          pre.textContent = JSON.stringify(clean, null, 2);
+        }
+        // Prefill run form for re-call
+        const sel = document.getElementById("tools-select");
+        const argsEl = document.getElementById("tools-args");
+        if (sel && name && name !== "?") {
+          sel.value = name;
+        }
+        if (argsEl && args && Object.keys(args).length) {
+          try {
+            argsEl.value = JSON.stringify(args);
+          } catch (_e) {
+            argsEl.value = "";
+          }
+        }
+      });
       ul.appendChild(li);
     });
+  }
+
+  function copyToolsHistory() {
+    const list = _toolCallsMerged().map(function (c) {
+      const o = Object.assign({}, c);
+      delete o._src;
+      delete o._i;
+      return o;
+    });
+    const text = JSON.stringify(list, null, 2);
+    function done() {
+      if (typeof toast === "function") toast("Tool history copied (" + list.length + ")", "ok");
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(function () {
+        // fallback
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand("copy");
+          done();
+        } catch (_e) {
+          if (typeof toast === "function") toast("Copy failed", "error");
+        }
+        document.body.removeChild(ta);
+      });
+    } else {
+      if (typeof toast === "function") toast("Clipboard unavailable", "error");
+    }
+  }
+
+  function recordManualToolCall(name, args, data) {
+    const ok =
+      data && typeof data === "object"
+        ? data.ok !== false && !data.error
+        : true;
+    const entry = {
+      name: name || "?",
+      args: args || {},
+      ok: ok,
+      error: (data && data.error) || null,
+      result:
+        data && typeof data === "object"
+          ? {
+              ok: data.ok,
+              error: data.error,
+              message: data.message,
+              status: data.status,
+              url: data.url,
+              package: data.package,
+              text_len:
+                data.text != null
+                  ? String(data.text).length
+                  : data.text_len,
+            }
+          : { raw: String(data).slice(0, 200) },
+      at: new Date().toISOString(),
+    };
+    manualToolCalls.push(entry);
+    if (manualToolCalls.length > 30) manualToolCalls = manualToolCalls.slice(-30);
+    renderToolsRunHistory();
   }
 
   async function openToolsModal() {
     if (!els.toolsModal) return;
     els.toolsModal.hidden = false;
     try {
-      const snap = typeof lastSnapshot !== 'undefined' ? lastSnapshot : null;
+      const snap = lastSnapshot || null;
       const calls =
         snap && snap.pipeline && snap.pipeline.tool_calls
           ? snap.pipeline.tool_calls
-          : [];
+          : lastToolCalls || [];
       renderToolsRunHistory(calls);
     } catch (e) {}
     await refreshToolsModal();
@@ -2238,6 +2383,13 @@
           typeof data.result === "string"
             ? data.result
             : JSON.stringify(data.result, null, 2);
+      }
+      if (typeof recordManualToolCall === "function") {
+        recordManualToolCall(
+          "web_fetch",
+          { url: url, max_chars: 6000 },
+          data.result
+        );
       }
       toast("Fetch ok", "ok");
     } catch (err) {
@@ -5858,6 +6010,19 @@
     if (els.btnSystem) els.btnSystem.addEventListener("click", openSystemModal);
     if (els.btnWorkspace) els.btnWorkspace.addEventListener("click", openWorkspaceModal);
     if (els.btnTools) els.btnTools.addEventListener("click", openToolsModal);
+    const histCopy = document.getElementById("tools-hist-copy");
+    if (histCopy) histCopy.addEventListener("click", copyToolsHistory);
+    const histRef = document.getElementById("tools-hist-refresh");
+    if (histRef)
+      histRef.addEventListener("click", function () {
+        const calls =
+          lastSnapshot && lastSnapshot.pipeline && lastSnapshot.pipeline.tool_calls
+            ? lastSnapshot.pipeline.tool_calls
+            : lastToolCalls || [];
+        renderToolsRunHistory(calls);
+        if (typeof toast === "function") toast("Tool history refreshed", "info");
+      });
+
     if (els.toolsBadge) {
       els.toolsBadge.addEventListener("click", openToolsModal);
       els.toolsBadge.addEventListener("keydown", function (ev) {

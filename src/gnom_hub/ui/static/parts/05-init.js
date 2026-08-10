@@ -172,6 +172,19 @@
     if (els.btnSystem) els.btnSystem.addEventListener("click", openSystemModal);
     if (els.btnWorkspace) els.btnWorkspace.addEventListener("click", openWorkspaceModal);
     if (els.btnTools) els.btnTools.addEventListener("click", openToolsModal);
+    const histCopy = document.getElementById("tools-hist-copy");
+    if (histCopy) histCopy.addEventListener("click", copyToolsHistory);
+    const histRef = document.getElementById("tools-hist-refresh");
+    if (histRef)
+      histRef.addEventListener("click", function () {
+        const calls =
+          lastSnapshot && lastSnapshot.pipeline && lastSnapshot.pipeline.tool_calls
+            ? lastSnapshot.pipeline.tool_calls
+            : lastToolCalls || [];
+        renderToolsRunHistory(calls);
+        if (typeof toast === "function") toast("Tool history refreshed", "info");
+      });
+
     if (els.toolsBadge) {
       els.toolsBadge.addEventListener("click", openToolsModal);
       els.toolsBadge.addEventListener("keydown", function (ev) {
