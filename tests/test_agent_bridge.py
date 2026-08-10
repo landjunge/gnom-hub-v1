@@ -72,6 +72,7 @@ def test_format_tool_catalog_and_loop():
         tools=tools,
         tool_names=["hub_status"],
         max_rounds=3,
+        cancel_check=lambda: False,
     )
     assert "STATUS_OK" in out or "final" in out
 
@@ -121,6 +122,7 @@ def test_tool_loop_ignores_missing_cancel_check():
         tools=tools,
         tool_names=["hub_status"],
         max_rounds=3,
+        cancel_check=lambda: False,
     )
     assert "cancelled" not in out.lower()
     assert "STATUS_OK" in out or "final" in out

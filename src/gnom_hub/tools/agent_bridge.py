@@ -279,11 +279,13 @@ def _pipeline_cancel_requested() -> bool:
         from gnom_hub.hub import get_hub
 
         hub = get_hub()
-        # No in-flight job → never treat tool loops as cancelled
-        if not getattr(hub, "_active_job_id", None):
-            return False
         pipe = getattr(hub, "pipeline", None)
         if pipe is None:
+            return False
+        # Self-heal sticky cancel_check left by tests / early cancel_job
+        if not getattr(hub, "_active_job_id", None):
+            if getattr(pipe, "cancel_check", None) is not None:
+                pipe.cancel_check = None
             return False
         fn = getattr(pipe, "cancel_check", None)
         if not callable(fn):
@@ -334,12 +336,23 @@ def run_tool_loop(
     temperature: float = 0.4,
     bus: Any | None = None,
     agent_id: str = "worker",
+    cancel_check: Any | None = None,
 ) -> str:
     """
     Multi-round: model may emit TOOL_CALL, we execute, append results, re-ask.
 
     ask_fn(system, user, max_tokens=..., temperature=...) -> str
+    cancel_check: optional callable; if omitted, uses pipeline cooperative cancel.
     """
+
+    def _cancelled() -> bool:
+        if cancel_check is not None:
+            try:
+                return bool(cancel_check())
+            except Exception:  # noqa: BLE001
+                return False
+        return _pipeline_cancel_requested()
+
     catalog = format_tool_catalog(tools, names=tool_names)
     if not catalog:
         return ask_fn(system, user, max_tokens=max_tokens, temperature=temperature)
@@ -348,7 +361,7 @@ def run_tool_loop(
     conversation = user
     last = ""
     for round_i in range(max(1, max_rounds)):
-        if _pipeline_cancel_requested():
+        if _cancelled():
             return strip_tool_calls(last) or f"(tool loop cancelled after round {round_i})"
         last = ask_fn(
             sys_full,
@@ -363,7 +376,7 @@ def run_tool_loop(
         # Execute all calls in this turn (usually one)
         blocks: list[str] = []
         for name, args in calls[:3]:
-            if _pipeline_cancel_requested():
+            if _cancelled():
                 blocks.append("TOOL_RESULT cancelled=true")
                 break
             if tool_names is not None and name not in tool_names:
