@@ -51,3 +51,33 @@ def use_neural(backend: str = "fastembed", reindex: bool = False) -> dict[str, A
         return ok(**out, available=probe_neural())
     except Exception as exc:  # noqa: BLE001
         return fail(f"neural embedder failed: {exc}")
+
+
+def install_pkg() -> dict[str, Any]:
+    """pip install fastembed into current env — one simple path."""
+    import subprocess
+    import sys
+
+    try:
+        r = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-q", "fastembed>=0.4.0"],
+            capture_output=True,
+            text=True,
+            timeout=600,
+            check=False,
+        )
+        if r.returncode != 0:
+            err = (r.stderr or r.stdout or "pip failed")[-800:]
+            return fail(f"pip install failed: {err}")
+        from gnom_hub.memory.neural_embed import probe_neural
+
+        p = probe_neural()
+        if not p.get("fastembed"):
+            return fail("fastembed still not importable after pip")
+        return ok(
+            installed=True,
+            available=p,
+            next="Call embeddings_neural_use backend=fastembed reindex=true, or Vector modal.",
+        )
+    except Exception as exc:  # noqa: BLE001
+        return fail(str(exc))

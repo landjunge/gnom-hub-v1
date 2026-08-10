@@ -3398,6 +3398,22 @@
       toast("Learn failed: " + err.message, "error");
     }
   }
+
+
+  async function installNeuralEmbedder() {
+    toast("Installing neural embeddings…", "info");
+    try {
+      const data = await api("POST", "/api/vector/embedder/install");
+      if (data && data.ok === false) {
+        toast("Install failed: " + (data.error || "unknown"), "error");
+        return;
+      }
+      toast("Neural package OK — pick fastembed + Apply", "ok");
+      await refreshVectorList();
+    } catch (err) {
+      toast("Install failed: " + err.message, "error");
+    }
+  }
 /* part: 03-chat-jobs-ops.js  lines 1950-3681 of app.js — edit parts, run scripts/build_ui_js.py */
   function toggleMic() {
     const SR =
@@ -7258,6 +7274,8 @@
     if (vectorAddBtn) vectorAddBtn.addEventListener("click", addVectorDoc);
     const vectorEmbedApply = document.getElementById("vector-embedder-apply");
     if (vectorEmbedApply) vectorEmbedApply.addEventListener("click", applyVectorEmbedder);
+    const vectorEmbedInstall = document.getElementById("vector-embedder-install");
+    if (vectorEmbedInstall) vectorEmbedInstall.addEventListener("click", installNeuralEmbedder);
     const skillsClose = document.getElementById("skills-close");
     if (skillsClose) skillsClose.addEventListener("click", closeSkillsModal);
     if (els.skillsModal) {

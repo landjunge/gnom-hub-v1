@@ -997,6 +997,42 @@ def create_app() -> FastAPI:
             "embedder": emb,
         }
 
+    @app.post("/api/vector/embedder/install")
+    def vector_embedder_install() -> dict[str, Any]:
+        """One-shot: pip install fastembed into the running env."""
+        try:
+            # prefer plugin handler if loaded
+            hub = get_hub()
+            if hasattr(hub.tools, "call"):
+                try:
+                    out = hub.tools.call("embeddings_neural_install", {})
+                    if isinstance(out, dict):
+                        return out
+                except Exception:  # noqa: BLE001
+                    pass
+            import subprocess
+            import sys
+
+            r = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "-q", "fastembed>=0.4.0"],
+                capture_output=True,
+                text=True,
+                timeout=600,
+                check=False,
+            )
+            if r.returncode != 0:
+                raise HTTPException(
+                    status_code=500,
+                    detail=(r.stderr or r.stdout or "pip failed")[-500:],
+                )
+            from gnom_hub.memory.neural_embed import probe_neural
+
+            return {"ok": True, "available": probe_neural(), "next": "select fastembed + Apply"}
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
     @app.post("/api/vector/embedder")
     def vector_embedder(body: VectorEmbedderBody) -> dict[str, Any]:
         """Switch embedder: bow | char_ngram | hashing | fastembed | sbert."""

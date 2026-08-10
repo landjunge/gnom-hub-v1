@@ -394,6 +394,8 @@
     if (vectorAddBtn) vectorAddBtn.addEventListener("click", addVectorDoc);
     const vectorEmbedApply = document.getElementById("vector-embedder-apply");
     if (vectorEmbedApply) vectorEmbedApply.addEventListener("click", applyVectorEmbedder);
+    const vectorEmbedInstall = document.getElementById("vector-embedder-install");
+    if (vectorEmbedInstall) vectorEmbedInstall.addEventListener("click", installNeuralEmbedder);
     const skillsClose = document.getElementById("skills-close");
     if (skillsClose) skillsClose.addEventListener("click", closeSkillsModal);
     if (els.skillsModal) {

@@ -1709,3 +1709,19 @@
       toast("Learn failed: " + err.message, "error");
     }
   }
+
+
+  async function installNeuralEmbedder() {
+    toast("Installing neural embeddings…", "info");
+    try {
+      const data = await api("POST", "/api/vector/embedder/install");
+      if (data && data.ok === false) {
+        toast("Install failed: " + (data.error || "unknown"), "error");
+        return;
+      }
+      toast("Neural package OK — pick fastembed + Apply", "ok");
+      await refreshVectorList();
+    } catch (err) {
+      toast("Install failed: " + err.message, "error");
+    }
+  }

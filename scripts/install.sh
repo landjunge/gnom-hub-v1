@@ -93,3 +93,14 @@ echo "  source .venv/bin/activate"
 echo "  ./scripts/start.sh"
 echo "  → http://127.0.0.1:8080/"
 echo "  ./scripts/quality_check.sh   # ruff + pytest + smoke"
+
+# Optional neural embeddings (only if user asked)
+if [ "${GNOM_INSTALL_EMBEDDINGS:-}" = "1" ] || [ "${1:-}" = "--with-embeddings" ]; then
+  echo ""
+  echo "=== Optional: neural embeddings ==="
+  bash "$ROOT/scripts/install_embeddings.sh"
+fi
+
+echo ""
+echo "Install OK. Start with:  ./scripts/start.sh"
+echo "Neural search later?     ./scripts/install_embeddings.sh"
