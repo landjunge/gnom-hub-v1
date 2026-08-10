@@ -301,6 +301,7 @@
 | Item | Status |
 |------|--------|
 | Plan: docs/DOD_GATE_PLAN.md | **done** |
+| Lint rules: docs/DOD_LINT.md + dod_lint.py | **done** |
 | Slice A: extract dod_gate.py parity | planned |
 | Slice C: wish + prefetch palette checks | planned |
 | Slice B: DoD prompt from same Spec | planned |

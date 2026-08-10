@@ -64,6 +64,12 @@ DoDGate.check(body, spec)  →  DoDResult
 
 ---
 
+## 1b. Lint-Regeln (done)
+
+Stable codes + structure checks: **`docs/DOD_LINT.md`** · `src/gnom_hub/pipeline/dod_lint.py` · `tests/test_dod_lint.py`.
+
+Gate implementation **must** emit only catalog codes (or `wish_*` / `req_N`) and pass `lint_issue_codes`.
+
 ## 2. Datenmodell (neu)
 
 Datei-Vorschlag: `src/gnom_hub/pipeline/dod_gate.py`
