@@ -296,3 +296,12 @@
 | Mobile / remote UI | Explicitly out of V1 |
 
 Heavy optional: real OCR/pyautogui — install extras yourself if needed.
+
+## V3.7.6 (Worker prompt strategies)
+
+| Item | Status |
+|------|--------|
+| Layered worker system prompt L1–L5 | **done** |
+| Design prefetch: color_palette + scaffold + contrast | **done** |
+| docs/WORKER_PROMPTS.md | **done** |
+| tests/test_worker_prompts.py | **done** |

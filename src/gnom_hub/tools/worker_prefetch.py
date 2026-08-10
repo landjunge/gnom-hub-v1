@@ -1,4 +1,4 @@
-"""Prefetch tools for worker stage — URLs + memory + install_tool (KISS, budget-capped)."""
+"""Prefetch tools for worker stage — URLs + memory + install_tool + design (KISS, budget-capped)."""
 
 from __future__ import annotations
 
@@ -21,6 +21,22 @@ _MEMORY_HINTS = (
     "always",
     "flex",
     "warm",
+)
+
+# HTML / web-design task signals → color_palette + html_scaffold
+_HTML_HINTS = (
+    "html",
+    "landing",
+    "webpage",
+    "web page",
+    "website",
+    "webseite",
+    "seite",
+    "frontend",
+    "dashboard",
+    "css",
+    "ui page",
+    "web design",
 )
 
 # Task keywords → allowlisted install_tool package key
@@ -49,6 +65,41 @@ def packages_needed(blob: str) -> list[str]:
     return out
 
 
+def wants_design_tools(blob: str) -> bool:
+    """True when task looks like HTML/page/UI work."""
+    low = (blob or "").lower()
+    return any(h in low for h in _HTML_HINTS)
+
+
+def _palette_seed(blob: str) -> str:
+    """Pick a palette preset from task language (defaults dark)."""
+    low = (blob or "").lower()
+    if "ocean" in low or "blau" in low or "blue" in low:
+        return "ocean"
+    if "forest" in low or "grün" in low or "green" in low:
+        return "forest"
+    if "sunset" in low or "orange" in low:
+        return "sunset"
+    if "rose" in low or "pink" in low:
+        return "rose"
+    if "brand" in low or "violet" in low or "purple" in low:
+        return "brand"
+    if "light" in low or "hell" in low:
+        return "light"
+    return "dark"
+
+
+def _scaffold_kind(blob: str) -> str:
+    low = (blob or "").lower()
+    if "dashboard" in low:
+        return "dashboard"
+    if "form" in low or "kontakt" in low or "contact" in low:
+        return "form"
+    if "article" in low or "blog" in low or "artikel" in low:
+        return "article"
+    return "landing"
+
+
 def _emit_tool_call(
     bus: Any,
     name: str,
@@ -73,10 +124,20 @@ def _emit_tool_call(
             "already_installed",
             "message",
             "dry_run",
+            "primary",
+            "accent",
+            "kind",
+            "seed",
+            "grade",
+            "ratio",
         )
         summary = {k: result[k] for k in keys if k in result}
         if "text" in result:
             summary["text_len"] = len(str(result.get("text") or ""))
+        if "css" in result:
+            summary["css_len"] = len(str(result.get("css") or ""))
+        if "html" in result:
+            summary["html_len"] = len(str(result.get("html") or ""))
         if not summary and result:
             summary = {"keys": list(result.keys())[:8]}
     elif isinstance(result, list):
@@ -178,13 +239,83 @@ def _ensure_packages(
     return chunks, calls
 
 
+def _prefetch_design(
+    blob: str,
+    *,
+    bus: Any,
+    tools: Any | None,
+    calls: int,
+    max_tool_calls: int,
+    record: list[dict[str, Any]] | None = None,
+) -> tuple[list[str], int]:
+    """color_palette + html_scaffold when HTML/page task and tools registered."""
+    chunks: list[str] = []
+    if not wants_design_tools(blob):
+        return chunks, calls
+
+    seed = _palette_seed(blob)
+    kind = _scaffold_kind(blob)
+
+    if _registry_has(tools, "color_palette") and calls < max_tool_calls:
+        args = {"seed": seed, "count": 5}
+        res = _call_tool(tools, "color_palette", args)
+        calls += 1
+        _emit_tool_call(bus, "color_palette", args, res, record=record)
+        if isinstance(res, dict) and res.get("ok"):
+            css = str(res.get("css") or "")[:800]
+            chunks.append(
+                "color_palette (auto):\n"
+                f"primary={res.get('primary')} accent={res.get('accent')} "
+                f"surface={res.get('surface')} text={res.get('text')}\n"
+                f"{css}"
+            )
+            # optional contrast sanity: text on surface
+            if (
+                _registry_has(tools, "contrast_check")
+                and calls < max_tool_calls
+                and res.get("text")
+                and res.get("surface")
+            ):
+                cargs = {"fg": str(res.get("text")), "bg": str(res.get("surface"))}
+                cres = _call_tool(tools, "contrast_check", cargs)
+                calls += 1
+                _emit_tool_call(bus, "contrast_check", cargs, cres, record=record)
+                if isinstance(cres, dict) and cres.get("ok"):
+                    chunks.append(
+                        f"contrast_check: ratio={cres.get('ratio')} grade={cres.get('grade')} "
+                        f"aa_normal={cres.get('aa_normal')}"
+                    )
+        else:
+            err = res.get("error") if isinstance(res, dict) else "palette failed"
+            chunks.append(f"color_palette: failed ({err})")
+
+    if _registry_has(tools, "html_scaffold") and calls < max_tool_calls:
+        title = " ".join((blob or "").split())[:60] or "Page"
+        args = {"kind": kind, "title": title, "seed": seed}
+        res = _call_tool(tools, "html_scaffold", args)
+        calls += 1
+        _emit_tool_call(bus, "html_scaffold", args, res, record=record)
+        if isinstance(res, dict) and res.get("ok"):
+            html = str(res.get("html") or "")[:3500]
+            chunks.append(
+                f"html_scaffold (auto kind={kind}):\n"
+                "Use as starting skeleton — keep structure, replace copy/features.\n"
+                f"{html}"
+            )
+        else:
+            err = res.get("error") if isinstance(res, dict) else "scaffold failed"
+            chunks.append(f"html_scaffold: failed ({err})")
+
+    return chunks, calls
+
+
 def prefetch_for_workers(
     blob: str,
     *,
     bus: Any = None,
     tools: Any | None = None,
     memory: Any | None = None,
-    max_tool_calls: int = 5,
+    max_tool_calls: int = 6,
     max_urls: int = 3,
     record: list[dict[str, Any]] | None = None,
 ) -> str:
@@ -194,6 +325,7 @@ def prefetch_for_workers(
     - install_tool for missing allowlisted packages named in the task
     - http(s) URLs → web_fetch (via ToolRegistry when present)
     - memory_search when hints match and vectors available
+    - color_palette + html_scaffold (+ contrast_check) for HTML/page tasks
     Emits pipeline.tool_call per invocation. Caps at max_tool_calls.
     """
     text = blob or ""
@@ -210,6 +342,17 @@ def prefetch_for_workers(
         record=record,
     )
     chunks.extend(inst_lines)
+
+    # ── design tools for HTML/page tasks ──────────────────────────────
+    design_lines, calls = _prefetch_design(
+        text,
+        bus=bus,
+        tools=tools,
+        calls=calls,
+        max_tool_calls=max_tool_calls,
+        record=record,
+    )
+    chunks.extend(design_lines)
 
     # ── URLs ──────────────────────────────────────────────────────────
     urls: list[str] = []
@@ -283,6 +426,9 @@ def tool_calls_needed(blob: str) -> list[str]:
     out: list[str] = []
     for pkg in packages_needed(text):
         out.append(f"install_tool:{pkg}")
+    if wants_design_tools(text):
+        out.append("color_palette")
+        out.append("html_scaffold")
     if _URL_RE.search(text):
         out.append("web_fetch")
     low = text.lower()

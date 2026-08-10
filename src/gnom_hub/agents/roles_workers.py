@@ -13,6 +13,100 @@ from gnom_hub.agents.roles_helpers import (
 from gnom_hub.config.auth import user_message_for_failure
 from gnom_hub.core.event_bus import EventBus
 
+# ── Worker prompt layers (see docs/WORKER_PROMPTS.md) ─────────────────
+# L0 HUB_IDENTITY is injected by BaseAgent.ask
+# L1 Role contract
+# L2 Priority / budget
+# L3 Domain (HTML) rules
+# L4 Flex wishes (absolute)
+# L5 Tool protocol (prefetch is authoritative)
+
+_WORKER_L1_ROLE = (
+    "You are a Worker agent inside Gnom-Hub. "
+    "Deliver a concrete useful result for the assigned task "
+    "(plan, structure, checklist, draft, or full HTML when the task is a page/UI).\n"
+    "Work on the USER task only. Match user language.\n"
+    "If you cannot complete the task honestly (missing data, impossible constraint), "
+    "start the body with FEHLER and explain — never invent a fake success stub."
+)
+
+_WORKER_L2_PRIORITY = (
+    "PRIORITY ORDER (mandatory — do not reverse):\n"
+    "  1) Complete structure / skeleton (always finish the file)\n"
+    "  2) Core interactive behavior (JS/handlers, DOM updates)\n"
+    "  3) Error/empty states for those core flows\n"
+    "  4) CSS/styling LAST (max ~30% of effort; minimal layout first)\n"
+    "Budget: ~70% functions+structure, ~30% styling. If near limit, "
+    "CUT CSS — never omit </html> or core interactions."
+)
+
+_WORKER_L3_HTML = (
+    "If HTML/landing/page/UI:\n"
+    "  - ONE complete file: <!DOCTYPE html> ... </html>\n"
+    "  - At least one real interaction "
+    "(onclick= or addEventListener or form submit handler)\n"
+    "  - Prefer working demo over pretty design\n"
+    "  - DESIGN TOOLS (when present in Tool prefetch):\n"
+    "      * Use color_palette CSS variables (--color-primary, --color-surface, …)\n"
+    "      * Prefer html_scaffold structure as starting skeleton if provided\n"
+    "      * Run contrast_check mentally: text on surface must stay readable\n"
+    "      * Do NOT invent a second palette — reuse the prefetched one\n"
+    "  - Without design prefetch: still use CSS variables and a dark-friendly default"
+)
+
+_WORKER_L4_WISHES = (
+    "STANDING USER WISHES (Flex-wish / User: lines) are ABSOLUTE ORDERS:\n"
+    "  - Implement them fully in the deliverable — no debate, no skip,\n"
+    "    no 'optional', no 'if space allows'.\n"
+    "  - Do not contradict, weaken, or postpone them.\n"
+    "  - If a wish conflicts with decoration, drop decoration, keep the wish.\n"
+    "  - Dark theme / language / always-rules must be visible in the result."
+)
+
+_WORKER_L5_TOOLS = (
+    "TOOL PROTOCOL:\n"
+    "  - The hub may inject a block \"Tool prefetch (auto):\" with real tool outputs "
+    "(web_fetch, memory_search, install_tool, color_palette, html_scaffold, …).\n"
+    "  - Treat that block as ground truth. Cite URLs/facts from it; do not contradict it.\n"
+    "  - You do not call tools yourself mid-turn — the hub prefetches. "
+    "If a needed tool result is missing, work without inventing network data.\n"
+    "  - When install_tool reports a package installed, you may assume the import exists "
+    "in later runtime (do not claim you ran the install)."
+)
+
+
+def worker_system_prompt(*, wants_html: bool = False) -> str:
+    """Assemble layered worker system prompt (L1–L5)."""
+    parts = [
+        _WORKER_L1_ROLE,
+        _WORKER_L2_PRIORITY,
+        _WORKER_L4_WISHES,
+        _WORKER_L5_TOOLS,
+    ]
+    if wants_html:
+        parts.insert(2, _WORKER_L3_HTML)
+    return "\n".join(parts)
+
+
+def task_wants_html(*blobs: str) -> bool:
+    text = "\n".join(blobs).lower()
+    return any(
+        k in text
+        for k in (
+            "html",
+            "landing",
+            "webpage",
+            "web page",
+            "css",
+            "seite",
+            "website",
+            "frontend",
+            "dashboard",
+            "ui page",
+            "web design",
+        )
+    )
+
 
 class WorkerAgent(BaseAgent):
     def run(
@@ -40,46 +134,10 @@ class WorkerAgent(BaseAgent):
                 body = f"Aufgabe: {task}\nOriginal: {user_text}\nAnforderungen:\n" + "\n".join(
                     f"- {r}" for r in requirements[:12]
                 )
-                blob = f"{task}\n{user_text}".lower()
-                wants_html = any(
-                    k in blob
-                    for k in (
-                        "html",
-                        "landing",
-                        "webpage",
-                        "web page",
-                        "css",
-                        "seite",
-                        "website",
-                        "frontend",
-                    )
-                )
+                wants_html = task_wants_html(task, user_text, "\n".join(requirements[:12]))
                 max_tok = 3200 if wants_html else 1800
                 return self.ask(
-                    system=(
-                        "You are a Worker agent. Deliver a concrete useful result "
-                        "for the assigned task (plan, structure, checklist, draft, "
-                        "or full HTML when the task is a page/UI).\n"
-                        "PRIORITY ORDER (mandatory - do not reverse):\n"
-                        "  1) Complete structure / skeleton (always finish the file)\n"
-                        "  2) Core interactive behavior (JS/handlers, DOM updates)\n"
-                        "  3) Error/empty states for those core flows\n"
-                        "  4) CSS/styling LAST (max ~30% of effort; minimal layout first)\n"
-                        "Budget: ~70% functions+structure, ~30% styling. If near limit, "
-                        "CUT CSS - never omit </html> or core interactions.\n"
-                        "If HTML/landing/page/UI:\n"
-                        "  - ONE complete file: <!DOCTYPE html> ... </html>\n"
-                        "  - At least one real interaction "
-                        "(onclick= or addEventListener or form submit handler)\n"
-                        "  - Prefer working demo over pretty design\n"
-                        "Work on the USER task only. Match user language.\n"
-                        "STANDING USER WISHES (Flex-wish / User: lines) are ABSOLUTE ORDERS:\n"
-                        "  - Implement them fully in the deliverable - no debate, no skip,\n"
-                        "    no 'optional', no 'if space allows'.\n"
-                        "  - Do not contradict, weaken, or postpone them.\n"
-                        "  - If a wish conflicts with decoration, drop decoration, keep the wish.\n"
-                        "  - Dark theme / language / always-rules must be visible in the result."
-                    ),
+                    system=worker_system_prompt(wants_html=wants_html),
                     user=_with_memory(body, memory_ctx),
                     max_tokens=max_tok,
                     temperature=0.45,

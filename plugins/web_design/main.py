@@ -71,7 +71,9 @@ def color_palette(seed: str = "dark", count: int = 5) -> dict[str, Any]:
     r, g, b = _parse_hex(seed)
     h, l, s = _rgb_to_hsl(r, g, b)
     shades: list[str] = []
+    # Generate around seed lightness
     for i in range(n):
+        # 0.18 .. 0.82
         li = 0.18 + (0.64 * i / max(n - 1, 1))
         shades.append(_to_hex(*_hsl_to_rgb(h, li, max(0.25, min(0.75, s)))))
     primary = _to_hex(r, g, b)
@@ -148,59 +150,67 @@ def html_scaffold(
         return pal
     title_s = (title or "Page").strip()[:80] or "Page"
     body = {
-        "landing": (
-            "\n  <header class=\"wrap\">\n"
-            "    <nav><strong>Brand</strong> · <a href=\"#features\">Features</a> · "
-            "<a href=\"#cta\">Start</a></nav>\n  </header>\n"
-            "  <main class=\"wrap\">\n    <section class=\"hero\">\n"
-            "      <h1>Headline that states the value</h1>\n"
-            "      <p class=\"lead\">One sentence benefit. No filler.</p>\n"
-            "      <a class=\"btn\" href=\"#cta\" id=\"cta\">Get started</a>\n"
-            "    </section>\n    <section id=\"features\" class=\"grid\">\n"
-            "      <article><h2>Feature A</h2><p>Concrete outcome.</p></article>\n"
-            "      <article><h2>Feature B</h2><p>Concrete outcome.</p></article>\n"
-            "      <article><h2>Feature C</h2><p>Concrete outcome.</p></article>\n"
-            "    </section>\n  </main>\n  <footer class=\"wrap muted\">© Brand</footer>\n"
-        ),
-        "dashboard": (
-            "\n  <div class=\"layout\">\n"
-            "    <aside class=\"side\"><strong>App</strong>"
-            "<nav>Overview · Items · Settings</nav></aside>\n"
-            "    <main class=\"wrap\">\n      <h1>Dashboard</h1>\n"
-            "      <div class=\"grid\">\n"
-            "        <div class=\"card\"><h2>Metric</h2><p class=\"big\">—</p></div>\n"
-            "        <div class=\"card\"><h2>Metric</h2><p class=\"big\">—</p></div>\n"
-            "        <div class=\"card\"><h2>Metric</h2><p class=\"big\">—</p></div>\n"
-            "      </div>\n"
-            "      <section class=\"card\"><h2>Recent</h2>"
-            "<p class=\"muted\">Empty state</p></section>\n"
-            "    </main>\n  </div>\n"
-        ),
-        "form": (
-            "\n  <main class=\"wrap narrow\">\n    <h1>Form</h1>\n"
-            "    <form class=\"card\" action=\"#\" method=\"post\">\n"
-            "      <label>Name <input name=\"name\" required /></label>\n"
-            "      <label>Email <input type=\"email\" name=\"email\" required /></label>\n"
-            "      <label>Message <textarea name=\"msg\" rows=\"4\"></textarea></label>\n"
-            "      <button class=\"btn\" type=\"submit\">Submit</button>\n"
-            "    </form>\n  </main>\n"
-        ),
-        "article": (
-            "\n  <main class=\"wrap narrow\">\n    <article>\n"
-            "      <header><p class=\"muted\">Category · Date</p>"
-            "<h1>Article title</h1></header>\n"
-            "      <p class=\"lead\">Lead paragraph.</p>\n      <p>Body…</p>\n"
-            "    </article>\n  </main>\n"
-        ),
+        "landing": """
+  <header class="wrap">
+    <nav><strong>Brand</strong> · <a href="#features">Features</a> · <a href="#cta">Start</a></nav>
+  </header>
+  <main class="wrap">
+    <section class="hero">
+      <h1>Headline that states the value</h1>
+      <p class="lead">One sentence benefit. No filler.</p>
+      <a class="btn" href="#cta" id="cta">Get started</a>
+    </section>
+    <section id="features" class="grid">
+      <article><h2>Feature A</h2><p>Concrete outcome.</p></article>
+      <article><h2>Feature B</h2><p>Concrete outcome.</p></article>
+      <article><h2>Feature C</h2><p>Concrete outcome.</p></article>
+    </section>
+  </main>
+  <footer class="wrap muted">© Brand</footer>
+""",
+        "dashboard": """
+  <div class="layout">
+    <aside class="side"><strong>App</strong><nav>Overview · Items · Settings</nav></aside>
+    <main class="wrap">
+      <h1>Dashboard</h1>
+      <div class="grid">
+        <div class="card"><h2>Metric</h2><p class="big">—</p></div>
+        <div class="card"><h2>Metric</h2><p class="big">—</p></div>
+        <div class="card"><h2>Metric</h2><p class="big">—</p></div>
+      </div>
+      <section class="card"><h2>Recent</h2><p class="muted">Empty state</p></section>
+    </main>
+  </div>
+""",
+        "form": """
+  <main class="wrap narrow">
+    <h1>Form</h1>
+    <form class="card" action="#" method="post">
+      <label>Name <input name="name" required /></label>
+      <label>Email <input type="email" name="email" required /></label>
+      <label>Message <textarea name="msg" rows="4"></textarea></label>
+      <button class="btn" type="submit">Submit</button>
+    </form>
+  </main>
+""",
+        "article": """
+  <main class="wrap narrow">
+    <article>
+      <header><p class="muted">Category · Date</p><h1>Article title</h1></header>
+      <p class="lead">Lead paragraph.</p>
+      <p>Body…</p>
+    </article>
+  </main>
+""",
     }[k]
     html = f"""<!DOCTYPE html>
-<html lang=\"en\">
+<html lang="en">
 <head>
-  <meta charset=\"utf-8\" />
-  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{title_s}</title>
   <style>
-{pal[\"css\"]}
+{pal["css"]}
     * {{ box-sizing: border-box; }}
     body {{
       margin: 0; font-family: system-ui, sans-serif;
@@ -247,8 +257,9 @@ def css_tokens(seed: str = "dark") -> dict[str, Any]:
     pal = color_palette(seed=seed or "dark", count=5)
     if not pal.get("ok"):
         return pal
-    css = f"""{pal[\"css\"]}
+    css = f"""{pal["css"]}
 :root {{
+  /* spacing */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -256,18 +267,21 @@ def css_tokens(seed: str = "dark") -> dict[str, Any]:
   --space-5: 1.5rem;
   --space-6: 2rem;
   --space-8: 3rem;
+  /* radius */
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
   --radius-full: 999px;
-  --font-sans: system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif;
-  --font-mono: ui-monospace, \"Cascadia Code\", Consolas, monospace;
+  /* type */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", Consolas, monospace;
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-md: 1rem;
   --text-lg: 1.125rem;
   --text-xl: 1.35rem;
   --text-2xl: 1.75rem;
+  /* elevation */
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
   --shadow-md: 0 4px 16px rgba(0,0,0,0.25);
 }}
