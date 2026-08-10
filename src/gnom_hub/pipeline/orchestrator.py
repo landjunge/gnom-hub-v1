@@ -399,6 +399,7 @@ class Orchestrator:
             self._state.pending_question = None
             self._state.stage_timings = {}
             self._state.resolved_plan_mode = ""
+            self._state.plan_html_score = None
             self._stage_t0 = None
             self._stage_name = None
 
