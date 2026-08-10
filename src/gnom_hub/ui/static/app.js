@@ -144,6 +144,7 @@
   let jobTimerInterval = null;
   let lastJobElapsedSec = 0;
   let lastReportedPipelineError = null;
+  let lastDeferredClarifyKey = "";
   let chatBusy = false;
   let lastCanExecute = false;
   /** Per-agent chat logs: { brainstorm: [...], worker1: [...], ... } */
@@ -1041,6 +1042,25 @@
       showClarify(p.pending_question.text);
     } else if (p.stage !== "clarify") {
       hideClarify();
+    }
+
+    // Later / deferred clarify hygiene — surface reminder, no zombie box
+    if (Array.isArray(p.deferred_clarifies) && p.deferred_clarifies.length) {
+      const n = p.deferred_clarifies.length;
+      const last = p.deferred_clarifies[n - 1] || {};
+      const key =
+        "def:" + n + ":" + String(last.id || "") + ":" + String(last.option || "");
+      if (lastDeferredClarifyKey !== key) {
+        lastDeferredClarifyKey = key;
+        appendChat(
+          "system",
+          "Clarify deferred (" +
+            n +
+            "): " +
+            String(last.text || "").slice(0, 120) +
+            " — park only, no workers. Re-Send when ready."
+        );
+      }
     }
 
     // Only log pipeline errors once, and only while stage is error
@@ -2244,7 +2264,8 @@
       li.className = ok ? "tool-ok" : "tool-fail";
       li.setAttribute("data-idx", String(i));
       li.title = "Click to show full JSON in result panel";
-      const name = (c && c.name) || "?";
+      const name = (c && (c.name || c.tool)) || "?";
+      const why = (c && c.reason) || "";
       const err = (c && c.error) || "";
       const args = (c && c.args) || {};
       const argBits = Object.keys(args)
@@ -2262,10 +2283,14 @@
       else if (res.status != null) resBit = "status " + res.status;
       const src = c && c._src === "manual" ? "manual" : "auto";
       const meta = [ok ? "ok" : "fail"]
+        .concat(why ? ["why: " + String(why).slice(0, 80)] : [])
         .concat(argBits)
         .concat(resBit ? [resBit] : [])
         .concat(err ? ["err:" + String(err).slice(0, 60)] : [])
         .join(" · ");
+      li.title = why
+        ? "Why: " + why + " — click for full JSON"
+        : "Click to show full JSON in result panel";
       // eslint-disable-next-line no-unsanitized/property
       li.innerHTML =
         '<span class="tool-src">[' +
@@ -4816,10 +4841,11 @@
           for (let ti = lastToolLogLen; ti < tlog.length; ti++) {
             const e = tlog[ti] || {};
             const mode = e.mode ? " · " + e.mode : "";
+            const why = e.reason ? " · why: " + String(e.reason).slice(0, 80) : "";
             const ok = e.ok === false ? "FAIL" : "ok";
             appendChat(
               "system",
-              "Tool: " + (e.tool || "?") + " " + ok + mode
+              "Tool: " + (e.tool || e.name || "?") + " " + ok + mode + why
             );
           }
           lastToolLogLen = tlog.length;
@@ -5658,7 +5684,21 @@
       if (!(snap.pipeline && snap.pipeline.stage === "clarify")) {
         hideClarify();
       }
-      if (snap.pipeline && snap.pipeline.stage === "done") {
+      const low = String(answer || "").toLowerCase();
+      const deferred =
+        (snap.pipeline &&
+          Array.isArray(snap.pipeline.deferred_clarifies) &&
+          snap.pipeline.deferred_clarifies.length) ||
+        low.indexOf("later") >= 0 ||
+        low.indexOf("später") >= 0 ||
+        low.indexOf("spaeter") >= 0;
+      if (deferred && snap.pipeline && snap.pipeline.stage !== "done") {
+        appendChat(
+          "system",
+          "Clarify → Later: parked (no workers). Task stays in notes; Send again when ready."
+        );
+        toast("Clarify deferred — no zombie job", "info");
+      } else if (snap.pipeline && snap.pipeline.stage === "done") {
         appendChat("system", "Pipeline done.");
         toast("Pipeline done", "ok");
       }
@@ -6340,9 +6380,16 @@
       else if (mode === "blocked") chip.classList.add("is-blocked");
       else if (e.ok === false || mode === "error") chip.classList.add("is-err");
       const ok = e.ok === false ? "✗" : "✓";
+      const why = e.reason ? String(e.reason) : "";
       chip.textContent =
-        ok + " " + (e.tool || "?") + (mode ? " · " + mode : "");
-      chip.title = JSON.stringify(e);
+        ok +
+        " " +
+        (e.tool || e.name || "?") +
+        (mode ? " · " + mode : "") +
+        (why ? " · " + why.slice(0, 36) : "");
+      chip.title = why
+        ? "Why: " + why + "\n" + JSON.stringify(e)
+        : JSON.stringify(e);
       strip.appendChild(chip);
     });
   }

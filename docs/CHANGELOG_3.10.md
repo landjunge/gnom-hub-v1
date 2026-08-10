@@ -51,3 +51,9 @@
 - `memory_search` = HOT + WARM lexical + Vector hybrid (layer/indexed flags)
 - Promote / warm API / goals / session pack: sync vector index on write
 - Write-then-read tests · docs/MEMORY_FRESHNESS.md
+
+## Prefetch why · Clarify Later
+
+- tool_calls carry `reason` (UI + chat + job tool_log)
+- Clarify **Later** defers without workers (deferred_clarifies)
+- docs/PIPELINE_RELIABILITY.md

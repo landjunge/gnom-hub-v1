@@ -69,6 +69,7 @@ class SnapshotOpsMixin:
             "distilled_requirements": list(st.distilled_requirements),
             "flex_notes": st.flex_notes,
             "pending_question": q,
+            "deferred_clarifies": list(getattr(st, "deferred_clarifies", None) or [])[-8:],
             "worker_results": list(st.worker_results),
             "tool_calls": list(getattr(st, "tool_calls", None) or []),
             "worker_outputs": list(st.worker_outputs or []),

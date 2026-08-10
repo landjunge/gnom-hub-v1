@@ -1,6 +1,6 @@
 {
   "version": "3.10.1",
-  "count": 47,
+  "count": 48,
   "docs": [
     {
       "file": "AGENTS_DEFINITION.md",
@@ -114,13 +114,13 @@
         "fastembed",
         "640px",
         "catalog",
+        "clarify",
         "css",
         "data",
-        "enable",
-        "hot"
+        "enable"
       ],
-      "chars": 1755,
-      "lines": 54
+      "chars": 1939,
+      "lines": 60
     },
     {
       "file": "CHANGELOG_3.9.md",
@@ -649,6 +649,30 @@
       ],
       "chars": 2129,
       "lines": 69
+    },
+    {
+      "file": "PIPELINE_RELIABILITY.md",
+      "path": "docs/PIPELINE_RELIABILITY.md",
+      "title": "Pipeline reliability \u2014 prefetch why \u00b7 clarify Later \u00b7 busy/cancel",
+      "topic": "Other",
+      "keywords": [
+        "pipeline",
+        "reliability",
+        "busy",
+        "prefetch",
+        "tests",
+        "tool",
+        "why",
+        "cancel",
+        "clarify",
+        "later",
+        "box",
+        "sp\u00e4ter",
+        "test_jobs_cancel",
+        "workers"
+      ],
+      "chars": 1013,
+      "lines": 36
     },
     {
       "file": "PLAN_VS_CODE.md",

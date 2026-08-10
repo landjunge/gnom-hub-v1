@@ -144,6 +144,7 @@
   let jobTimerInterval = null;
   let lastJobElapsedSec = 0;
   let lastReportedPipelineError = null;
+  let lastDeferredClarifyKey = "";
   let chatBusy = false;
   let lastCanExecute = false;
   /** Per-agent chat logs: { brainstorm: [...], worker1: [...], ... } */

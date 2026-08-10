@@ -553,7 +553,8 @@
       li.className = ok ? "tool-ok" : "tool-fail";
       li.setAttribute("data-idx", String(i));
       li.title = "Click to show full JSON in result panel";
-      const name = (c && c.name) || "?";
+      const name = (c && (c.name || c.tool)) || "?";
+      const why = (c && c.reason) || "";
       const err = (c && c.error) || "";
       const args = (c && c.args) || {};
       const argBits = Object.keys(args)
@@ -571,10 +572,14 @@
       else if (res.status != null) resBit = "status " + res.status;
       const src = c && c._src === "manual" ? "manual" : "auto";
       const meta = [ok ? "ok" : "fail"]
+        .concat(why ? ["why: " + String(why).slice(0, 80)] : [])
         .concat(argBits)
         .concat(resBit ? [resBit] : [])
         .concat(err ? ["err:" + String(err).slice(0, 60)] : [])
         .join(" · ");
+      li.title = why
+        ? "Why: " + why + " — click for full JSON"
+        : "Click to show full JSON in result panel";
       // eslint-disable-next-line no-unsanitized/property
       li.innerHTML =
         '<span class="tool-src">[' +

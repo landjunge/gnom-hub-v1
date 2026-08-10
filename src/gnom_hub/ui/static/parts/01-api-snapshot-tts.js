@@ -367,6 +367,25 @@
       hideClarify();
     }
 
+    // Later / deferred clarify hygiene — surface reminder, no zombie box
+    if (Array.isArray(p.deferred_clarifies) && p.deferred_clarifies.length) {
+      const n = p.deferred_clarifies.length;
+      const last = p.deferred_clarifies[n - 1] || {};
+      const key =
+        "def:" + n + ":" + String(last.id || "") + ":" + String(last.option || "");
+      if (lastDeferredClarifyKey !== key) {
+        lastDeferredClarifyKey = key;
+        appendChat(
+          "system",
+          "Clarify deferred (" +
+            n +
+            "): " +
+            String(last.text || "").slice(0, 120) +
+            " — park only, no workers. Re-Send when ready."
+        );
+      }
+    }
+
     // Only log pipeline errors once, and only while stage is error
     if (p.error && p.stage === "error") {
       if (p.error !== lastReportedPipelineError) {

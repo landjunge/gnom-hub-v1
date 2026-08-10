@@ -649,9 +649,16 @@
       else if (mode === "blocked") chip.classList.add("is-blocked");
       else if (e.ok === false || mode === "error") chip.classList.add("is-err");
       const ok = e.ok === false ? "✗" : "✓";
+      const why = e.reason ? String(e.reason) : "";
       chip.textContent =
-        ok + " " + (e.tool || "?") + (mode ? " · " + mode : "");
-      chip.title = JSON.stringify(e);
+        ok +
+        " " +
+        (e.tool || e.name || "?") +
+        (mode ? " · " + mode : "") +
+        (why ? " · " + why.slice(0, 36) : "");
+      chip.title = why
+        ? "Why: " + why + "\n" + JSON.stringify(e)
+        : JSON.stringify(e);
       strip.appendChild(chip);
     });
   }
