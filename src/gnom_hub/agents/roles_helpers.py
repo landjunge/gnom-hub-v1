@@ -314,14 +314,6 @@ def _needs_clarify(text: str, brainstorm: str = "") -> bool:
     Clear build orders skip; standard 'soll ich umsetzen?' CTAs are ignored.
     """
     t = (text or "").strip()
-    # Live browser nav is executable as-is — never block on clarify
-    try:
-        from gnom_hub.tools.agent_bridge import is_live_browser_task
-
-        if is_live_browser_task(t):
-            return False
-    except Exception:  # noqa: BLE001
-        pass
     b_raw = (brainstorm or "").strip()
     b = _strip_brainstorm_cta(b_raw).strip()
     low = t.lower()

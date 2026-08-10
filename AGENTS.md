@@ -15,6 +15,17 @@
    ```
    Then leave a tab on `http://127.0.0.1:8080`.
 
+## Product: auto-execute exceptions (desk)
+
+Default remains: **Brainstorm freely. Execute only when you press Execute.**
+
+Allowed short-circuits (no extra Execute click):
+1. **Tool drill** — forced real tools (S1–S7 / clear tool-test language). Never HTML team.
+2. **Live browser nav** — explicit open/navigate (or bare known site / URL-only). Not "fetch for a page".
+3. **Go-only** — "mach das / execute / was ich gesagt habe" re-runs the last concrete user task.
+
+HTML landings and general builds still need clear build language / Execute.
+
 ## Coding rules (mandatory)
 
 1. **ALWAYS run `ruff format .` before every commit.** No exceptions.

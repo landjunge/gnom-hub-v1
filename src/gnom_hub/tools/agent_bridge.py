@@ -58,6 +58,25 @@ def is_live_browser_task(text: str) -> bool:
     if not t:
         return False
     low = t.lower()
+    # Fetch/research for a page ≠ live browser open
+    if any(
+        k in low
+        for k in (
+            "for the page",
+            "for a page",
+            "for the landing",
+            "für die seite",
+            "fuer die seite",
+            "zusammenfassen",
+            "summarize",
+            "fetch ",
+            "web_fetch",
+            "inhalt von",
+            "content from",
+            "research",
+        )
+    ) and not any(v in low for v in _NAV_VERBS):
+        return False
     # HTML/page build wins over "open" in mixed landing tasks
     if any(
         k in low
@@ -71,6 +90,8 @@ def is_live_browser_task(text: str) -> bool:
             "create a page",
             "erstelle eine seite",
             "readme",
+            " for the page",
+            " for a page",
         )
     ):
         # still allow pure "öffne X im browser" if no build language dominates
@@ -98,7 +119,20 @@ def is_live_browser_task(text: str) -> bool:
         return bool(
             len(t) < 48
             and extract_urls(t)
-            and not any(k in low for k in ("bau", "html", "landing", "schreib", "code"))
+            and not any(
+                k in low
+                for k in (
+                    "bau",
+                    "html",
+                    "landing",
+                    "schreib",
+                    "code",
+                    "page",
+                    "seite",
+                    "summar",
+                    "fetch",
+                )
+            )
         )
     return bool(extract_urls(t) or _guess_domain(t))
 

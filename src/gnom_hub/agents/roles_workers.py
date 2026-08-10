@@ -146,7 +146,6 @@ _WORKER_TOOL_NAMES = [
 ]
 
 
-
 class WorkerAgent(BaseAgent):
     def __init__(
         self,
