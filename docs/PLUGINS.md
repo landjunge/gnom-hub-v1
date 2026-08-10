@@ -77,16 +77,13 @@ Rules: no core tool name clash · only trusted code · God-Mode gates for shell/
 
 ## embeddings_neural (optional)
 
-Install:
+**Simple install (pick one):**
 
 ```bash
-pip install -r requirements-embeddings.txt
-# or: pip install 'gnom-hub[embeddings]'
+./scripts/install_embeddings.sh
 ```
 
-Then:
-- Tools: `embeddings_neural_status` / `embeddings_neural_use`
-- Desk Vector modal: select **fastembed** → Apply + reindex
-- Preference saved in `data/hot/vector_embedder.json` (restored on hub start)
+or desk: Vector → **Install neural** → fastembed → Apply.
 
-Default remains **bow** if package missing.
+Details: [INSTALL_SIMPLE.md](INSTALL_SIMPLE.md) · models vs DBs: [VECTORS_AND_RUST.md](VECTORS_AND_RUST.md).
+
