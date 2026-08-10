@@ -701,9 +701,12 @@ def create_app() -> FastAPI:
         return get_hub().cancel_busy_job()
 
     @app.post("/api/jobs/{job_id}/cancel")
-    def job_cancel(job_id: str) -> dict[str, Any]:
+    def job_cancel(
+        job_id: str,
+        as_timeout: bool = Query(False, description="Mark as FEHLER timeout (poll deadline)"),
+    ) -> dict[str, Any]:
         try:
-            return get_hub().cancel_job(job_id)
+            return get_hub().cancel_job(job_id, as_timeout=as_timeout)
         except FileNotFoundError as e:
             raise HTTPException(status_code=404, detail=str(e)) from e
 

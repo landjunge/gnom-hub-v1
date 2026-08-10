@@ -251,3 +251,64 @@ def test_session_pack_roundtrip_deferred_clarifies(tmp_path, monkeypatch):
         assert d and d[0].get("text") == "Color scheme?"
     finally:
         hub_mod._HUB = None
+
+
+def test_cancel_as_timeout_sets_flag():
+    from unittest.mock import MagicMock
+
+    # lightweight: unit the cancel_job branch only via Hub jobs dict
+    # use tmp hub
+
+    # Direct method test with fake hub state
+    class Fake:
+        pass
+
+    from gnom_hub.jobs import JobsMixin
+
+    class H(JobsMixin):
+        def __init__(self):
+            self._jobs = {
+                "j1": {
+                    "id": "j1",
+                    "status": "running",
+                    "stage": "work",
+                    "finished": False,
+                    "cancel": False,
+                }
+            }
+            self.pipeline = MagicMock()
+
+        def _append_trace(self, *a, **k):
+            pass
+
+    h = H()
+    h.cancel_job("j1", as_timeout=True)
+    assert h._jobs["j1"]["timeout"] is True
+    assert "FEHLER" in h._jobs["j1"]["error"]
+    assert h._jobs["j1"]["cancel"] is True
+
+
+def test_session_pack_tool_calls_roundtrip(tmp_path, monkeypatch):
+    import gnom_hub.hub as hub_mod
+    from gnom_hub.config import paths
+    from gnom_hub.hub import Hub
+
+    monkeypatch.setattr(paths, "project_root", lambda: tmp_path)
+    monkeypatch.setattr(hub_mod, "project_root", lambda: tmp_path)
+    hub_mod._HUB = None
+    hub = Hub()
+    try:
+        hub.pipeline._state.tool_calls = [
+            {"name": "web_fetch", "reason": "URL in task", "ok": True}
+        ]
+        hub.pipeline._state.tool_log = [{"tool": "web_fetch", "reason": "URL in task", "ok": True}]
+        pack = hub.export_session_pack(label="tools")
+        body = pack.get("pack") if isinstance(pack.get("pack"), dict) else pack
+        assert body["pipeline"]["tool_calls"][0]["reason"] == "URL in task"
+        hub.pipeline._state.tool_calls = []
+        hub.pipeline._state.tool_log = []
+        hub.import_session_pack(body)
+        assert hub.pipeline.state.tool_calls[0]["name"] == "web_fetch"
+        assert hub.pipeline.state.tool_log[0]["tool"] == "web_fetch"
+    finally:
+        hub_mod._HUB = None

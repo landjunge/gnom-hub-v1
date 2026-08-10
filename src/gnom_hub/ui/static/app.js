@@ -4938,9 +4938,16 @@
               "unknown error";
             const msg = String(err);
             const label = /FEHLER/i.test(msg) ? msg : "FEHLER — " + msg;
-            // One system line here; callers may toast again with same text — ok
-            appendChat("system", label.slice(0, 240));
-            if (typeof toast === "function") toast(label.slice(0, 120), "error");
+            if (typeof lastReportedPipelineError !== "undefined") {
+              if (lastReportedPipelineError !== label) {
+                lastReportedPipelineError = label;
+                appendChat("system", label.slice(0, 240));
+                if (typeof toast === "function") toast(label.slice(0, 120), "error");
+              }
+            } else {
+              appendChat("system", label.slice(0, 240));
+              if (typeof toast === "function") toast(label.slice(0, 120), "error");
+            }
           }
           await resyncState();
           return job;
@@ -4965,7 +4972,12 @@
       }
       // Timeout: cancel orphan + resync so UI is not left mid-pipeline
       try {
-        await api("POST", "/api/jobs/" + encodeURIComponent(jobId) + "/cancel");
+        await api(
+          "POST",
+          "/api/jobs/" +
+            encodeURIComponent(jobId) +
+            "/cancel?as_timeout=1"
+        );
         appendChat("system", "FEHLER — client poll timeout — cancel requested.");
       } catch (_c) {
         /* ignore */
@@ -6287,7 +6299,14 @@
     }
     const name = (out && (out.name || out.worker)) || "Worker";
     const html = extractHtml(raw);
-    const val = out && out.validation && typeof out.validation === "object" ? out.validation : null;
+    let val = out && out.validation && typeof out.validation === "object" ? out.validation : null;
+    if (!val && typeof lastSnapshot !== "undefined" && lastSnapshot && lastSnapshot.pipeline) {
+      val =
+        lastSnapshot.pipeline.validation &&
+        typeof lastSnapshot.pipeline.validation === "object"
+          ? lastSnapshot.pipeline.validation
+          : null;
+    }
     const valKey = val
       ? String(val.ok) +
         ":" +
@@ -6321,6 +6340,28 @@
     revokeBox3Blobs(body);
     body.innerHTML = "";
     body.classList.add("box3-dynamic", "box3-result-split");
+    // Honest FEHLER surface (worker body or DoD fail)
+    stage.classList.remove("box3-fehler");
+    const isFehler =
+      /FEHLER/i.test(raw.slice(0, 400)) || (val && val.ok === false);
+    if (isFehler) {
+      stage.classList.add("box3-fehler");
+      const banner = document.createElement("div");
+      banner.className = "fehler-banner";
+      const line = raw
+        .split("\n")
+        .find(function (ln) {
+          return /FEHLER/i.test(ln);
+        });
+      banner.textContent = (
+        line ||
+        (val && val.ok === false
+          ? "FEHLER — DoD fail" +
+            (val.score != null ? " (score " + val.score + ")" : "")
+          : "FEHLER")
+      ).slice(0, 200);
+      body.appendChild(banner);
+    }
     if (label) {
       let lab =
         name +
@@ -6516,6 +6557,15 @@
       stageEl &&
       stageEl.classList.contains("is-open")
     ) {
+      // Still refresh DoD checklist (validation may arrive after first paint)
+      const cur = outputs[typeof box3FocusIdx === "number" ? box3FocusIdx : 0] || outputs[0];
+      if (typeof renderDodChecklist === "function") {
+        const v =
+          (cur && cur.validation) ||
+          (pipeline && pipeline.validation) ||
+          null;
+        renderDodChecklist(v);
+      }
       return;
     }
 
@@ -6836,6 +6886,7 @@
           task: o.task || "",
           result: o.result != null ? String(o.result) : "",
           index: o.index != null ? o.index : i + 1,
+          validation: o.validation && typeof o.validation === "object" ? o.validation : null,
         };
       });
     }

@@ -68,7 +68,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 ### Product & history
 | Doc | Keywords |
 |-----|----------|
-| [CHANGELOG_3.10.md](CHANGELOG_3.10.md) | skills, changelog, 3.10, install, api, job, skill, clarify, embeddings, fastembed |
+| [CHANGELOG_3.10.md](CHANGELOG_3.10.md) | skills, changelog, fehler, 3.10, install, job, api, pack, poll, skill |
 | [CHANGELOG_3.9.md](CHANGELOG_3.9.md) | changelog, 3.9, api, embedder, vector, get, plugins, bow, cancel, char_ngram |
 | [MERGE_STATUS.md](MERGE_STATUS.md) | hub, gnom, pull, com, github, https, landjunge, merged, status, merge |
 | [PLAN_VS_CODE.md](PLAN_VS_CODE.md) | plan, code, vs, nicht, backup, brainstorm, checkpoint, clean, execute, pre |
@@ -91,7 +91,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 |-----|----------|
 | [BUG_HUNT_TEAM.md](BUG_HUNT_TEAM.md) | orchestrator, cancel, team, bug, hunt, can, god, jobs, mode, telegram |
 | [MEMORY_FRESHNESS.md](MEMORY_FRESHNESS.md) | freshness, memory, sync, vector, warm, hot, write, fact, hit, index |
-| [PIPELINE_RELIABILITY.md](PIPELINE_RELIABILITY.md) | pipeline, reliability, clarify, later, busy, cancel, prefetch, tests, timeout, tool |
+| [PIPELINE_RELIABILITY.md](PIPELINE_RELIABILITY.md) | pipeline, reliability, clarify, timeout, cancel, later, busy, prefetch, tests, tool |
 
 ### Root meta
 | Doc | Keywords |
