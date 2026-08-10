@@ -2,6 +2,8 @@
 
 Gnom-Hub uses **ESLint 9 flat config** (`eslint.config.js`) for the desktop UI.
 
+**Migrating from eslintrc?** → [ESLINT_FLAT_MIGRATION.md](ESLINT_FLAT_MIGRATION.md)
+
 Python stays on **Ruff**. DoD deliverables use **DoD-Lint**. This doc is **JS only**.
 
 ## Why flat config?
@@ -170,6 +172,8 @@ npx eslint --print-config src/gnom_hub/ui/static/app.js | head
 ```
 
 ## Related
+
+- Migration from eslintrc: [ESLINT_FLAT_MIGRATION.md](ESLINT_FLAT_MIGRATION.md)
 
 - Config: `eslint.config.js`  
 - Build UI: `scripts/build_ui_js.py`  
