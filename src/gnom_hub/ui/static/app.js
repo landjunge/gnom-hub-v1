@@ -342,7 +342,7 @@
           }
         }
         if (idx < 0) {
-          const n = parseInt(agentId.replace("worker", ""), 10) - 1;
+          const n = parseInt(agentId.replace("worker", "")) - 1;
           if (n >= 0 && n < lastWorkerOutputs.length) idx = n;
         }
         if (idx >= 0) focusBox3WorkerResult(idx);
@@ -6092,6 +6092,7 @@
 /* part: 04-boxes.js  lines 3682-4267 of app.js — edit parts, run scripts/build_ui_js.py */
 
   let box3FocusIdx = 0;
+  let lastBox3StageKey = "";
 
   /**
    * Dynamic presentation inside a box/panel:
@@ -6649,7 +6650,7 @@
   }
 
   /** Skip iframe rebuild when snapshot polls same worker payload (avoids white flash). */
-  let lastBox3StageKey = "";
+  
   let lastBox3RenderKey = "";
 
   function box3OutputsKey(outputs, stage) {

@@ -342,7 +342,7 @@
           }
         }
         if (idx < 0) {
-          const n = parseInt(agentId.replace("worker", ""), 10) - 1;
+          const n = parseInt(agentId.replace("worker", "")) - 1;
           if (n >= 0 && n < lastWorkerOutputs.length) idx = n;
         }
         if (idx >= 0) focusBox3WorkerResult(idx);
