@@ -68,7 +68,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 ### Product & history
 | Doc | Keywords |
 |-----|----------|
-| [CHANGELOG_3.10.md](CHANGELOG_3.10.md) | skills, changelog, 3.10, install, skill, embeddings, fastembed, 640px, api, catalog |
+| [CHANGELOG_3.10.md](CHANGELOG_3.10.md) | skills, changelog, 3.10, install, skill, api, embeddings, fastembed, 640px, catalog |
 | [CHANGELOG_3.9.md](CHANGELOG_3.9.md) | changelog, 3.9, api, embedder, vector, get, plugins, bow, cancel, char_ngram |
 | [MERGE_STATUS.md](MERGE_STATUS.md) | hub, gnom, merged, pull, com, github, https, landjunge, status, merge |
 | [PLAN_VS_CODE.md](PLAN_VS_CODE.md) | plan, code, vs, nicht, backup, brainstorm, checkpoint, clean, execute, pre |
@@ -90,6 +90,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 | Doc | Keywords |
 |-----|----------|
 | [BUG_HUNT_TEAM.md](BUG_HUNT_TEAM.md) | orchestrator, cancel, team, bug, hunt, can, god, jobs, mode, telegram |
+| [MEMORY_FRESHNESS.md](MEMORY_FRESHNESS.md) | freshness, memory, sync, vector, warm, hot, write, fact, hit, index |
 
 ### Root meta
 | Doc | Keywords |
@@ -124,6 +125,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 - [KEYS_AND_MODELS.md](KEYS_AND_MODELS.md) — Keys & Models — single source of truth (for agents & humans)
 - [LAYERS_FOR_AI.md](LAYERS_FOR_AI.md) — Layers — precise map for AI (and humans)
 - [MCP_ARCHITECTURE.md](MCP_ARCHITECTURE.md) — MCP Server Architecture (Gnom-Hub)
+- [MEMORY_FRESHNESS.md](MEMORY_FRESHNESS.md) — Memory freshness — searchable as soon as written
 - [MERGE_STATUS.md](MERGE_STATUS.md) — Merge status — Gnom-Hub improvement wave (2026-08-10)
 - [MERMAID.md](MERMAID.md) — Mermaid — Syntax-Referenz (Gnom-Hub)
 - [MUTMUT.md](MUTMUT.md) — mutmut configuration (deep)

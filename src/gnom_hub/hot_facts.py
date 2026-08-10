@@ -56,10 +56,15 @@ class HotFactsMixin:
             # allow promote by index via caller resolving text
             raise FileNotFoundError("HOT fact not found")
         added = self.warm.add_fact(t)
+        # Immediate vector index (sync) — no "just promoted, not searchable" window
+        doc_id = ""
+        if added and hasattr(self, "index_durable_fact"):
+            doc_id = self.index_durable_fact(t, source="warm_promote")
         return {
             "ok": True,
             "promoted": t,
             "warm_added": added,
+            "vector_id": doc_id,
             "facts": self.hot.all_facts()[-30:],
             "warm_facts": self.warm.all_facts()[-30:],
         }

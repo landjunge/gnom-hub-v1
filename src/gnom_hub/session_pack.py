@@ -495,6 +495,8 @@ class SessionPackMixin:
                     text = str(fact).strip()
                     if text:
                         self.warm.add_fact(text)
+                        if hasattr(self, "index_durable_fact"):
+                            self.index_durable_fact(text, source="session_pack")
 
             if include_agents and isinstance(pack.get("agents"), list):
                 for item in pack["agents"]:

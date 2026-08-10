@@ -375,12 +375,15 @@ class VectorStore:
         for score, d in scored[:limit]:
             if score < thr:
                 continue
+            vec = d.get("vec")
+            has_vec = bool(isinstance(vec, dict) and vec)
             out.append(
                 {
                     "id": d.get("id"),
                     "text": d.get("text"),
                     "meta": d.get("meta") or {},
                     "score": round(score, 4),
+                    "indexed": has_vec,
                 }
             )
         return out

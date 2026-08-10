@@ -45,3 +45,9 @@
 - Adaptive job poll (faster start, calmer mid-work, slower when tab hidden)
 - focus-visible + prefers-reduced-motion
 - docs/UI_QUALITY.md
+
+## Memory freshness
+
+- `memory_search` = HOT + WARM lexical + Vector hybrid (layer/indexed flags)
+- Promote / warm API / goals / session pack: sync vector index on write
+- Write-then-read tests · docs/MEMORY_FRESHNESS.md
