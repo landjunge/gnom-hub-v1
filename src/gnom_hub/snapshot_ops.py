@@ -77,6 +77,7 @@ class SnapshotOpsMixin:
             "error": st.error,
             "tool_log": list(getattr(st, "tool_log", None) or [])[-40:],
             "resolved_plan_mode": getattr(st, "resolved_plan_mode", "") or "",
+            "plan_html_score": getattr(st, "plan_html_score", None),
             "validation": _worst_validation(list(st.worker_outputs or [])),
         }
 

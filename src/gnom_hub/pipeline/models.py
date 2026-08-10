@@ -59,6 +59,8 @@ class PipelineState:
     stage_timings: dict[str, float] = field(default_factory=dict)
     # Effective plan mode after fast-path resolution (may differ from hub plan_mode)
     resolved_plan_mode: str = ""
+    # Weighted HTML-page intent score from plan_fast_path (observability)
+    plan_html_score: int | None = None
     # Compact tool calls for desk (live + after done)
     # [{tool, ok, mode, agent?, scenario?}, ...]
     tool_log: list[dict] = field(default_factory=list)

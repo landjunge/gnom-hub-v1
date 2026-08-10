@@ -815,6 +815,9 @@ class Orchestrator:
         meta = getattr(self.coordinator, "last_plan_meta", None) or {}
         resolved = str(meta.get("plan_mode") or getattr(self, "plan_mode", "default") or "default")
         self._state.resolved_plan_mode = resolved
+        html_score = meta.get("html_score")
+        if html_score is not None:
+            self._state.plan_html_score = int(html_score)
         self.bus.emit(
             "pipeline.coordinate",
             {
@@ -823,6 +826,7 @@ class Orchestrator:
                 "fast_path": bool(meta.get("fast_path")),
                 "requested_mode": meta.get("requested_mode")
                 or getattr(self, "plan_mode", "default"),
+                "html_score": html_score,
             },
         )
 
@@ -1147,6 +1151,7 @@ class Orchestrator:
                 "total_ms": total_ms,
                 "plan_mode": self._state.resolved_plan_mode
                 or getattr(self, "plan_mode", "default"),
+                "html_score": getattr(self._state, "plan_html_score", None),
             },
         )
         self.bus.emit(
@@ -1156,6 +1161,7 @@ class Orchestrator:
                 "total_ms": total_ms,
                 "plan_mode": self._state.resolved_plan_mode
                 or getattr(self, "plan_mode", "default"),
+                "html_score": getattr(self._state, "plan_html_score", None),
             },
         )
 
