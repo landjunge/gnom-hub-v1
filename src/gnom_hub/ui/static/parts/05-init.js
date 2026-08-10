@@ -383,6 +383,8 @@
     if (vectorClear) vectorClear.addEventListener("click", clearVectorStore);
     const vectorAddBtn = document.getElementById("vector-add-btn");
     if (vectorAddBtn) vectorAddBtn.addEventListener("click", addVectorDoc);
+    const vectorEmbedApply = document.getElementById("vector-embedder-apply");
+    if (vectorEmbedApply) vectorEmbedApply.addEventListener("click", applyVectorEmbedder);
     const vectorQuery = document.getElementById("vector-query");
     if (vectorQuery) {
       vectorQuery.addEventListener("keydown", function (ev) {

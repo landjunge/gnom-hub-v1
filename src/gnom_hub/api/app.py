@@ -124,6 +124,11 @@ class VectorSearchBody(BaseModel):
     limit: int = 5
 
 
+class VectorEmbedderBody(BaseModel):
+    backend: str = Field(min_length=1, max_length=64)
+    reindex: bool = False
+
+
 class ToolCallBody(BaseModel):
     name: str = Field(min_length=1)
     arguments: dict[str, Any] | None = None
@@ -958,9 +963,35 @@ def create_app() -> FastAPI:
     @app.get("/api/vector")
     def vector_list(limit: int = Query(40, ge=1, le=200)) -> dict[str, Any]:
         hub = get_hub()
+        emb = (
+            hub.vectors.embedder_status()
+            if hasattr(hub.vectors, "embedder_status")
+            else {"active": getattr(hub.vectors, "embedder_name", "bow")}
+        )
         return {
             "count": hub.vectors.count(),
             "docs": hub.vectors.list_docs(limit),
+            "embedder": emb,
+        }
+
+    @app.post("/api/vector/embedder")
+    def vector_embedder(body: VectorEmbedderBody) -> dict[str, Any]:
+        """Switch vector embedder backend (bow | char_ngram | hashing)."""
+        hub = get_hub()
+        if not hasattr(hub.vectors, "set_embedder"):
+            raise HTTPException(status_code=501, detail="embedder switch not supported")
+        try:
+            out = hub.vectors.set_embedder(body.backend, reindex=bool(body.reindex))
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return {
+            **(out if isinstance(out, dict) else {"ok": True}),
+            "embedder": (
+                hub.vectors.embedder_status()
+                if hasattr(hub.vectors, "embedder_status")
+                else {"active": body.backend}
+            ),
+            "count": hub.vectors.count(),
         }
 
     @app.post("/api/vector/add")
@@ -975,8 +1006,10 @@ def create_app() -> FastAPI:
 
     @app.post("/api/vector/search")
     def vector_search(body: VectorSearchBody) -> dict[str, Any]:
-        hits = get_hub().vectors.search(body.query, limit=body.limit)
-        return {"hits": hits, "count": get_hub().vectors.count()}
+        hub = get_hub()
+        hits = hub.vectors.search(body.query, limit=body.limit)
+        emb = getattr(hub.vectors, "embedder_name", "bow")
+        return {"hits": hits, "count": hub.vectors.count(), "embedder": emb}
 
     @app.delete("/api/vector/{doc_id}")
     def vector_delete(doc_id: str) -> dict[str, Any]:

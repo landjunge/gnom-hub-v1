@@ -5,6 +5,7 @@
 | | |
 |--|--|
 | **Version** | 3.9.1 ([notes](docs/CHANGELOG_3.9.md)) |
+| **Docs** | [Hub arch](docs/HUB_ARCHITECTURE.md) · [Plugins](docs/PLUGINS.md) · [Merges](docs/MERGE_STATUS.md) |
 | **Stack** | Python ≥3.10 · FastAPI · desktop SPA |
 | **UI** | `http://127.0.0.1:8080/` |
 | **LLM** | DeepSeek (`deepseek-v4-flash`) · optional Ollama |
@@ -299,7 +300,7 @@ Execute  → distill → flex inject → plan → prefetch tools → workers →
 Telegram → one-shot /do
 ```
 
-Deep sequences (Send · Execute · Tools): [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#paths-over-time-sequence).
+Deep sequences (Send · Execute · Tools): [docs/ARCHITECTURE.md · [HUB_ARCHITECTURE.md](docs/HUB_ARCHITECTURE.md)](docs/ARCHITECTURE.md#paths-over-time-sequence).
 | Path | Behavior |
 |------|----------|
 | **Send** | Dialogue only; Flex may absorb wishes / auto-Execute when clear |

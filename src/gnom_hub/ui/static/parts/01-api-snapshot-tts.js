@@ -148,9 +148,19 @@
       els.memBadge.title = snap.memory_summary;
     }
     if (els.vecBadge && snap.vectors) {
-      els.vecBadge.textContent = "Vec: " + (snap.vectors.count || 0);
+      const emb = snap.vectors.embedder || "bow";
+      els.vecBadge.textContent =
+        "Vec: " +
+        (snap.vectors.count || 0) +
+        (emb && emb !== "bow" ? "·" + emb : "");
       const coldN = snap.cold && snap.cold.count != null ? snap.cold.count : "—";
-      els.vecBadge.title = "Click: vector store · docs=" + (snap.vectors.count || 0) + " · cold=" + coldN;
+      els.vecBadge.title =
+        "Click: vector store · docs=" +
+        (snap.vectors.count || 0) +
+        " · embedder=" +
+        emb +
+        " · cold=" +
+        coldN;
     }
     if (els.godBadge) {
       const on = !!(snap.god_mode && snap.god_mode.enabled);

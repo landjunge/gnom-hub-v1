@@ -820,9 +820,19 @@
       els.memBadge.title = snap.memory_summary;
     }
     if (els.vecBadge && snap.vectors) {
-      els.vecBadge.textContent = "Vec: " + (snap.vectors.count || 0);
+      const emb = snap.vectors.embedder || "bow";
+      els.vecBadge.textContent =
+        "Vec: " +
+        (snap.vectors.count || 0) +
+        (emb && emb !== "bow" ? "·" + emb : "");
       const coldN = snap.cold && snap.cold.count != null ? snap.cold.count : "—";
-      els.vecBadge.title = "Click: vector store · docs=" + (snap.vectors.count || 0) + " · cold=" + coldN;
+      els.vecBadge.title =
+        "Click: vector store · docs=" +
+        (snap.vectors.count || 0) +
+        " · embedder=" +
+        emb +
+        " · cold=" +
+        coldN;
     }
     if (els.godBadge) {
       const on = !!(snap.god_mode && snap.god_mode.enabled);
@@ -2823,9 +2833,17 @@
   async function refreshVectorList() {
     const ul = document.getElementById("vector-list");
     const countEl = document.getElementById("vector-count");
+    const embSel = document.getElementById("vector-embedder");
     try {
       const data = await api("GET", "/api/vector?limit=40");
-      if (countEl) countEl.textContent = "Docs: " + (data.count || 0);
+      const emb =
+        (data.embedder && (data.embedder.active || data.embedder.embedder)) ||
+        "bow";
+      if (countEl) {
+        countEl.textContent =
+          "Docs: " + (data.count || 0) + " · embedder: " + emb;
+      }
+      if (embSel && emb) embSel.value = emb;
       if (!ul) return;
       ul.innerHTML = "";
       const docs = data.docs || [];
@@ -2862,6 +2880,27 @@
       });
     } catch (err) {
       toast("Vector list failed: " + err.message, "error");
+    }
+  }
+
+  async function applyVectorEmbedder() {
+    const embSel = document.getElementById("vector-embedder");
+    const backend = embSel ? String(embSel.value || "bow") : "bow";
+    try {
+      const data = await api("POST", "/api/vector/embedder", {
+        backend: backend,
+        reindex: true,
+      });
+      toast(
+        "Embedder: " +
+          ((data.embedder && data.embedder.active) || backend) +
+          " · reindexed " +
+          (data.reindexed != null ? data.reindexed : "?"),
+        "ok"
+      );
+      await refreshVectorList();
+    } catch (err) {
+      toast("Embedder switch failed: " + err.message, "error");
     }
   }
 
@@ -7050,6 +7089,8 @@
     if (vectorClear) vectorClear.addEventListener("click", clearVectorStore);
     const vectorAddBtn = document.getElementById("vector-add-btn");
     if (vectorAddBtn) vectorAddBtn.addEventListener("click", addVectorDoc);
+    const vectorEmbedApply = document.getElementById("vector-embedder-apply");
+    if (vectorEmbedApply) vectorEmbedApply.addEventListener("click", applyVectorEmbedder);
     const vectorQuery = document.getElementById("vector-query");
     if (vectorQuery) {
       vectorQuery.addEventListener("keydown", function (ev) {

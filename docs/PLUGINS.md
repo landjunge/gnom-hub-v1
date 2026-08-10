@@ -72,3 +72,5 @@ Rules: no core tool name clash · only trusted code · God-Mode gates for shell/
 | GET | `/api/plugins` | loaded + **disk** inventory + tools + errors |
 | POST | `/api/plugins/reload` | full rescan; `?plugin_id=` for one |
 | GET | `/api/mcp/tools` | MCP-lite list |
+| GET | `/api/vector` | docs + **embedder** status |
+| POST | `/api/vector/embedder` | `{backend, reindex}` switch |

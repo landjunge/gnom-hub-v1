@@ -120,7 +120,10 @@ class SnapshotOpsMixin:
                 "allowlist_configured": bool(getattr(self.telegram, "allowed_chat_ids", None)),
             },
             "god_mode": self.god_mode.snapshot(),
-            "vectors": {"count": self.vectors.count()},
+            "vectors": {
+                "count": self.vectors.count(),
+                "embedder": getattr(self.vectors, "embedder_name", "bow"),
+            },
             "cold": {"count": len(self.cold.list_archives(200))},
             "plugins": self.plugin_list,
             "tools": self.tools.list_tools(),
