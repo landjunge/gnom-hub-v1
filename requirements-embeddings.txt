@@ -1,0 +1,5 @@
+# Optional neural vector backends (not required for default bow path)
+#   pip install -r requirements-embeddings.txt
+fastembed>=0.4.0
+# heavier alternative:
+# sentence-transformers>=2.2.0

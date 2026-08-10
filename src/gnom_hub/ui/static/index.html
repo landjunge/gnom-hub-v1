@@ -522,9 +522,11 @@
         <label class="muted" style="display:flex;align-items:center;gap:4px">
           Embedder
           <select id="vector-embedder" class="tune-input" title="Switch vector embedder backend">
-            <option value="bow">bow</option>
+            <option value="bow">bow (default)</option>
             <option value="char_ngram">char_ngram</option>
             <option value="hashing">hashing</option>
+            <option value="fastembed">fastembed (neural)</option>
+            <option value="sbert">sbert (neural)</option>
           </select>
         </label>
         <button type="button" id="vector-embedder-apply" class="btn-ws-sm" title="Apply embedder and reindex docs">Apply + reindex</button>

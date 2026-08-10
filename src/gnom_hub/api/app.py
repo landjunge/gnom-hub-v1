@@ -984,6 +984,13 @@ def create_app() -> FastAPI:
             if hasattr(hub.vectors, "embedder_status")
             else {"active": getattr(hub.vectors, "embedder_name", "bow")}
         )
+        if isinstance(emb, dict):
+            try:
+                from gnom_hub.memory.neural_embed import probe_neural
+
+                emb = {**emb, "neural_available": probe_neural()}
+            except Exception:  # noqa: BLE001
+                pass
         return {
             "count": hub.vectors.count(),
             "docs": hub.vectors.list_docs(limit),
@@ -992,21 +999,60 @@ def create_app() -> FastAPI:
 
     @app.post("/api/vector/embedder")
     def vector_embedder(body: VectorEmbedderBody) -> dict[str, Any]:
-        """Switch vector embedder backend (bow | char_ngram | hashing)."""
+        """Switch embedder: bow | char_ngram | hashing | fastembed | sbert."""
         hub = get_hub()
         if not hasattr(hub.vectors, "set_embedder"):
             raise HTTPException(status_code=501, detail="embedder switch not supported")
+        backend = (body.backend or "bow").strip().lower()
         try:
-            out = hub.vectors.set_embedder(body.backend, reindex=bool(body.reindex))
+            if backend in (
+                "fastembed",
+                "fe",
+                "neural",
+                "sbert",
+                "sentence_transformers",
+                "st",
+                "minilm",
+            ):
+                from gnom_hub.memory.neural_embed import make_neural_embedder
+
+                name, fn = make_neural_embedder(backend)
+                out = hub.vectors.set_embedder(name, fn=fn, reindex=bool(body.reindex))
+                # persist
+                pref = hub.root / "data" / "hot" / "vector_embedder.json"
+                pref.parent.mkdir(parents=True, exist_ok=True)
+                import json
+
+                pref.write_text(
+                    json.dumps({"embedder": name}, indent=2) + chr(10), encoding="utf-8"
+                )
+            else:
+                out = hub.vectors.set_embedder(backend, reindex=bool(body.reindex))
+                pref = hub.root / "data" / "hot" / "vector_embedder.json"
+                pref.parent.mkdir(parents=True, exist_ok=True)
+                import json
+
+                pref.write_text(
+                    json.dumps({"embedder": backend}, indent=2) + chr(10), encoding="utf-8"
+                )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        emb = (
+            hub.vectors.embedder_status()
+            if hasattr(hub.vectors, "embedder_status")
+            else {"active": backend}
+        )
+        try:
+            from gnom_hub.memory.neural_embed import probe_neural
+
+            emb = {**emb, "neural_available": probe_neural()}
+        except Exception:  # noqa: BLE001
+            pass
         return {
             **(out if isinstance(out, dict) else {"ok": True}),
-            "embedder": (
-                hub.vectors.embedder_status()
-                if hasattr(hub.vectors, "embedder_status")
-                else {"active": body.backend}
-            ),
+            "embedder": emb,
             "count": hub.vectors.count(),
         }
 

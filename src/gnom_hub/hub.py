@@ -89,6 +89,10 @@ class Hub(
             self.vectors.scrub()
         except Exception:  # noqa: BLE001
             pass
+        try:
+            self._restore_vector_embedder()
+        except Exception:  # noqa: BLE001
+            pass
         self.memory = MemoryFacade(self.hot, self.warm, self.vectors)
         self.god_mode = god_mode_from_env()
         self.computer = ComputerUseKit(self.root, god_mode=self.god_mode.enabled)
@@ -203,6 +207,30 @@ class Hub(
             )
 
         self.bus.on("agent.thought", on_thought)
+
+    def _restore_vector_embedder(self) -> None:
+        """Re-apply saved embedder preference (bow / lite / neural if installed)."""
+        import json
+        from pathlib import Path
+
+        path = Path(self.root) / "data" / "hot" / "vector_embedder.json"
+        if not path.is_file():
+            return
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            return
+        name = str((data or {}).get("embedder") or "bow").strip().lower()
+        if not name or name == "bow":
+            return
+        if name in ("fastembed", "sbert", "fe", "st", "neural", "sentence_transformers", "minilm"):
+            from gnom_hub.memory.neural_embed import make_neural_embedder
+
+            key, fn = make_neural_embedder(name)
+            self.vectors.set_embedder(key, fn=fn, reindex=False)
+            return
+        # lite backends
+        self.vectors.set_embedder(name, reindex=False)
 
 
 _HUB: Hub | None = None
