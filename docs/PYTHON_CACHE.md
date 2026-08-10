@@ -103,11 +103,10 @@ Workflow: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
 ```text
 lint job                          test matrix (3.10 / 3.11 / 3.12)
 ────────                          ───────────────────────────────
-cache key: OS + py3.12            cache key: OS + pyX.Y
-           + hash(ci-lint.txt)               + hash(pyproject + ci-dev.txt)
-pip install -r requirements/      pip install -e ".[dev]"
-  ci-lint.txt                     (wheels come from cache)
-ruff + mermaid_check              pytest  (+ smoke only 3.12)
+ruff-action (binary, no pip)      1) cache .venv  (exact key only)
+mermaid stdlib                    2) on miss: cache pip downloads
+no pip cache                      then venv + pip install -e ".[dev]"
+                                  pytest (+ smoke only 3.12)
 ```
 
 ### Rules we follow
@@ -163,6 +162,73 @@ Same pip cache pattern; longer job. mutmut may write local mutation caches — k
 | New Python in matrix | n/a | new key |
 
 ---
+
+---
+
+## Deep CI cache (current)
+
+Implemented in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
+
+### Lint — zero pip
+
+| Piece | Strategy |
+|-------|----------|
+| Ruff | [`astral-sh/ruff-action@v3`](https://github.com/astral-sh/ruff-action) pin **0.16.1** (binary download, action-cached) |
+| Mermaid | CPython 3.12 + stdlib script — **no** package install |
+| Pip cache | **Disabled** on purpose (nothing to install) |
+
+Cold lint stays on the order of **seconds**, not minutes.
+
+### Test — two-tier cache
+
+```text
+1) actions/cache → .venv
+     key = OS + CACHE_SEED + pyX.Y + hash(pyproject.toml, requirements/ci-dev.txt)
+     restore-keys: NONE (exact match only)
+
+2) on venv MISS only → actions/cache → $PIP_CACHE_DIR (wheel downloads)
+     key = OS + CACHE_SEED + pipdl + pyX.Y + same hash
+     restore-keys = same py prefix, then generic pipdl
+```
+
+| Event | venv | pipdl |
+|-------|------|-------|
+| Same deps, 2nd push | **HIT** → skip install | skipped |
+| Bump pytest pin | MISS | often partial HIT via restore-keys |
+| Edit only `src/**/*.py` | HIT | skipped |
+| Bump `CACHE_SEED` (e.g. v2→v3) | global miss | global miss |
+
+### Cache hit install path
+
+- **Miss:** `python -m venv .venv` → `pip install -e ".[dev]"` (`--prefer-binary`, `--upgrade-strategy only-if-needed`)
+- **Hit:** verify imports → `pip install --no-deps -e .` (rebinds editable path; **no** dependency resolve)
+
+### What we refuse to cache
+
+| Path | Why |
+|------|-----|
+| Partial venv restore-keys | Wrong site-packages / silent skew |
+| Playwright browsers in PR CI | Huge; computer extra optional |
+| `data/` | runtime state, not deps |
+| Nested `setup-python` pip cache **and** manual pip path | Double write, confusing hits |
+
+### Bust everything
+
+1. Bump workflow `env.CACHE_SEED` (`v2` → `v3`), or  
+2. Change hash inputs (`pyproject.toml` / `requirements/ci-dev.txt`).
+
+### Observability
+
+Each test job writes a summary table:
+
+| Cache | Hit |
+|-------|-----|
+| venv | true/false |
+| pip downloads | true/false/skipped |
+
+### Local parity (not identical)
+
+CI uses **ephemeral `.venv` + Actions cache**. Locally keep a long-lived `.venv` and user pip cache — see above. Same pins via `pip install -e ".[dev]"`.
 
 ## Anti-patterns
 

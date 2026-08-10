@@ -20,35 +20,36 @@ env:
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
   PIP_NO_PYTHON_VERSION_WARNING: "1"
   PYTHONDONTWRITEBYTECODE: "1"
-  # Stable location; setup-python pip cache still keys on dependency files.
   PIP_CACHE_DIR: ${{ github.workspace }}/.cache/pip
+  # Bump to globally invalidate venv/pip caches after strategy changes.
+  CACHE_SEED: v2
 
 jobs:
+  # No full app install. Ruff via official action (binary); mermaid is stdlib.
   lint:
     name: Lint · Ruff · Mermaid
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.12
-        id: setup-py
+      - name: Set up Python 3.12 (mermaid only)
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
-          # Lint-only file → cache rarely busts when app deps move.
-          cache-dependency-path: requirements/ci-lint.txt
+          # No pip cache — lint does not pip-install the app.
 
-      - name: Install lint tools only
-        run: |
-          python -m pip install --upgrade pip
-          pip install --prefer-binary -r requirements/ci-lint.txt
+      - name: Ruff (binary action, no pip)
+        uses: astral-sh/ruff-action@v3
+        with:
+          version: "0.16.1"
+          args: "check ."
 
-      - name: Ruff
-        run: |
-          ruff check .
-          ruff format --check .
+      - name: Ruff format --check
+        uses: astral-sh/ruff-action@v3
+        with:
+          version: "0.16.1"
+          args: "format --check ."
 
       - name: Mermaid check + inventory drift
         env:
@@ -70,10 +71,9 @@ jobs:
           {
             echo "## Lint summary"
             echo ""
-            echo "- Python cache: setup-python pip · key from \`requirements/ci-lint.txt\`"
-            echo "- Install: ruff only (no editable app)"
-            echo "- Mermaid static check + inventory drift"
-            echo "- PIP_CACHE_DIR=\`$PIP_CACHE_DIR\`"
+            echo "- Ruff: \`astral-sh/ruff-action@v3\` pin **0.16.1** (no pip install)"
+            echo "- Mermaid: stdlib script · inventory drift gate"
+            echo "- Pip cache: **none** (by design — keeps lint cold-start ~seconds)"
             echo ""
             python scripts/mermaid_check.py --json 2>/dev/null | python -c "
           import json,sys
@@ -102,19 +102,47 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
+        id: setup-py
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: pip
-          # Version-scoped by setup-python; hash both so pin bumps invalidate.
-          cache-dependency-path: |
-            pyproject.toml
-            requirements/ci-dev.txt
+          # Explicit actions/cache below (venv + pip download) — avoid double pip cache.
 
-      - name: Install package + dev
+      - name: Cache virtualenv
+        id: cache-venv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          # Exact key only — never partial restore (ABI / dep skew risk).
+          key: ${{ runner.os }}-${{ env.CACHE_SEED }}-venv-py${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', 'requirements/ci-dev.txt') }}
+
+      - name: Cache pip downloads
+        id: cache-pip
+        if: steps.cache-venv.outputs.cache-hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PIP_CACHE_DIR }}
+          key: ${{ runner.os }}-${{ env.CACHE_SEED }}-pipdl-py${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', 'requirements/ci-dev.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ env.CACHE_SEED }}-pipdl-py${{ matrix.python-version }}-
+            ${{ runner.os }}-${{ env.CACHE_SEED }}-pipdl-
+
+      - name: Create venv + install (cache miss)
+        if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
-          python -m pip install --upgrade pip
-          pip install --prefer-binary -e ".[dev]"
+          set -euo pipefail
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/pip install --prefer-binary --upgrade-strategy only-if-needed -e ".[dev]"
+          .venv/bin/python -c "import gnom_hub,pytest,ruff; print('install ok', gnom_hub.__version__)"
+
+      - name: Verify cached venv (cache hit)
+        if: steps.cache-venv.outputs.cache-hit == 'true'
+        run: |
+          set -euo pipefail
+          .venv/bin/python -c "import gnom_hub,pytest; print('venv cache hit ok', gnom_hub.__version__)"
+          # Editable install may point at old path — re-link cheaply without resolving deps.
+          .venv/bin/pip install --prefer-binary --no-deps -e . >/dev/null
 
       - name: Pytest
         env:
@@ -123,13 +151,13 @@ jobs:
         run: |
           export TMPDIR="${RUNNER_TEMP}/pytest-${{ matrix.python-version }}"
           mkdir -p "$TMPDIR"
-          pytest tests/ --junitxml="$TMPDIR/junit.xml"
+          .venv/bin/pytest tests/ --junitxml="$TMPDIR/junit.xml"
 
       - name: Smoke E2E (in-process, Py3.12 only)
         if: ${{ matrix.run_smoke }}
         env:
           PYTHONPATH: src
-        run: python scripts/smoke_e2e.py
+        run: .venv/bin/python scripts/smoke_e2e.py
 
       - name: Live DeepSeek smoke (optional, Py3.12 only)
         if: ${{ matrix.run_live }}
@@ -141,7 +169,7 @@ jobs:
             echo "SKIP live smoke — no DEEPSEEK_API_KEY secret"
             exit 0
           fi
-          python scripts/smoke_live.py || echo "LIVE smoke non-blocking failure"
+          .venv/bin/python scripts/smoke_live.py || echo "LIVE smoke non-blocking failure"
 
       - name: Upload junit (on failure only)
         if: failure()
@@ -158,8 +186,13 @@ jobs:
           {
             echo "## Test Py${{ matrix.python-version }}"
             echo ""
-            echo "- pip cache: OS + Py${{ matrix.python-version }} + hash(pyproject, ci-dev.txt)"
-            echo "- pytest: always · smoke: ${{ matrix.run_smoke }} · live: ${{ matrix.run_live }}"
+            echo "| Cache | Hit |"
+            echo "|-------|-----|"
+            echo "| venv (\`.venv\`) | \`${{ steps.cache-venv.outputs.cache-hit }}\` |"
+            echo "| pip downloads | \`${{ steps.cache-pip.outputs.cache-hit || 'skipped' }}\` |"
+            echo ""
+            echo "- key seed: \`$CACHE_SEED\` · smoke: ${{ matrix.run_smoke }} · live: ${{ matrix.run_live }}"
+            echo "- see docs/PYTHON_CACHE.md"
           } >> "$GITHUB_STEP_SUMMARY"
 
   ci-ok:
@@ -185,7 +218,7 @@ jobs:
             echo "| lint | \`${{ needs.lint.result }}\` |"
             echo "| test | \`${{ needs.test.result }}\` |"
             echo ""
-            echo "Caches: see docs/PYTHON_CACHE.md · lint ∥ test · smoke only 3.12"
+            echo "Lint: ruff-action (no pip) ∥ test: venv+pipdl caches · smoke only 3.12"
           } >> "$GITHUB_STEP_SUMMARY"
 
   release:
@@ -212,10 +245,15 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: pip
-          cache-dependency-path: |
-            pyproject.toml
-            requirements/ci-dev.txt
+
+      - name: Cache pip (build tools)
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PIP_CACHE_DIR }}
+          key: ${{ runner.os }}-${{ env.CACHE_SEED }}-pipdl-release-py3.11-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ env.CACHE_SEED }}-pipdl-release-py3.11-
+            ${{ runner.os }}-${{ env.CACHE_SEED }}-pipdl-
 
       - name: Install build tools
         run: |

@@ -1,3 +1,3 @@
-# CI lint job only — keep tiny so the pip cache stays hot and small.
-# Pin must match pyproject.toml [project.optional-dependencies] dev → ruff
+# Local / docs pin for Ruff (must match pyproject.toml dev extra).
+# CI lint installs via astral-sh/ruff-action@v3 — not this file.
 ruff==0.16.1

@@ -57,8 +57,8 @@ Do **not** use a bare `actions/cache` key without `${{ matrix.python-version }}`
 
 | Job | What | Notes |
 |-----|------|--------|
-| **lint** | Ruff + Mermaid + inventory drift | **Fast install** (`ruff` only) · ∥ with test |
-| **test** | Pytest 3.10–3.12 | Full `pip install -e ".[dev]"` |
+| **lint** | Ruff + Mermaid + inventory drift | **ruff-action** (no pip) · ∥ with test |
+| **test** | Pytest 3.10–3.12 | **venv + pipdl caches** · install only on miss |
 | **smoke / live** | `smoke_e2e` · optional DeepSeek | **Only Py3.12** |
 | **ci-ok** | Branch-protection gate | needs lint + test |
 | **mutation-nightly** | mutmut + rank-eval | schedule, not PR |
@@ -75,5 +75,5 @@ python scripts/smoke_e2e.py        # optional local
 
 Optimizations: lint ∥ test · no `build` on matrix · junit artifact only on failure · smoke once.
 
-Python/pip caching: [PYTHON_CACHE.md](PYTHON_CACHE.md) · `requirements/ci-lint.txt` · `requirements/ci-dev.txt`.
+Python/pip caching: [PYTHON_CACHE.md](PYTHON_CACHE.md) (`CACHE_SEED`, venv exact-key, pipdl restore-keys) · `requirements/ci-lint.txt` · `requirements/ci-dev.txt`.
 
