@@ -681,10 +681,23 @@
       let detail = res.statusText;
       try {
         const j = await res.json();
-        detail = j.detail || JSON.stringify(j);
+        detail = j.detail != null ? j.detail : j;
       } catch (e) { /* ignore */ }
-      toast(String(detail), "error");
-      throw new Error(detail);
+      // Structured envelope: { ok, layer, code, message, retryable }
+      let msg = detail;
+      if (detail && typeof detail === "object") {
+        msg =
+          detail.message ||
+          detail.error ||
+          detail.detail ||
+          JSON.stringify(detail);
+        if (detail.code) msg = "[" + detail.code + "] " + msg;
+        if (detail.retryable) msg += " (retryable)";
+      }
+      toast(String(msg), "error");
+      const err = new Error(String(msg));
+      err.detail = detail;
+      throw err;
     }
     try {
       return await res.json();

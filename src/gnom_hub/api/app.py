@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from gnom_hub.core.errors import classify_tool_exception, envelope_http
 from gnom_hub.hub import get_hub
 from gnom_hub.plugins.retry import ToolFailed
 
@@ -963,13 +964,24 @@ def create_app() -> FastAPI:
     def tools_call(body: ToolCallBody) -> dict[str, Any]:
         try:
             result = get_hub().tools.call(body.name, body.arguments)
-        except KeyError as e:
-            raise HTTPException(status_code=404, detail=str(e)) from e
-        except ToolFailed as e:
-            # Terminal after retries (or permanent tool error)
-            raise HTTPException(status_code=422, detail=str(e)) from e
+        except (KeyError, ToolFailed) as e:
+            env = classify_tool_exception(e, tool_name=body.name or "tool")
+            status, detail = envelope_http(env)
+            raise HTTPException(status_code=status, detail=detail) from e
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e)) from e
+            env = classify_tool_exception(e, tool_name=body.name or "tool")
+            status, detail = envelope_http(env)
+            raise HTTPException(status_code=status, detail=detail) from e
+        # Normalize dict results that already say ok:false
+        if isinstance(result, dict) and result.get("ok") is False:
+            return {
+                "ok": False,
+                "result": result,
+                "error": classify_tool_exception(
+                    ToolFailed(str(result.get("error") or "tool failed")),
+                    tool_name=body.name or "tool",
+                ),
+            }
         return {"ok": True, "result": result}
 
     @app.get("/api/tooltips")

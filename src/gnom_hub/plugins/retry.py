@@ -22,11 +22,24 @@ class ToolRetry(Exception):
 
 
 class ToolFailed(Exception):
-    """Terminal tool failure — do not retry the same call."""
+    """Terminal tool failure — do not retry the same call.
 
-    def __init__(self, message: str = "tool failed") -> None:
+    Optional structured fields feed ``core.errors`` envelopes / API detail.
+    """
+
+    def __init__(
+        self,
+        message: str = "tool failed",
+        *,
+        code: str = "tool_failed",
+        retryable: bool = False,
+        details: dict[str, Any] | None = None,
+    ) -> None:
         super().__init__(message)
         self.message = message
+        self.code = code
+        self.retryable = bool(retryable)
+        self.details = dict(details or {})
 
 
 def call_with_retry(
@@ -63,8 +76,15 @@ def call_with_retry(
             last_msg = (exc.message or str(exc) or "retry").strip()
             if attempt + 1 >= attempts:
                 raise ToolFailed(
-                    f"tool {tool_name!r} exceeded retries ({budget}): {last_msg}"
+                    f"tool {tool_name!r} exceeded retries ({budget}): {last_msg}",
+                    code="tool_retry_exhausted",
+                    retryable=False,
+                    details={"attempts": attempts, "tool": tool_name},
                 ) from exc
             continue
 
-    raise ToolFailed(f"tool {tool_name!r} failed after retries")
+    raise ToolFailed(
+        f"tool {tool_name!r} failed after retries",
+        code="tool_retry_exhausted",
+        retryable=False,
+    )

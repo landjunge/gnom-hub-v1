@@ -124,7 +124,7 @@ class ToolRegistry:
         """Call a tool; honor ToolRetry up to budget, then raise ToolFailed.
 
         ``retries`` overrides the per-tool default from ToolSpec (default 2).
-        KeyError if unknown. ToolFailed is terminal. Other exceptions propagate.
+        KeyError if unknown. Unexpected handler errors become ToolFailed (terminal).
         """
         if name not in self._tools:
             known = ", ".join(self.names()) or "(none)"
@@ -142,7 +142,23 @@ class ToolRegistry:
         except ToolFailed:
             raise
         except ToolRetry as exc:
-            raise ToolFailed(str(exc.message or exc)) from exc
+            raise ToolFailed(
+                str(exc.message or exc),
+                code="tool_failed",
+                retryable=False,
+            ) from exc
+        except (TypeError, ValueError) as exc:
+            raise ToolFailed(
+                f"tool {name!r}: {exc}",
+                code="validation",
+                retryable=False,
+            ) from exc
+        except Exception as exc:
+            raise ToolFailed(
+                f"tool {name!r}: {type(exc).__name__}: {exc}",
+                code="internal",
+                retryable=False,
+            ) from exc
 
     def mcp_manifest(self) -> dict[str, Any]:
         """Minimal MCP-style tools/list payload."""
