@@ -65,9 +65,15 @@ def test_prefetch_design_tools_via_registry():
     def contrast(fg: str = "", bg: str = ""):
         return {"ok": True, "ratio": 12.0, "grade": "AAA", "aa_normal": True}
 
-    tools.register(ToolSpec(name="color_palette", description="p", handler=palette, plugin="web_design"))
-    tools.register(ToolSpec(name="html_scaffold", description="s", handler=scaffold, plugin="web_design"))
-    tools.register(ToolSpec(name="contrast_check", description="c", handler=contrast, plugin="web_design"))
+    tools.register(
+        ToolSpec(name="color_palette", description="p", handler=palette, plugin="web_design")
+    )
+    tools.register(
+        ToolSpec(name="html_scaffold", description="s", handler=scaffold, plugin="web_design")
+    )
+    tools.register(
+        ToolSpec(name="contrast_check", description="c", handler=contrast, plugin="web_design")
+    )
 
     ctx = prefetch_for_workers(
         "Build HTML landing page for ocean brand",

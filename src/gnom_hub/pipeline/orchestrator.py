@@ -1241,7 +1241,6 @@ def _validate_worker_draft(
     )
 
 
-
 def _quality_check(
     user_text: str,
     requirements: list[str],

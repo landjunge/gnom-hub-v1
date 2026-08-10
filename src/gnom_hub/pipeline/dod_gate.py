@@ -38,7 +38,25 @@ _INTERACT_TASK_HINTS = (
 )
 
 _STOP = frozenset(
-    ["the", "a", "an", "and", "or", "for", "with", "from", "this", "that", "user", "wish", "flex", "always", "immer", "bitte", "please"]
+    [
+        "the",
+        "a",
+        "an",
+        "and",
+        "or",
+        "for",
+        "with",
+        "from",
+        "this",
+        "that",
+        "user",
+        "wish",
+        "flex",
+        "always",
+        "immer",
+        "bitte",
+        "please",
+    ]
 )
 
 
@@ -209,7 +227,24 @@ def wish_reflected(body: str, wish: str) -> bool:
     if len(phrase) >= 6 and phrase in low:
         return True
     # dark theme special
-    return bool(any(t in tokens for t in ("dark", "dunkel", "theme", "modus", "mode")) and any(x in low for x in ("dark", "dunkel", "#0f", "#0d", "#11", "#12", "background:#0", "background: #0", "--surface", "prefers-color-scheme: dark")))
+    return bool(
+        any(t in tokens for t in ("dark", "dunkel", "theme", "modus", "mode"))
+        and any(
+            x in low
+            for x in (
+                "dark",
+                "dunkel",
+                "#0f",
+                "#0d",
+                "#11",
+                "#12",
+                "background:#0",
+                "background: #0",
+                "--surface",
+                "prefers-color-scheme: dark",
+            )
+        )
+    )
 
 
 def palette_used(body: str, colors: dict[str, str]) -> bool:
@@ -410,9 +445,9 @@ def check_worker_draft(
     )
 
 
-
-
-def should_retry(result: dict[str, Any] | DoDResult, *, user_text: str = "", task: str = "") -> tuple[bool, str]:
+def should_retry(
+    result: dict[str, Any] | DoDResult, *, user_text: str = "", task: str = ""
+) -> tuple[bool, str]:
     """Whether automated gate should trigger another worker attempt."""
     d = result.as_dict() if isinstance(result, DoDResult) else dict(result or {})
     issues = list(d.get("issues") or [])
@@ -461,8 +496,7 @@ def format_retry_hint(result: dict[str, Any] | DoDResult, *, attempt: int = 1) -
         "- Smaller but COMPLETE deliverable\n"
         "- Drop decorative CSS; keep core interactions\n"
         "- MUST satisfy absolute wishes and close HTML if required\n"
-        f"Issues: {', '.join(issues)}\n"
-        + "\n".join(f"- {h}" for h in hints[:4])
+        f"Issues: {', '.join(issues)}\n" + "\n".join(f"- {h}" for h in hints[:4])
     )
 
 

@@ -332,8 +332,7 @@ def lint_dod_spec(spec: Any) -> list[StructureIssue]:
                 StructureIssue(
                     code="item_id_invalid",
                     severity="must",
-                    message=f"item.id {iid!r} must match [a-z][a-z0-9_]{{1,47}} "
-                    f"or wish_* / req_N",
+                    message=f"item.id {iid!r} must match [a-z][a-z0-9_]{{1,47}} or wish_* / req_N",
                     path=f"{path}.id",
                 )
             )
@@ -401,13 +400,19 @@ def lint_dod_spec(spec: Any) -> list[StructureIssue]:
 
     wants_html = bool(g("wants_html", False))
     if wants_html:
-        html_ids = {i for i in seen_ids if i.startswith("html") or i in (
-            "incomplete_html",
-            "missing_html_close",
-            "missing_required_interaction",
-            "html_complete",
-            "html_interaction",
-        )}
+        html_ids = {
+            i
+            for i in seen_ids
+            if i.startswith("html")
+            or i
+            in (
+                "incomplete_html",
+                "missing_html_close",
+                "missing_required_interaction",
+                "html_complete",
+                "html_interaction",
+            )
+        }
         # accept either catalog codes or html_* checklist ids
         if not html_ids and "incomplete_html" not in seen_ids and "html_complete" not in seen_ids:
             issues.append(
@@ -455,11 +460,7 @@ def lint_dod_prompt(text: str) -> list[StructureIssue]:
                 path="prompt",
             )
         )
-    if (
-        DOD_MARK_START in s
-        and DOD_MARK_END in s
-        and s.find(DOD_MARK_START) > s.find(DOD_MARK_END)
-    ):
+    if DOD_MARK_START in s and DOD_MARK_END in s and s.find(DOD_MARK_START) > s.find(DOD_MARK_END):
         issues.append(
             StructureIssue(
                 code="prompt_marker_order",
@@ -479,9 +480,7 @@ def lint_dod_prompt(text: str) -> list[StructureIssue]:
             )
         )
     # Absolute wishes should use [!]
-    if re.search(r"(?i)standing wish|absolute|flex-wish:|user:", s) and not DOD_CHECK_ABS.search(
-        s
-    ):
+    if re.search(r"(?i)standing wish|absolute|flex-wish:|user:", s) and not DOD_CHECK_ABS.search(s):
         issues.append(
             StructureIssue(
                 code="prompt_wishes_not_absolute_marked",

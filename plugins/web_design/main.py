@@ -48,7 +48,7 @@ def _rgb_to_hsl(r: int, g: int, b: int) -> tuple[float, float, float]:
 
 def _hsl_to_rgb(h: float, l: float, s: float) -> tuple[int, int, int]:
     r, g, b = colorsys.hls_to_rgb(h, l, s)
-    return int(round(r * 255)), int(round(g * 255)), int(round(b * 255))
+    return round(r * 255), round(g * 255), round(b * 255)
 
 
 def _rel_luminance(r: int, g: int, b: int) -> float:

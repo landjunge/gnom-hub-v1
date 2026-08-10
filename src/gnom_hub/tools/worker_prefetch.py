@@ -629,9 +629,7 @@ def prefetch_for_workers(
             executed.append("workspace_read")
             if isinstance(res, dict) and res.get("ok"):
                 body = str(res.get("text") or "")[:4000]
-                add_chunk(
-                    f"workspace_read ({res.get('zone')}/{res.get('name')}):\n{body}"
-                )
+                add_chunk(f"workspace_read ({res.get('zone')}/{res.get('name')}):\n{body}")
             else:
                 # try perm zone once if temp miss
                 err = res.get("error") if isinstance(res, dict) else "read failed"
@@ -661,9 +659,7 @@ def prefetch_for_workers(
                 tools,
                 "web_fetch",
                 args,
-                fallback=lambda url, max_chars=2500: web_fetch(
-                    str(url), max_chars=int(max_chars)
-                ),
+                fallback=lambda url, max_chars=2500: web_fetch(str(url), max_chars=int(max_chars)),
             )
             calls += 1
             cat_used["net"] = cat_used.get("net", 0) + 1
@@ -683,8 +679,10 @@ def prefetch_for_workers(
                 skipped.append("memory_search:no_vectors")
                 continue
             args = dict(step.args)
-            if tools is not None and hasattr(tools, "call") and _registry_has(
-                tools, "memory_search"
+            if (
+                tools is not None
+                and hasattr(tools, "call")
+                and _registry_has(tools, "memory_search")
             ):
                 try:
                     hits = tools.call("memory_search", args)
@@ -692,7 +690,9 @@ def prefetch_for_workers(
                     hits = {"ok": False, "error": str(exc)}
             elif vectors is not None:
                 try:
-                    hits = vectors.search(str(args.get("query") or ""), limit=int(args.get("limit") or 3))
+                    hits = vectors.search(
+                        str(args.get("query") or ""), limit=int(args.get("limit") or 3)
+                    )
                 except Exception as exc:  # noqa: BLE001
                     hits = {"ok": False, "error": str(exc)}
             else:
@@ -705,9 +705,7 @@ def prefetch_for_workers(
                 lines = []
                 for h in hits[:3]:
                     if isinstance(h, dict):
-                        lines.append(
-                            f"- ({h.get('score', '?')}) {str(h.get('text') or '')[:160]}"
-                        )
+                        lines.append(f"- ({h.get('score', '?')}) {str(h.get('text') or '')[:160]}")
                 if lines:
                     add_chunk("Memory search (auto):\n" + "\n".join(lines))
             elif isinstance(hits, dict) and hits.get("error"):

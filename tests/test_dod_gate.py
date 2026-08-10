@@ -53,9 +53,7 @@ def test_gate_worker_error_no_retry():
 def test_gate_wish_missing():
     good_html = (
         "<!DOCTYPE html><html><body>"
-        "<button onclick='x()'>Go</button>"
-        + (" content" * 20)
-        + "</body></html>"
+        "<button onclick='x()'>Go</button>" + (" content" * 20) + "</body></html>"
     )
     r = check_worker_draft(
         good_html,
@@ -71,9 +69,7 @@ def test_gate_wish_missing():
 def test_gate_wish_dark_reflected():
     body = (
         "<!DOCTYPE html><html><body style='background:#0f172a;color:#e2e8f0'>"
-        "<button onclick='go()'>Go</button>"
-        + (" dark theme navy " * 10)
-        + "</body></html>"
+        "<button onclick='go()'>Go</button>" + (" dark theme navy " * 10) + "</body></html>"
     )
     r = check_worker_draft(
         body,
@@ -88,9 +84,7 @@ def test_gate_wish_dark_reflected():
 def test_gate_prefetch_palette():
     body = (
         "<!DOCTYPE html><html><body>"
-        "<button onclick='a()'>A</button>"
-        + (" x" * 40)
-        + "</body></html>"
+        "<button onclick='a()'>A</button>" + (" x" * 40) + "</body></html>"
     )
     tools = [
         {

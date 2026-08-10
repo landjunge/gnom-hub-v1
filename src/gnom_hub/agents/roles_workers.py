@@ -65,7 +65,7 @@ _WORKER_L4_WISHES = (
 
 _WORKER_L5_TOOLS = (
     "TOOL PROTOCOL:\n"
-    "  - The hub may inject a block \"Tool prefetch (auto):\" with real tool outputs "
+    '  - The hub may inject a block "Tool prefetch (auto):" with real tool outputs '
     "(web_fetch, memory_search, install_tool, color_palette, html_scaffold, …).\n"
     "  - Treat that block as ground truth. Cite URLs/facts from it; do not contradict it.\n"
     "  - You do not call tools yourself mid-turn — the hub prefetches. "
