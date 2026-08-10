@@ -93,6 +93,7 @@
     llmBadge: document.getElementById("llm-badge"),
     toolsBadge: document.getElementById("tools-badge"),
     skillsBadge: document.getElementById("skills-badge"),
+    docsBadge: document.getElementById("docs-badge"),
     costBadge: document.getElementById("cost-badge"),
     usageModal: document.getElementById("usage-modal"),
     memBadge: document.getElementById("mem-badge"),
@@ -113,6 +114,7 @@
     flexSelect: document.getElementById("flex-preset-select"),
     vectorModal: document.getElementById("vector-modal"),
     skillsModal: document.getElementById("skills-modal"),
+    docsModal: document.getElementById("docs-modal"),
   };
 
   let activeStage = "idle";

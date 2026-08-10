@@ -64,6 +64,8 @@ jobs:
             echo "  git add docs/generated/mermaid_inventory.md && git commit"
             exit 1
           fi
+          echo "▸ docs index check"
+          python scripts/build_docs_index.py --check
 
       - name: Set up Node 22 (ESLint UI)
         uses: actions/setup-node@v4

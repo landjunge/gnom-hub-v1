@@ -4,10 +4,10 @@
 
 | | |
 |--|--|
-| **Version** | 3.10.1 ([Changelog](docs/CHANGELOG_3.10.md) · [Release-Notes](docs/GITHUB_HOLDER_3.10.md)) |
-| **Docs-Index** | **[docs/INDEX.md](docs/INDEX.md)** — durchsuchbare Keyword-Karte (alle Docs) |
-| **Kern-Docs** | [Install](docs/INSTALL_SIMPLE.md) · [Hub-Architektur](docs/HUB_ARCHITECTURE.md) · [Orchestrierung](docs/ORCHESTRATION.md) · [Skills](docs/SKILLS.md) · [Plugins](docs/PLUGINS.md) · [UI-Qualität](docs/UI_QUALITY.md) · [Stabilität](docs/STABILITY.md) |
-| **Stack** | Python ≥3.10 · FastAPI · Desktop-SPA |
+| **Version** | 3.10.1 · [Changelog](docs/CHANGELOG_3.10.md) · [Release-Notes](docs/GITHUB_HOLDER_3.10.md) |
+| **Docs suchen** | Desk-Badge **Docs** · `GET /api/docs/search?q=` · `python scripts/build_docs_index.py --search "…"` |
+| **Doc-Index** | **[docs/INDEX.md](docs/INDEX.md)** (auto) · [Katalog JSON](docs/generated/docs_catalog.json) |
+| **Stack** | Python ≥3.10 · FastAPI · Desktop-SPA · **kein Docker** |
 | **UI** | `http://127.0.0.1:8080/` |
 | **LLM** | DeepSeek (`deepseek-v4-flash`) · optional Ollama |
 | **Lizenz** | Private Nutzung |
@@ -16,20 +16,24 @@
 
 ---
 
-## Inhalt
+## Karte
 
-1. [Was es ist](#was-es-ist)
-2. [Schnellstart](#schnellstart)
-3. [Desk bedienen](#desk-bedienen)
-4. [Skills · Memory · Suche](#skills--memory--suche)
-5. [Tools & Plugins](#tools--plugins)
-6. [So funktioniert es](#so-funktioniert-es)
-7. [Entwickeln & Qualität](#entwickeln--qualität)
-8. [Dokumentation](#dokumentation)
+| Abschnitt | Inhalt |
+|-----------|--------|
+| [1 · Produkt](#1--produkt) | Was es ist / nicht ist |
+| [2 · Install](#2--install) | Ein-Befehl + Keys |
+| [3 · Desk](#3--desk) | Chat, Boxen, Badges |
+| [4 · Skills & Memory](#4--skills--memory) | Playbooks, HOT/WARM/Vector |
+| [5 · Tools & Plugins](#5--tools--plugins) | Registry, Computer-Use |
+| [6 · Architektur](#6--architektur) | Pipeline-Diagramm |
+| [7 · Entwickeln](#7--entwickeln) | Lint, Tests, Quality |
+| [8 · Docs-Suche](#8--docs-suche) | Index-Automation + API |
 
 ---
 
-## Was es ist
+## 1 · Produkt
+
+### Was es ist
 
 Produktregel:
 
@@ -66,7 +70,9 @@ Exploration bleibt günstig und umkehrbar. Worker (Kosten, Dateien, Nebenwirkung
 
 ---
 
-## Schnellstart
+## 2 · Install
+
+### Schnellstart
 
 ```bash
 # Kein Docker — nur venv + lokales FastAPI
@@ -94,7 +100,9 @@ Ohne nutzbaren Key (und ohne Ollama) melden Worker **FEHLER — kein Deliverable
 
 ---
 
-## Desk bedienen
+## 3 · Desk
+
+### Desk bedienen
 
 ### Chat
 
@@ -151,7 +159,7 @@ pip install -e ".[computer]"   # optional
 
 ---
 
-## Skills · Memory · Suche
+## 4 · Skills & Memory
 
 ### Playbook-Skills (kein Workflow-Engine)
 
@@ -186,7 +194,7 @@ Ohne Install: Default **bow**. Modelle vs. Vector-DBs: [docs/VECTORS_AND_RUST.md
 
 ---
 
-## Tools & Plugins
+## 5 · Tools & Plugins
 
 ### Core-Tools
 
@@ -237,7 +245,7 @@ Mitgeliefert u.a.: `echo`, `install_tool`, `text_stats`, `embeddings_lite`, `emb
 
 ---
 
-## So funktioniert es
+## 6 · Architektur
 
 ### Systemübersicht
 
@@ -394,7 +402,7 @@ Clean / Reset: HOT + Temp-Workspace + Pipeline; **WARM bleibt**, außer explizit
 
 ---
 
-## Entwickeln & Qualität
+## 7 · Entwickeln
 
 ```bash
 ruff check . && ruff format --check .
@@ -415,7 +423,19 @@ Flex-Vertrag: [docs/AGENTS_DEFINITION.md](docs/AGENTS_DEFINITION.md) · Tests: [
 
 ---
 
-## Dokumentation
+## 8 · Docs-Suche
+
+### Index-Automation
+
+```bash
+python scripts/build_docs_index.py
+python scripts/build_docs_index.py --check
+python scripts/build_docs_index.py --search "skills embeddings"
+```
+
+Desk: Badge **Docs** → Suchbegriff. API: `GET /api/docs/search?q=`
+
+### Dokumentation
 
 **Vollständiger, durchsuchbarer Index:** [docs/INDEX.md](docs/INDEX.md) (Keywords + A–Z).
 

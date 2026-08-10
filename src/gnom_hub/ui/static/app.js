@@ -93,6 +93,7 @@
     llmBadge: document.getElementById("llm-badge"),
     toolsBadge: document.getElementById("tools-badge"),
     skillsBadge: document.getElementById("skills-badge"),
+    docsBadge: document.getElementById("docs-badge"),
     costBadge: document.getElementById("cost-badge"),
     usageModal: document.getElementById("usage-modal"),
     memBadge: document.getElementById("mem-badge"),
@@ -113,6 +114,7 @@
     flexSelect: document.getElementById("flex-preset-select"),
     vectorModal: document.getElementById("vector-modal"),
     skillsModal: document.getElementById("skills-modal"),
+    docsModal: document.getElementById("docs-modal"),
   };
 
   let activeStage = "idle";
@@ -3412,6 +3414,84 @@
       await refreshVectorList();
     } catch (err) {
       toast("Install failed: " + err.message, "error");
+    }
+  }
+
+
+  function closeDocsModal() {
+    if (els.docsModal) els.docsModal.hidden = true;
+  }
+
+  async function openDocsModal() {
+    if (!els.docsModal) return;
+    els.docsModal.hidden = false;
+    const q = document.getElementById("docs-query");
+    if (q) {
+      q.focus();
+      if (q.value) await runDocsSearch();
+    }
+  }
+
+  async function runDocsSearch() {
+    const qEl = document.getElementById("docs-query");
+    const ul = document.getElementById("docs-hits");
+    const hint = document.getElementById("docs-hint");
+    const q = qEl ? String(qEl.value || "").trim() : "";
+    if (!ul) return;
+    if (!q) {
+      ul.innerHTML = "";
+      const li = document.createElement("li");
+      li.className = "muted";
+      li.textContent = "Type a query — e.g. skills, plan_mode, install";
+      ul.appendChild(li);
+      return;
+    }
+    try {
+      const data = await api(
+        "GET",
+        "/api/docs/search?q=" + encodeURIComponent(q) + "&limit=16"
+      );
+      const hits = data.hits || [];
+      ul.innerHTML = "";
+      if (!hits.length) {
+        const li = document.createElement("li");
+        li.className = "muted";
+        li.textContent = "No hits for: " + q;
+        ul.appendChild(li);
+        return;
+      }
+      hits.forEach(function (h) {
+        const li = document.createElement("li");
+        li.style.display = "flex";
+        li.style.flexDirection = "column";
+        li.style.gap = "2px";
+        li.style.padding = "6px 0";
+        const top = document.createElement("span");
+        top.innerHTML = "";
+        const title = document.createElement("strong");
+        title.textContent =
+          (h.score != null ? h.score + " · " : "") + (h.title || h.file || "?");
+        top.appendChild(title);
+        const meta = document.createElement("span");
+        meta.className = "muted";
+        meta.style.fontSize = "0.9em";
+        meta.textContent =
+          (h.path || h.file || "") +
+          " · " +
+          (h.topic || "") +
+          " · " +
+          ((h.keywords || []).slice(0, 6).join(", ") || "—");
+        li.appendChild(top);
+        li.appendChild(meta);
+        ul.appendChild(li);
+      });
+      if (hint) {
+        hint.textContent =
+          hits.length +
+          " hits · local catalog · rebuild: python scripts/build_docs_index.py";
+      }
+    } catch (err) {
+      toast("Docs search failed: " + err.message, "error");
     }
   }
 /* part: 03-chat-jobs-ops.js  lines 1950-3681 of app.js — edit parts, run scripts/build_ui_js.py */
@@ -7235,6 +7315,15 @@
         }
       });
     }
+    if (els.docsBadge) {
+      els.docsBadge.addEventListener("click", openDocsModal);
+      els.docsBadge.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          openDocsModal();
+        }
+      });
+    }
     if (els.skillsBadge) {
       els.skillsBadge.addEventListener("click", openSkillsModal);
       els.skillsBadge.addEventListener("keydown", function (ev) {
@@ -7305,6 +7394,24 @@
     if (skillsInstallBtn) skillsInstallBtn.addEventListener("click", installSkillPath);
     const skillsLearnLast = document.getElementById("skills-learn-last");
     if (skillsLearnLast) skillsLearnLast.addEventListener("click", learnSkillFromLast);
+    const docsClose = document.getElementById("docs-close");
+    if (docsClose) docsClose.addEventListener("click", closeDocsModal);
+    if (els.docsModal) {
+      els.docsModal.addEventListener("click", function (ev) {
+        if (ev.target === els.docsModal) closeDocsModal();
+      });
+    }
+    const docsSearchBtn = document.getElementById("docs-search-btn");
+    if (docsSearchBtn) docsSearchBtn.addEventListener("click", runDocsSearch);
+    const docsQuery = document.getElementById("docs-query");
+    if (docsQuery) {
+      docsQuery.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          runDocsSearch();
+        }
+      });
+    }
     const vectorQuery = document.getElementById("vector-query");
     if (vectorQuery) {
       vectorQuery.addEventListener("keydown", function (ev) {
