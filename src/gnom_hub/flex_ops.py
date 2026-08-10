@@ -161,7 +161,10 @@ class FlexOpsMixin:
         if learn:
             learned = bool(self.warm.add_fact_flex(learn))
             if learned and hasattr(self, "index_durable_fact"):
-                self.index_durable_fact(learn if learn.lower().startswith(("user:", "wish:")) else "User: " + learn, source="flex_wish")
+                self.index_durable_fact(
+                    learn if learn.lower().startswith(("user:", "wish:")) else "User: " + learn,
+                    source="flex_wish",
+                )
 
         job: dict[str, Any] | None = None
         message = (btn or {}).get("label") or label or button_id

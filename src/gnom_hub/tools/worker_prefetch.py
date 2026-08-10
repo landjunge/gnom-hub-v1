@@ -545,7 +545,14 @@ def prefetch_for_workers(
             res = _call_tool(tools, "install_tool", args_inst)
             calls += 1
             cat_used["install"] = cat_used.get("install", 0) + 1
-            _emit_tool_call(bus, "install_tool", args_inst, res, record=record, reason=step.reason + " · install")
+            _emit_tool_call(
+                bus,
+                "install_tool",
+                args_inst,
+                res,
+                record=record,
+                reason=step.reason + " · install",
+            )
             if isinstance(res, dict) and res.get("ok"):
                 add_chunk(f"install_tool: installed {pkg}")
             else:
@@ -631,7 +638,9 @@ def prefetch_for_workers(
             res = _call_tool(tools, "workspace_read", dict(step.args))
             calls += 1
             cat_used["workspace"] = cat_used.get("workspace", 0) + 1
-            _emit_tool_call(bus, "workspace_read", dict(step.args), res, record=record, reason=step.reason)
+            _emit_tool_call(
+                bus, "workspace_read", dict(step.args), res, record=record, reason=step.reason
+            )
             executed.append("workspace_read")
             if isinstance(res, dict) and res.get("ok"):
                 body = str(res.get("text") or "")[:4000]
@@ -645,7 +654,14 @@ def prefetch_for_workers(
                     res2 = _call_tool(tools, "workspace_read", alt_args)
                     calls += 1
                     cat_used["workspace"] = cat_used.get("workspace", 0) + 1
-                    _emit_tool_call(bus, "workspace_read", alt_args, res2, record=record, reason=step.reason + " · perm")
+                    _emit_tool_call(
+                        bus,
+                        "workspace_read",
+                        alt_args,
+                        res2,
+                        record=record,
+                        reason=step.reason + " · perm",
+                    )
                     if isinstance(res2, dict) and res2.get("ok"):
                         body = str(res2.get("text") or "")[:4000]
                         add_chunk(

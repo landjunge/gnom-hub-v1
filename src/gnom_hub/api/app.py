@@ -1360,7 +1360,6 @@ def create_app() -> FastAPI:
         hub.skill_list = list(skills.skills)
         return out
 
-
     @app.get("/api/docs")
     def docs_catalog(limit: int = Query(200, ge=1, le=500)) -> dict[str, Any]:
         """List documentation catalog (from generated index)."""
@@ -1419,7 +1418,6 @@ def create_app() -> FastAPI:
         return {"ok": True, "query": query, "hits": hits, "count": len(hits)}
 
     @app.get("/api/mcp/tools")
-
     def mcp_tools() -> dict[str, Any]:
         """MCP tools/list body (MCP-lite discovery)."""
         return get_hub().tools.mcp_manifest()
