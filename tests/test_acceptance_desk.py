@@ -29,9 +29,7 @@ def test_tool_drill_s6_plugins_forced():
 
 def test_html_execute_one_worker_and_validation_without_key():
     h = Hub()
-    h.pipeline.brainstorm_turn(
-        "Baue eine komplette Landingpage HTML mit dark theme und Hero"
-    )
+    h.pipeline.brainstorm_turn("Baue eine komplette Landingpage HTML mit dark theme und Hero")
     st = h.pipeline.execute()
     assert st.stage.value == "done"
     assert st.resolved_plan_mode == "full_page_html"
@@ -51,7 +49,9 @@ def test_api_tool_drill_and_busy_409():
         assert r.status_code == 200
         p = r.json().get("pipeline") or {}
         assert p.get("stage") == "done"
-        assert len(p.get("tool_log") or []) >= 1 or "tool" in str(p.get("quality_notes") or "").lower()
+        assert (
+            len(p.get("tool_log") or []) >= 1 or "tool" in str(p.get("quality_notes") or "").lower()
+        )
 
         # async job → second chat should 409 while busy (or finish instantly)
         j = c.post("/api/chat", json={"text": "Landingpage Gnom-Hub v1 mit Effects jetzt bauen"})
