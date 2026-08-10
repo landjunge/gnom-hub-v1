@@ -436,23 +436,9 @@ class JobsMixin:
             job["cancel"] = True
             job["stage"] = "cancelling"
             job["error"] = job.get("error") or "cancelled by user"
-            # Cooperative: prefer job flag via existing cancel_check wiring.
-            # Do not install a permanent lambda: True — that sticks after finalize
-            # and breaks later tool loops / tests when hub is reused.
-            try:
-                pipe = getattr(self, "pipeline", None)
-                if pipe is not None:
-                    jobs_ref = jobs
-                    jid = job_id
-
-                    def _check(jid=jid, jobs_ref=jobs_ref) -> bool:
-                        j = jobs_ref.get(jid) or {}
-                        return bool(j.get("cancel"))
-
-                    pipe.cancel_check = _check
-            except Exception:  # noqa: BLE001
-                pass
-            # Do NOT set status=cancelled here — finalize owns terminal status (M2)
+            # Job runner wires: pipeline.cancel_check = lambda: bool(job.get("cancel"))
+            # Do not install a separate cancel_check here — sticky True broke later
+            # tool loops and flaked tests (agent_bridge) when hub is process-global.
             self._append_trace("job.cancel", {"id": job_id, "phase": "request"})
         return {
             "id": job["id"],
