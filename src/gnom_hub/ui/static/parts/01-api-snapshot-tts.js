@@ -14,7 +14,6 @@
       let detailObj = null;
       try {
         const j = await res.json();
-        const j = await res.json();
         detailObj = j.detail !== undefined ? j.detail : j;
         if (detailObj && typeof detailObj === "object") {
           detail =
@@ -358,7 +357,7 @@
   }
 
   /** Recent spoken fingerprints — never queue the same text twice. */
-  let ttsSpokenFp = {};
+  const ttsSpokenFp = {};
   let ttsToastAt = 0;
   let ttsPrepareInflight = {};
 
@@ -445,7 +444,7 @@
     } catch (_e) {
       /* ignore */
     }
-    pendingSpeech = "";
+    _pendingSpeech = "";
   }
 
   /** DE desk always de-DE. Never en-US when UI is German. */
@@ -581,7 +580,7 @@
     if (window.speechSynthesis.speaking || window.speechSynthesis.pending) return;
     if (!ttsQueue.length) return;
     if (!ttsUnlocked) {
-      /* Queue keeps the text — do NOT also copy into pendingSpeech (was double). */
+      /* Queue keeps the text — do NOT also copy into _pendingSpeech (was double). */
       const now = Date.now();
       if (now - ttsToastAt > 4000) {
         ttsToastAt = now;
@@ -600,7 +599,7 @@
 
   /**
    * Enqueue already-prepared text (must be German when desk is DE).
-   * Single queue only — never pendingSpeech + queue (double speak bug).
+   * Single queue only — never _pendingSpeech + queue (double speak bug).
    */
   function speakOrQueuePrepared(text) {
     let cleaned = stripForSpeech(text);
@@ -670,7 +669,7 @@
   /** Unlock + optional short DE line from a real click (no pending re-queue). */
   function speakNow(text) {
     ttsUnlocked = true;
-    pendingSpeech = "";
+    _pendingSpeech = "";
     if (text) {
       speakOrQueuePrepared(text);
     } else {
@@ -693,7 +692,7 @@
       function () {
         /* Only unlock + drain queue. Never re-push pending (caused double TTS). */
         ttsUnlocked = true;
-        pendingSpeech = "";
+        _pendingSpeech = "";
         pumpTtsQueue();
       },
       true
@@ -809,7 +808,7 @@
    * Flex panel in right Platzhalter (chat-mod-platz-r).
    * After done: quality feedback + learn / re-brainstorm / re-build.
    */
-  let lastFlexReviewKey = "";
+  let _lastFlexReviewKey = "";
 
   function applyFlexReview(panel, pipeline) {
     const root = document.getElementById("flex-review");
@@ -844,7 +843,7 @@
     btnsEl.innerHTML = "";
     const buttons = active ? p.buttons || [] : [];
     if (!active || !buttons.length) {
-      lastFlexReviewKey = "";
+      _lastFlexReviewKey = "";
       return;
     }
     buttons.forEach(function (b) {
@@ -870,7 +869,7 @@
     });
 
     /* Panel is visual only. Flex voice = maybeSpeakFlexSupport (how/why). */
-    lastFlexReviewKey =
+    _lastFlexReviewKey =
       "flex-panel|" +
       String(p.question || "").slice(0, 80) +
       "|" +

@@ -87,6 +87,27 @@ if [ "${GNOM_PREPUSH_MERMAID:-1}" != "0" ] && [ "${GNOM_PREPUSH_MERMAID:-}" != "
   fi
 fi
 
+
+# ESLint UI gate (max-warnings 0). Skip with GNOM_PREPUSH_ESLINT=0
+if [ "${GNOM_PREPUSH_ESLINT:-1}" != "0" ] && [ "${GNOM_PREPUSH_ESLINT:-}" != "false" ]; then
+  if [ -f package.json ] && command -v npm >/dev/null 2>&1; then
+    if [ ! -d node_modules/eslint ]; then
+      echo "▸ prepush_gate: npm ci (eslint)"
+      npm ci --silent
+    fi
+    echo "▸ prepush_gate: npm run lint:js"
+    if ! npm run lint:js; then
+      echo "" >&2
+      echo "❌ ESLint failed (max-warnings 0). Fix UI JS, then:" >&2
+      echo "  npm run lint:js" >&2
+      echo "  python3 scripts/build_ui_js.py   # after editing parts/" >&2
+      exit 1
+    fi
+  else
+    echo "▸ prepush_gate: eslint skipped (no npm)"
+  fi
+fi
+
 if [ "${GNOM_PREPUSH_PYTEST:-}" = "1" ] || [ "${GNOM_PREPUSH_PYTEST:-}" = "true" ]; then
   echo "▸ prepush_gate: pytest (GNOM_PREPUSH_PYTEST=1)"
   export PYTHONPATH="${PYTHONPATH:-}:src"

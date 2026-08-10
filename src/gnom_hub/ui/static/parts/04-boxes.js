@@ -1,5 +1,7 @@
 /* part: 04-boxes.js  lines 3682-4267 of app.js — edit parts, run scripts/build_ui_js.py */
 
+  let box3FocusIdx = 0;
+
   /**
    * Dynamic presentation inside a box/panel:
    * HTML → live preview (+ Source), code fence → code view, JSON → pretty, else text.
@@ -229,10 +231,11 @@
   function healTruncatedHtml(html) {
     let doc = String(html || "").trim();
     if (!doc) return doc;
-    const incomplete =
+    const _incomplete =
       !/<\/html>/i.test(doc) ||
       htmlBodyIsEmpty(doc) ||
       (/<style[\s>]/i.test(doc) && !/<\/style>/i.test(doc));
+    void _incomplete;
 
     if (/<style[\s>]/i.test(doc) && !/<\/style>/i.test(doc)) {
       doc += "\n</style>";
@@ -507,8 +510,7 @@
     split.className = "box3-split" + (html ? " has-preview" : " text-only");
 
     if (html) {
-      const incomplete = htmlBodyIsEmpty(html) || !/<\/html>/i.test(html);
-      if (incomplete && label) {
+      if ((htmlBodyIsEmpty(html) || !/<\/html>/i.test(html)) && label) {
         label.textContent =
           (label.textContent || "") + " · unvollständig → Vorschau geheilt";
       }
@@ -792,7 +794,7 @@
       return;
     }
     // Keep each HTML result into personal WS (only chosen outputs that are HTML)
-    var kept = 0;
+    let kept = 0;
     lastWorkerOutputs.forEach(function (o, i) {
       if (extractHtml(o.result || "")) {
         kept += 1;
@@ -809,17 +811,16 @@
     });
     const text = parts.join("\n\n");
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(
-        function () {
+      return navigator.clipboard
+        .writeText(text)
+        .then(function () {
           toast("Kept HTML to personal WS + clipboard (" + text.length + " chars)", "ok");
-        },
-        function () {
+        })
+        .catch(function () {
           toast("Copy failed", "error");
-        }
-      );
-    } else {
-      toast("Clipboard not available", "error");
+        });
     }
+    toast("Clipboard not available", "error");
   }
 
   /**
@@ -925,14 +926,14 @@
         return r.text;
       }).join("\n");
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(
-          function () {
+        return navigator.clipboard
+          .writeText(text)
+          .then(function () {
             toast("Diff copied", "ok");
-          },
-          function () {
+          })
+          .catch(function () {
             toast("Copy failed", "error");
-          }
-        );
+          });
       }
     });
     const btnClose = document.createElement("button");
@@ -994,7 +995,7 @@
     return [];
   }
 
-  let box3FocusIdx = 0;
+  
   let box3FrontSlot = "a"; // which dual-layer slot is front
   let box3BlendBusy = false;
 
@@ -1017,7 +1018,7 @@
     slotEl.appendChild(wrap);
   }
 
-  function focusBox3Worker(idx) {
+  function _focusBox3Worker(idx) {
     const dual = document.getElementById("box3-dual");
     if (!dual || !lastWorkerOutputs.length) return;
     if (box3BlendBusy) return;
@@ -1119,7 +1120,7 @@
     toast("Opened in new tab", "ok");
   }
 
-  async function saveWorkerToWorkspace(out, raw, html, zone) {
+  async function _saveWorkerToWorkspace(out, raw, html, zone) {
     const isHtml = !!html;
     const z = zone === "perm" ? "perm" : "temp";
     const name =

@@ -6,7 +6,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "lint:js": "eslint \"src/gnom_hub/ui/static/app.js\"",
+    "lint:js": "eslint \"src/gnom_hub/ui/static/app.js\" --max-warnings 0",
     "lint:js:fix": "eslint \"src/gnom_hub/ui/static/app.js\" --max-warnings 0",
     "lint:js:all": "eslint \"src/gnom_hub/ui/static/**/*.js\"",
     "lint:js:specificity": "node scripts/eslint_override_specificity.mjs",

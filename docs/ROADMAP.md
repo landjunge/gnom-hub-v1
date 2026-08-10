@@ -323,7 +323,7 @@
 | FlatConfig plugin integration helper + docs | **done** |
 | Flat-Config override strategies S1–S10 | **done** |
 | Override specificity self-test (npm run lint:js:specificity) | **done** |
-| CI hard gate max-warnings 0 | optional |
+| CI hard gate max-warnings 0 | **done** |
 
 ## V3.9.0 — Agent tool stack (desk)
 

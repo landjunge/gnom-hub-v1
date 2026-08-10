@@ -27,7 +27,7 @@ env:
 jobs:
   # No full app install. Ruff via official action (binary); mermaid is stdlib.
   lint:
-    name: Lint · Ruff · Mermaid
+    name: Lint · Ruff · Mermaid · ESLint
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -65,6 +65,18 @@ jobs:
             exit 1
           fi
 
+      - name: Set up Node 22 (ESLint UI)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: ESLint (app.js, max-warnings 0)
+        run: |
+          npm ci
+          npm run lint:js
+          npm run lint:js:specificity
+
       - name: Job summary
         if: always()
         run: |
@@ -73,6 +85,7 @@ jobs:
             echo ""
             echo "- Ruff: \`astral-sh/ruff-action@v3\` pin **0.16.1** (no pip install)"
             echo "- Mermaid: stdlib script · inventory drift gate"
+            echo "- ESLint: \`npm run lint:js\` (max-warnings 0) + specificity self-test"
             echo "- Pip cache: **none** (by design — keeps lint cold-start ~seconds)"
             echo ""
             python scripts/mermaid_check.py --json 2>/dev/null | python -c "

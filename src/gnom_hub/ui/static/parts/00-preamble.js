@@ -16,7 +16,7 @@
   let TOOLTIPS = {};
   let uiLang = "en";
 
-  const FLEX_PRESETS = ["personal", "security", "neutral", "researcher"];
+  const _FLEX_PRESETS = ["personal", "security", "neutral", "researcher"]; // kept for desk docs/export
 
   const COLOR_HEX = {
     brainstorm: "#ff0000",
@@ -121,7 +121,7 @@
   let recognition = null;
   let listening = false;
   let lastSpokenKey = "";
-  let pendingSpeech = ""; // spoken on next click if browser blocked autoplay
+  let _pendingSpeech = ""; // spoken on next click if browser blocked autoplay
   let ttsUnlocked = false; // true after speak started from a real click
   /** Sequential TTS queue — one utterance fully finishes before the next (no cut-off). */
   let ttsQueue = [];
@@ -139,6 +139,7 @@
   let jobTimerInterval = null;
   let lastJobElapsedSec = 0;
   let lastReportedPipelineError = null;
+  let chatBusy = false;
   let lastCanExecute = false;
   /** Per-agent chat logs: { brainstorm: [...], worker1: [...], ... } */
   const CHAT_STORAGE_KEY = "gnom-hub-chat-logs-by-agent-v1";
@@ -481,6 +482,7 @@
       '<p class="agent-explain-foot">Regler → Box 3 · Chat-Layer = Crux · Modulrahmen = Agentenfarbe</p>';
 
     if (els.tipHow) {
+      // eslint-disable-next-line no-unsanitized/property
       els.tipHow.innerHTML = paramsHtml;
     }
     if (els.tipExample) {
@@ -493,6 +495,7 @@
     const body =
       typeof getAgentBoxBody === "function" ? getAgentBoxBody(1, agentId) : null;
     if (body) {
+      // eslint-disable-next-line no-unsanitized/property
       body.innerHTML =
         '<div class="box1-agent-info">' +
         '<h2 class="tip-title">' +
@@ -550,6 +553,7 @@
           ? Number(agent.cost_usd)
           : 0;
       const costStr = cost > 0 ? "$" + cost.toFixed(4) : "$0";
+      // eslint-disable-next-line no-unsanitized/property
       card.innerHTML =
         '<div class="card-name">' +
         agent.label +

@@ -49,7 +49,7 @@
     }
   }
 
-  async function cycleFlexPreset() {
+  async function _cycleFlexPreset() {
     toast("Flex is fixed — personal companion only", "info");
   }
 
@@ -139,7 +139,6 @@
     if (els.clarifyQ) els.clarifyQ.textContent = "";
   }
 
-  let chatBusy = false;
   let busyJobId = null; // job holding pipeline (may differ from currentJobId after 409)
 
   function godModeLabel() {
@@ -443,7 +442,7 @@
     toast("History exported (" + resultHistory.length + " runs)", "ok");
   }
 
-  async function rerunWorker(workerId) {
+  async function _rerunWorker(workerId) {
     if (chatBusy) {
       toast("Busy — wait for current job", "info");
       return;
@@ -838,7 +837,7 @@
       lab.style.overflow = "hidden";
       lab.style.textOverflow = "ellipsis";
       lab.style.whiteSpace = "nowrap";
-      var when = (p.mtime || p.exported_at || "").replace("T", " ").replace("+00:00", "Z");
+      let when = (p.mtime || p.exported_at || "").replace("T", " ").replace("+00:00", "Z");
       if (when.length > 16) when = when.slice(0, 16);
       lab.textContent =
         (p.label || p.name || "?") + (when ? " · " + when : "");
@@ -907,14 +906,14 @@
 
   async function renameNamedPack(name, currentLabel, currentNotes) {
     if (!name) return;
-    var next = window.prompt("Pack label (max 80 chars):", currentLabel || "");
+    let next = window.prompt("Pack label (max 80 chars):", currentLabel || "");
     if (next === null) return;
     next = String(next).trim().slice(0, 80);
     if (!next) {
       toast("Label required", "error");
       return;
     }
-    var notesNext = window.prompt(
+    let notesNext = window.prompt(
       "Pack notes (optional, max 200):",
       currentNotes || ""
     );
@@ -971,9 +970,9 @@
 
   async function exportSessionPack() {
     try {
-      var labelHint = window.prompt("Pack label (optional, Enter to skip):", "");
-      var notesHint = window.prompt("Pack notes (optional, Enter to skip):", "");
-      var body = {
+      const labelHint = window.prompt("Pack label (optional, Enter to skip):", "");
+      const notesHint = window.prompt("Pack notes (optional, Enter to skip):", "");
+      const body = {
         persist: true,
         include_workspace: true,
         ui_chat_log: collectChatLog().slice(-80),
@@ -1420,8 +1419,8 @@
       } catch (_e) {
         /* ignore */
       }
-      await new Promise(function (r) {
-        setTimeout(r, 500);
+      await new Promise(function (resolve) {
+        setTimeout(resolve, 500);
       });
     }
     return false;
@@ -1637,7 +1636,7 @@
     return (t + "\n\n" + block).trim();
   }
 
-  function clearChatFlags() {
+  function _clearChatFlags() {
     activeChatFlags = {};
     renderChatFlags();
   }

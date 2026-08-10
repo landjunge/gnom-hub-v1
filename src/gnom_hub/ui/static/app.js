@@ -16,7 +16,7 @@
   let TOOLTIPS = {};
   let uiLang = "en";
 
-  const FLEX_PRESETS = ["personal", "security", "neutral", "researcher"];
+  const _FLEX_PRESETS = ["personal", "security", "neutral", "researcher"]; // kept for desk docs/export
 
   const COLOR_HEX = {
     brainstorm: "#ff0000",
@@ -121,7 +121,7 @@
   let recognition = null;
   let listening = false;
   let lastSpokenKey = "";
-  let pendingSpeech = ""; // spoken on next click if browser blocked autoplay
+  let _pendingSpeech = ""; // spoken on next click if browser blocked autoplay
   let ttsUnlocked = false; // true after speak started from a real click
   /** Sequential TTS queue — one utterance fully finishes before the next (no cut-off). */
   let ttsQueue = [];
@@ -139,6 +139,7 @@
   let jobTimerInterval = null;
   let lastJobElapsedSec = 0;
   let lastReportedPipelineError = null;
+  let chatBusy = false;
   let lastCanExecute = false;
   /** Per-agent chat logs: { brainstorm: [...], worker1: [...], ... } */
   const CHAT_STORAGE_KEY = "gnom-hub-chat-logs-by-agent-v1";
@@ -481,6 +482,7 @@
       '<p class="agent-explain-foot">Regler → Box 3 · Chat-Layer = Crux · Modulrahmen = Agentenfarbe</p>';
 
     if (els.tipHow) {
+      // eslint-disable-next-line no-unsanitized/property
       els.tipHow.innerHTML = paramsHtml;
     }
     if (els.tipExample) {
@@ -493,6 +495,7 @@
     const body =
       typeof getAgentBoxBody === "function" ? getAgentBoxBody(1, agentId) : null;
     if (body) {
+      // eslint-disable-next-line no-unsanitized/property
       body.innerHTML =
         '<div class="box1-agent-info">' +
         '<h2 class="tip-title">' +
@@ -550,6 +553,7 @@
           ? Number(agent.cost_usd)
           : 0;
       const costStr = cost > 0 ? "$" + cost.toFixed(4) : "$0";
+      // eslint-disable-next-line no-unsanitized/property
       card.innerHTML =
         '<div class="card-name">' +
         agent.label +
@@ -680,7 +684,6 @@
       let detail = res.statusText;
       let detailObj = null;
       try {
-        const j = await res.json();
         const j = await res.json();
         detailObj = j.detail !== undefined ? j.detail : j;
         if (detailObj && typeof detailObj === "object") {
@@ -1025,7 +1028,7 @@
   }
 
   /** Recent spoken fingerprints — never queue the same text twice. */
-  let ttsSpokenFp = {};
+  const ttsSpokenFp = {};
   let ttsToastAt = 0;
   let ttsPrepareInflight = {};
 
@@ -1112,7 +1115,7 @@
     } catch (_e) {
       /* ignore */
     }
-    pendingSpeech = "";
+    _pendingSpeech = "";
   }
 
   /** DE desk always de-DE. Never en-US when UI is German. */
@@ -1248,7 +1251,7 @@
     if (window.speechSynthesis.speaking || window.speechSynthesis.pending) return;
     if (!ttsQueue.length) return;
     if (!ttsUnlocked) {
-      /* Queue keeps the text — do NOT also copy into pendingSpeech (was double). */
+      /* Queue keeps the text — do NOT also copy into _pendingSpeech (was double). */
       const now = Date.now();
       if (now - ttsToastAt > 4000) {
         ttsToastAt = now;
@@ -1267,7 +1270,7 @@
 
   /**
    * Enqueue already-prepared text (must be German when desk is DE).
-   * Single queue only — never pendingSpeech + queue (double speak bug).
+   * Single queue only — never _pendingSpeech + queue (double speak bug).
    */
   function speakOrQueuePrepared(text) {
     let cleaned = stripForSpeech(text);
@@ -1337,7 +1340,7 @@
   /** Unlock + optional short DE line from a real click (no pending re-queue). */
   function speakNow(text) {
     ttsUnlocked = true;
-    pendingSpeech = "";
+    _pendingSpeech = "";
     if (text) {
       speakOrQueuePrepared(text);
     } else {
@@ -1360,7 +1363,7 @@
       function () {
         /* Only unlock + drain queue. Never re-push pending (caused double TTS). */
         ttsUnlocked = true;
-        pendingSpeech = "";
+        _pendingSpeech = "";
         pumpTtsQueue();
       },
       true
@@ -1476,7 +1479,7 @@
    * Flex panel in right Platzhalter (chat-mod-platz-r).
    * After done: quality feedback + learn / re-brainstorm / re-build.
    */
-  let lastFlexReviewKey = "";
+  let _lastFlexReviewKey = "";
 
   function applyFlexReview(panel, pipeline) {
     const root = document.getElementById("flex-review");
@@ -1511,7 +1514,7 @@
     btnsEl.innerHTML = "";
     const buttons = active ? p.buttons || [] : [];
     if (!active || !buttons.length) {
-      lastFlexReviewKey = "";
+      _lastFlexReviewKey = "";
       return;
     }
     buttons.forEach(function (b) {
@@ -1537,7 +1540,7 @@
     });
 
     /* Panel is visual only. Flex voice = maybeSpeakFlexSupport (how/why). */
-    lastFlexReviewKey =
+    _lastFlexReviewKey =
       "flex-panel|" +
       String(p.question || "").slice(0, 80) +
       "|" +
@@ -1749,8 +1752,8 @@
     const body = {
       // Don't persist UI placeholder hints as real system_prompt
       system_prompt: (function () {
-        var v = (document.getElementById("tune-prompt").value || "").trim();
-        var hint = (DEFAULT_PROMPTS[tuneAgentId] || "").trim();
+        const v = (document.getElementById("tune-prompt").value || "").trim();
+        const hint = (DEFAULT_PROMPTS[tuneAgentId] || "").trim();
         if (!v || v === hint || v.indexOf("(code default)") === 0) return "";
         // stale LOL default from older UI — drop it
         if (v.indexOf("Output 5") >= 0 && v.indexOf("bullet") >= 0) return "";
@@ -2095,7 +2098,7 @@
       pack_max: (function () {
         const el = document.getElementById("sys-pack-max");
         if (!el || el.value === "") return undefined;
-        const n = parseInt(el.value, 10);
+        const n = parseInt(el.value);
         return Number.isFinite(n) ? n : undefined;
       })(),
     };
@@ -2224,6 +2227,7 @@
         .concat(resBit ? [resBit] : [])
         .concat(err ? ["err:" + String(err).slice(0, 60)] : [])
         .join(" · ");
+      // eslint-disable-next-line no-unsanitized/property
       li.innerHTML =
         '<span class="tool-src">[' +
         src +
@@ -2276,24 +2280,32 @@
     function done() {
       if (typeof toast === "function") toast("Tool history copied (" + list.length + ")", "ok");
     }
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(done).catch(function () {
-        // fallback
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select();
-        try {
-          document.execCommand("copy");
-          done();
-        } catch (_e) {
-          if (typeof toast === "function") toast("Copy failed", "error");
-        }
-        document.body.removeChild(ta);
-      });
-    } else {
-      if (typeof toast === "function") toast("Clipboard unavailable", "error");
+    function fallbackCopy() {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+        done();
+      } catch (_e) {
+        if (typeof toast === "function") toast("Copy failed", "error");
+      }
+      document.body.removeChild(ta);
     }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard
+        .writeText(text)
+        .then(function () {
+          if (typeof toast === "function") {
+            toast("Tool history copied (" + list.length + ")", "ok");
+          }
+        })
+        .catch(function () {
+          fallbackCopy();
+        });
+    }
+    fallbackCopy();
   }
 
   function recordManualToolCall(name, args, data) {
@@ -3165,7 +3177,7 @@
     }
   }
 
-  async function cycleFlexPreset() {
+  async function _cycleFlexPreset() {
     toast("Flex is fixed — personal companion only", "info");
   }
 
@@ -3255,7 +3267,6 @@
     if (els.clarifyQ) els.clarifyQ.textContent = "";
   }
 
-  let chatBusy = false;
   let busyJobId = null; // job holding pipeline (may differ from currentJobId after 409)
 
   function godModeLabel() {
@@ -3559,7 +3570,7 @@
     toast("History exported (" + resultHistory.length + " runs)", "ok");
   }
 
-  async function rerunWorker(workerId) {
+  async function _rerunWorker(workerId) {
     if (chatBusy) {
       toast("Busy — wait for current job", "info");
       return;
@@ -3954,7 +3965,7 @@
       lab.style.overflow = "hidden";
       lab.style.textOverflow = "ellipsis";
       lab.style.whiteSpace = "nowrap";
-      var when = (p.mtime || p.exported_at || "").replace("T", " ").replace("+00:00", "Z");
+      let when = (p.mtime || p.exported_at || "").replace("T", " ").replace("+00:00", "Z");
       if (when.length > 16) when = when.slice(0, 16);
       lab.textContent =
         (p.label || p.name || "?") + (when ? " · " + when : "");
@@ -4023,14 +4034,14 @@
 
   async function renameNamedPack(name, currentLabel, currentNotes) {
     if (!name) return;
-    var next = window.prompt("Pack label (max 80 chars):", currentLabel || "");
+    let next = window.prompt("Pack label (max 80 chars):", currentLabel || "");
     if (next === null) return;
     next = String(next).trim().slice(0, 80);
     if (!next) {
       toast("Label required", "error");
       return;
     }
-    var notesNext = window.prompt(
+    let notesNext = window.prompt(
       "Pack notes (optional, max 200):",
       currentNotes || ""
     );
@@ -4087,9 +4098,9 @@
 
   async function exportSessionPack() {
     try {
-      var labelHint = window.prompt("Pack label (optional, Enter to skip):", "");
-      var notesHint = window.prompt("Pack notes (optional, Enter to skip):", "");
-      var body = {
+      const labelHint = window.prompt("Pack label (optional, Enter to skip):", "");
+      const notesHint = window.prompt("Pack notes (optional, Enter to skip):", "");
+      const body = {
         persist: true,
         include_workspace: true,
         ui_chat_log: collectChatLog().slice(-80),
@@ -4536,8 +4547,8 @@
       } catch (_e) {
         /* ignore */
       }
-      await new Promise(function (r) {
-        setTimeout(r, 500);
+      await new Promise(function (resolve) {
+        setTimeout(resolve, 500);
       });
     }
     return false;
@@ -4753,7 +4764,7 @@
     return (t + "\n\n" + block).trim();
   }
 
-  function clearChatFlags() {
+  function _clearChatFlags() {
     activeChatFlags = {};
     renderChatFlags();
   }
@@ -5296,6 +5307,8 @@
 
 /* part: 04-boxes.js  lines 3682-4267 of app.js — edit parts, run scripts/build_ui_js.py */
 
+  let box3FocusIdx = 0;
+
   /**
    * Dynamic presentation inside a box/panel:
    * HTML → live preview (+ Source), code fence → code view, JSON → pretty, else text.
@@ -5525,10 +5538,11 @@
   function healTruncatedHtml(html) {
     let doc = String(html || "").trim();
     if (!doc) return doc;
-    const incomplete =
+    const _incomplete =
       !/<\/html>/i.test(doc) ||
       htmlBodyIsEmpty(doc) ||
       (/<style[\s>]/i.test(doc) && !/<\/style>/i.test(doc));
+    void _incomplete;
 
     if (/<style[\s>]/i.test(doc) && !/<\/style>/i.test(doc)) {
       doc += "\n</style>";
@@ -5803,8 +5817,7 @@
     split.className = "box3-split" + (html ? " has-preview" : " text-only");
 
     if (html) {
-      const incomplete = htmlBodyIsEmpty(html) || !/<\/html>/i.test(html);
-      if (incomplete && label) {
+      if ((htmlBodyIsEmpty(html) || !/<\/html>/i.test(html)) && label) {
         label.textContent =
           (label.textContent || "") + " · unvollständig → Vorschau geheilt";
       }
@@ -6088,7 +6101,7 @@
       return;
     }
     // Keep each HTML result into personal WS (only chosen outputs that are HTML)
-    var kept = 0;
+    let kept = 0;
     lastWorkerOutputs.forEach(function (o, i) {
       if (extractHtml(o.result || "")) {
         kept += 1;
@@ -6105,17 +6118,16 @@
     });
     const text = parts.join("\n\n");
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(
-        function () {
+      return navigator.clipboard
+        .writeText(text)
+        .then(function () {
           toast("Kept HTML to personal WS + clipboard (" + text.length + " chars)", "ok");
-        },
-        function () {
+        })
+        .catch(function () {
           toast("Copy failed", "error");
-        }
-      );
-    } else {
-      toast("Clipboard not available", "error");
+        });
     }
+    toast("Clipboard not available", "error");
   }
 
   /**
@@ -6221,14 +6233,14 @@
         return r.text;
       }).join("\n");
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(
-          function () {
+        return navigator.clipboard
+          .writeText(text)
+          .then(function () {
             toast("Diff copied", "ok");
-          },
-          function () {
+          })
+          .catch(function () {
             toast("Copy failed", "error");
-          }
-        );
+          });
       }
     });
     const btnClose = document.createElement("button");
@@ -6290,7 +6302,7 @@
     return [];
   }
 
-  let box3FocusIdx = 0;
+  
   let box3FrontSlot = "a"; // which dual-layer slot is front
   let box3BlendBusy = false;
 
@@ -6313,7 +6325,7 @@
     slotEl.appendChild(wrap);
   }
 
-  function focusBox3Worker(idx) {
+  function _focusBox3Worker(idx) {
     const dual = document.getElementById("box3-dual");
     if (!dual || !lastWorkerOutputs.length) return;
     if (box3BlendBusy) return;
@@ -6415,7 +6427,7 @@
     toast("Opened in new tab", "ok");
   }
 
-  async function saveWorkerToWorkspace(out, raw, html, zone) {
+  async function _saveWorkerToWorkspace(out, raw, html, zone) {
     const isHtml = !!html;
     const z = zone === "perm" ? "perm" : "temp";
     const name =

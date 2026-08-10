@@ -6,6 +6,18 @@ Gnom-Hub uses **ESLint 9 flat config** (`eslint.config.js`) for the desktop UI.
 
 Python stays on **Ruff**. DoD deliverables use **DoD-Lint**. This doc is **JS only**.
 
+
+## CI hard gate
+
+```bash
+npm ci
+npm run lint:js              # app.js, --max-warnings 0 (CI + prepush)
+npm run lint:js:specificity  # override order self-test
+```
+
+GitHub Actions job **Lint · Ruff · Mermaid · ESLint** fails on any warning or error.
+Edit `src/gnom_hub/ui/static/parts/*.js` then `python3 scripts/build_ui_js.py`.
+
 ## Why flat config?
 
 | Legacy (`.eslintrc.*`) | Flat (`eslint.config.js`) |
