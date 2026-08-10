@@ -13,8 +13,9 @@ All listed PRs are **merged into `main`**. Open PRs: none from this wave.
 | [#19](https://github.com/landjunge/gnom-hub-v1/pull/19) | Tool-loop cancel isolation (CI flake) | **merged** |
 | [#20](https://github.com/landjunge/gnom-hub-v1/pull/20) | Richer DE page scoring, plugin docs, cancel hygiene | **merged** |
 | [#21](https://github.com/landjunge/gnom-hub-v1/pull/21) | Plan-mode toast + 3.9 changelog | **merged** |
+| [#22](https://github.com/landjunge/gnom-hub-v1/pull/22) | Embeddings plugin + PLUGINS/HUB/MERGE docs | **merged** |
 
-## Follow-up PR (this branch)
+## Delivered in #22
 
 | Area | Deliverable |
 |------|-------------|
