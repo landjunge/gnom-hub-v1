@@ -86,3 +86,7 @@ See [PLUGINS.md](PLUGINS.md).
 
 `gnom_hub.__version__` (single source) — currently **3.9.1**.  
 Notes: [CHANGELOG_3.9.md](CHANGELOG_3.9.md).
+
+## Next (V4)
+
+Skills / marketplace / neural embeddings / mobile — design only: [V4_PLAN.md](V4_PLAN.md).
