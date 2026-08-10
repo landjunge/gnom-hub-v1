@@ -358,6 +358,16 @@
 | Pluggable embedders + embeddings_lite plugin | **done** |
 | docs/PLUGINS.md · HUB_ARCHITECTURE.md · MERGE_STATUS.md | **done** |
 
+## V4.x (planned — see [V4_PLAN.md](V4_PLAN.md))
+
+| Track | Status |
+|-------|--------|
+| Phase 0 Freeze wording (playbook skills OK) | **planned** |
+| Phase 1 Local Skills foundation | **planned** |
+| Phase 2 Local skill/plugin catalog (trust-first) | **planned** |
+| Phase 3 Neural embeddings optional plugin | **planned** |
+| Phase 4 Mobile / responsive desk | **planned** |
+
 ## Post-V3.7 (optional)
 
 | Item | Notes |
