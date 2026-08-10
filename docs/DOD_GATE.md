@@ -47,6 +47,16 @@ worker.run → validate_worker_draft (auto)
 
 Legacy fields (`ok`, `issues`, `chars`, `html_complete`, `has_interaction`) stay stable.
 
+## UI (Slice D)
+
+| Surface | Behavior |
+|---------|----------|
+| `snapshot.pipeline.validation` | Worst worker gate: score, issues, checklist, hints, retryable |
+| Box 3 `#box3-dod-checklist` | Compact fail list under tool strip (hidden when ok) |
+| Tools modal `#tools-dod-fail` | One-line DoD fail reasons when gate failed |
+
+Worker-level detail remains on `worker_outputs[].validation`.
+
 ## Retry policy
 
 | Situation | Retry |

@@ -484,6 +484,30 @@
     return pipe.concat(man);
   }
 
+
+  function renderToolsDodFail(validation) {
+    const host = document.getElementById("tools-dod-fail");
+    if (!host) return;
+    const v = validation && typeof validation === "object" ? validation : null;
+    if (!v || (v.ok !== false && !(v.soft_issues && v.soft_issues.length))) {
+      host.hidden = true;
+      host.innerHTML = "";
+      return;
+    }
+    const issues = (v.issues || []).concat(v.soft_issues || []);
+    const uniq = [];
+    issues.forEach(function (c) {
+      if (c && uniq.indexOf(c) < 0) uniq.push(c);
+    });
+    host.hidden = false;
+    host.removeAttribute("hidden");
+    host.textContent =
+      "DoD fail" +
+      (v.score != null ? " · score " + v.score : "") +
+      (v.retryable ? " · retryable" : "") +
+      (uniq.length ? ": " + uniq.slice(0, 6).join(", ") : "");
+  }
+
   function renderToolsRunHistory(calls) {
     if (calls) {
       lastToolCalls = Array.isArray(calls) ? calls.slice() : [];
@@ -664,7 +688,10 @@
           ? snap.pipeline.tool_calls
           : lastToolCalls || [];
       renderToolsRunHistory(calls);
-    } catch (e) {}
+      renderToolsDodFail(snap && snap.pipeline ? snap.pipeline.validation : null);
+    } catch (e) {
+      renderToolsDodFail(null);
+    }
     await refreshToolsModal();
     await refreshComputerUseLine();
   }

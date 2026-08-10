@@ -212,12 +212,12 @@ Reihenfolge (fail-fast where useful, still collect all musts):
 2. New issues + Flex nudge messages  
 3. Retry hint includes failing checklist labels  
 
-### Slice D — UI
+### Slice D — UI (**done**)
 
-1. Snapshot: `validation.checklist`, `validation.score`  
-2. Box 3: small checklist under FEHLER / weak  
-3. Tools modal: optional link “DoD fail reasons”  
-4. Chat: retry only when `retryable`  
+1. Snapshot: `pipeline.validation` (worst gate + checklist/score)  
+2. Box 3: `#box3-dod-checklist` under tool strip when fail/soft  
+3. Tools modal: `#tools-dod-fail` one-line reasons  
+4. Retry policy already uses `retryable` (orchestrator)  
 
 ### Slice E — Optional LLM judge (later)
 

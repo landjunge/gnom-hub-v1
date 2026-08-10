@@ -307,7 +307,7 @@
 | Slice A: extract dod_gate.py parity | **done** |
 | Slice C: wish + prefetch palette checks | **done** |
 | Slice B: DoD prompt from same Spec | **done** |
-| Slice D: UI checklist | planned |
+| Slice D: UI checklist | **done** |
 
 ## V3.8.1 ESLint (UI)
 

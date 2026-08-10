@@ -7,6 +7,36 @@ from typing import Any
 from gnom_hub.agents.models import FLEX_PRESETS
 
 
+def _worst_validation(worker_outputs: list | None) -> dict[str, Any] | None:
+    """Pick the most useful DoD gate for UI (failed first, then lowest score)."""
+    worst: dict[str, Any] | None = None
+    worst_rank = -1
+    for o in worker_outputs or []:
+        if not isinstance(o, dict):
+            continue
+        g = o.get("validation")
+        if not isinstance(g, dict) or not g:
+            continue
+        ok = bool(g.get("ok", True))
+        score = int(g.get("score") if g.get("score") is not None else (100 if ok else 0))
+        issues = list(g.get("issues") or [])
+        # higher rank = worse
+        rank = (0 if ok else 1000) + (100 - max(0, min(100, score))) + min(len(issues), 20)
+        if rank > worst_rank:
+            worst_rank = rank
+            worst = {
+                "ok": ok,
+                "score": score,
+                "retryable": bool(g.get("retryable", False)),
+                "issues": issues,
+                "soft_issues": list(g.get("soft_issues") or []),
+                "hints": list(g.get("hints") or [])[:8],
+                "checklist": list(g.get("checklist") or [])[:24],
+                "worker": o.get("worker") or o.get("name") or o.get("id"),
+            }
+    return worst
+
+
 class SnapshotOpsMixin:
     """Mixin extracted from Hub — pure move."""
 
@@ -47,6 +77,7 @@ class SnapshotOpsMixin:
             "error": st.error,
             "tool_log": list(getattr(st, "tool_log", None) or [])[-40:],
             "resolved_plan_mode": getattr(st, "resolved_plan_mode", "") or "",
+            "validation": _worst_validation(list(st.worker_outputs or [])),
         }
 
     def memory_dict(self) -> dict[str, Any]:

@@ -2134,6 +2134,30 @@
     return pipe.concat(man);
   }
 
+
+  function renderToolsDodFail(validation) {
+    const host = document.getElementById("tools-dod-fail");
+    if (!host) return;
+    const v = validation && typeof validation === "object" ? validation : null;
+    if (!v || (v.ok !== false && !(v.soft_issues && v.soft_issues.length))) {
+      host.hidden = true;
+      host.innerHTML = "";
+      return;
+    }
+    const issues = (v.issues || []).concat(v.soft_issues || []);
+    const uniq = [];
+    issues.forEach(function (c) {
+      if (c && uniq.indexOf(c) < 0) uniq.push(c);
+    });
+    host.hidden = false;
+    host.removeAttribute("hidden");
+    host.textContent =
+      "DoD fail" +
+      (v.score != null ? " · score " + v.score : "") +
+      (v.retryable ? " · retryable" : "") +
+      (uniq.length ? ": " + uniq.slice(0, 6).join(", ") : "");
+  }
+
   function renderToolsRunHistory(calls) {
     if (calls) {
       lastToolCalls = Array.isArray(calls) ? calls.slice() : [];
@@ -2314,7 +2338,10 @@
           ? snap.pipeline.tool_calls
           : lastToolCalls || [];
       renderToolsRunHistory(calls);
-    } catch (e) {}
+      renderToolsDodFail(snap && snap.pipeline ? snap.pipeline.validation : null);
+    } catch (e) {
+      renderToolsDodFail(null);
+    }
     await refreshToolsModal();
     await refreshComputerUseLine();
   }
@@ -5630,6 +5657,79 @@
     }
   }
 
+
+  /** Compact DoD checklist under Box 3 bar — only when gate failed / soft issues. */
+  function renderDodChecklist(validation) {
+    const host = document.getElementById("box3-dod-checklist");
+    if (!host) return;
+    const v = validation && typeof validation === "object" ? validation : null;
+    const soft = (v && Array.isArray(v.soft_issues) && v.soft_issues.length) || false;
+    const hardFail = v && v.ok === false;
+    if (!v || (!hardFail && !soft)) {
+      host.hidden = true;
+      host.innerHTML = "";
+      return;
+    }
+    const checklist = Array.isArray(v.checklist) ? v.checklist : [];
+    const failed = checklist.filter(function (c) {
+      return c && c.pass === false;
+    });
+    // Fallback: issues[] if checklist empty
+    const rows =
+      failed.length > 0
+        ? failed
+        : (v.issues || []).map(function (code) {
+            return {
+              id: code,
+              label: code,
+              severity: "must",
+              pass: false,
+            };
+          });
+    if (!rows.length && !soft) {
+      host.hidden = true;
+      host.innerHTML = "";
+      return;
+    }
+    host.hidden = false;
+    host.removeAttribute("hidden");
+    host.innerHTML = "";
+    const head = document.createElement("div");
+    head.className = "box3-dod-head";
+    const score = v.score != null ? v.score : "?";
+    const bits = ["DoD", "score " + score];
+    if (v.retryable) bits.push("retryable");
+    if (hardFail) bits.push("fail");
+    else if (soft) bits.push("soft");
+    head.textContent = bits.join(" · ");
+    host.appendChild(head);
+    const ul = document.createElement("ul");
+    ul.className = "box3-dod-list";
+    rows.slice(0, 8).forEach(function (c) {
+      const li = document.createElement("li");
+      const sev = (c.severity || "must") === "should" ? "should" : "must";
+      li.className = "box3-dod-item is-" + sev;
+      const mark = document.createElement("span");
+      mark.className = "box3-dod-mark";
+      mark.textContent = "✗";
+      const lab = document.createElement("span");
+      lab.className = "box3-dod-lab";
+      lab.textContent =
+        (c.id || "item") +
+        (c.label && c.label !== c.id ? " — " + String(c.label).slice(0, 90) : "");
+      li.appendChild(mark);
+      li.appendChild(lab);
+      ul.appendChild(li);
+    });
+    host.appendChild(ul);
+    if (Array.isArray(v.hints) && v.hints.length) {
+      const hint = document.createElement("div");
+      hint.className = "box3-dod-hint";
+      hint.textContent = String(v.hints[0]).slice(0, 160);
+      host.appendChild(hint);
+    }
+  }
+
   function showBox3ResultStage(out, idx) {
     const stage = document.getElementById("box3-result-stage");
     const body = document.getElementById("box3-result-body");
@@ -5645,6 +5745,14 @@
     }
     const name = (out && (out.name || out.worker)) || "Worker";
     const html = extractHtml(raw);
+    const val = out && out.validation && typeof out.validation === "object" ? out.validation : null;
+    const valKey = val
+      ? String(val.ok) +
+        ":" +
+        String(val.score) +
+        ":" +
+        (val.issues || []).join(",")
+      : "";
     const stageKey =
       name +
       "|" +
@@ -5654,21 +5762,25 @@
       "|" +
       raw.slice(-160) +
       "|" +
-      (html ? "h" : "t");
+      (html ? "h" : "t") +
+      "|" +
+      valKey;
     /* Same payload already painted — keep iframe (no white flash on poll). */
     if (
       stageKey === lastBox3StageKey &&
       stage.classList.contains("is-open") &&
       body.childNodes.length
     ) {
+      renderDodChecklist(val);
       return true;
     }
     lastBox3StageKey = stageKey;
+    renderDodChecklist(val);
     revokeBox3Blobs(body);
     body.innerHTML = "";
     body.classList.add("box3-dynamic", "box3-result-split");
     if (label) {
-      label.textContent =
+      let lab =
         name +
         " · " +
         raw.length +
@@ -5677,6 +5789,10 @@
         (lastWorkerOutputs.length > 1
           ? " · " + lastWorkerOutputs.length + " Worker"
           : "");
+      if (val && val.ok === false) {
+        lab += " · DoD " + (val.score != null ? val.score : "fail");
+      }
+      label.textContent = lab;
     }
 
     /*
@@ -5777,6 +5893,11 @@
     if (strip) {
       strip.hidden = true;
       strip.innerHTML = "";
+    }
+    const dod = document.getElementById("box3-dod-checklist");
+    if (dod) {
+      dod.hidden = true;
+      dod.innerHTML = "";
     }
   }
 
