@@ -93,3 +93,34 @@ def test_try_browser_nav_execute_mock():
     )
     assert nav is not None
     assert nav.get("ok") is True or "example.com" in str(nav)
+
+
+def test_tool_loop_ignores_missing_cancel_check():
+    """No sticky cancel when pipeline.cancel_check is unset."""
+    tools = ToolRegistry()
+    tools.register(
+        ToolSpec(
+            name="hub_status",
+            description="status",
+            handler=lambda: {"ok": True, "status": "up"},
+            plugin="core",
+        )
+    )
+    n = {"i": 0}
+
+    def ask_fn(system, user, max_tokens=None, temperature=0.45):
+        n["i"] += 1
+        if n["i"] == 1:
+            return "TOOL_CALL hub_status={}"
+        return "STATUS_OK final"
+
+    out = run_tool_loop(
+        ask_fn=ask_fn,
+        system="sys",
+        user="user",
+        tools=tools,
+        tool_names=["hub_status"],
+        max_rounds=3,
+    )
+    assert "cancelled" not in out.lower()
+    assert "STATUS_OK" in out or "final" in out
