@@ -5806,6 +5806,22 @@
       if (val && val.ok === false) {
         lab += " · DoD " + (val.score != null ? val.score : "fail");
       }
+      // Plan observability: mode + html_score from last snapshot
+      try {
+        const pipe =
+          (typeof lastSnapshot !== "undefined" &&
+            lastSnapshot &&
+            lastSnapshot.pipeline) ||
+          null;
+        const pm = pipe && pipe.resolved_plan_mode;
+        const hs = pipe && pipe.plan_html_score;
+        if (pm) {
+          lab += " · Plan " + pm;
+          if (hs != null && hs !== "") lab += " (score=" + hs + ")";
+        }
+      } catch (_e) {
+        /* ignore */
+      }
       label.textContent = lab;
     }
 

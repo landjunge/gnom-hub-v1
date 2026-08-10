@@ -339,6 +339,17 @@
 | One-worker HTML reminder in brainstorm HTML intent | **done** |
 | Desk acceptance (tools + DoD UI hosts + one-worker) | **done** |
 
+## V3.9.1 — Coordinator plan quality
+
+| Item | Status |
+|------|--------|
+| Weighted `_html_page_score` for full_page_html fast path | **done** (PR #13) |
+| Sharper single-worker HTML prompt (never-truncate + Binding DoD) | **done** (PR #13) |
+| `html_score` in last_plan_meta / events / snapshot | **done** (PR #13) |
+| LLM multi-worker HTML only when `plan_mode=team` | **done** (PR #13) |
+| Export pin deep-copy + html_score in markdown | **done** |
+| Box 3 label shows Plan mode + score | **done** |
+
 ## Post-V3.7 (optional)
 
 | Item | Notes |

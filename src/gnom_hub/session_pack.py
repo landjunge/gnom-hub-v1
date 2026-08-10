@@ -211,6 +211,8 @@ class SessionPackMixin:
             "quality_notes": getattr(st, "quality_notes", "") or "",
             "warnings": list(st.warnings),
             "error": st.error,
+            "resolved_plan_mode": getattr(st, "resolved_plan_mode", "") or "",
+            "plan_html_score": getattr(st, "plan_html_score", None),
             "pending_question": (
                 {
                     "id": st.pending_question.id,
@@ -554,6 +556,12 @@ class SessionPackMixin:
                 quality_notes=str(data.get("quality_notes") or ""),
                 warnings=list(data.get("warnings") or []),
                 error=data.get("error"),
+                resolved_plan_mode=str(data.get("resolved_plan_mode") or ""),
+                plan_html_score=(
+                    int(data["plan_html_score"])
+                    if data.get("plan_html_score") is not None
+                    else None
+                ),
             )
             self.last_error = None
             self._append_trace(
