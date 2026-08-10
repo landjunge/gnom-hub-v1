@@ -109,18 +109,18 @@
         "3.10",
         "install",
         "api",
+        "job",
         "skill",
         "clarify",
         "embeddings",
         "fastembed",
-        "job",
+        "prefetch",
+        "why",
         "640px",
-        "box",
-        "catalog",
-        "css"
+        "badge"
       ],
-      "chars": 2105,
-      "lines": 66
+      "chars": 2282,
+      "lines": 72
     },
     {
       "file": "CHANGELOG_3.9.md",
@@ -671,8 +671,8 @@
         "job",
         "resume"
       ],
-      "chars": 1358,
-      "lines": 47
+      "chars": 1475,
+      "lines": 51
     },
     {
       "file": "PLAN_VS_CODE.md",

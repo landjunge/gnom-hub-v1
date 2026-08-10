@@ -41,6 +41,7 @@ class SessionOpsMixin:
                     if st.pending_question
                     else None
                 ),
+                "deferred_clarifies": list(getattr(st, "deferred_clarifies", None) or [])[-12:],
             }
             self._checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
             atomic_write_text(
@@ -83,6 +84,11 @@ class SessionOpsMixin:
                 distilled_requirements=list(data.get("distilled_requirements") or []),
                 flex_notes=str(data.get("flex_notes") or ""),
                 pending_question=q,
+                deferred_clarifies=[
+                    d
+                    for d in (data.get("deferred_clarifies") or [])
+                    if isinstance(d, dict) and d.get("text")
+                ][-12:],
                 worker_results=list(data.get("worker_results") or []),
                 worker_outputs=list(data.get("worker_outputs") or []),
                 quality_notes=str(data.get("quality_notes") or ""),

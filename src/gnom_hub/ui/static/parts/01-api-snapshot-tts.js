@@ -180,22 +180,39 @@
       els.coldBadge.textContent = "Cold: " + (snap.cold.count || 0);
     }
     if (els.toolsBadge || document.getElementById("tools-run-history")) {
-      const calls = (p && p.tool_calls) || [];
+      // Prefer tool_calls; fall back to tool_log (live job strip) for count/why
+      let calls = (p && p.tool_calls) || [];
+      if ((!calls || !calls.length) && p && Array.isArray(p.tool_log) && p.tool_log.length) {
+        calls = p.tool_log.map(function (e) {
+          return {
+            name: (e && (e.tool || e.name)) || "?",
+            tool: (e && (e.tool || e.name)) || "?",
+            ok: !e || e.ok !== false,
+            reason: (e && e.reason) || "",
+            mode: (e && e.mode) || "",
+          };
+        });
+      }
       const n = calls.length;
       const names = calls
         .map(function (c) {
-          return (c && c.name) || "?";
+          return (c && (c.name || c.tool)) || "?";
         })
         .slice(0, 8);
       const uniq = [];
       names.forEach(function (nm) {
         if (uniq.indexOf(nm) < 0) uniq.push(nm);
       });
+      const whys = [];
+      calls.forEach(function (c) {
+        const r = c && c.reason ? String(c.reason).trim() : "";
+        if (r && whys.indexOf(r) < 0) whys.push(r);
+      });
+      let nFail = 0;
+      calls.forEach(function (c) {
+        if (c && c.ok === false) nFail += 1;
+      });
       if (els.toolsBadge) {
-        let nFail = 0;
-        calls.forEach(function (c) {
-          if (c && c.ok === false) nFail += 1;
-        });
         els.toolsBadge.textContent = n
           ? nFail
             ? "Tools: " + n + "·" + nFail + "!"
@@ -212,6 +229,7 @@
               n +
               " call(s)" +
               (nFail ? " · " + nFail + " failed" : "") +
+              (whys.length ? " · why: " + whys.slice(0, 4).join("; ") : "") +
               " — click for history"
             : "No tool calls this run — click for Tools modal";
       }
@@ -220,10 +238,18 @@
         renderToolsRunHistory(calls);
       }
       if (n > 0 && (p.stage === "done" || p.stage === "work")) {
-        const tk = uniq.join(",") + "|" + n;
+        const tk = uniq.join(",") + "|" + n + "|" + whys.slice(0, 2).join(";");
         if (tk !== lastToolsKey) {
           lastToolsKey = tk;
-          toast("Tools: " + uniq.join(", ") + " (" + n + ")", "ok");
+          toast(
+            "Tools: " +
+              uniq.join(", ") +
+              " (" +
+              n +
+              ")" +
+              (whys.length ? " — " + whys[0].slice(0, 60) : ""),
+            nFail ? "error" : "ok"
+          );
         }
       }
     }

@@ -224,3 +224,30 @@ def test_timeout_flag_finalizes_as_error():
             job["status"] = "cancelled"
     assert job["status"] == "error"
     assert "FEHLER" in job["error"]
+
+
+def test_session_pack_roundtrip_deferred_clarifies(tmp_path, monkeypatch):
+    import gnom_hub.hub as hub_mod
+    from gnom_hub.config import paths
+    from gnom_hub.hub import Hub
+    from gnom_hub.pipeline.models import PipelineStage
+
+    monkeypatch.setattr(paths, "project_root", lambda: tmp_path)
+    monkeypatch.setattr(hub_mod, "project_root", lambda: tmp_path)
+    hub_mod._HUB = None
+    hub = Hub()
+    try:
+        hub.pipeline._state.deferred_clarifies = [
+            {"id": "q-pack", "text": "Color scheme?", "option": "Later"}
+        ]
+        hub.pipeline._state.stage = PipelineStage.brainstorm
+        pack = hub.export_session_pack(label="defer-test")
+        body = pack.get("pack") if isinstance(pack.get("pack"), dict) else pack
+        assert body.get("pipeline", {}).get("deferred_clarifies")
+        # wipe and import
+        hub.pipeline._state.deferred_clarifies = []
+        hub.import_session_pack(body)
+        d = hub.pipeline.state.deferred_clarifies
+        assert d and d[0].get("text") == "Color scheme?"
+    finally:
+        hub_mod._HUB = None
