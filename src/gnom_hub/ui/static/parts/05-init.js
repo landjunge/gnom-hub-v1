@@ -1,10 +1,34 @@
 /* part: 05-init.js  lines 4268-4656 of app.js — edit parts, run scripts/build_ui_js.py */
+  async function refreshBusyFromServer() {
+    try {
+      const b = await api("GET", "/api/jobs/busy");
+      if (b && b.busy) {
+        if (typeof showBusyBanner === "function") {
+          showBusyBanner({
+            busy_job_id: b.busy_job_id,
+            busy_name: b.busy_name,
+            busy_stage: b.busy_stage,
+            cancel: b.cancel,
+          });
+        }
+        if (typeof setChatBusy === "function" && !chatBusy) {
+          // do not lock chat fully — only banner; user can cancel
+        }
+      } else if (typeof hideBusyBanner === "function") {
+        hideBusyBanner();
+      }
+    } catch (_e) {
+      /* ignore */
+    }
+  }
+
   function init() {
     if (typeof buildAgentLayers === "function") buildAgentLayers();
     if (typeof buildChatLayers === "function") buildChatLayers();
     renderCards();
     bindTooltipHovers();
     bindTuneSliders();
+    refreshBusyFromServer();
 
     els.btnSend.addEventListener("click", sendChat);
     if (els.btnExecute) els.btnExecute.addEventListener("click", runExecute);
@@ -12,6 +36,8 @@
     if (btnSendExec) btnSendExec.addEventListener("click", sendAndExecute);
     const btnCancel = document.getElementById("btn-cancel");
     if (btnCancel) btnCancel.addEventListener("click", cancelCurrentJob);
+    const btnCancelBusy = document.getElementById("btn-cancel-busy");
+    if (btnCancelBusy) btnCancelBusy.addEventListener("click", cancelCurrentJob);
     if (els.btnMic) els.btnMic.addEventListener("click", toggleMic);
     const presetApply = document.getElementById("sys-preset-apply");
     const presetDel = document.getElementById("sys-preset-delete");
@@ -212,7 +238,11 @@
     const toolsRun = document.getElementById("tools-run");
     if (toolsRun) toolsRun.addEventListener("click", runSelectedTool);
     const toolsRefresh = document.getElementById("tools-refresh");
-    if (toolsRefresh) toolsRefresh.addEventListener("click", refreshToolsModal);
+    if (toolsRefresh) {
+      toolsRefresh.addEventListener("click", function () {
+        refreshToolsModal({ reload: true });
+      });
+    }
     const toolsFetchBtn = document.getElementById("tools-fetch-btn");
     if (toolsFetchBtn) toolsFetchBtn.addEventListener("click", runQuickFetch);
     const toolsArgs = document.getElementById("tools-args");

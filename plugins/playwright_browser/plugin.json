@@ -1,0 +1,60 @@
+{
+  "id": "playwright_browser",
+  "name": "Playwright Browser",
+  "version": "1.0.0",
+  "enabled": true,
+  "tools": [
+    {
+      "name": "pw_goto",
+      "description": "Playwright: open URL (headed), return title/status. Uses install_tool if playwright missing. Default live site kleinanzeigen.de if url empty.",
+      "module": "main.py",
+      "handler": "pw_goto",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "url": { "type": "string" },
+          "headless": { "type": "boolean" }
+        }
+      }
+    },
+    {
+      "name": "pw_click",
+      "description": "Playwright: click selector on active page (CSS selector).",
+      "module": "main.py",
+      "handler": "pw_click",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "selector": { "type": "string" }
+        },
+        "required": ["selector"]
+      }
+    },
+    {
+      "name": "pw_fill",
+      "description": "Playwright: fill input matching selector with text.",
+      "module": "main.py",
+      "handler": "pw_fill",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "selector": { "type": "string" },
+          "text": { "type": "string" }
+        },
+        "required": ["selector", "text"]
+      }
+    },
+    {
+      "name": "pw_screenshot",
+      "description": "Playwright: screenshot active page to data/computer_use/.",
+      "module": "main.py",
+      "handler": "pw_screenshot",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" }
+        }
+      }
+    }
+  ]
+}

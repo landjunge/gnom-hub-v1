@@ -44,7 +44,7 @@
           <span id="cost-badge" class="cost-badge" title="Click: usage & jobs" role="button" tabindex="0">$0.00</span>
           <span id="mem-badge" class="mem-badge" title="HOT memory">Mem: —</span>
           <span id="vec-badge" class="vec-badge" title="Open vector store (click)" role="button" tabindex="0">Vec: —</span>
-          <span id="god-badge" class="god-badge" title="God-Mode — click to toggle" role="button" tabindex="0">God: off</span>
+          <span id="god-badge" class="god-badge" title="God-Mode: off = Shell/GUI dry-run · on = echte Desktop-Aktionen. Klick zum Umschalten." role="button" tabindex="0">God: off</span>
           <span id="cold-badge" class="cold-badge" title="COLD archives — click to browse" role="button" tabindex="0">Cold: —</span>
           <span id="tools-badge" class="tools-badge" role="button" tabindex="0" title="Tool calls this run — click for history">Tools: 0</span>
           <span id="stage-badge" class="stage-badge" title="Pipeline stage">idle</span>
@@ -160,6 +160,7 @@
             <span id="box3-result-label" class="box3-result-label">Worker-Ergebnis</span>
             <button type="button" id="box3-result-fs" class="btn-ws-sm" title="Vollbild">⛶</button>
           </div>
+          <div id="box3-tool-strip" class="box3-tool-strip" hidden></div>
           <div id="box3-result-body" class="box3-result-body"></div>
         </div>
         <!-- Regler-Modul nur in Box 3 -->
@@ -546,7 +547,7 @@
         <select id="tools-select" class="tune-input" style="min-width:140px"></select>
         <input id="tools-args" class="tune-input" type="text" placeholder='Args JSON or plain text' style="flex:1;min-width:160px" />
         <button type="button" id="tools-run" class="btn-ws-sm">Run</button>
-        <button type="button" id="tools-refresh" class="btn-ws-sm">Refresh</button>
+        <button type="button" id="tools-refresh" class="btn-ws-sm" title="Hot-reload plugins/ from disk">Reload plugins</button>
       </div>
       <p class="system-line muted">Quick fetch</p>
       <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">

@@ -30,6 +30,8 @@ python scripts/smoke_live.py || true
 if curl -sf -m 2 http://127.0.0.1:8080/api/health >/dev/null 2>&1; then
   echo "▸ basic tests B1–B3 (API + light UI)"
   python scripts/basic_tests.py
+  echo "▸ tools acceptance (browser / plugins / busy)"
+  bash scripts/acceptance_tools.sh
   if [ "${GNOM_E2E_SKIP:-0}" = "1" ] || [ "${GNOM_E2E_SKIP:-}" = "true" ]; then
     echo "▸ user scenarios E2E skipped (GNOM_E2E_SKIP=1)"
   else

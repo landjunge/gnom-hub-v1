@@ -56,3 +56,6 @@ mutmut-junit.xml
 
 # Node (ESLint UI tooling)
 node_modules/
+
+# local desk run artifacts
+gnom_workspace/

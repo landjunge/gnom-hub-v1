@@ -77,7 +77,13 @@ class PresetsMixin:
 
     # ── team presets (who is on + flex + plan_mode + worker tunes) ──
 
-    PLAN_MODES: tuple[str, ...] = ("default", "full_page_html", "plan_qa", "diagnosis")
+    PLAN_MODES: tuple[str, ...] = (
+        "default",
+        "full_page_html",
+        "team",  # multi-worker LLM plan — never HTML fast-path
+        "plan_qa",
+        "diagnosis",
+    )
 
     def list_team_presets(self) -> list[dict[str, Any]]:
         path = self._team_presets_path

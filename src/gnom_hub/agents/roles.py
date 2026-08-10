@@ -46,10 +46,13 @@ class BrainstormAgent(BaseAgent):
                         if isinstance(t, dict)
                         and str(t.get("text") or t.get("content") or "").strip()
                     ]
+                    from gnom_hub.agents.chat_policy import brainstorm_system_extra, task_kind
+
+                    kind = task_kind(user_text)
                     system = (
                         "Du bist der Brainstorm-Partner in Gnom-Hub — knapper Denkpartner, "
                         "KEIN Essay-Bot und KEIN Code-Dumper.\n"
-                        "Workers bauen erst nach klarer Bau-Anweisung oder nach ja/ok/mach das.\n"
+                        "Workers bauen/handeln erst nach klarer Anweisung oder ja/ok/mach das.\n"
                         "Antwort-Länge (hart):\n"
                         "- Max. ~100 Wörter ODER 6–8 kurze Zeilen (Box 2 muss scannbar bleiben).\n"
                         "- Max. 4 Aufzählungspunkte. Keine langen Absätze.\n"
@@ -58,34 +61,25 @@ class BrainstormAgent(BaseAgent):
                         "(sonst Sprache des Users). Direkt, ohne Floskeln.\n"
                         "- Vorherigen Dialog nutzen; nicht von null neu starten.\n"
                         "- Auf DIESE Nachricht reagieren: schärfen, wählen, eine Richtung priorisieren.\n"
+                        "- Live-Browser / Tool-Drill / Go-only: KEINE HTML-Landing vorschlagen.\n"
                         "- Kreative Tasks: 2–4 konkrete Richtungen mit je 1 Satz WARUM — kein fertiger Code.\n"
-                        "- Diagnose Gnom-Hub: max. 4 nummerierte Punkte (UI, Keys, Workers, RESULT).\n"
+                        "- Diagnose Gnom-Hub: max. 4 nummerierte Punkte "
+                        "(UI, Keys, Workers/RESULT, Tools/God-Mode).\n"
                         "- Bau-Idee ohne harte Order → am Ende GENAU eine kurze Frage: "
                         "„Soll ich das jetzt umsetzen?“\n"
-                        "- Harte Bau-Anweisung schon da → keine Frage (Hub startet Workers).\n"
+                        "- Harte Bau-Anweisung / Tool-Drill / Browser-Nav schon da → keine Frage "
+                        "(Hub startet Workers/Tools).\n"
                         "- Keine volle HTML/CSS/JS-Implementierung hier.\n"
+                        f"{brainstorm_system_extra(kind)}"
                     )
-                    # Diagnosis questions need lower temperature / less invention
-                    ut_low = (user_text or "").lower()
-                    is_diag = any(
-                        k in ut_low
-                        for k in (
-                            "analy",
-                            "hakt",
-                            "bug",
-                            "fehler",
-                            "debug",
-                            "wo es",
-                            "kaputt",
-                            "diagnos",
-                        )
-                    )
+                    is_diag = kind == "diagnose"
+                    is_fast = kind in ("tool_drill", "browser_nav", "go_only")
                     return self.ask(
                         system=system,
                         user=_with_memory(f"USER MESSAGE:\n{user_text}", memory_ctx),
                         prior=prior if not is_diag else prior[-4:],
-                        max_tokens=420 if is_diag else 320,
-                        temperature=0.35 if is_diag else 0.75,
+                        max_tokens=280 if is_fast else (420 if is_diag else 320),
+                        temperature=0.25 if is_fast or is_diag else 0.75,
                     )
                 except Exception as exc:  # noqa: BLE001
                     self.bus.emit(
@@ -99,12 +93,14 @@ class BrainstormAgent(BaseAgent):
 
 class FlexAgent(BaseAgent):
     """
-    Fixed system agent — personal companion + wish memory + pipeline driver.
+    Fixed system agent — ONLY the human operator's personal companion.
 
+    Not a product designer, not a worker, not the coordinator.
     Jobs (immutable):
-      1) absorb user wishes into WARM (source=flex)
-      2) co-talk in brainstorm + request Execute when clear
-      3) brief workers on Execute; nudge gaps after workers
+      1) remember *the user* (wishes, habits, people, standing rules) → WARM source=flex
+      2) speak for the user in brainstorm (short co-pilot lines)
+      3) press Execute when the *user's* intent is clear
+      4) on Execute: pass binding wishes so workers respect *them*; nudge if workers ignore *them*
     Preset/toggle/UI role edits are ignored (always personal, always on).
     """
 
@@ -213,13 +209,21 @@ class FlexAgent(BaseAgent):
             if not substantive and low in execute_cmds:
                 return None
 
+        from gnom_hub.agents.chat_policy import task_kind
+
+        kind = task_kind(text)
         msg = {
             "explicit_execute": "Flex: Execute — Auftrag wird ausgeführt.",
-            "context_intent": "Flex: klarer Bau-Auftrag — starte Execute.",
+            "context_intent": {
+                "tool_drill": "Flex: Tool-Drill — starte Execute (echte Tools).",
+                "browser_nav": "Flex: Live-Browser — starte Execute (URL öffnen).",
+                "html_page": "Flex: klarer Bau-Auftrag — starte Execute (Team/HTML).",
+                "go_only": "Flex: Go-only — starte Execute mit letztem klaren Auftrag.",
+            }.get(kind, "Flex: klarer Auftrag — starte Execute."),
             "standing_wish": "Flex: stehender Wunsch Auto-Execute — starte Execute.",
         }.get(reason, "Flex: Execute.")
 
-        decision = {"execute": True, "reason": reason, "message": msg}
+        decision = {"execute": True, "reason": reason, "message": msg, "task_kind": kind}
         self.bus.emit(
             "pipeline.flex_execute",
             {"reason": reason, "message": msg, "user_text": text[:200]},
@@ -307,6 +311,20 @@ class FlexAgent(BaseAgent):
         )
         if any(d in low for d in diagnose) and not parts:
             parts.append("Brainstorm zuerst — Execute erst bei klarem Auftrag.")
+
+        from gnom_hub.agents.chat_policy import flex_line_for_kind, task_kind
+
+        kind_line = flex_line_for_kind(task_kind(text))
+        if kind_line:
+            # Intent-specific Flex line replaces fluff
+            msg = kind_line
+            if len(msg) > 280:
+                msg = msg[:279] + "…"
+            self.bus.emit(
+                "pipeline.flex_chat",
+                {"message": msg, "user_text": text[:200]},
+            )
+            return msg
 
         if not parts:
             # Minimal presence so Flex is visible as co-pilot
@@ -532,16 +550,20 @@ class FlexAgent(BaseAgent):
             self._extract_and_emit(user_text, memory_ctx)
 
             system = (
-                "You are Flex — FIXED personal companion in Gnom-Hub (not a free preset).\n"
-                "You ONLY represent the human operator: preferences, people, tools, habits, "
-                "standing rules. Never invent facts the user did not state.\n"
-                "STANDING WISHES are absolute orders for workers — never call a wish\n"
+                "You are Flex — FIXED personal companion for THIS human only "
+                "(not a free preset, not a product agent, not a designer, not a worker).\n"
+                "Your only client is the operator in front of the desk: their preferences, "
+                "people, tools, habits, tone, standing rules. "
+                "Never invent facts they did not state. Never redesign the product for them.\n"
+                "You stay flexible for *them* — adapt to their style and wishes — "
+                "but you do not take over Brainstorm, Coordinator, or Worker jobs.\n"
+                "STANDING WISHES are absolute orders for workers — never call a wish "
                 "optional; always demand full compliance on Execute.\n"
                 "Output in the user's language (DE/EN).\n"
                 "Structure:\n"
-                "1) Was ich über dich weiß (relevant jetzt) — short bullets from context\n"
+                "1) Was ich über dich weiß (relevant jetzt) — short bullets about the USER\n"
                 "2) Neu gemerkt — 0–3 new personal facts from THIS message\n"
-                "3) Für die Worker — 1–3 practical hints so workers respect the user\n"
+                "3) Für die Worker — 1–3 hints so *workers* respect this user (not your opinions)\n"
                 "4) Binding wishes — restate any User:/Wish: lines that workers must obey\n"
             )
             wishes = self.binding_wishes(memory_ctx)

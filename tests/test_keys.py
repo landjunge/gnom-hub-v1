@@ -45,7 +45,9 @@ def test_ensure_env_key_txt_wins_for_hub_keys(tmp_path: Path):
     assert "from-env" not in text
 
 
-def test_ensure_env_merges_missing_keys(tmp_path: Path):
+def test_ensure_env_merges_missing_keys(tmp_path: Path, monkeypatch):
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    monkeypatch.delenv("OTHER_API_KEY", raising=False)
     ud = tmp_path / "User"
     ud.mkdir()
     (ud / "Key.txt").write_text(

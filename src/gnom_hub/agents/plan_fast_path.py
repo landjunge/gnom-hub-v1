@@ -13,8 +13,11 @@ def resolve_plan_mode(
 
     default + page-like intent → full_page_html (skips multi-worker LLM split).
     Explicit modes pass through unchanged.
+    Tool/browser drills never map to HTML modes.
     """
     mode = (plan_mode or "default").strip().lower() or "default"
+    if mode == "team":
+        return "team", False
     if mode in ("full_page_html", "plan_qa", "diagnosis"):
         return mode, mode == "full_page_html"
     if mode == "default" and _wants_one_html_page(user_text, requirements):
@@ -34,6 +37,16 @@ def _wants_one_html_page(
     if not blob.strip():
         return False
 
+    # Chat policy: never treat tool/browser work as HTML team
+    try:
+        from gnom_hub.tools.agent_bridge import is_live_browser_task
+        from gnom_hub.tools.tool_scenarios import is_tool_drill_task
+
+        if is_tool_drill_task(user_text or "") or is_live_browser_task(user_text or ""):
+            return False
+    except Exception:  # noqa: BLE001
+        pass
+
     negatives = (
         "multi-page",
         "multipage",
@@ -48,6 +61,14 @@ def _wants_one_html_page(
         "cli tool",
         "command line",
         "database schema only",
+        "playwright",
+        "tool drill",
+        "tools testen",
+        "computer_shell",
+        "live browser",
+        "navigiere zu",
+        "öffne https",
+        "oeffne https",
     )
     if any(n in blob for n in negatives):
         return False

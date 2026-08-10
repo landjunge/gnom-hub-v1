@@ -8,6 +8,21 @@ from typing import Any
 from gnom_hub.plugins.registry import ToolSpec
 
 
+def _action_to_dict(result: Any) -> dict[str, Any]:
+    """Normalize computer ActionResult-like objects for tools."""
+    if result is None:
+        return {"ok": False, "error": "no result"}
+    if isinstance(result, dict):
+        return result
+    out: dict[str, Any] = {}
+    for k in ("ok", "error", "message", "stdout", "stderr", "path", "data"):
+        if hasattr(result, k):
+            out[k] = getattr(result, k)
+    if "ok" not in out:
+        out["ok"] = not bool(out.get("error"))
+    return out
+
+
 class ToolsOpsMixin:
     """Mixin extracted from Hub — pure move."""
 
@@ -104,6 +119,218 @@ class ToolsOpsMixin:
                 tags=("net",),
             )
         )
+
+        from gnom_hub.tools.browser_tools import browser_open_url
+
+        self.tools.register(
+            ToolSpec(
+                name="web_fetch",
+                description=(
+                    "Fetch public http(s) URL as plain text. "
+                    "Blocks private IPs unless GNOM_WEB_ALLOW_LOCAL=1."
+                ),
+                handler=lambda url, max_chars=8000: web_fetch(str(url), max_chars=int(max_chars)),
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "url": {"type": "string"},
+                        "max_chars": {"type": "integer"},
+                    },
+                    "required": ["url"],
+                },
+                plugin="core",
+            )
+        )
+        self.tools.register(
+            ToolSpec(
+                name="browser_open",
+                description=(
+                    "Open a URL in the user's VISIBLE browser (macOS open / headed Chromium). "
+                    "Use for live navigation (e.g. go to grok.com). Not for generating HTML."
+                ),
+                handler=lambda url: browser_open_url(str(url)),
+                input_schema={
+                    "type": "object",
+                    "properties": {"url": {"type": "string"}},
+                    "required": ["url"],
+                },
+                plugin="core",
+            )
+        )
+        # Computer-use tools (handlers respect God-Mode; inspect/shell blocked when off)
+        self.tools.register(
+            ToolSpec(
+                name="computer_inspect",
+                description=(
+                    "Screenshot + vision + OCR of the screen. Requires God-Mode. "
+                    "Use when you need to see what is currently on the desktop."
+                ),
+                handler=lambda: self.computer.inspect_screen(),
+                input_schema={"type": "object", "properties": {}},
+                plugin="core",
+            )
+        )
+        self.tools.register(
+            ToolSpec(
+                name="computer_shell",
+                description=(
+                    "Run a short allowlisted shell command (ls, pwd, open, cat, …). "
+                    "Requires God-Mode. Prefer browser_open for URLs."
+                ),
+                handler=lambda cmd: _action_to_dict(self.computer.action.run_shell(str(cmd))),
+                input_schema={
+                    "type": "object",
+                    "properties": {"cmd": {"type": "string"}},
+                    "required": ["cmd"],
+                },
+                plugin="core",
+            )
+        )
+        self.tools.register(
+            ToolSpec(
+                name="computer_type",
+                description="Type text via OS keyboard (requires God-Mode).",
+                handler=lambda text: _action_to_dict(self.computer.action.type_text(str(text))),
+                input_schema={
+                    "type": "object",
+                    "properties": {"text": {"type": "string"}},
+                    "required": ["text"],
+                },
+                plugin="core",
+            )
+        )
+        self.tools.register(
+            ToolSpec(
+                name="computer_click",
+                description="Click screen coordinates x,y (requires God-Mode).",
+                handler=lambda x, y: _action_to_dict(self.computer.action.click(int(x), int(y))),
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "x": {"type": "integer"},
+                        "y": {"type": "integer"},
+                    },
+                    "required": ["x", "y"],
+                },
+                plugin="core",
+            )
+        )
+        # --- Agent tool stack: install + Playwright automation ---
+        from gnom_hub.tools.playwright_tools import (
+            browser_eval,
+            browser_goto,
+            browser_screenshot,
+        )
+        from gnom_hub.tools.tool_install import ensure_package, ensure_tool_stack
+
+        self.tools.register(
+            ToolSpec(
+                name="tool_ensure",
+                description=(
+                    "Ensure agent tool deps via pip allowlist (playwright/pyautogui/pillow). "
+                    "which=all|browser|gui. Installs missing packages; playwright also installs Chromium. "
+                    "No free apt. Call this if a tool import fails."
+                ),
+                handler=lambda which="all": ensure_tool_stack(str(which or "all")),
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "which": {
+                            "type": "string",
+                            "description": "all | browser | gui",
+                        }
+                    },
+                },
+                plugin="core",
+            )
+        )
+        self.tools.register(
+            ToolSpec(
+                name="tool_ensure_package",
+                description=(
+                    "Install one allowlisted package if missing: playwright, pyautogui, pillow."
+                ),
+                handler=lambda name, install_browsers=False: ensure_package(
+                    str(name), install_browsers=bool(install_browsers)
+                ),
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "install_browsers": {"type": "boolean"},
+                    },
+                    "required": ["name"],
+                },
+                plugin="core",
+            )
+        )
+        self.tools.register(
+            ToolSpec(
+                name="browser_goto",
+                description=(
+                    "Playwright headed Chromium: navigate to URL, return title/status. "
+                    "Auto-ensures playwright+chromium. Prefer over browser_open for automation."
+                ),
+                handler=lambda url, headless=False: browser_goto(str(url), headless=bool(headless)),
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "url": {"type": "string"},
+                        "headless": {"type": "boolean"},
+                    },
+                    "required": ["url"],
+                },
+                plugin="core",
+            )
+        )
+        self.tools.register(
+            ToolSpec(
+                name="browser_screenshot",
+                description=(
+                    "Screenshot the active Playwright page (after browser_goto) "
+                    "into data/computer_use/agent_browser.png."
+                ),
+                handler=lambda path="", full_page=False: browser_screenshot(
+                    str(path or ""), full_page=bool(full_page)
+                ),
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string"},
+                        "full_page": {"type": "boolean"},
+                    },
+                },
+                plugin="core",
+            )
+        )
+        self.tools.register(
+            ToolSpec(
+                name="browser_eval",
+                description="Evaluate a short read-only JS expression on the active Playwright page.",
+                handler=lambda js="document.title": browser_eval(str(js or "document.title")),
+                input_schema={
+                    "type": "object",
+                    "properties": {"js": {"type": "string"}},
+                },
+                plugin="core",
+            )
+        )
+        self.tools.register(
+            ToolSpec(
+                name="tool_scenario_run",
+                description=(
+                    "Run forced multi-tool scenario S1–S4 (browser/shell/gui/full). "
+                    "Uses real tools; for agent pipeline tests."
+                ),
+                handler=lambda text="S4 full tool drill": _run_scenario(self, str(text)),
+                input_schema={
+                    "type": "object",
+                    "properties": {"text": {"type": "string"}},
+                },
+                plugin="core",
+            )
+        )
+
         self.tools.register(
             ToolSpec(
                 name="workspace_list",
@@ -264,6 +491,36 @@ class ToolsOpsMixin:
             )
         return {"ok": True, "count": len(compact), "filter": filt or None, "events": compact}
 
+    def reload_plugins(self) -> dict:
+        """
+        Hot-reload plugins/ from disk (no hub restart).
+
+        Core tools stay; plugin tools are dropped and re-registered.
+        Workers keep the same ToolRegistry instance — new tools appear
+        on the next tool call / worker run automatically.
+        """
+        result = self.plugins.reload_all()
+        self.plugin_list = list(result.get("plugins") or self.plugins.loaded or [])
+        try:
+            self.bus.emit(
+                "plugins.reloaded",
+                {
+                    "plugins": len(self.plugin_list),
+                    "removed_tools": result.get("removed_tools") or [],
+                    "errors": len(result.get("errors") or []),
+                },
+            )
+        except Exception:  # noqa: BLE001
+            pass
+        return {
+            "ok": True,
+            "plugins": self.plugin_list,
+            "tools": self.tools.list_tools(),
+            "removed_tools": list(result.get("removed_tools") or []),
+            "errors": list(result.get("errors") or []),
+            "reloaded_at": result.get("reloaded_at"),
+        }
+
     def _status_text(self) -> str:
         st = self.pipeline.state
         auth = {}
@@ -286,3 +543,11 @@ class ToolsOpsMixin:
             f"plugins={len(self.plugin_list)} "
             f"tools={len(self.tools)}"
         )
+
+
+def _run_scenario(hub: object, text: str) -> dict:
+    from gnom_hub.tools.tool_scenarios import run_forced_tool_scenario
+
+    tools = getattr(hub, "tools", None)
+    bus = getattr(hub, "bus", None)
+    return run_forced_tool_scenario(tools, text, bus=bus)

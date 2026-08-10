@@ -1,0 +1,48 @@
+{
+  "id": "file_ops",
+  "name": "File Ops",
+  "version": "1.0.0",
+  "enabled": true,
+  "tools": [
+    {
+      "name": "file_list",
+      "description": "List directory under hub project root / data / workspace (path jail).",
+      "module": "main.py",
+      "handler": "file_list",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string", "description": "Relative path under project root" }
+        }
+      }
+    },
+    {
+      "name": "file_read",
+      "description": "Read a text file inside the path jail (max ~50k chars).",
+      "module": "main.py",
+      "handler": "file_read",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" },
+          "max_chars": { "type": "integer" }
+        },
+        "required": ["path"]
+      }
+    },
+    {
+      "name": "file_write",
+      "description": "Write text to a file inside data/ or gnom_workspace/ only (path jail).",
+      "module": "main.py",
+      "handler": "file_write",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" },
+          "content": { "type": "string" }
+        },
+        "required": ["path", "content"]
+      }
+    }
+  ]
+}

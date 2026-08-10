@@ -24,6 +24,7 @@ def test_wants_one_html_page_negatives():
 
 
 def test_resolve_plan_mode_default_upgrades():
+    # Landing/page tasks: single-worker HTML fast path
     mode, fast = resolve_plan_mode("default", "Landing page coffee shop")
     assert mode == "full_page_html"
     assert fast is True

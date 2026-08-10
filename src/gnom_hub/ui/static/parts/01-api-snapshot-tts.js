@@ -11,24 +11,33 @@
     }
     if (!res.ok) {
       let detail = res.statusText;
+      let detailObj = null;
       try {
         const j = await res.json();
-        detail = j.detail != null ? j.detail : j;
-      } catch (e) { /* ignore */ }
-      // Structured envelope: { ok, layer, code, message, retryable }
-      let msg = detail;
-      if (detail && typeof detail === "object") {
-        msg =
-          detail.message ||
-          detail.error ||
-          detail.detail ||
-          JSON.stringify(detail);
-        if (detail.code) msg = "[" + detail.code + "] " + msg;
-        if (detail.retryable) msg += " (retryable)";
+        const j = await res.json();
+        detailObj = j.detail !== undefined ? j.detail : j;
+        if (detailObj && typeof detailObj === "object") {
+          detail =
+            detailObj.message ||
+            detailObj.error ||
+            detailObj.hint ||
+            detailObj.detail ||
+            JSON.stringify(detailObj);
+          if (detailObj.code) detail = "[" + detailObj.code + "] " + detail;
+          if (detailObj.retryable) detail += " (retryable)";
+        } else {
+          detail = detailObj != null ? detailObj : JSON.stringify(j);
+        }
+      } catch (e) {
+        /* ignore */
       }
-      toast(String(msg), "error");
-      const err = new Error(String(msg));
-      err.detail = detail;
+      // Structured busy (409) — no toast spam; callers handle banner
+      const err = new Error(String(detail));
+      err.status = res.status;
+      err.detail = detailObj;
+      if (res.status !== 409) {
+        toast(String(detail), "error");
+      }
       throw err;
     }
     try {
@@ -146,8 +155,11 @@
     }
     if (els.godBadge) {
       const on = !!(snap.god_mode && snap.god_mode.enabled);
-      els.godBadge.textContent = on ? "God: ON" : "God: off";
+      els.godBadge.textContent = on ? "God: ON · live" : "God: off · dry-run";
       els.godBadge.classList.toggle("on", on);
+      els.godBadge.title = on
+        ? "God-Mode ON — Shell/GUI/click echt. Klick zum Ausschalten."
+        : "God-Mode off — Shell/GUI dry-run/blocked. Klick zum Einschalten.";
     }
     if (els.coldBadge && snap.cold) {
       els.coldBadge.textContent = "Cold: " + (snap.cold.count || 0);
@@ -210,6 +222,26 @@
       p.warnings.slice(0, 2).forEach(function (w) {
         toast(String(w), "info");
       });
+    }
+
+    // Tool strip in Box 3 (persists after job done)
+    if (typeof renderToolStrip === "function") {
+      renderToolStrip(p.tool_log || [], p.quality_notes || "");
+    }
+    // One toast if tools ran dry-run while God is off
+    if (p.stage === "done" && p.tool_log && p.tool_log.length) {
+      const dry = p.tool_log.filter(function (e) {
+        return e && e.mode === "dry-run";
+      }).length;
+      const godOn = !!(snap.god_mode && snap.god_mode.enabled);
+      const key = "dry:" + dry + ":" + (p.quality_notes || "").slice(0, 40);
+      if (dry > 0 && !godOn && key !== lastDryRunKey) {
+        lastDryRunKey = key;
+        toast(
+          dry + " Tool(s) dry-run — God-Mode an für echte Shell/GUI",
+          "info"
+        );
+      }
     }
 
     // Flex told agents what was missing — surface once so you don't have to nag
@@ -321,8 +353,14 @@
     // TTS: speak Gedanken after brainstorm / done — not the written HTML/notes
     if (p.stage === "done" || p.stage === "brainstorm") {
       maybeSpeakPipeline(p, snap);
+      maybeSpeakFlexSupport(p, snap);
     }
   }
+
+  /** Recent spoken fingerprints — never queue the same text twice. */
+  let ttsSpokenFp = {};
+  let ttsToastAt = 0;
+  let ttsPrepareInflight = {};
 
   function stripForSpeech(text) {
     let s = String(text || "");
@@ -335,15 +373,40 @@
     return s.slice(0, 520);
   }
 
-  /** If model still emits English thoughts, prefer a short German fallback for voice. */
+  function speechFp(text) {
+    return String(text || "")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 220);
+  }
+
+  function looksMostlyGermanClient(text) {
+    const t = String(text || "").trim();
+    if (!t) return true;
+    if (/[äöüÄÖÜß]/.test(t)) return true;
+    if (/\b(der|die|das|und|ich|nicht|eine|für|mit|soll|wird|auch|noch|nur|wenn|dann|bitte|hier|box)\b/i.test(t)) {
+      return true;
+    }
+    const en = (t.match(/\b(the|and|with|for|this|that|should|would|could|build|page|user|about|from|have|will)\b/gi) || []).length;
+    return en < 3;
+  }
+
+  function looksMostlyEnglishClient(text) {
+    const t = String(text || "").trim();
+    if (!t) return false;
+    if (/[äöüÄÖÜß]/.test(t)) return false;
+    if (/\b(der|die|das|und|ich|nicht|eine|für|mit|soll)\b/i.test(t)) return false;
+    const en = (t.match(/\b(the|and|with|for|this|that|should|would|could|build|page|user|about|from|have|will)\b/gi) || []).length;
+    return en >= 3;
+  }
+
+  /** DE desk: never return English. English → short German shell. */
   function germanizeThoughtForSpeech(text, label) {
     const clean = stripForSpeech(text);
     if (!clean) return "";
-    const looksEn =
-      /\b(the|and|with|for|this|that|should|would|build|page|user)\b/i.test(clean) &&
-      !/[äöüÄÖÜß]/.test(clean) &&
-      !/\b(der|die|das|und|ich|nicht|eine|für|mit|soll)\b/i.test(clean);
-    if (looksEn && (uiLang === "de" || uiLang !== "en")) {
+    if (uiLang === "en") return clean;
+    if (looksMostlyEnglishClient(clean) || !looksMostlyGermanClient(clean)) {
       const who = label || "Agent";
       return (
         who +
@@ -376,6 +439,7 @@
   function stopSpeech() {
     ttsQueue = [];
     ttsPumping = false;
+    ttsPrepareInflight = {};
     try {
       if (window.speechSynthesis) window.speechSynthesis.cancel();
     } catch (_e) {
@@ -384,14 +448,8 @@
     pendingSpeech = "";
   }
 
-  /**
-   * Prefer German TTS.
-   * Default de-DE unless UI is explicitly English and text looks English-only.
-   */
-  function pickTtsLang(text) {
-    const clean = String(text || "");
-    if (uiLang === "de" || /[äöüÄÖÜß]/.test(clean)) return "de-DE";
-    if (/\b(der|die|das|und|ich|nicht|eine|für|mit)\b/i.test(clean)) return "de-DE";
+  /** DE desk always de-DE. Never en-US when UI is German. */
+  function pickTtsLang(_text) {
     if (uiLang === "en") return "en-US";
     return "de-DE";
   }
@@ -400,15 +458,48 @@
     const voices = window.speechSynthesis.getVoices() || [];
     if (!voices.length) return null;
     const want = (lang || "de-DE").slice(0, 2).toLowerCase();
-    return (
+    const match =
       voices.find(function (v) {
         return (v.lang || "").toLowerCase().indexOf(want) === 0;
       }) ||
       voices.find(function (v) {
         return (v.lang || "").toLowerCase().indexOf("de") === 0;
-      }) ||
-      voices[0]
-    );
+      });
+    /* Never fall back to English voice on DE desk — better silence than EN voice */
+    if (!match && uiLang !== "en") return null;
+    return match || voices[0];
+  }
+
+  function alreadyQueuedOrSpoken(text) {
+    const fp = speechFp(text);
+    if (!fp) return true;
+    if (ttsSpokenFp[fp]) return true;
+    if (
+      ttsQueue.some(function (q) {
+        return speechFp(q) === fp;
+      })
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  function markSpoken(text) {
+    const fp = speechFp(text);
+    if (!fp) return;
+    ttsSpokenFp[fp] = Date.now();
+    /* ring: keep last ~40 */
+    const keys = Object.keys(ttsSpokenFp);
+    if (keys.length > 40) {
+      keys
+        .sort(function (a, b) {
+          return ttsSpokenFp[a] - ttsSpokenFp[b];
+        })
+        .slice(0, keys.length - 40)
+        .forEach(function (k) {
+          delete ttsSpokenFp[k];
+        });
+    }
   }
 
   /**
@@ -421,12 +512,23 @@
       pumpTtsQueue();
       return false;
     }
+    /* Hard gate: DE desk must not utter English */
+    let say = clean;
+    if (uiLang !== "en" && looksMostlyEnglishClient(say)) {
+      say = germanizeThoughtForSpeech(say, "Agent");
+    }
+    if (!say) {
+      ttsPumping = false;
+      pumpTtsQueue();
+      return false;
+    }
     try {
-      const u = new SpeechSynthesisUtterance(clean);
-      u.lang = pickTtsLang(clean);
+      const u = new SpeechSynthesisUtterance(say);
+      u.lang = pickTtsLang(say);
       u.rate = 1.0;
       const match = pickGermanVoice(u.lang);
       if (match) u.voice = match;
+      markSpoken(say);
       u.onstart = function () {
         ttsUnlocked = true;
       };
@@ -479,11 +581,15 @@
     if (window.speechSynthesis.speaking || window.speechSynthesis.pending) return;
     if (!ttsQueue.length) return;
     if (!ttsUnlocked) {
-      pendingSpeech = ttsQueue[0] || pendingSpeech;
-      toast(
-        uiLang === "de" ? "TTS: einmal klicken zum Hören" : "TTS: click anywhere to hear",
-        "info"
-      );
+      /* Queue keeps the text — do NOT also copy into pendingSpeech (was double). */
+      const now = Date.now();
+      if (now - ttsToastAt > 4000) {
+        ttsToastAt = now;
+        toast(
+          uiLang === "de" ? "TTS: einmal klicken zum Hören" : "TTS: click anywhere to hear",
+          "info"
+        );
+      }
       return;
     }
     const next = ttsQueue.shift();
@@ -494,66 +600,82 @@
 
   /**
    * Enqueue already-prepared text (must be German when desk is DE).
-   * Does NOT cancel current speech.
+   * Single queue only — never pendingSpeech + queue (double speak bug).
    */
   function speakOrQueuePrepared(text) {
-    const pieces = chunkForSpeech(text);
+    let cleaned = stripForSpeech(text);
+    if (!cleaned) return;
+    if (uiLang !== "en") {
+      if (looksMostlyEnglishClient(cleaned)) {
+        cleaned = germanizeThoughtForSpeech(cleaned, "Agent");
+      }
+      if (!cleaned || looksMostlyEnglishClient(cleaned)) return;
+    }
+    const pieces = chunkForSpeech(cleaned);
     if (!pieces.length) return;
     pieces.forEach(function (p) {
+      if (alreadyQueuedOrSpoken(p)) return;
       ttsQueue.push(p);
     });
     if (ttsUnlocked) {
       pumpTtsQueue();
     } else {
-      pendingSpeech = pieces[0];
-      toast(
-        uiLang === "de" ? "TTS: einmal klicken zum Hören" : "TTS: click anywhere to hear",
-        "info"
-      );
+      const now = Date.now();
+      if (now - ttsToastAt > 4000) {
+        ttsToastAt = now;
+        toast(
+          uiLang === "de" ? "TTS: einmal klicken zum Hören" : "TTS: click anywhere to hear",
+          "info"
+        );
+      }
     }
   }
 
   /**
-   * Translate via hub (EN→DE) then enqueue. Always translate-before-TTS on DE desk.
+   * DE desk: only German leaves the speaker.
+   * Hub often already translated thoughts — skip prepare if already DE (no EN then DE).
    */
   function speakOrQueue(text) {
     const raw = String(text || "").trim();
     if (!raw) return;
-    const wantDe = uiLang !== "en";
-    if (!wantDe) {
+    if (uiLang === "en") {
       speakOrQueuePrepared(raw);
       return;
     }
-    // Server: English agent thoughts → German, then speech
+    /* Already German (hub translated) → speak once, no second prepare pass */
+    if (looksMostlyGermanClient(raw) && !looksMostlyEnglishClient(raw)) {
+      speakOrQueuePrepared(raw);
+      return;
+    }
+    const fp = speechFp(raw);
+    if (ttsPrepareInflight[fp] || alreadyQueuedOrSpoken(raw)) return;
+    ttsPrepareInflight[fp] = true;
     api("POST", "/api/tts/prepare", { text: raw, lang: "de" })
       .then(function (r) {
-        const de = (r && r.text) || raw;
-        speakOrQueuePrepared(de);
+        delete ttsPrepareInflight[fp];
+        const de = stripForSpeech((r && r.text) || "");
+        if (de && !looksMostlyEnglishClient(de)) {
+          speakOrQueuePrepared(de);
+        } else {
+          speakOrQueuePrepared(germanizeThoughtForSpeech(raw, "Agent"));
+        }
       })
       .catch(function () {
-        // Offline fallback: short DE shell if still looks English
-        speakOrQueuePrepared(germanizeThoughtForSpeech(raw, "Agent") || raw);
+        delete ttsPrepareInflight[fp];
+        /* Never speak English raw on DE desk */
+        speakOrQueuePrepared(germanizeThoughtForSpeech(raw, "Agent"));
       });
   }
 
-  /** Immediate speak from a real click handler (unlock + optional text). */
+  /** Unlock + optional short DE line from a real click (no pending re-queue). */
   function speakNow(text) {
     ttsUnlocked = true;
+    pendingSpeech = "";
     if (text) {
-      const pieces = chunkForSpeech(text);
-      pieces.forEach(function (p) {
-        ttsQueue.push(p);
-      });
+      speakOrQueuePrepared(text);
+    } else {
+      pumpTtsQueue();
     }
-    // If something is pending from autoplay block, enqueue it
-    if (pendingSpeech) {
-      const p = pendingSpeech;
-      pendingSpeech = "";
-      chunkForSpeech(p).forEach(function (c) {
-        ttsQueue.push(c);
-      });
-    }
-    pumpTtsQueue();
     return true;
   }
 
@@ -569,14 +691,9 @@
     document.addEventListener(
       "click",
       function () {
+        /* Only unlock + drain queue. Never re-push pending (caused double TTS). */
         ttsUnlocked = true;
-        if (pendingSpeech) {
-          const t = pendingSpeech;
-          pendingSpeech = "";
-          chunkForSpeech(t).forEach(function (c) {
-            ttsQueue.push(c);
-          });
-        }
+        pendingSpeech = "";
         pumpTtsQueue();
       },
       true
@@ -585,7 +702,7 @@
 
   /**
    * TTS speaks agent *thoughts* (reasoning), not the written Box text / HTML.
-   * Each agent is a separate queue item so speech finishes fully before the next.
+   * Flex is handled by maybeSpeakFlexSupport (how/why support) — not listed here.
    */
   function maybeSpeakPipeline(p, snap) {
     const thoughts =
@@ -594,8 +711,10 @@
       lastAgentThoughts ||
       {};
     const thoughtKey = Object.keys(thoughts)
+      .sort()
       .map(function (k) {
-        return k + ":" + String(thoughts[k] || "").slice(0, 40);
+        const t = String(thoughts[k] || "");
+        return k + ":" + t.length + ":" + t.slice(0, 24) + ":" + t.slice(-24);
       })
       .join("|");
     const key =
@@ -605,21 +724,20 @@
       "|" +
       ((p.worker_outputs && p.worker_outputs.length) || 0);
     if (key === lastSpokenKey) return;
-    const de = uiLang === "de";
+    const de = uiLang !== "en";
     const labels = {
-      brainstorm: de ? "Brainstorm" : "Brainstorm",
-      memory: de ? "Memory" : "Memory",
-      flex: "Flex",
+      brainstorm: "Brainstorm",
+      memory: "Memory",
       coordinator: de ? "Koordinator" : "Coordinator",
-      worker1: de ? "Worker 1" : "Worker 1",
+      worker1: "Worker 1",
       worker2: "Worker 2",
       worker3: "Worker 3",
       worker4: "Worker 4",
     };
+    /* flex omitted on purpose → maybeSpeakFlexSupport */
     const order = [
       "brainstorm",
       "memory",
-      "flex",
       "coordinator",
       "worker1",
       "worker2",
@@ -634,11 +752,57 @@
       if (!t || !String(t).trim()) return;
       any = true;
       const label = labels[agentId] || a.label || agentId;
-      // One agent = queue item(s); never speak English monologues on a DE desk
-      const spoken = germanizeThoughtForSpeech(String(t), label);
-      if (spoken) speakOrQueue(spoken);
+      const body = stripForSpeech(String(t));
+      if (!body) return;
+      speakOrQueue(label + ". " + body);
     });
     if (any) lastSpokenKey = key;
+  }
+
+  /**
+   * Flex TTS: user wants to hear HOW Flex supports them and WHY.
+   * Prefer flex_notes (companion reasoning) over raw thought; DE only, once.
+   */
+  let lastFlexSupportKey = "";
+
+  function maybeSpeakFlexSupport(p, snap) {
+    const a = typeof findAgent === "function" ? findAgent("flex") : null;
+    if (!a || !a.tts) return;
+    p = p || {};
+    const thoughts =
+      (snap && snap.agent_thoughts) || lastAgentThoughts || {};
+    const notes = stripForSpeech(p.flex_notes || "");
+    const thought = stripForSpeech(thoughts.flex || "");
+    /* Notes = was ich über dich weiß / für die Worker — the support story */
+    let body = notes || thought;
+    if (!body) return;
+    body = body
+      .replace(/^#+\s*/gm, "")
+      .replace(/\*\*/g, "")
+      .replace(/`+/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 500);
+    if (!body) return;
+    const key =
+      "flex-support|" +
+      (p.stage || "") +
+      "|" +
+      body.length +
+      "|" +
+      body.slice(0, 40) +
+      "|" +
+      body.slice(-40);
+    if (key === lastFlexSupportKey) return;
+    lastFlexSupportKey = key;
+
+    /* Personal companion only — not product pitch */
+    let spoken = "Flex, nur für dich. " + body;
+    if (p.stage === "done") {
+      spoken +=
+        " Wenn du magst: sag mir kurz, ob das Ergebnis für dich passt.";
+    }
+    speakOrQueue(spoken);
   }
 
   /**
@@ -705,32 +869,16 @@
       btnsEl.appendChild(btn);
     });
 
-    // Flex speaks the review question once (German, after translate pipeline)
-    const speakKey =
-      "flex|" +
+    /* Panel is visual only. Flex voice = maybeSpeakFlexSupport (how/why). */
+    lastFlexReviewKey =
+      "flex-panel|" +
       String(p.question || "").slice(0, 80) +
       "|" +
-      buttons.map(function (b) {
-        return b.id;
-      }).join(",");
-    if (speakKey !== lastFlexReviewKey) {
-      lastFlexReviewKey = speakKey;
-      const labels = buttons
-        .slice(0, 5)
+      buttons
         .map(function (b) {
-          return b.label;
+          return b.id;
         })
-        .join(", ");
-      const spoken =
-        "Flex. " +
-        String(qText).replace(/\n/g, " ") +
-        " Wähle: " +
-        labels +
-        ".";
-      if (typeof speakOrQueue === "function") {
-        speakOrQueue(spoken);
-      }
-    }
+        .join(",");
   }
 
   async function onFlexFeedbackClick(btnSpec) {

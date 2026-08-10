@@ -1,0 +1,40 @@
+{
+  "id": "git_ops",
+  "name": "Git Ops",
+  "version": "1.0.0",
+  "enabled": true,
+  "tools": [
+    {
+      "name": "git_status",
+      "description": "git status --short in hub project root (workspace only).",
+      "module": "main.py",
+      "handler": "git_status",
+      "input_schema": { "type": "object", "properties": {} }
+    },
+    {
+      "name": "git_diff",
+      "description": "git diff (stat or short) in hub project root.",
+      "module": "main.py",
+      "handler": "git_diff",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "stat": { "type": "boolean" }
+        }
+      }
+    },
+    {
+      "name": "git_commit",
+      "description": "git add -A && commit with message. Requires God-Mode. Workspace only.",
+      "module": "main.py",
+      "handler": "git_commit",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string" }
+        },
+        "required": ["message"]
+      }
+    }
+  ]
+}

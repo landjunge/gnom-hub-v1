@@ -1,0 +1,28 @@
+{
+  "id": "shell_safe",
+  "name": "Shell Safe",
+  "version": "1.0.0",
+  "enabled": true,
+  "tools": [
+    {
+      "name": "shell_safe",
+      "description": "Run allowlisted shell command (pwd, date, ls, git, python3 -V, …). Real execution requires God-Mode; otherwise dry-run. No pipes/metacharacters.",
+      "module": "main.py",
+      "handler": "shell_safe",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "cmd": { "type": "string" }
+        },
+        "required": ["cmd"]
+      }
+    },
+    {
+      "name": "shell_safe_allowlist",
+      "description": "List allowlisted shell binaries for shell_safe.",
+      "module": "main.py",
+      "handler": "shell_safe_allowlist",
+      "input_schema": { "type": "object", "properties": {} }
+    }
+  ]
+}

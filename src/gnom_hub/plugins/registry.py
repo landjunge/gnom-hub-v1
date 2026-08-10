@@ -160,6 +160,21 @@ class ToolRegistry:
                 retryable=False,
             ) from exc
 
+    def unregister_non_core(self) -> list[str]:
+        """
+        Drop all plugin tools; keep core tools.
+
+        Used by plugin hot-reload so removed plugins disappear and handlers
+        are re-imported from disk.
+        """
+        removed: list[str] = []
+        for name, spec in list(self._tools.items()):
+            if (spec.plugin or "core") == "core":
+                continue
+            del self._tools[name]
+            removed.append(name)
+        return removed
+
     def mcp_manifest(self) -> dict[str, Any]:
         """Minimal MCP-style tools/list payload."""
         return {

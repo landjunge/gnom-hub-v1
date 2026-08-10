@@ -1,5 +1,31 @@
 # Agent notes (Gnom-Hub v1)
 
+## User UI / live E2E (mandatory)
+
+1. **Live tests are watched by the user** — always headed (`GNOM_E2E_HEADED=1`). Never default to headless for real-user runs.
+2. **Use the user's Google Chrome tab for Gnom — do not open a random new browser:**
+   - Search for an **open tab** whose URL contains the Gnom host/IP (e.g. `127.0.0.1:8080` / `GNOM_E2E_BASE`).
+   - **Reuse** that tab (bring to front).
+   - Open a **new tab only if none** matches.
+   - Prefer CDP attach (`GNOM_E2E_CDP`, default `http://127.0.0.1:9222`) via `scripts/gnom_chrome_tab.py` + `real_user_quality_e2e.py`.
+   - Do **not** tell the user to use «Google Chrome for Testing» if real Chrome is available.
+3. Helper: `python scripts/gnom_chrome_tab.py` (find-or-open). One-time Chrome debug:
+   ```bash
+   /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222
+   ```
+   Then leave a tab on `http://127.0.0.1:8080`.
+
+## Product: auto-execute exceptions (desk)
+
+Default remains: **Brainstorm freely. Execute only when you press Execute.**
+
+Allowed short-circuits (no extra Execute click):
+1. **Tool drill** — forced real tools (S1–S7 / clear tool-test language). Never HTML team.
+2. **Live browser nav** — explicit open/navigate (or bare known site / URL-only). Not "fetch for a page".
+3. **Go-only** — "mach das / execute / was ich gesagt habe" re-runs the last concrete user task.
+
+HTML landings and general builds still need clear build language / Execute.
+
 ## Coding rules (mandatory)
 
 1. **ALWAYS run `ruff format .` before every commit.** No exceptions.

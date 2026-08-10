@@ -24,11 +24,18 @@ _SHELL_ALLOW = frozenset(
         "wc",
         "df",
         "du",
+        # macOS: open URLs / apps for live browser navigation (God-Mode only)
+        "open",
+        # agent diagnostics (no free shell — still allowlisted only)
+        "which",
+        "python3",
+        "python",
     }
 )
 # Commands whose non-flag args are treated as filesystem paths (M6 jail)
 _PATH_CMDS = frozenset({"cat", "head", "tail", "wc", "du", "ls"})
-_SAFE_ARG = re.compile(r"^[A-Za-z0-9_./@%+=:,-]+$")
+# Allow URL args for `open https://…` (no shell metacharacters)
+_SAFE_ARG = re.compile(r"^[A-Za-z0-9_./@%+=:,\-?&#~]+$")
 
 
 @dataclass
@@ -126,6 +133,13 @@ class ActionModule:
                 False,
                 False,
                 f"command not allowlisted: {binary!r} (allowed: {sorted(_SHELL_ALLOW)})",
+            )
+        # python/python3: version only (installs go through tool_ensure, not free -c)
+        if binary in ("python", "python3") and parts[1:] not in (["-V"], ["--version"]):
+            return ActionResult(
+                False,
+                False,
+                "python restricted to -V / --version (use tool_ensure for packages)",
             )
         for arg in parts[1:]:
             if not _SAFE_ARG.match(arg):

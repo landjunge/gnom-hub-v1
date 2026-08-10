@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
 """
-Real-user quality suite (fixed dev gate) — YOU watch; the script IS the user.
+Real-user quality suite — YOU watch; the script IS the user.
 
-Three absolute real UI journeys via Playwright **headed** (mouse + keyboard on the
-live Gnom-Hub frontend). Scores Brainstorm · Flex · Result, then compares to the
-previous run (better / worse / same).
+Default (one task):
+  Landingpage für Gnom-Hub v1 — Fakten aus der Online-README_DE,
+  moderne Effekte (2025/26 Web), optional Recherche-Hinweise im Prompt.
 
-Usage (hub must be running on :8080 with a real LLM key preferred):
+Optional legacy: --only 1,2,3 for the older multi-scenario suite.
+
+Usage:
   ./scripts/start.sh
   source .venv/bin/activate
-  python scripts/real_user_quality_e2e.py              # headed, slow, all 3
-  GNOM_E2E_HEADED=0 python scripts/real_user_quality_e2e.py   # CI optional
+  python scripts/real_user_quality_e2e.py                 # default: G1 landing
+  python scripts/real_user_quality_e2e.py --only 1,2,3   # legacy
+  GNOM_E2E_HEADED=0 python scripts/real_user_quality_e2e.py
 
 Artifacts: data/e2e-real/<timestamp>/  +  data/e2e-real/LATEST/
-  SCORECARD.md  scores.json  TREND.md  screenshots  RESULT.html
 """
 
 from __future__ import annotations
@@ -24,6 +26,8 @@ import os
 import re
 import sys
 import time
+import urllib.error
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -43,12 +47,14 @@ from e2e_lib import (
 )
 
 BASE = os.environ.get("GNOM_E2E_BASE", "http://127.0.0.1:8080").rstrip("/")
-# Default HEADED so you can watch (override with GNOM_E2E_HEADED=0)
+# User wants live tests — headed by default. Only CI should set GNOM_E2E_HEADED=0.
 HEADED = os.environ.get("GNOM_E2E_HEADED", "1").strip().lower() not in (
     "0",
     "false",
     "no",
 )
+# Attach to real Google Chrome via CDP when possible (reuse Gnom tab).
+CDP_URL = os.environ.get("GNOM_E2E_CDP", "http://127.0.0.1:9222").rstrip("/")
 SLOW_MS = int(os.environ.get("GNOM_E2E_SLOW_MS", "90" if HEADED else "0"))
 TYPE_DELAY = int(os.environ.get("GNOM_E2E_TYPE_DELAY", "18" if HEADED else "4"))
 OUT_ROOT = ROOT / "data" / "e2e-real"
@@ -129,8 +135,8 @@ def _prepare_deutsch_ui(page) -> None:
         pass
     page.goto(BASE + "/?lang=de&e2e=prep", wait_until="domcontentloaded")
     page.wait_for_selector("#chat-input", state="visible")
-    # Volle Desk-Fläche nutzbar machen
-    page.evaluate("() => { document.documentElement.style.zoom = '0.85'; }")
+    # Full desk (no CSS zoom — page must be fully visible)
+    page.evaluate("() => { document.documentElement.style.zoom = '1'; }")
     # User-Geste: TTS freischalten
     page.locator("body").click(position={"x": 40, "y": 40})
     time.sleep(0.3)
@@ -351,7 +357,119 @@ def _score_flex(pipe: dict) -> dict[str, Any]:
     }
 
 
-def _score_result(pipe: dict, art: dict, *, want_html: bool) -> dict[str, Any]:
+def _inspect_layers_after_done(page) -> dict[str, Any]:
+    """
+    Layer/color regression checks after Execute.
+    Catches: Box2 wiped to worker empty, result-stage closed, white-only preview.
+    """
+    try:
+        info = page.evaluate(
+            """() => {
+              const stage = document.getElementById('box3-result-stage');
+              const body = document.getElementById('box3-result-body');
+              const label = document.getElementById('box3-result-label');
+              const box2Active = document.querySelector(
+                '#box2-layers .agent-layer.is-active'
+              );
+              const box2Brain = document.getElementById('box2-content')
+                || document.querySelector(
+                  '#box2-layers .agent-layer[data-agent="brainstorm"] .agent-layer-body'
+                );
+              const box2ActiveText = (box2Active && box2Active.innerText || '').trim();
+              const box2BrainText = (box2Brain && box2Brain.innerText || '').trim();
+              const pre = body && body.querySelector('.box3-result-pre, pre');
+              const iframe = body && body.querySelector('iframe.worker-preview-frame, iframe');
+              const dual = document.getElementById('box3-dual');
+              const mod = document.querySelector('.boxes');
+              const modColor = mod
+                ? getComputedStyle(mod).getPropertyValue('--boxes-mod-color').trim()
+                : '';
+              let iframeH = 0;
+              let iframeBg = '';
+              if (iframe) {
+                const r = iframe.getBoundingClientRect();
+                iframeH = Math.round(r.height);
+                iframeBg = getComputedStyle(iframe).backgroundColor || '';
+              }
+              return {
+                stageOpen: !!(stage && stage.classList.contains('is-open')
+                  && !stage.hidden && stage.offsetParent !== null),
+                stageHasIsOpen: !!(stage && stage.classList.contains('is-open')),
+                label: (label && label.textContent || '').trim(),
+                preLen: pre ? (pre.textContent || '').length : 0,
+                bodyLen: body ? (body.innerText || '').length : 0,
+                iframeCount: body
+                  ? body.querySelectorAll('iframe').length
+                  : 0,
+                iframeH: iframeH,
+                iframeBg: iframeBg,
+                box2ActiveAgent: box2Active
+                  ? (box2Active.getAttribute('data-agent') || '')
+                  : '',
+                box2ActiveLooksEmptyWorker:
+                  /^worker\\s*\\d/i.test(box2ActiveText)
+                  || /noch kein ergebnis/i.test(box2ActiveText)
+                  || box2ActiveText === 'Worker 1 result'
+                  || box2ActiveText === 'Worker 2 result',
+                box2BrainChars: box2BrainText.length,
+                dualHidden: !dual || dual.hidden
+                  || dual.getAttribute('aria-hidden') === 'true',
+                modColor: modColor,
+              };
+            }"""
+        )
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+
+    reasons: list[str] = []
+    points = 0
+    max_p = 6
+    if info.get("stageOpen") or (info.get("stageHasIsOpen") and int(info.get("bodyLen") or 0) > 40):
+        points += 2
+        reasons.append("+2 result-stage open")
+    else:
+        reasons.append("+0 result-stage NOT open")
+    if int(info.get("preLen") or 0) >= 80 or int(info.get("bodyLen") or 0) >= 80:
+        points += 2
+        reasons.append("+2 source/body visible")
+    else:
+        reasons.append("+0 source/body thin")
+    # Box2 must not be the wiped worker empty layer when brainstorm text exists
+    if info.get("box2ActiveLooksEmptyWorker") and int(info.get("box2BrainChars") or 0) > 80:
+        reasons.append("+0 BUG box2 shows worker empty (brainstorm hidden)")
+    elif info.get("box2ActiveAgent") == "brainstorm" or int(info.get("box2BrainChars") or 0) > 40:
+        points += 1
+        reasons.append("+1 box2 brainstorm still reachable")
+    else:
+        reasons.append("+0 box2 unclear")
+    if int(info.get("iframeCount") or 0) >= 1 and int(info.get("iframeH") or 0) >= 80:
+        points += 1
+        reasons.append("+1 iframe painted h≥80")
+    elif int(info.get("iframeCount") or 0) >= 1:
+        reasons.append("+0 iframe height collapsed")
+    else:
+        # text-only deliverable still ok
+        if int(info.get("preLen") or 0) >= 80:
+            points += 1
+            reasons.append("+1 text deliverable (no iframe)")
+        else:
+            reasons.append("+0 no iframe")
+    info["score"] = min(max_p, points)
+    info["max"] = max_p
+    info["reasons"] = reasons
+    info["ok"] = points >= 4 and not (
+        info.get("box2ActiveLooksEmptyWorker") and int(info.get("box2BrainChars") or 0) > 80
+    )
+    return info
+
+
+def _score_result(
+    pipe: dict,
+    art: dict,
+    *,
+    want_html: bool,
+    layers: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     outs = pipe.get("worker_outputs") or []
     points = 0
     max_p = 10
@@ -392,6 +510,16 @@ def _score_result(pipe: dict, art: dict, *, want_html: bool) -> dict[str, Any]:
     else:
         points += 2
         reasons.append("+2 non-html task")
+    # Layer regression: penalize if UI hides brainstorm / stage closed
+    if layers:
+        if layers.get("box2ActiveLooksEmptyWorker") and int(layers.get("box2BrainChars") or 0) > 80:
+            points = max(0, points - 2)
+            reasons.append("-2 layer: box2 wiped to worker empty")
+        if not layers.get("stageOpen") and not layers.get("stageHasIsOpen"):
+            points = max(0, points - 2)
+            reasons.append("-2 layer: result-stage closed")
+        elif layers.get("ok"):
+            reasons.append("+0 layers ok (no penalty)")
     if outs:
         points = min(max_p, points + 0)
     points = min(max_p, points)
@@ -402,6 +530,7 @@ def _score_result(pipe: dict, art: dict, *, want_html: bool) -> dict[str, Any]:
         "chars": chars,
         "stage": stage,
         "workers": len(outs),
+        "layers": layers or {},
     }
 
 
@@ -451,11 +580,16 @@ def scenario_r1_dialogue_to_build(page, run_dir: Path, log: StepLog) -> dict:
     except Exception as exc:
         log.add("r1_wait", status="timeout", detail=str(exc))
     box3_txt = _wait_box3_result(page)
+    layers = _inspect_layers_after_done(page)
     log.add(
         "r1_done_ui",
-        status="ok",
+        status="ok" if layers.get("ok") else "warn",
         shot=shot(page, run_dir, "r1_03_box3"),
-        detail=f"box3_len={len(box3_txt)}",
+        detail=(
+            f"box3_len={len(box3_txt)} layers={layers.get('score')}/"
+            f"{layers.get('max')} stageOpen={layers.get('stageOpen')} "
+            f"box2={layers.get('box2ActiveAgent')}"
+        ),
     )
 
     pipe = _pipe()
@@ -467,13 +601,14 @@ def scenario_r1_dialogue_to_build(page, run_dir: Path, log: StepLog) -> dict:
             expect_keywords=["café", "cafe", "landing", "hero", "morgenlicht", "feature"],
         ),
         "flex": _score_flex(pipe),
-        "result": _score_result(pipe, art, want_html=True),
+        "result": _score_result(pipe, art, want_html=True, layers=layers),
     }
     tot = _total(scores)
     ok = (
         tot["pct"] >= 45
         and not pipe.get("error")
         and (art.get("chars", 0) >= 400 or len(box3_txt) > 80)
+        and bool(layers.get("ok"))
     )
     return {
         "id": "R1",
@@ -483,9 +618,12 @@ def scenario_r1_dialogue_to_build(page, run_dir: Path, log: StepLog) -> dict:
         "total": tot,
         "detail": (
             f"pct={tot['pct']} stage={pipe.get('stage')} "
-            f"chars={art.get('chars')} box3={len(box3_txt)}"
+            f"chars={art.get('chars')} box3={len(box3_txt)} "
+            f"layers_ok={layers.get('ok')} pre={layers.get('preLen')} "
+            f"iframeH={layers.get('iframeH')}"
         ),
         "artifact": art,
+        "layers": layers,
         "flex_notes": (pipe.get("flex_notes") or "")[:400],
         "brainstorm_preview": box2_a[:400],
         "box3_preview": box3_txt[:300],
@@ -520,7 +658,16 @@ def scenario_r2_clear_build_order(page, run_dir: Path, log: StepLog) -> dict:
         _maybe_execute(page)
     wait_execute_done(page, timeout_ms=360_000)
     box3_txt = _wait_box3_result(page)
-    log.add("r2_done", status="ok", shot=shot(page, run_dir, "r2_03_box3"))
+    layers = _inspect_layers_after_done(page)
+    log.add(
+        "r2_done",
+        status="ok" if layers.get("ok") else "warn",
+        shot=shot(page, run_dir, "r2_03_box3"),
+        detail=(
+            f"layers={layers.get('score')}/{layers.get('max')} "
+            f"stageOpen={layers.get('stageOpen')} box2={layers.get('box2ActiveAgent')}"
+        ),
+    )
 
     pipe = _pipe()
     box2 = _box2(page)
@@ -532,7 +679,7 @@ def scenario_r2_clear_build_order(page, run_dir: Path, log: StepLog) -> dict:
             box2, pipe, expect_keywords=["todo", "spalte", "html", "heute", "tastatur"]
         ),
         "flex": _score_flex(pipe),
-        "result": _score_result(pipe, art, want_html=True),
+        "result": _score_result(pipe, art, want_html=True, layers=layers),
     }
     tot = _total(scores)
     user = (pipe.get("user_text") or "").lower()
@@ -541,6 +688,7 @@ def scenario_r2_clear_build_order(page, run_dir: Path, log: StepLog) -> dict:
         tot["pct"] >= 50
         and (task_hit or art.get("chars", 0) >= 800)
         and (art.get("chars", 0) >= 600 or len(box3_txt) > 80)
+        and bool(layers.get("ok"))
     )
     return {
         "id": "R2",
@@ -550,9 +698,12 @@ def scenario_r2_clear_build_order(page, run_dir: Path, log: StepLog) -> dict:
         "total": tot,
         "detail": (
             f"pct={tot['pct']} chars={art.get('chars')} "
-            f"interact={art.get('has_interaction')} box3={len(box3_txt)}"
+            f"interact={art.get('has_interaction')} box3={len(box3_txt)} "
+            f"layers_ok={layers.get('ok')} pre={layers.get('preLen')} "
+            f"iframeH={layers.get('iframeH')}"
         ),
         "artifact": art,
+        "layers": layers,
         "flex_notes": (pipe.get("flex_notes") or "")[:400],
         "box3_preview": box3_txt[:300],
     }
@@ -596,7 +747,16 @@ def scenario_r3_flex_wish_support(page, run_dir: Path, log: StepLog) -> dict:
         _maybe_execute(page)
     wait_execute_done(page, timeout_ms=360_000)
     box3_txt = _wait_box3_result(page)
-    log.add("r3_done", status="ok", shot=shot(page, run_dir, "r3_03_box3"))
+    layers = _inspect_layers_after_done(page)
+    log.add(
+        "r3_done",
+        status="ok" if layers.get("ok") else "warn",
+        shot=shot(page, run_dir, "r3_03_box3"),
+        detail=(
+            f"layers={layers.get('score')}/{layers.get('max')} "
+            f"stageOpen={layers.get('stageOpen')} box2={layers.get('box2ActiveAgent')}"
+        ),
+    )
 
     pipe = _pipe()
     box2 = _box2(page)
@@ -621,14 +781,18 @@ def scenario_r3_flex_wish_support(page, run_dir: Path, log: StepLog) -> dict:
             box2, pipe, expect_keywords=["portfolio", "lena", "landing", "hero"]
         ),
         "flex": _score_flex(pipe),
-        "result": _score_result(pipe, art, want_html=True),
+        "result": _score_result(pipe, art, want_html=True, layers=layers),
     }
     # Bonus dimension encoded into flex score reasons
     if dark_ok or de_ok:
         scores["flex"]["score"] = min(10, scores["flex"]["score"] + 2)
         scores["flex"]["reasons"].append(f"+2 wish reflected dark={dark_ok} germanish={de_ok}")
     tot = _total(scores)
-    ok = tot["pct"] >= 45 and (art.get("chars", 0) >= 500 or len(box3_txt) > 80)
+    ok = (
+        tot["pct"] >= 45
+        and (art.get("chars", 0) >= 500 or len(box3_txt) > 80)
+        and bool(layers.get("ok"))
+    )
     return {
         "id": "R3",
         "name": name,
@@ -637,16 +801,236 @@ def scenario_r3_flex_wish_support(page, run_dir: Path, log: StepLog) -> dict:
         "total": tot,
         "detail": (
             f"pct={tot['pct']} dark={dark_ok} de={de_ok} "
-            f"chars={art.get('chars')} box3={len(box3_txt)}"
+            f"chars={art.get('chars')} box3={len(box3_txt)} "
+            f"layers_ok={layers.get('ok')} pre={layers.get('preLen')} "
+            f"iframeH={layers.get('iframeH')}"
         ),
         "artifact": art,
+        "layers": layers,
         "flex_notes": (pipe.get("flex_notes") or "")[:400],
         "wish_reflected": {"dark": dark_ok, "germanish": de_ok},
         "box3_preview": box3_txt[:300],
     }
 
 
+# ---------------------------------------------------------------------------
+# G1 — single real task: Gnom-Hub v1 marketing/product landing page
+# ---------------------------------------------------------------------------
+
+README_DE_URLS = (
+    "https://raw.githubusercontent.com/landjunge/gnom-hub-v1/main/README_DE.md",
+    "https://raw.githubusercontent.com/landjunge/gnom-hub-v1/master/README_DE.md",
+)
+
+
+def _fetch_readme_de(max_chars: int = 4500) -> tuple[str, str]:
+    """
+    Load current German README facts (online first, local fallback).
+    Returns (text_excerpt, source_label).
+    """
+    for url in README_DE_URLS:
+        try:
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": "gnom-hub-e2e/1.0"},
+                method="GET",
+            )
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                raw = resp.read().decode("utf-8", errors="replace")
+            if len(raw.strip()) > 200:
+                return raw.strip()[:max_chars], url
+        except (urllib.error.URLError, TimeoutError, OSError):
+            continue
+    local = ROOT / "README_DE.md"
+    if local.is_file():
+        return local.read_text(encoding="utf-8", errors="replace")[:max_chars], str(local)
+    return "", "none"
+
+
+def _readme_fact_bullets(md: str, limit: int = 14) -> list[str]:
+    """Pull short factual lines from README_DE for the user prompt."""
+    bullets: list[str] = []
+    for line in (md or "").splitlines():
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        if s.startswith("|") and "---" in s:
+            continue
+        if s.startswith("```"):
+            continue
+        # table cells / list items
+        if s.startswith("|"):
+            cells = [c.strip() for c in s.strip("|").split("|")]
+            cells = [c for c in cells if c and c != "—" and not set(c) <= set("-: ")]
+            if len(cells) >= 2:
+                s = f"{cells[0]}: {cells[1]}"
+            else:
+                continue
+        if s.startswith((">", "-", "*")):
+            s = s.lstrip(">*- ").strip()
+        s = re.sub(r"\*+|`+", "", s).strip()
+        if len(s) < 12:
+            continue
+        if s not in bullets:
+            bullets.append(s[:180])
+        if len(bullets) >= limit:
+            break
+    return bullets
+
+
+def _fetch_effects_research(max_chars: int = 2800) -> tuple[str, list[str]]:
+    """
+    Online research brief for modern single-file landing effects.
+    Tries live sources; falls back to curated 2025/26 techniques.
+    """
+    sources: list[str] = []
+    chunks: list[str] = []
+    urls = (
+        "https://developer.mozilla.org/en-US/docs/Web/CSS/backdrop-filter",
+        "https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API",
+        "https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-motion",
+    )
+    for url in urls:
+        try:
+            req = urllib.request.Request(
+                url, headers={"User-Agent": "gnom-hub-e2e/1.0"}, method="GET"
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                html = resp.read().decode("utf-8", errors="replace")
+            # crude text extract
+            text = re.sub(r"<script[\s\S]*?</script>", " ", html, flags=re.IGNORECASE)
+            text = re.sub(r"<style[\s\S]*?</style>", " ", text, flags=re.IGNORECASE)
+            text = re.sub(r"<[^>]+>", " ", text)
+            text = re.sub(r"\s+", " ", text).strip()
+            if len(text) > 200:
+                chunks.append(text[:900])
+                sources.append(url)
+        except (urllib.error.URLError, TimeoutError, OSError):
+            continue
+    curated = (
+        "Modern single-file landing (2025/26, no build tools):\n"
+        "- Dark product UI, fluid type, CSS grid feature cards\n"
+        "- Hero with soft gradient mesh / radial glows (pure CSS)\n"
+        "- Sticky header with backdrop-filter: blur (glass)\n"
+        "- Scroll-reveal via IntersectionObserver + CSS transitions\n"
+        "- Micro-interactions on CTA/cards; respect prefers-reduced-motion\n"
+        "- Optional subtle noise SVG or CSS noise overlay at low opacity\n"
+        "- One real JS interaction (nav/theme/copy snippet)\n"
+        "- Semantic HTML, focus states, contrast-safe text\n"
+    )
+    body = curated
+    if chunks:
+        body += "\n\nOnline excerpts:\n" + "\n---\n".join(chunks)
+    return body[:max_chars], sources or ["curated-fallback"]
+
+
+def scenario_gnom_landing(page, run_dir: Path, log: StepLog) -> dict:
+    """
+    One user task only — pipeline does the rest:
+
+        Landingpage Gnom-Hub v1
+    """
+    name = "gnom_hub_landing"
+    api_reset(BASE)
+
+    _prepare_deutsch_ui(page)
+    page.goto(BASE + "/?e2e=real-g1&lang=de", wait_until="domcontentloaded")
+    page.wait_for_selector("#chat-input", state="visible")
+    page.evaluate("() => { document.documentElement.style.zoom = '1'; }")
+    page.locator("body").click(position={"x": 50, "y": 50})
+    log.add("g1_open", status="ok", shot=shot(page, run_dir, "g1_01_open"))
+
+    # Exactly the task — nothing more
+    text = "Landingpage Gnom-Hub v1"
+    _user_type(page, text)
+    _user_send(page)
+    try:
+        wait_brainstorm_ready(page, timeout_ms=240_000)
+        log.add("g1_brain", status="ok", shot=shot(page, run_dir, "g1_02_brain"))
+        time.sleep(2.0 if HEADED else 0.3)
+        _maybe_execute(page)
+    except Exception:
+        _maybe_execute(page)
+    try:
+        wait_execute_done(page, timeout_ms=420_000)
+    except Exception as exc:
+        log.add("g1_wait", status="timeout", detail=str(exc))
+    box3_txt = _wait_box3_result(page)
+    layers = _inspect_layers_after_done(page)
+    log.add(
+        "g1_done",
+        status="ok" if layers.get("ok") else "warn",
+        shot=shot(page, run_dir, "g1_03_box3"),
+        detail=(
+            f"layers={layers.get('score')}/{layers.get('max')} "
+            f"pre={layers.get('preLen')} iframeH={layers.get('iframeH')}"
+        ),
+    )
+
+    pipe = _pipe()
+    box2 = _box2(page)
+    outs = pipe.get("worker_outputs") or []
+    art = _save_result(run_dir, outs)
+    body = ""
+    if (run_dir / "RESULT.html").is_file():
+        body = (run_dir / "RESULT.html").read_text(encoding="utf-8", errors="replace")
+    elif (run_dir / "RESULT.txt").is_file():
+        body = (run_dir / "RESULT.txt").read_text(encoding="utf-8", errors="replace")
+    low = body.lower()
+
+    fact_hits = sum(
+        1
+        for k in ("gnom", "brainstorm", "execute", "agent", "worker", "lokal", "local")
+        if k in low
+    )
+    complete = "</html>" in low and "<!doctype" in low
+    de_ui = any(k in body for k in ("Gnom", "Execute", "Brainstorm", "Warum", "Hub"))
+
+    scores = {
+        "brainstorm": _score_brainstorm(
+            box2, pipe, expect_keywords=["gnom", "landing", "hub", "agent"]
+        ),
+        "flex": _score_flex(pipe),
+        "result": _score_result(pipe, art, want_html=True, layers=layers),
+    }
+    reasons = list(scores["result"].get("reasons") or [])
+    if complete:
+        reasons.append("+complete </html>")
+    if fact_hits >= 3:
+        reasons.append(f"+facts={fact_hits}")
+    if de_ui:
+        reasons.append("+de_ui")
+    scores["result"]["reasons"] = reasons
+
+    tot = _total(scores)
+    ok = (
+        tot["pct"] >= 45
+        and bool(layers.get("ok"))
+        and bool(art.get("has_html"))
+        and int(art.get("chars") or 0) >= 800
+        and complete
+    )
+    return {
+        "id": "G1",
+        "name": name,
+        "ok": ok,
+        "scores": scores,
+        "total": tot,
+        "detail": (
+            f"pct={tot['pct']} task=Landingpage Gnom-Hub v1 "
+            f"chars={art.get('chars')} complete={complete} facts={fact_hits} "
+            f"layers_ok={layers.get('ok')} pre={layers.get('preLen')} "
+            f"iframeH={layers.get('iframeH')}"
+        ),
+        "artifact": art,
+        "layers": layers,
+        "flex_notes": (pipe.get("flex_notes") or "")[:400],
+        "box3_preview": box3_txt[:300],
+    }
+
+
 SCENARIOS = {
+    "g": ("G1", scenario_gnom_landing),
     "1": ("R1", scenario_r1_dialogue_to_build),
     "2": ("R2", scenario_r2_clear_build_order),
     "3": ("R3", scenario_r3_flex_wish_support),
@@ -769,7 +1153,11 @@ def _write_reports(run_dir: Path, report: dict, prev: dict | None) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Real-user quality E2E (headed by default)")
-    ap.add_argument("--only", default="1,2,3", help="comma ids 1,2,3")
+    ap.add_argument(
+        "--only",
+        default="g",
+        help="scenario ids: g = Gnom landing (default); legacy 1,2,3",
+    )
     args = ap.parse_args()
 
     health = http_ok(BASE)
@@ -787,26 +1175,140 @@ def main() -> int:
     print("ECHTER USER-TEST — ich spiele dich (Maus + Tastatur, DEUTSCH)")
     print(f"  base={BASE}  sichtbar={HEADED}  slow_ms={SLOW_MS}  tippen={TYPE_DELAY}")
     print(f"  out={run_dir}")
-    print("  → Chromium-Fenster beobachten (Box 2 Brainstorm, Box 3 Ergebnis)")
+    print("  → Regel: bestehenden Chrome-Tab mit Gnom-IP nutzen, sonst neuer Tab")
     print("=" * 60)
 
     from playwright.sync_api import sync_playwright
 
+    # Ensure a Chrome tab points at Gnom (search IP first, new tab only if missing)
+    sys.path.insert(0, str(ROOT / "scripts"))
+    try:
+        from gnom_chrome_tab import ensure_gnom_tab  # type: ignore
+
+        tab_info = ensure_gnom_tab(BASE)
+        print(
+            f"  ★ Chrome-Tab: method={tab_info.get('method')} "
+            f"action={tab_info.get('action')} url={tab_info.get('url') or BASE}",
+            flush=True,
+        )
+        if tab_info.get("hint"):
+            print(tab_info["hint"], flush=True)
+    except Exception as tab_exc:
+        tab_info = {"ok": False, "method": "none", "detail": str(tab_exc)}
+        print(f"  ! gnom_chrome_tab: {tab_exc}", flush=True)
+
+    def _page_is_gnom(pg) -> bool:
+        try:
+            u = (pg.url or "").lower()
+        except Exception:
+            return False
+        host = BASE.replace("http://", "").replace("https://", "").lower()
+        return host in u or "127.0.0.1:8080" in u or "localhost:8080" in u
+
+    def _find_or_open_page(browser_obj):
+        """Reuse open Gnom tab; only create a new page if none matches."""
+        for ctx in browser_obj.contexts:
+            for pg in ctx.pages:
+                if _page_is_gnom(pg):
+                    try:
+                        pg.bring_to_front()
+                    except Exception:
+                        pass
+                    print(f"  ★ reuse tab: {pg.url}", flush=True)
+                    return pg, ctx
+        # no matching tab — open one
+        ctx = (
+            browser_obj.contexts[0]
+            if browser_obj.contexts
+            else browser_obj.new_context(locale="de-DE")
+        )
+        pg = ctx.new_page()
+        pg.goto(BASE + "/", wait_until="domcontentloaded")
+        print(f"  ★ new tab: {BASE}/", flush=True)
+        return pg, ctx
+
     scenarios_out: list[dict] = []
     with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=not HEADED,
-            slow_mo=SLOW_MS,
-            args=["--start-maximized"] if HEADED else None,
-        )
-        context = browser.new_context(
-            # Großes Fenster + DE — UI soll komplett sichtbar sein
-            viewport={"width": 1680, "height": 1050} if HEADED else {"width": 1400, "height": 900},
-            locale="de-DE",
-            no_viewport=False,
-        )
-        page = context.new_page()
-        page.set_default_timeout(120_000)
+        browser = None
+        context = None
+        page = None
+        connected_cdp = False
+
+        # 1) Prefer attach to user's Google Chrome (CDP) — live tab you already watch
+        if HEADED:
+            try:
+                browser = p.chromium.connect_over_cdp(CDP_URL, slow_mo=SLOW_MS)
+                connected_cdp = True
+                page, context = _find_or_open_page(browser)
+                page.set_default_timeout(120_000)
+                print(
+                    f"  ★ Live: Google Chrome via CDP {CDP_URL} — "
+                    "dein normales Chrome-Fenster (nicht Chrome for Testing).",
+                    flush=True,
+                )
+            except Exception as cdp_exc:
+                print(f"  ! CDP attach failed ({cdp_exc}) — fallback launch", flush=True)
+                browser = None
+
+        # 2) Fallback: real Google Chrome channel (not Playwright's Testing build)
+        if browser is None:
+            launch_args = (
+                [
+                    "--start-maximized",
+                    "--window-position=40,40",
+                    "--disable-backgrounding-occluded-windows",
+                    "--disable-renderer-backgrounding",
+                ]
+                if HEADED
+                else None
+            )
+            try:
+                browser = p.chromium.launch(
+                    channel="chrome",
+                    headless=not HEADED,
+                    slow_mo=SLOW_MS if HEADED else 0,
+                    args=launch_args,
+                )
+                print("  ★ Launch: Google Chrome (channel=chrome)", flush=True)
+            except Exception:
+                browser = p.chromium.launch(
+                    headless=not HEADED,
+                    slow_mo=SLOW_MS if HEADED else 0,
+                    args=launch_args,
+                )
+                print(
+                    "  ★ Launch: Chromium fallback — für Live-Tabs bitte Chrome mit "
+                    f"--remote-debugging-port=9222 starten und {BASE} öffnen.",
+                    flush=True,
+                )
+            context = browser.new_context(
+                viewport={"width": 1680, "height": 1050}
+                if HEADED
+                else {"width": 1400, "height": 900},
+                locale="de-DE",
+            )
+            page = context.new_page()
+            page.set_default_timeout(120_000)
+            page.goto(BASE + "/", wait_until="domcontentloaded")
+            try:
+                page.bring_to_front()
+            except Exception:
+                pass
+
+        def _recover_page():
+            nonlocal page, context, browser
+            if page is not None and not page.is_closed():
+                return page
+            if connected_cdp and browser is not None:
+                page, context = _find_or_open_page(browser)
+                page.set_default_timeout(120_000)
+                return page
+            if context is not None:
+                page = context.new_page()
+                page.set_default_timeout(120_000)
+                page.goto(BASE + "/", wait_until="domcontentloaded")
+                return page
+            raise RuntimeError("no browser context to recover page")
 
         for key in only:
             meta = SCENARIOS.get(key)
@@ -816,10 +1318,15 @@ def main() -> int:
             sid, fn = meta
             print(f"\n▶ {sid} startet (Deutsch, sichtbares UI)…")
             try:
-                # Recover page if previous scenario closed the browser
-                if page.is_closed():
-                    page = context.new_page()
-                    page.set_default_timeout(120_000)
+                page = _recover_page()
+                # Prefer Gnom tab again each scenario (user may have switched)
+                if connected_cdp and browser is not None:
+                    try:
+                        page2, context = _find_or_open_page(browser)
+                        page = page2
+                        page.set_default_timeout(120_000)
+                    except Exception:
+                        pass
                 row = fn(page, run_dir, log)
             except Exception as exc:
                 print(f"  ✗ {sid} exception: {exc}")
@@ -836,9 +1343,7 @@ def main() -> int:
                     "total": {"score": 0, "max": 30, "pct": 0.0},
                 }
                 try:
-                    if page.is_closed():
-                        page = context.new_page()
-                        page.set_default_timeout(120_000)
+                    page = _recover_page()
                 except Exception:
                     pass
             scenarios_out.append(row)
@@ -848,10 +1353,12 @@ def main() -> int:
             )
             time.sleep(0.8 if HEADED else 0.1)
 
-        try:
-            browser.close()
-        except Exception:
-            pass
+        # Never close user's Chrome when attached via CDP
+        if not connected_cdp:
+            try:
+                browser.close()
+            except Exception:
+                pass
 
     score_sum = sum(int((s.get("total") or {}).get("score") or 0) for s in scenarios_out)
     score_max = sum(int((s.get("total") or {}).get("max") or 0) for s in scenarios_out) or 1

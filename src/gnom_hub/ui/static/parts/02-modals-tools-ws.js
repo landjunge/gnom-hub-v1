@@ -116,14 +116,10 @@
     };
     const key = document.getElementById("tune-key").value.trim();
     if (key) body.api_key = key;
-    // Speak in the same click as Save (before await)
+    // Speak in the same click as Save (before await) — short DE only
     if (ttsOn) {
       const a = findAgent(tuneAgentId);
-      speakNow(
-        "Gedanken an für " +
-          ((a && a.label) || tuneAgentId) +
-          ". Ich spreche den Denkprozess, nicht den Text."
-      );
+      speakNow("TTS an: " + ((a && a.label) || tuneAgentId) + ".");
     } else {
       stopSpeech();
     }
@@ -770,13 +766,29 @@
     }
   }
 
-  async function refreshToolsModal() {
+  async function refreshToolsModal(opts) {
+    const doReload = !!(opts && opts.reload);
     const ul = document.getElementById("tools-list");
     const sel = document.getElementById("tools-select");
     const countEl = document.getElementById("tools-count");
     try {
-      const data = await api("GET", "/api/plugins");
+      // Hot-reload: re-scan plugins/ + re-import handlers (core tools untouched)
+      const data = doReload
+        ? await api("POST", "/api/plugins/reload")
+        : await api("GET", "/api/plugins");
       const tools = data.tools || [];
+      if (doReload) {
+        const errs = data.errors || [];
+        const nPlug = data.plugins ? data.plugins.length : 0;
+        toast(
+          "Plugins reloaded: " +
+            nPlug +
+            " · tools " +
+            tools.length +
+            (errs.length ? " · errors " + errs.length : ""),
+          errs.length ? "info" : "ok"
+        );
+      }
       if (countEl) {
         countEl.textContent =
           "Tools: " +

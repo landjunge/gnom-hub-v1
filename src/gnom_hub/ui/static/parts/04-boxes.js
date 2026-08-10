@@ -43,10 +43,9 @@
       frame.className = "worker-preview-frame dyn-frame";
       frame.setAttribute(
         "sandbox",
-        "allow-same-origin allow-forms allow-popups allow-modals"
+        "allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
       );
       frame.setAttribute("title", opts.title || "preview");
-      frame.setAttribute("scrolling", "no"); /* pure box — no scroll */
       frame.srcdoc = wrapHtmlDocument(html);
       const pre = document.createElement("pre");
       pre.className = "result-block worker-source dyn-source";
@@ -167,23 +166,33 @@
    */
   function extractHtml(raw) {
     const s = String(raw || "");
-    // Explicit ```html fence with a real document or substantial markup
+    // Closed ```html fence
     const fenceHtml = s.match(/```html\s*([\s\S]*?)```/i);
     if (fenceHtml && fenceHtml[1]) {
       const body = fenceHtml[1].trim();
       if (/<!DOCTYPE\s+html|<html[\s>]/i.test(body)) return body;
       if (body.startsWith("<") && (body.match(/<\w+/g) || []).length >= 4) return body;
     }
+    // Open fence (worker cut off before closing ```) — common failure mode
+    const fenceOpen = s.match(/```html\s*([\s\S]+)$/i);
+    if (fenceOpen && fenceOpen[1]) {
+      const body = fenceOpen[1].replace(/```\s*$/, "").trim();
+      if (/<!DOCTYPE\s+html|<html[\s>]/i.test(body) && body.length >= 80) {
+        return body;
+      }
+    }
     // Full document with doctype + closing html (preferred)
     const fullDoc = s.match(/(<!DOCTYPE\s+html[\s\S]*?<\/html>)/i);
     if (fullDoc) return fullDoc[1].trim();
     // Open doctype document (truncated mid-file still previewable)
-    const doctypeOpen = s.match(/(<!DOCTYPE\s+html[\s\S]{120,})$/i);
+    const doctypeOpen = s.match(/(<!DOCTYPE\s+html[\s\S]{80,})$/i);
     if (doctypeOpen && /<(html|head|body)[\s>]/i.test(doctypeOpen[1])) {
       return doctypeOpen[1].trim();
     }
     const htmlTag = s.match(/(<html[\s\S]*?<\/html>)/i);
     if (htmlTag) return htmlTag[1].trim();
+    const htmlOpen = s.match(/(<html[\s\S]{80,})$/i);
+    if (htmlOpen) return htmlOpen[1].trim();
     // Markup-first fragment only: must start with tag, enough structure, high density
     const trimmed = s.trim();
     if (
@@ -198,12 +207,158 @@
     return null;
   }
 
+  /** True when document has no usable body content (truncated mid-CSS etc.). */
+  function htmlBodyIsEmpty(html) {
+    const s = String(html || "");
+    const m = s.match(/<body[^>]*>([\s\S]*)/i);
+    if (!m) return true;
+    const inner = m[1]
+      .replace(/<\/body>[\s\S]*$/i, "")
+      .replace(/<script[\s\S]*?<\/script>/gi, "")
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    return inner.length < 12;
+  }
+
+  /**
+   * Heal truncated worker HTML so the iframe shows a page, not a black void.
+   * Workers often cut off mid-<style> with no </html>.
+   */
+  function healTruncatedHtml(html) {
+    let doc = String(html || "").trim();
+    if (!doc) return doc;
+    const incomplete =
+      !/<\/html>/i.test(doc) ||
+      htmlBodyIsEmpty(doc) ||
+      (/<style[\s>]/i.test(doc) && !/<\/style>/i.test(doc));
+
+    if (/<style[\s>]/i.test(doc) && !/<\/style>/i.test(doc)) {
+      doc += "\n</style>";
+    }
+    if (/<script[\s>](?![^<]*<\/script>)/i.test(doc) && !/<\/script>\s*$/i.test(doc)) {
+      /* crude: if last script unclosed */
+      if ((doc.match(/<script[\s>]/gi) || []).length > (doc.match(/<\/script>/gi) || []).length) {
+        doc += "\n</script>";
+      }
+    }
+    if (/<head[\s>]/i.test(doc) && !/<\/head>/i.test(doc)) {
+      doc += "\n</head>";
+    }
+
+    if (!/<body[\s>]/i.test(doc) || htmlBodyIsEmpty(doc)) {
+      /* Inject a visible page so user never sees "empty top / code bottom" only */
+      const stub =
+        '<body style="margin:0;font-family:system-ui,sans-serif;background:#12141a;color:#e8eaed;">' +
+        '<main style="max-width:42rem;margin:0 auto;padding:1.5rem 1.25rem;">' +
+        "<h1 style=\"font-size:1.35rem;margin:0 0 .75rem;\">Vorschau — Seite unvollständig</h1>" +
+        "<p style=\"line-height:1.45;margin:0 0 .75rem;color:#b8bcc4;\">" +
+        "Der Worker hat die HTML-Datei abgeschnitten (oft mitten im CSS, ohne sichtbaren Inhalt). " +
+        "Unten siehst du den Quelltext. Bitte im Flex-Panel „Nochmal bauen“ oder „HTML reparieren“." +
+        "</p>" +
+        "<p style=\"margin:0;font-size:.9rem;color:#8b909a;\">" +
+        "Zeichen geliefert: " +
+        String(doc.length) +
+        " · kein fertiges &lt;body&gt;-Layout</p>" +
+        "</main></body>";
+      if (/<body[\s>]/i.test(doc)) {
+        doc = doc.replace(/<body[^>]*>[\s\S]*$/i, stub);
+      } else {
+        doc += "\n" + stub;
+      }
+    } else if (!/<\/body>/i.test(doc)) {
+      doc += "\n</body>";
+    }
+    if (!/<\/html>/i.test(doc)) {
+      doc += "\n</html>";
+    }
+    if (!/<!DOCTYPE/i.test(doc) && !/<html/i.test(doc)) {
+      return wrapHtmlDocument(doc);
+    }
+    if (!/<!DOCTYPE/i.test(doc) && /<html/i.test(doc)) {
+      doc = "<!DOCTYPE html>\n" + doc;
+    }
+    return doc;
+  }
+
   /**
    * Box 3: dynamic — one panel per worker result (all outputs, not only first).
    * HTML → Preview + Source; plain text → pre. Panels share height equally.
    */
   function updateBox3Toolbar() {
     // Box 3 toolbar intentionally minimal (no history/diff chrome)
+  }
+
+  /** Skip iframe rebuild when snapshot polls same worker payload (avoids white flash). */
+  let lastBox3StageKey = "";
+  let lastBox3RenderKey = "";
+
+  function box3OutputsKey(outputs, stage) {
+    return (
+      String(stage || "") +
+      "|" +
+      (outputs || [])
+        .map(function (o) {
+          const r = String((o && o.result) || "");
+          return (
+            String((o && (o.worker || o.name)) || "") +
+            ":" +
+            r.length +
+            ":" +
+            r.slice(0, 120) +
+            ":" +
+            r.slice(-120)
+          );
+        })
+        .join("||")
+    );
+  }
+
+  function revokeBox3Blobs(root) {
+    if (!root) return;
+    root.querySelectorAll("iframe").forEach(function (frame) {
+      if (frame._blobUrl) {
+        try {
+          URL.revokeObjectURL(frame._blobUrl);
+        } catch (_e) {
+          /* ignore */
+        }
+        frame._blobUrl = null;
+      }
+    });
+  }
+
+  /**
+   * Highlight which worker result is shown — without switching Box1/Box2 layers
+   * or chat. Global activateAgentLayer(worker) was wiping brainstorm from Box2.
+   */
+  function highlightWorkerResult(agentId) {
+    if (!agentId) return;
+    document.querySelectorAll("#box3-layers .agent-layer").forEach(function (layer) {
+      const on = layer.getAttribute("data-agent") === agentId;
+      layer.classList.toggle("is-active", on);
+      layer.hidden = !on;
+    });
+    /* Card ring = which deliverable; do not touch Box1/2 layers or lastClickedAgentId */
+    document.querySelectorAll(".agent-card").forEach(function (card) {
+      card.classList.toggle(
+        "is-layer-active",
+        card.dataset.agentId === agentId
+      );
+    });
+    const hex =
+      typeof COLOR_HEX !== "undefined" && COLOR_HEX[agentId]
+        ? COLOR_HEX[agentId]
+        : null;
+    const mod = document.querySelector(".boxes");
+    if (mod) {
+      mod.style.setProperty("--boxes-mod-color", hex || "var(--border)");
+    }
+    const chatMod = document.getElementById("chat-mod");
+    if (chatMod && hex) {
+      chatMod.style.setProperty("--chat-mod-color", hex);
+    }
   }
 
   function showBox3ResultStage(out, idx) {
@@ -213,14 +368,36 @@
     if (!stage || !body) return false;
     const raw = (out && out.result) != null ? String(out.result) : "";
     if (!raw.trim()) {
+      lastBox3StageKey = "";
+      revokeBox3Blobs(body);
       stage.hidden = true;
       stage.classList.remove("is-open");
       return false;
     }
-    body.innerHTML = "";
-    body.classList.add("box3-dynamic", "box3-result-split");
     const name = (out && (out.name || out.worker)) || "Worker";
     const html = extractHtml(raw);
+    const stageKey =
+      name +
+      "|" +
+      raw.length +
+      "|" +
+      raw.slice(0, 160) +
+      "|" +
+      raw.slice(-160) +
+      "|" +
+      (html ? "h" : "t");
+    /* Same payload already painted — keep iframe (no white flash on poll). */
+    if (
+      stageKey === lastBox3StageKey &&
+      stage.classList.contains("is-open") &&
+      body.childNodes.length
+    ) {
+      return true;
+    }
+    lastBox3StageKey = stageKey;
+    revokeBox3Blobs(body);
+    body.innerHTML = "";
+    body.classList.add("box3-dynamic", "box3-result-split");
     if (label) {
       label.textContent =
         name +
@@ -234,13 +411,18 @@
     }
 
     /*
-     * Split view: ALWAYS show readable source + optional live preview.
-     * iframe-only looked "only white" when CSS was broken / height collapsed.
+     * Page-first layout: large live preview on top, compact collapsible source.
+     * Truncated worker HTML is healed so preview is never a black empty pane.
      */
     const split = document.createElement("div");
-    split.className = "box3-split";
+    split.className = "box3-split" + (html ? " has-preview" : " text-only");
 
     if (html) {
+      const incomplete = htmlBodyIsEmpty(html) || !/<\/html>/i.test(html);
+      if (incomplete && label) {
+        label.textContent =
+          (label.textContent || "") + " · unvollständig → Vorschau geheilt";
+      }
       const prevWrap = document.createElement("div");
       prevWrap.className = "box3-split-preview";
       const frame = document.createElement("iframe");
@@ -250,28 +432,41 @@
         "sandbox",
         "allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
       );
-      // blob URL is more reliable than srcdoc on some Chromium builds
+      const docHtml = wrapHtmlDocument(html);
       try {
-        const blob = new Blob([wrapHtmlDocument(html)], {
+        const blob = new Blob([docHtml], {
           type: "text/html;charset=utf-8",
         });
         frame.src = URL.createObjectURL(blob);
         frame._blobUrl = frame.src;
       } catch (_e) {
-        frame.srcdoc = wrapHtmlDocument(html);
+        frame.srcdoc = docHtml;
       }
       prevWrap.appendChild(frame);
       split.appendChild(prevWrap);
     }
 
     const srcWrap = document.createElement("div");
-    srcWrap.className = "box3-split-source";
-    const srcHead = document.createElement("div");
+    srcWrap.className =
+      "box3-split-source" + (html ? " is-collapsed" : "");
+    const srcHead = document.createElement("button");
+    srcHead.type = "button";
     srcHead.className = "box3-split-source-h";
-    srcHead.textContent = html ? "Quelltext (Worker-Ausgabe)" : "Worker-Ausgabe";
+    srcHead.textContent = html
+      ? "▸ Quelltext (Worker-Ausgabe) — klicken zum Aufklappen"
+      : "Worker-Ausgabe";
     const pre = document.createElement("pre");
     pre.className = "result-block box3-result-pre";
     pre.textContent = raw.slice(0, 30000);
+    if (html) {
+      srcHead.addEventListener("click", function () {
+        const open = srcWrap.classList.toggle("is-open");
+        srcWrap.classList.toggle("is-collapsed", !open);
+        srcHead.textContent = open
+          ? "▾ Quelltext (Worker-Ausgabe)"
+          : "▸ Quelltext (Worker-Ausgabe) — klicken zum Aufklappen";
+      });
+    }
     srcWrap.appendChild(srcHead);
     srcWrap.appendChild(pre);
     split.appendChild(srcWrap);
@@ -301,17 +496,74 @@
   function hideBox3ResultStage() {
     const stage = document.getElementById("box3-result-stage");
     const body = document.getElementById("box3-result-body");
+    lastBox3StageKey = "";
+    /* lastBox3RenderKey owned by renderBox3Workers */
+    revokeBox3Blobs(body);
     if (body) body.innerHTML = "";
     if (stage) {
       stage.hidden = true;
       stage.classList.remove("is-open");
     }
+    const strip = document.getElementById("box3-tool-strip");
+    if (strip) {
+      strip.hidden = true;
+      strip.innerHTML = "";
+    }
+  }
+
+  function renderToolStrip(toolLog, qualityNotes) {
+    const strip = document.getElementById("box3-tool-strip");
+    if (!strip) return;
+    const log = Array.isArray(toolLog) ? toolLog : [];
+    if (!log.length) {
+      // fallback: quality_notes may list tools
+      if (qualityNotes && /tool/i.test(String(qualityNotes))) {
+        strip.hidden = false;
+        strip.textContent = String(qualityNotes).slice(0, 220);
+        return;
+      }
+      strip.hidden = true;
+      strip.innerHTML = "";
+      return;
+    }
+    strip.hidden = false;
+    strip.innerHTML = "";
+    log.slice(-16).forEach(function (e) {
+      if (!e) return;
+      const chip = document.createElement("span");
+      const mode = String(e.mode || "");
+      chip.className = "box3-tool-chip";
+      if (mode === "dry-run") chip.classList.add("is-dry");
+      else if (mode === "blocked") chip.classList.add("is-blocked");
+      else if (e.ok === false || mode === "error") chip.classList.add("is-err");
+      const ok = e.ok === false ? "✗" : "✓";
+      chip.textContent =
+        ok + " " + (e.tool || "?") + (mode ? " · " + mode : "");
+      chip.title = JSON.stringify(e);
+      strip.appendChild(chip);
+    });
   }
 
   function renderBox3Workers(pipeline) {
     const outputs = normalizeWorkerOutputs(pipeline);
     lastWorkerOutputs = outputs;
     updateBox3Toolbar();
+    if (pipeline) {
+      renderToolStrip(pipeline.tool_log || [], pipeline.quality_notes || "");
+    }
+
+    const stageName = pipeline && pipeline.stage;
+    const renderKey = box3OutputsKey(outputs, stageName);
+    const stageEl = document.getElementById("box3-result-stage");
+    /* Poll with unchanged worker output: do not wipe DOM / flash white. */
+    if (
+      outputs.length &&
+      renderKey === lastBox3RenderKey &&
+      stageEl &&
+      stageEl.classList.contains("is-open")
+    ) {
+      return;
+    }
 
     /* clear each worker agent layer in box 3 */
     ["worker1", "worker2", "worker3", "worker4"].forEach(function (wid) {
@@ -332,11 +584,12 @@
     });
 
     if (!outputs.length) {
+      lastBox3RenderKey = renderKey;
       hideBox3ResultStage();
       return;
     }
 
-    /* each worker → agent layer body */
+    /* each worker → agent layer body (secondary; result stage is primary) */
     let firstAgentId = "worker1";
     let best = outputs[0];
     let bestLen = 0;
@@ -368,6 +621,9 @@
       });
     });
 
+    const contentChanged = renderKey !== lastBox3RenderKey;
+    lastBox3RenderKey = renderKey;
+
     // PRIMARY: always-open result stage (what the user looks at)
     const shown = showBox3ResultStage(best, 0);
     if (!shown) {
@@ -375,27 +631,28 @@
       const body = document.getElementById("box3-result-body");
       const stage = document.getElementById("box3-result-stage");
       if (body && stage && best) {
+        revokeBox3Blobs(body);
         body.innerHTML = "";
         const pre = document.createElement("pre");
-        pre.className = "result-block";
+        pre.className = "result-block box3-result-pre";
         pre.textContent = String(best.result || "").slice(0, 20000);
         body.appendChild(pre);
         stage.hidden = false;
+        stage.removeAttribute("hidden");
         stage.classList.add("is-open");
       }
     }
 
-    if (typeof activateAgentLayer === "function") {
-      try {
-        activateAgentLayer(firstAgentId, false);
-      } catch (_e) {
-        /* ignore */
-      }
+    /* Box3-only highlight — never activateAgentLayer(worker): that hid Box2 brainstorm */
+    try {
+      highlightWorkerResult(firstAgentId);
+    } catch (_e) {
+      /* ignore */
     }
 
     box3FocusIdx = 0;
     bindBoxLayerControls();
-    if (typeof focusBox3 === "function") {
+    if (contentChanged && typeof focusBox3 === "function") {
       try {
         focusBox3();
       } catch (_e) {
@@ -708,15 +965,23 @@
 
   function wrapHtmlDocument(html) {
     let doc = html || "";
-    if (!/<!DOCTYPE/i.test(doc) && !/<html/i.test(doc)) {
-      doc =
-        "<!DOCTYPE html><html><head><meta charset=\"utf-8\">" +
-        "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
-        "<style>body{font-family:system-ui,sans-serif;margin:12px;}</style>" +
-        "</head><body>" +
-        doc +
-        "</body></html>";
+    /* Prefer healed full documents (truncated workers) */
+    if (/<!DOCTYPE/i.test(doc) || /<html[\s>]/i.test(doc)) {
+      return healTruncatedHtml(doc);
     }
+    /* Dark shell so fragments are not a blinding white box in the desk */
+    doc =
+      "<!DOCTYPE html><html><head><meta charset=\"utf-8\">" +
+      "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
+      "<style>" +
+      "html,body{margin:0;min-height:100%;background:#111;color:#e8eaed;" +
+      "font-family:system-ui,sans-serif;}" +
+      "body{padding:12px;box-sizing:border-box;}" +
+      "a{color:#7db7ff;}" +
+      "</style>" +
+      "</head><body>" +
+      doc +
+      "</body></html>";
     return doc;
   }
 

@@ -36,11 +36,13 @@ class Orchestrator:
         llm_manager: Any | None = None,
         agent_manager: AgentManager | None = None,
         memory: Any | None = None,
+        tools: Any | None = None,
     ) -> None:
         self.bus = bus
         self.llm = llm_manager
         self.agents = agent_manager or AgentManager(bus)
         self.memory_store = memory
+        self.tools = tools  # ToolRegistry — agents call tools via agent_bridge
         self._state = PipelineState()
         self._clarified_once = False
         self.cancel_check: Callable[[], bool] | None = None
@@ -98,13 +100,14 @@ class Orchestrator:
 
     def _build_roles(self) -> None:
         get = self.agents.get
+        tools = self.tools
         self.brainstorm = BrainstormAgent(get(AgentId.BRAINSTORM), self.bus, self.llm)
         self.flex = FlexAgent(get(AgentId.FLEX), self.bus, self.llm)
         self.coordinator = CoordinatorAgent(get(AgentId.COORDINATOR), self.bus, self.llm)
-        self.worker1 = WorkerAgent(get(AgentId.WORKER1), self.bus, self.llm)
-        self.worker2 = WorkerAgent(get(AgentId.WORKER2), self.bus, self.llm)
-        self.worker3 = WorkerAgent(get(AgentId.WORKER3), self.bus, self.llm)
-        self.worker4 = WorkerAgent(get(AgentId.WORKER4), self.bus, self.llm)
+        self.worker1 = WorkerAgent(get(AgentId.WORKER1), self.bus, self.llm, tools=tools)
+        self.worker2 = WorkerAgent(get(AgentId.WORKER2), self.bus, self.llm, tools=tools)
+        self.worker3 = WorkerAgent(get(AgentId.WORKER3), self.bus, self.llm, tools=tools)
+        self.worker4 = WorkerAgent(get(AgentId.WORKER4), self.bus, self.llm, tools=tools)
         self.memory = MemoryAgent(get(AgentId.MEMORY), self.bus, self.llm, memory=self.memory_store)
         self._workers = {
             "worker1": self.worker1,
@@ -129,6 +132,10 @@ class Orchestrator:
             self._stage_t0 = None
             self._stage_name = None
             self._check_cancel()
+            # Live browser nav (full pipeline entry): tools first, skip HTML path
+            if self._try_browser_nav_short_circuit(text):
+                return self._state
+
             self._begin_stage_timing("memory")
             self.bus.emit("pipeline.stage", {"stage": "memory"})
             mem = self.memory.recall(text)
@@ -183,34 +190,53 @@ class Orchestrator:
                 self._fail("Empty user text")
                 return self._state
 
+            # Tool drill first (S7 etc. may mention kleinanzeigen without pure-nav intent)
+            from gnom_hub.tools.agent_bridge import is_live_browser_task
+            from gnom_hub.tools.tool_scenarios import is_tool_drill_task
+
+            if (
+                is_tool_drill_task(text)
+                and self.tools is not None
+                and self._try_tool_drill_short_circuit(text)
+            ):
+                return self._state
+
+            # Live browser nav: skip brainstorm LLM chatter — open the URL now
+            if is_live_browser_task(text) and self.tools is not None:
+                self._state = PipelineState(user_text=text, mode="execute")
+                self._state.brainstorm_turns = [
+                    {"role": "user", "text": text},
+                    {
+                        "role": "brainstorm",
+                        "text": "Live-Browser-Auftrag erkannt — öffne die URL mit Tools.",
+                    },
+                ]
+                self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
+                self.bus.emit(
+                    "pipeline.auto_execute",
+                    {"reason": "browser_nav", "text": text[:120]},
+                )
+                return self.execute()
+
             continuing = (
                 self._state.mode == "brainstorm"
                 and self._state.stage == PipelineStage.brainstorm
                 and bool(self._state.brainstorm_turns)
                 and not _is_topic_switch(self._state.brainstorm_turns, text)
             )
-            _exec_only = text.lower().strip(" !.。") in {
-                "execute",
-                "ausführen",
-                "ausfuehren",
-                "run it",
-                "run execute",
-                "flex execute",
-                "jetzt ausführen",
-                "jetzt ausfuehren",
-                "pipeline starten",
-                "starte execute",
-                "start execute",
-            }
+            # "mach das" / "jetzt ausführen" / "was ich gesagt habe" = go-only, keep prior task
+            _exec_only = _is_go_only(text)
             if not continuing:
                 prev_turns = list(self._state.brainstorm_turns or [])
                 prev_notes = self._state.brainstorm_notes or ""
                 prev_task = (self._state.user_text or "").strip()
                 self._state = PipelineState(user_text=text, mode="brainstorm")
-                if _exec_only and prev_turns and prev_task:
+                if _exec_only and prev_turns:
+                    # Resolve last real task (browser/HTML/long), not the go-phrase
+                    resolved = _pick_execute_task(prev_turns, fallback=prev_task)
                     self._state.brainstorm_turns = prev_turns
                     self._state.brainstorm_notes = prev_notes
-                    self._state.user_text = prev_task
+                    self._state.user_text = resolved or prev_task or text
                     self._state.mode = "brainstorm"
             else:
                 self._state.mode = "brainstorm"
@@ -224,6 +250,28 @@ class Orchestrator:
                     self._state.user_text = text
 
             self._clarified_once = False
+
+            # Go-only with a real prior task → execute immediately (no brainstorm LLM)
+            if _exec_only and (self._state.brainstorm_notes or "").strip():
+                task = _pick_execute_task(
+                    list(self._state.brainstorm_turns or []),
+                    fallback=(self._state.user_text or "").strip(),
+                )
+                if task and not _is_go_only(task):
+                    self._state.user_text = task
+                    self._state.brainstorm_turns.append({"role": "user", "text": text})
+                    self._state.brainstorm_turns.append(
+                        {
+                            "role": "brainstorm",
+                            "text": f"OK — setze um: {task[:200]}",
+                        }
+                    )
+                    self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
+                    self.bus.emit(
+                        "pipeline.auto_execute",
+                        {"reason": "go_only", "text": task[:120]},
+                    )
+                    return self.execute()
 
             self._check_cancel()
             self.bus.emit("pipeline.stage", {"stage": "memory"})
@@ -309,11 +357,12 @@ class Orchestrator:
             )
             should_exec = False
             exec_reason = "context"
-            if self.flex.enabled:
-                if flex_exec and flex_exec.get("execute"):
-                    should_exec = True
-                    exec_reason = f"flex:{flex_exec.get('reason') or 'request'}"
-            elif _wants_auto_execute(text, self._state.brainstorm_turns):
+            if self.flex.enabled and flex_exec and flex_exec.get("execute"):
+                should_exec = True
+                exec_reason = f"flex:{flex_exec.get('reason') or 'request'}"
+            # Always honor hard auto-execute (browser nav, clear build orders)
+            # even when Flex is on but did not request execute.
+            if not should_exec and _wants_auto_execute(text, self._state.brainstorm_turns):
                 should_exec = True
                 exec_reason = "context"
             if should_exec and self._state.brainstorm_notes.strip():
@@ -353,6 +402,13 @@ class Orchestrator:
             self._stage_t0 = None
             self._stage_name = None
 
+            # Tool drill before pure browser (S7 mentions kleinanzeigen + screenshot)
+            if self._try_tool_drill_short_circuit(text):
+                return self._state
+            # Live browser navigation: call tools now, skip HTML workers
+            if self._try_browser_nav_short_circuit(text):
+                return self._state
+
             self._begin_stage_timing("memory")
             mem = self._state.memory_context or self.memory.recall(text)
             self._state.memory_context = mem
@@ -384,6 +440,170 @@ class Orchestrator:
         except Exception as exc:  # noqa: BLE001
             self._fail(str(exc))
         return self._state
+
+    def _try_tool_drill_short_circuit(self, text: str) -> bool:
+        """Run forced multi-tool scenario (Playwright / shell / GUI)."""
+        from gnom_hub.tools.tool_scenarios import (
+            is_tool_drill_task,
+            run_forced_tool_scenario,
+        )
+
+        if self.tools is None or not is_tool_drill_task(text):
+            return False
+        # Own this turn — do not keep previous browser/landing user_text
+        self._state.user_text = text
+        self._state.mode = "execute"
+        self._state.error = None
+        self._state.pending_question = None
+        self._state.brainstorm_turns = [
+            {"role": "user", "text": text},
+            {
+                "role": "brainstorm",
+                "text": "Tool-Drill erkannt — echte Tools, kein HTML-Team.",
+            },
+        ]
+        self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
+        self._set_stage(PipelineStage.work)
+        forced = run_forced_tool_scenario(self.tools, text, bus=self.bus)
+        summary = str(forced.get("summary") or forced)
+        wid = "worker1"
+        worker = self._workers.get(wid) or next(iter(self._workers.values()), None)
+        wname = worker.state.name if worker is not None else wid
+        out = {
+            "worker": wid,
+            "name": wname,
+            "index": 1,
+            "task": f"Tool drill: {text[:200]}",
+            "result": summary,
+        }
+        self._state.worker_outputs = [out]
+        self._state.worker_results = [summary]
+        self._state.distilled_requirements = [
+            f"Ziel: {text}",
+            "Tool-Pflicht: Playwright / Shell / GUI wirklich aufrufen",
+            f"Szenario: {forced.get('scenario')}",
+        ]
+        # Persist compact tool log for snapshot / desk strip
+        tlog: list[dict] = []
+        for s in forced.get("steps") or []:
+            if not isinstance(s, dict):
+                continue
+            res = s.get("result") if isinstance(s.get("result"), dict) else {}
+            tlog.append(
+                {
+                    "tool": str(s.get("tool") or "?"),
+                    "ok": bool((res or {}).get("ok", True)),
+                    "mode": str(s.get("mode") or (res or {}).get("mode") or ""),
+                    "agent": "tool_scenario",
+                    "scenario": str(forced.get("scenario") or ""),
+                }
+            )
+        self._state.tool_log = tlog
+        tools_used = forced.get("tools_used") or [e["tool"] for e in tlog]
+        dry_n = sum(1 for e in tlog if e.get("mode") == "dry-run")
+        self._state.quality_notes = (
+            f"Tool-drill {forced.get('scenario')}: {forced.get('tool_calls')} tool calls"
+            f" · {', '.join(str(t) for t in tools_used[:12])}"
+            + (f" · {dry_n}× dry-run (God-Mode?)" if dry_n else "")
+        )
+        self._state.resolved_plan_mode = "tool_drill"
+        self.bus.emit(
+            "pipeline.worker",
+            {
+                "worker": wid,
+                "index": 1,
+                "result": summary,
+                "task": out["task"],
+                "tool": "tool_scenario_run",
+            },
+        )
+        self.bus.emit(
+            "pipeline.quality",
+            {"notes": self._state.quality_notes, "workers": 1},
+        )
+        self._finish()
+        return True
+
+    def _try_browser_nav_short_circuit(self, text: str) -> bool:
+        """
+        If the task is pure live-browser navigation, open the URL via tools
+        and finish as done (no clarify / HTML workers).
+        """
+        from gnom_hub.tools.agent_bridge import try_browser_nav_execute
+
+        if self.tools is None:
+            return False
+        nav = try_browser_nav_execute(tools=self.tools, user_text=text, bus=self.bus)
+        if nav is None:
+            return False
+        self._state.user_text = text
+        self._state.mode = "execute"
+        self._state.error = None
+        self._state.pending_question = None
+        self._state.brainstorm_turns = [
+            {"role": "user", "text": text},
+            {
+                "role": "brainstorm",
+                "text": "Live-Browser-Auftrag erkannt — öffne die URL mit Tools.",
+            },
+        ]
+        self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
+        self._set_stage(PipelineStage.work)
+        summary = str(nav.get("summary") or "")
+        wid = "worker1"
+        worker = self._workers.get(wid) or next(iter(self._workers.values()), None)
+        wname = worker.state.name if worker is not None else wid
+        out = {
+            "worker": wid,
+            "name": wname,
+            "index": 1,
+            "task": f"Live browser: {text[:200]}",
+            "result": summary,
+        }
+        self._state.worker_outputs = [out]
+        self._state.worker_results = [summary]
+        self._state.distilled_requirements = [
+            f"Ziel: {text}",
+            "Live-Browser-Navigation (tool: browser_open)",
+            f"URL: {nav.get('url') or '?'}",
+        ]
+        mode = "live" if nav.get("ok") else "error"
+        tr = nav.get("tool_result") if isinstance(nav.get("tool_result"), dict) else {}
+        if tr.get("dry_run"):
+            mode = "dry-run"
+        self._state.tool_log = [
+            {
+                "tool": "browser_open",
+                "ok": bool(nav.get("ok")),
+                "mode": mode,
+                "agent": "orchestrator",
+                "scenario": "browser_nav",
+            }
+        ]
+        self._state.quality_notes = (
+            f"Browser-Nav short-circuit: browser_open · mode={mode}"
+            if nav.get("ok")
+            else f"Browser-Nav failed: {nav.get('error') or 'unknown'}"
+        )
+        self._state.resolved_plan_mode = "browser_tools"
+        self.bus.emit(
+            "pipeline.worker",
+            {
+                "worker": wid,
+                "index": 1,
+                "result": summary,
+                "task": out["task"],
+                "tool": "browser_open",
+            },
+        )
+        self.bus.emit(
+            "pipeline.quality",
+            {"notes": self._state.quality_notes, "workers": 1},
+        )
+        if not nav.get("ok"):
+            self._state.warnings = list(self._state.warnings or []) + ["browser_open_failed"]
+        self._finish()
+        return True
 
     def answer_clarify(self, option: str) -> PipelineState:
         """
@@ -967,20 +1187,13 @@ class Orchestrator:
         )
 
 
-def _wants_auto_execute(text: str, turns: list[dict] | None = None) -> bool:
-    from gnom_hub.agents.plan_fast_path import _wants_one_html_page
-
+def _is_go_only(text: str) -> bool:
+    """True when the message only means 'do it / execute prior task' — not a new task."""
     t = (text or "").strip()
     if not t:
         return False
     low = t.lower().strip(" !.。")
-
-    users = [
-        str(x.get("text") or "").strip()
-        for x in (turns or [])
-        if x.get("role") == "user" and str(x.get("text") or "").strip()
-    ]
-    go_words = {
+    exact = {
         "go",
         "los",
         "ok",
@@ -1005,20 +1218,72 @@ def _wants_auto_execute(text: str, turns: list[dict] | None = None) -> bool:
         "bau das",
         "umsetzen",
         "setz um",
+        "run it",
+        "tu es",
+        "ausführen",
+        "ausfuehren",
+        "jetzt ausführen",
+        "jetzt ausfuehren",
+        "pipeline starten",
+        "starte execute",
+        "start execute",
+        "run execute",
+        "flex execute",
+        "los gehts",
+        "los geht's",
+        "do the plan",
+        "create the plan",
         "plan erstellen",
         "erstell den plan",
         "erstelle den plan",
         "mach den plan",
         "ja erstell",
         "ja erstellen",
-        "los gehts",
-        "los geht's",
-        "do the plan",
-        "create the plan",
-        "run it",
-        "tu es",
     }
-    if len(users) >= 2 and (low in go_words or low.startswith(("ja ", "ok "))):
+    if low in exact:
+        return True
+    # "mach jetzt das was ich gesagt habe" / "do what i said"
+    vague_do = (
+        "was ich gesagt",
+        "was ich gesagt habe",
+        "what i said",
+        "what i told",
+        "wie gesagt",
+        "das was ich",
+        "mach jetzt das",
+        "jetzt das was",
+        "tu was ich",
+        "do what i",
+        "as i said",
+        "wie besprochen",
+    )
+    if any(v in low for v in vague_do) and len(low) < 80:
+        return True
+    return bool(low.startswith(("ja ", "ok ", "okay ")) and len(low) < 24)
+
+
+def _wants_auto_execute(text: str, turns: list[dict] | None = None) -> bool:
+    from gnom_hub.agents.plan_fast_path import _wants_one_html_page
+    from gnom_hub.tools.agent_bridge import is_live_browser_task
+
+    t = (text or "").strip()
+    if not t:
+        return False
+    # Live browser navigation must run tools without waiting for "ja/execute"
+    if is_live_browser_task(t):
+        return True
+    from gnom_hub.tools.tool_scenarios import is_tool_drill_task
+
+    if is_tool_drill_task(t):
+        return True
+    low = t.lower().strip(" !.。")
+
+    users = [
+        str(x.get("text") or "").strip()
+        for x in (turns or [])
+        if x.get("role") == "user" and str(x.get("text") or "").strip()
+    ]
+    if len(users) >= 2 and _is_go_only(t):
         return True
 
     if len(t) < 6:
@@ -1089,19 +1354,37 @@ def _wants_auto_execute(text: str, turns: list[dict] | None = None) -> bool:
 
 
 def _pick_execute_task(turns: list[dict], fallback: str = "") -> str:
+    """
+    Choose the real user task to execute — never a bare go-phrase.
+
+    Priority (newest first): live browser nav → HTML page → long concrete line.
+    """
     from gnom_hub.agents.plan_fast_path import _wants_one_html_page
+    from gnom_hub.tools.agent_bridge import is_live_browser_task
 
     users = [
         str(t.get("text") or "").strip()
         for t in turns
         if t.get("role") == "user" and str(t.get("text") or "").strip()
     ]
-    if not users:
-        return (fallback or "").strip()
-    for u in reversed(users):
-        if _wants_one_html_page(u) or len(u) >= 48:
+    # Drop go-only chatter ("mach das", "was ich gesagt habe")
+    real = [u for u in users if not _is_go_only(u)]
+    if not real:
+        fb = (fallback or "").strip()
+        if fb and not _is_go_only(fb):
+            return fb
+        return users[-1] if users else fb
+
+    for u in reversed(real):
+        if is_live_browser_task(u):
             return u
-    return users[-1]
+    for u in reversed(real):
+        if _wants_one_html_page(u):
+            return u
+    for u in reversed(real):
+        if len(u) >= 48:
+            return u
+    return real[-1]
 
 
 def _format_turns(turns: list[dict]) -> str:
