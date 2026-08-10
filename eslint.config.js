@@ -116,13 +116,21 @@ module.exports = [
     },
   }),
 
-  // ── Project overrides (no new plugins required — last wins) ───────
+  // ── Override strategies (see docs/ESLINT_OVERRIDE_STRATEGIES.md) ──
+  // Order: severity-core → quality-warn → domain-off → style-off (last wins per rule)
+
   {
-    name: "gnom-hub/ui-overrides",
+    name: "strategy/linter-options",
     files: UI_FILES,
     linterOptions: {
       reportUnusedDisableDirectives: "warn",
     },
+  },
+
+  // S1/S2 — core severity + options (legacy-friendly warns)
+  {
+    name: "strategy/severity-core",
+    files: UI_FILES,
     rules: {
       "eqeqeq": ["warn", "smart"],
       "no-var": "warn",
@@ -140,9 +148,17 @@ module.exports = [
         "warn",
         { functions: false, classes: true, variables: true },
       ],
-      "no-console": "off",
-      "no-alert": "off",
       "no-empty": ["warn", { allowEmptyCatch: true }],
+      "radix": ["warn", "as-needed"],
+      "yoda": ["warn", "never"],
+    },
+  },
+
+  // S1 — extra quality signals (warn, not CI-red)
+  {
+    name: "strategy/quality-warn",
+    files: UI_FILES,
+    rules: {
       "no-useless-escape": "warn",
       "no-useless-return": "warn",
       "no-useless-concat": "warn",
@@ -150,9 +166,25 @@ module.exports = [
       "no-return-assign": ["warn", "except-parens"],
       "no-sequences": "warn",
       "array-callback-return": ["warn", { allowImplicit: true }],
-      "radix": ["warn", "as-needed"],
-      "yoda": ["warn", "never"],
+    },
+  },
+
+  // S3 — domain allows (hub UI reality)
+  {
+    name: "strategy/domain-off",
+    files: UI_FILES,
+    rules: {
+      "no-console": "off",
+      "no-alert": "off",
       "strict": "off",
+    },
+  },
+
+  // S3 — formatting left to humans / future formatter
+  {
+    name: "strategy/style-off",
+    files: UI_FILES,
+    rules: {
       "curly": "off",
       "quotes": "off",
       "semi": "off",

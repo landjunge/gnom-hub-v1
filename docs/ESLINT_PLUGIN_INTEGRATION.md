@@ -3,7 +3,7 @@
 How Gnom-Hub wires ESLint plugins in **flat config** (ESLint 9).
 
 Live code: [`eslint.config.js`](../eslint.config.js)  
-Also: [ESLINT.md](ESLINT.md) · [ESLINT_FLAT_MIGRATION.md](ESLINT_FLAT_MIGRATION.md) · [ESLINT_FLATCOMPAT.md](ESLINT_FLATCOMPAT.md)
+Also: [ESLINT.md](ESLINT.md) · [ESLINT_OVERRIDE_STRATEGIES.md](ESLINT_OVERRIDE_STRATEGIES.md) · [ESLINT_FLAT_MIGRATION.md](ESLINT_FLAT_MIGRATION.md) · [ESLINT_FLATCOMPAT.md](ESLINT_FLATCOMPAT.md)
 
 ---
 

@@ -321,6 +321,7 @@
 | FlatCompat deep dive + example config | **done** |
 | FlatCompat override layers L1–L3 | **done** |
 | FlatConfig plugin integration helper + docs | **done** |
+| Flat-Config override strategies S1–S10 | **done** |
 | CI hard gate max-warnings 0 | optional |
 
 ## Post-V3.7 (optional)

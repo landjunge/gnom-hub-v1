@@ -176,6 +176,7 @@ npx eslint --print-config src/gnom_hub/ui/static/app.js | head
 - Migration from eslintrc: [ESLINT_FLAT_MIGRATION.md](ESLINT_FLAT_MIGRATION.md)
 - FlatCompat deep dive: [ESLINT_FLATCOMPAT.md](ESLINT_FLATCOMPAT.md)
 - Plugin integration: [ESLINT_PLUGIN_INTEGRATION.md](ESLINT_PLUGIN_INTEGRATION.md)
+- Override strategies: [ESLINT_OVERRIDE_STRATEGIES.md](ESLINT_OVERRIDE_STRATEGIES.md)
 
 - Config: `eslint.config.js`  
 - Build UI: `scripts/build_ui_js.py`  
