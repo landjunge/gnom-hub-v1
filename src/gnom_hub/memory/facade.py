@@ -114,5 +114,17 @@ class MemoryFacade:
             return text[: max_chars - 1] + "…"
         return text
 
+    def search(self, query: str, *, limit: int = 8) -> list[dict[str, Any]]:
+        """HOT+WARM+Vector search with freshness flags (see layered_search)."""
+        from gnom_hub.memory.layered_search import search_layers
+
+        return search_layers(
+            query=query,
+            hot=self.hot,
+            warm=self.warm,
+            vectors=self.vectors,
+            limit=limit,
+        )
+
     def __getattr__(self, name: str) -> Any:
         return getattr(self.hot, name)

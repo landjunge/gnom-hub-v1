@@ -26,6 +26,30 @@ def _action_to_dict(result: Any) -> dict[str, Any]:
 class ToolsOpsMixin:
     """Mixin extracted from Hub — pure move."""
 
+    def _tool_memory_search(self, query: str, limit: int = 5) -> list[dict[str, Any]]:
+        from gnom_hub.memory.layered_search import search_layers
+
+        return search_layers(
+            query=str(query),
+            hot=getattr(self, "hot", None),
+            warm=getattr(self, "warm", None),
+            vectors=getattr(self, "vectors", None),
+            limit=int(limit),
+        )
+
+    def index_durable_fact(self, text: str, *, source: str = "warm") -> str:
+        """Sync write into vector store so memory_search sees it immediately."""
+        t = " ".join(str(text or "").split()).strip()
+        if not t:
+            return ""
+        vectors = getattr(self, "vectors", None)
+        if vectors is None:
+            return ""
+        try:
+            return str(vectors.add(t, meta={"source": source}) or "")
+        except Exception:  # noqa: BLE001
+            return ""
+
     def _register_core_tools(self) -> None:
         self.tools.register(
             ToolSpec(
@@ -57,8 +81,11 @@ class ToolsOpsMixin:
         self.tools.register(
             ToolSpec(
                 name="memory_search",
-                description="Lexical vector search over stored docs",
-                handler=lambda query, limit=5: self.vectors.search(str(query), limit=int(limit)),
+                description=(
+                    "Search HOT + WARM (sync lexical) + Vector hybrid. "
+                    "Hits include layer and indexed freshness flags."
+                ),
+                handler=self._tool_memory_search,
                 input_schema={
                     "type": "object",
                     "properties": {

@@ -1,6 +1,6 @@
 {
   "version": "3.10.1",
-  "count": 46,
+  "count": 47,
   "docs": [
     {
       "file": "AGENTS_DEFINITION.md",
@@ -109,18 +109,18 @@
         "3.10",
         "install",
         "skill",
+        "api",
         "embeddings",
         "fastembed",
         "640px",
-        "api",
         "catalog",
         "css",
         "data",
         "enable",
-        "inject"
+        "hot"
       ],
-      "chars": 1533,
-      "lines": 48
+      "chars": 1755,
+      "lines": 54
     },
     {
       "file": "CHANGELOG_3.9.md",
@@ -431,7 +431,7 @@
         "brainstorm",
         "jobs"
       ],
-      "chars": 3679,
+      "chars": 3734,
       "lines": 99
     },
     {
@@ -529,6 +529,30 @@
       ],
       "chars": 7189,
       "lines": 257
+    },
+    {
+      "file": "MEMORY_FRESHNESS.md",
+      "path": "docs/MEMORY_FRESHNESS.md",
+      "title": "Memory freshness \u2014 searchable as soon as written",
+      "topic": "Other",
+      "keywords": [
+        "freshness",
+        "memory",
+        "sync",
+        "vector",
+        "warm",
+        "hot",
+        "write",
+        "fact",
+        "hit",
+        "index",
+        "layer",
+        "lexical",
+        "memory_search",
+        "pipeline"
+      ],
+      "chars": 1672,
+      "lines": 49
     },
     {
       "file": "MERGE_STATUS.md",

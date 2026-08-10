@@ -1,6 +1,6 @@
 # Gnom-Hub — exact architecture overview
 
-Doc map: [INDEX.md](INDEX.md) (searchable).
+Doc map: [INDEX.md](INDEX.md) (searchable). Freshness: [MEMORY_FRESHNESS.md](MEMORY_FRESHNESS.md).
 
 Companion to [ARCHITECTURE.md](ARCHITECTURE.md) (runtime diagrams) and
 [CODE_ANALYSIS_FOR_AI.md](CODE_ANALYSIS_FOR_AI.md) (deep dive).

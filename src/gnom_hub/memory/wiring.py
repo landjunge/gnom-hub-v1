@@ -40,6 +40,7 @@ class MemoryWiringMixin:
                 if low.startswith(("ziel:", "goal:")):
                     if 8 <= len(text) <= 160 and not _is_garbage_fact(text):
                         self.warm.add_fact(text)
+                        self.vectors.add(text, meta={"source": "goal"})
                     break
             # Worker outputs: short text notes only — never code/HTML bodies
             for res in (data.get("results") or [])[:2]:

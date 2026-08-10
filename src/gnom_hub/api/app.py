@@ -778,7 +778,11 @@ def create_app() -> FastAPI:
 
     @app.post("/api/memory/warm")
     def warm_add(body: WarmFactBody) -> dict[str, Any]:
-        ok = get_hub().warm.add_fact(body.text.strip())
+        hub = get_hub()
+        text = body.text.strip()
+        ok = hub.warm.add_fact(text)
+        if ok and hasattr(hub, "index_durable_fact"):
+            hub.index_durable_fact(text, source="warm_api")
         return {"ok": ok, "warm_facts": get_hub().warm.all_facts()[-12:]}
 
     @app.delete("/api/memory/warm")
