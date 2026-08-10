@@ -81,6 +81,8 @@ Doc: [`WORKFLOWS_AND_PRESETS.md`](WORKFLOWS_AND_PRESETS.md).
 | web_fetch redirect SSRF | SafeRedirect + final host check |
 | V4 Flash empty / tiny content | `thinking: {type: disabled}` by default; fallback `reasoning_content` |
 | Brainstorm felt one-shot | Multi-turn `prior` messages + HOT persist per turn; seed from HOT |
+| Section-split plan / multi-worker HTML on landing | weighted `_html_page_score` ≥3 → full_page_html fast path; LLM multi-HTML only for `plan_mode=team` (PR #13) |
+| Concurrent export pin race | deep-copy worker_outputs/requirements into `_last_execute_export` |
 
 ---
 
@@ -99,6 +101,7 @@ Doc: [`WORKFLOWS_AND_PRESETS.md`](WORKFLOWS_AND_PRESETS.md).
 
 | Date | quality | user E2E | notes |
 |------|---------|----------|-------|
+| 2026-08-10 | PR #13 + export pin | (merge) | scoring heuristic full_page_html; deep-copy export pin; Box3 plan badge |
 | 2026-08-10 | **402** + acceptance_tools | **PASS** UI DoD hosts, S6/S7, browser, busy 409, one-worker HTML + validation checklist (no key → worker_error) | ESLint hard gate + Slice D live-verified |
 | 2026-08-05 | 119 pass | PASS (4 workers, quality poor) | thinking-on burned tokens |
 | 2026-08-05 | 119 pass + live pong | **PASS** 4 HTML iframes, quality 5–6/6, export ~27k | thinking default **disabled** |

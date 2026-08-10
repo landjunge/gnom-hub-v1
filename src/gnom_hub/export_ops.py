@@ -113,6 +113,7 @@ class ExportOpsMixin:
 
     def _remember_execute_export(self) -> None:
         """Pin last successful Execute so export survives reset / new chat."""
+        from copy import deepcopy
         from datetime import datetime, timezone
 
         st = self.pipeline.state
@@ -120,16 +121,19 @@ class ExportOpsMixin:
             return
         if not (st.worker_outputs or st.brainstorm_notes):
             return
+        # Deep-copy lists so later pipeline mutation cannot race the pin
+        # (STABILITY: concurrent hub traffic can race export).
         self._last_execute_export = {
             "stage": st.stage.value,
             "user_text": st.user_text or "",
             "brainstorm_notes": st.brainstorm_notes or "",
-            "distilled_requirements": list(st.distilled_requirements or []),
+            "distilled_requirements": deepcopy(list(st.distilled_requirements or [])),
             "flex_notes": st.flex_notes or "",
             "quality_notes": st.quality_notes or "",
-            "worker_outputs": list(st.worker_outputs or []),
-            "tool_log": list(getattr(st, "tool_log", None) or [])[-40:],
+            "worker_outputs": deepcopy(list(st.worker_outputs or [])),
+            "tool_log": deepcopy(list(getattr(st, "tool_log", None) or [])[-40:]),
             "resolved_plan_mode": getattr(st, "resolved_plan_mode", "") or "",
+            "plan_html_score": getattr(st, "plan_html_score", None),
             "saved_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         }
 
@@ -151,6 +155,7 @@ class ExportOpsMixin:
                 "worker_outputs": list(st.worker_outputs or []),
                 "tool_log": list(getattr(st, "tool_log", None) or [])[-40:],
                 "resolved_plan_mode": getattr(st, "resolved_plan_mode", "") or "",
+                "plan_html_score": getattr(st, "plan_html_score", None),
                 "source": "live",
             }
         elif isinstance(pinned, dict) and (
@@ -168,14 +173,19 @@ class ExportOpsMixin:
                 "quality_notes": st.quality_notes or "",
                 "worker_outputs": list(st.worker_outputs or []),
                 "tool_log": list(getattr(st, "tool_log", None) or [])[-40:],
+                "resolved_plan_mode": getattr(st, "resolved_plan_mode", "") or "",
+                "plan_html_score": getattr(st, "plan_html_score", None),
                 "source": "empty",
             }
+        score = src.get("plan_html_score")
+        score_s = "" if score is None else str(score)
         parts = [
             "# Gnom-Hub export",
             f"stage={src.get('stage')}",
             f"user={src.get('user_text')}",
             f"source={src.get('source')}",
             f"plan_mode={src.get('resolved_plan_mode') or ''}",
+            f"html_score={score_s}",
             "",
             "## Brainstorm",
             str(src.get("brainstorm_notes") or "(none)"),
