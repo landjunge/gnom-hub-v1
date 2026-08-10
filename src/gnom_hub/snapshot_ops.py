@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from gnom_hub import __version__
 from gnom_hub.agents.models import FLEX_PRESETS
 
 
@@ -140,7 +141,7 @@ class SnapshotOpsMixin:
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
             },
-            "version": "3.7.1",
+            "version": __version__,
             "flex_presets": list(FLEX_PRESETS),
             "plan_mode": getattr(self, "plan_mode", "default") or "default",
             "team_presets": self.list_team_presets(),

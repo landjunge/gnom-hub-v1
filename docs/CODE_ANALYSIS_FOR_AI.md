@@ -6,7 +6,7 @@
 |-------|--------|
 | **Repo** | `gnom-hub-v1` (private local multi-agent hub) |
 | **Package** | `gnom_hub` under `src/` |
-| **Version** | **3.7.1** (`pyproject.toml`, `src/gnom_hub/__init__.py`) |
+| **Version** | **3.9.1** (`pyproject.toml`, `src/gnom_hub/__init__.py`) |
 | **HEAD (at write time)** | structural repair Phases A–G (hub extract + UI parts) |
 | **Python** | ≥3.10 |
 | **Default UI** | `http://127.0.0.1:8080/` |

@@ -64,6 +64,75 @@ class PluginLoader:
             self._load_one(child, manifest)
         return self.loaded
 
+    def scan_disk(self) -> list[dict[str, Any]]:
+        """
+        Inventory of plugins/ folders (drop-in discovery, no load side effects).
+
+        Status: loaded | disabled | error | no_manifest | empty.
+        Lets the desk show what is on disk vs what actually registered.
+        """
+        out: list[dict[str, Any]] = []
+        if not self.plugins_dir.is_dir():
+            return out
+        loaded_by_id = {str(p.get("id") or ""): p for p in self.loaded}
+        error_plugins = {str(e.get("plugin") or e.get("path") or "") for e in (self.errors or [])}
+        for child in sorted(self.plugins_dir.iterdir()):
+            if not child.is_dir() or child.name.startswith(("_", ".")):
+                continue
+            manifest = child / "plugin.json"
+            entry: dict[str, Any] = {
+                "folder": child.name,
+                "path": str(child),
+                "has_manifest": manifest.is_file(),
+            }
+            if not manifest.is_file():
+                entry["status"] = "no_manifest"
+                entry["id"] = child.name
+                out.append(entry)
+                continue
+            try:
+                meta = json.loads(manifest.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                entry["status"] = "error"
+                entry["id"] = child.name
+                entry["error"] = f"invalid plugin.json: {exc}"
+                out.append(entry)
+                continue
+            if not isinstance(meta, dict):
+                entry["status"] = "error"
+                entry["id"] = child.name
+                entry["error"] = "plugin.json must be an object"
+                out.append(entry)
+                continue
+            pid = str(meta.get("id") or child.name).strip() or child.name
+            entry["id"] = pid
+            entry["name"] = str(meta.get("name") or pid)
+            entry["version"] = str(meta.get("version") or "")
+            entry["description"] = str(meta.get("description") or "")[:200]
+            enabled = meta.get("enabled", True)
+            if isinstance(enabled, str):
+                enabled = enabled.strip().lower() not in ("0", "false", "no", "off")
+            entry["enabled"] = bool(enabled)
+            tools_raw = meta.get("tools") if isinstance(meta.get("tools"), list) else []
+            entry["tool_count_declared"] = len(tools_raw)
+            if pid in loaded_by_id:
+                entry["status"] = "loaded"
+                entry["tool_count"] = loaded_by_id[pid].get("tool_count") or len(
+                    loaded_by_id[pid].get("tools") or []
+                )
+            elif not entry["enabled"]:
+                entry["status"] = "disabled"
+            elif pid in error_plugins or child.name in error_plugins:
+                entry["status"] = "error"
+                for e in self.errors or []:
+                    if pid in str(e.get("plugin") or "") or child.name in str(e.get("path") or ""):
+                        entry["error"] = str(e.get("error") or "load failed")[:200]
+                        break
+            else:
+                entry["status"] = "not_loaded"
+            out.append(entry)
+        return out
+
     def reload(self, plugin_id: str) -> dict[str, Any]:
         """
         Re-read one plugin folder and re-register its tools (overwrite same plugin).

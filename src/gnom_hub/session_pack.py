@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from gnom_hub import __version__
 from gnom_hub.memory.atomic import atomic_write_text
 from gnom_hub.pipeline.models import PipelineStage, PipelineState
 
@@ -228,7 +229,7 @@ class SessionPackMixin:
         pack = {
             "format": "gnom-hub-session-pack",
             "format_version": 1,
-            "app_version": "3.7.1",
+            "app_version": __version__,
             "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
             "label": pack_label,
             "notes": (str(notes).strip()[:200] if notes else ""),
