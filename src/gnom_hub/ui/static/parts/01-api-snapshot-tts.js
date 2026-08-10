@@ -55,6 +55,7 @@
   }
 
   function applySnapshot(snap) {
+    lastSnapshot = snap || null;
     if (!snap) return;
     applyUiPackExtras(snap);
     if (snap.agents) applyAgentsFromServer(snap.agents);
@@ -138,7 +139,7 @@
     if (els.coldBadge && snap.cold) {
       els.coldBadge.textContent = "Cold: " + (snap.cold.count || 0);
     }
-    if (els.toolsBadge) {
+    if (els.toolsBadge || document.getElementById("tools-run-history")) {
       const calls = (p && p.tool_calls) || [];
       const n = calls.length;
       const names = calls
@@ -150,17 +151,22 @@
       names.forEach(function (nm) {
         if (uniq.indexOf(nm) < 0) uniq.push(nm);
       });
-      els.toolsBadge.textContent = n ? "Tools: " + n : "Tools: 0";
-      els.toolsBadge.classList.toggle("has-calls", n > 0);
-      els.toolsBadge.title =
-        n > 0
-          ? "This run: " +
-            uniq.join(", ") +
-            (n > uniq.length ? " (+)" : "") +
-            " · " +
-            n +
-            " call(s) · pipeline.tool_calls"
-          : "No tool calls this pipeline run (web_fetch / install_tool / memory_search)";
+      if (els.toolsBadge) {
+        els.toolsBadge.textContent = n ? "Tools: " + n : "Tools: 0";
+        els.toolsBadge.classList.toggle("has-calls", n > 0);
+        els.toolsBadge.title =
+          n > 0
+            ? "This run: " +
+              uniq.join(", ") +
+              (n > uniq.length ? " (+)" : "") +
+              " · " +
+              n +
+              " call(s) — click for history"
+            : "No tool calls this run — click for Tools modal";
+      }
+      if (typeof renderToolsRunHistory === "function") {
+        renderToolsRunHistory(calls);
+      }
       if (n > 0 && (p.stage === "done" || p.stage === "work")) {
         const tk = uniq.join(",") + "|" + n;
         if (tk !== lastToolsKey) {

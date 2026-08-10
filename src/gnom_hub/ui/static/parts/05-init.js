@@ -172,6 +172,15 @@
     if (els.btnSystem) els.btnSystem.addEventListener("click", openSystemModal);
     if (els.btnWorkspace) els.btnWorkspace.addEventListener("click", openWorkspaceModal);
     if (els.btnTools) els.btnTools.addEventListener("click", openToolsModal);
+    if (els.toolsBadge) {
+      els.toolsBadge.addEventListener("click", openToolsModal);
+      els.toolsBadge.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          openToolsModal();
+        }
+      });
+    }
     const cuInspectBtn = document.getElementById("cu-inspect");
     const cuClickBtn = document.getElementById("cu-click");
     const cuTypeBtn = document.getElementById("cu-type-btn");

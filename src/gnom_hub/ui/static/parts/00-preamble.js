@@ -129,6 +129,7 @@
   let lastAgentThoughts = {}; // reasoning streams for TTS (not Box text)
   let lastNudgeKey = ""; // avoid re-spamming Flex corrections in chat
   let lastToolsKey = ""; // avoid re-toasting tool_calls
+  let lastSnapshot = null; // latest hub snapshot (tools history etc.)
   let currentJobId = null;
   let lastWorkerOutputs = [];
   let jobTimerStart = null;

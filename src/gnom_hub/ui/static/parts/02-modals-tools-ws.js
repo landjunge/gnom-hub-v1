@@ -477,9 +477,67 @@
     if (els.toolsModal) els.toolsModal.hidden = true;
   }
 
+
+  function renderToolsRunHistory(calls) {
+    const ul = document.getElementById("tools-run-history");
+    if (!ul) return;
+    const list = calls || [];
+    ul.innerHTML = "";
+    if (!list.length) {
+      const li = document.createElement("li");
+      li.className = "muted";
+      li.textContent =
+        "(no tool calls yet — Execute with URL / memory / missing package)";
+      ul.appendChild(li);
+      return;
+    }
+    list.slice(0, 24).forEach(function (c, i) {
+      const li = document.createElement("li");
+      const ok = !c || c.ok !== false;
+      li.className = ok ? "tool-ok" : "tool-fail";
+      const name = (c && c.name) || "?";
+      const err = (c && c.error) || "";
+      const args = (c && c.args) || {};
+      const argBits = Object.keys(args)
+        .slice(0, 3)
+        .map(function (k) {
+          return k + "=" + String(args[k]).slice(0, 40);
+        });
+      const res = (c && c.result) || {};
+      let resBit = "";
+      if (res.url) resBit = String(res.url).slice(0, 48);
+      else if (res.package) resBit = String(res.package);
+      else if (res.hits != null) resBit = res.hits + " hits";
+      else if (res.text_len != null) resBit = res.text_len + " chars";
+      else if (res.message) resBit = String(res.message).slice(0, 48);
+      const meta = [ok ? "ok" : "fail"]
+        .concat(argBits)
+        .concat(resBit ? [resBit] : [])
+        .concat(err ? ["err:" + String(err).slice(0, 60)] : [])
+        .join(" · ");
+      li.innerHTML =
+        '<span class="tool-name">' +
+        (i + 1) +
+        ". " +
+        name +
+        '</span> <span class="tool-meta">' +
+        meta +
+        "</span>";
+      ul.appendChild(li);
+    });
+  }
+
   async function openToolsModal() {
     if (!els.toolsModal) return;
     els.toolsModal.hidden = false;
+    try {
+      const snap = typeof lastSnapshot !== 'undefined' ? lastSnapshot : null;
+      const calls =
+        snap && snap.pipeline && snap.pipeline.tool_calls
+          ? snap.pipeline.tool_calls
+          : [];
+      renderToolsRunHistory(calls);
+    } catch (e) {}
     await refreshToolsModal();
     await refreshComputerUseLine();
   }

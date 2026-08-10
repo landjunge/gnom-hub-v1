@@ -2507,3 +2507,11 @@ body.phase3-off .btn-archive {
   color: #ffa8a8;
   animation: pulse-card 1s ease-in-out infinite;
 }
+
+/* Pipeline tool-call history (Tools modal) */
+.tools-badge { cursor: pointer; }
+.tools-badge.has-calls { font-weight: 600; }
+.tools-run-history li.tool-ok { border-left: 3px solid #3a8f6e; padding-left: 6px; }
+.tools-run-history li.tool-fail { border-left: 3px solid #c45c5c; padding-left: 6px; }
+.tools-run-history li .tool-name { font-weight: 600; }
+.tools-run-history li .tool-meta { opacity: 0.75; font-size: 0.9em; }

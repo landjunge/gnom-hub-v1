@@ -277,6 +277,14 @@
 | Basic user E2E script (keyboard → landing page) | **done** |
 | docs/BASIC_USER_TEST.md + AGENTS.md memory | **done** |
 
+## V3.7.2
+
+| Item | Status |
+|------|--------|
+| Tools modal: this-run tool_call history | **done** |
+| Tools badge click → history | **done** |
+| Snapshot test for tool_calls UI contract | **done** |
+
 ## Post-V3.7 (optional)
 
 | Item | Notes |
