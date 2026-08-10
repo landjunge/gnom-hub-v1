@@ -37,11 +37,11 @@ flowchart TB
   end
 
   subgraph Hub["Gnom-Hub process"]
-    API["FastAPI\n/api/mcp/*\n/api/tools/call"]:::ui
-    MCP["mcp_protocol\nlist / call / jsonrpc"]:::core
+    API["FastAPI<br/>/api/mcp/*<br/>/api/tools/call"]:::ui
+    MCP["mcp_protocol<br/>list / call / jsonrpc"]:::core
     REG["ToolRegistry"]:::core
-    CORE["Core tools\nweb_fetch · memory_search · …"]:::core
-    PLG["Plugins\nplugin.json + main.py"]:::plugin
+    CORE["Core tools<br/>web_fetch · memory_search · …"]:::core
+    PLG["Plugins<br/>plugin.json + main.py"]:::plugin
     ERR["core.errors envelopes"]:::danger
   end
 

@@ -26,7 +26,7 @@ Blocks: **31**
 | `docs/LAYERS_FOR_AI.md` | 2 | 147 | `flowchart` | 0 | 0 |
 | `docs/LAYERS_FOR_AI.md` | 3 | 267 | `flowchart` | 0 | 0 |
 | `docs/LAYERS_FOR_AI.md` | 4 | 290 | `flowchart` | 0 | 0 |
-| `docs/MCP_ARCHITECTURE.md` | 1 | 27 | `flowchart` | 1 | 0 |
+| `docs/MCP_ARCHITECTURE.md` | 1 | 27 | `flowchart` | 0 | 0 |
 | `docs/MCP_ARCHITECTURE.md` | 2 | 98 | `sequenceDiagram` | 0 | 0 |
 | `docs/MERMAID.md` | 1 | 27 | `flowchart` | 0 | 0 |
 | `docs/MERMAID.md` | 2 | 38 | `flowchart` | 0 | 0 |
