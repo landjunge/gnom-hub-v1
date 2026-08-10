@@ -46,8 +46,8 @@ def test_warm_promote_write_then_read_vector(tmp_path: Path):
 
 
 def test_hub_memory_search_write_then_read(tmp_path: Path, monkeypatch):
-    import gnom_hub.config.paths as paths
     import gnom_hub.hub as hub_mod
+    from gnom_hub.config import paths
     from gnom_hub.hub import Hub
 
     monkeypatch.setattr(paths, "project_root", lambda: tmp_path)
