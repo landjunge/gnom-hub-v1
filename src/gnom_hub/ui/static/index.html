@@ -103,6 +103,51 @@
         <div id="box1-content" class="box1-overlay box-body box1-info">
           <div class="info-layer is-active" data-info-layer="live" id="box1-layer-live">
             <p class="box1-placeholder">Agent-Klick → Info hier (Box 1). Rahmenfarbe = Modul.</p>
+            <!-- Flex feedback lives in Box 1 (not right of chat) -->
+            <aside
+              id="flex-review"
+              class="flex-review box1-flex-review"
+              aria-label="Flex Feedback in Box 1"
+            >
+              <div class="flex-review-head">
+                <span class="flex-review-title" id="flex-review-title">Flex</span>
+                <span
+                  class="flex-review-badge"
+                  id="flex-review-badge"
+                  hidden
+                >Feedback</span>
+              </div>
+              <p class="flex-review-q" id="flex-review-q">
+                Nach einem Ergebnis fragt Flex hier nach Feedback.
+              </p>
+              <div
+                class="flex-review-btns"
+                id="flex-review-btns"
+                role="group"
+                aria-label="Flex Aktionen"
+              >
+                <!-- dynamic buttons after Execute done -->
+              </div>
+              <div class="flex-review-note-row" id="flex-review-note-row" hidden>
+                <input
+                  type="text"
+                  id="flex-review-note"
+                  class="flex-review-note"
+                  maxlength="200"
+                  placeholder="Flag/Notiz zum Button (z.B. dunkler, mehr DE)…"
+                  autocomplete="off"
+                />
+                <button
+                  type="button"
+                  id="flex-review-note-save"
+                  class="flex-review-note-save"
+                  title="Nur als Wish speichern"
+                >Merken</button>
+              </div>
+              <p class="flex-review-hint muted" id="flex-review-hint">
+                Box 1 = Flex lernt · Notiz + Button = Wunsch speichern
+              </p>
+            </aside>
             <div id="box1-tooltip" class="box1-tooltip" hidden>
               <h2 id="tip-title" class="tip-title"></h2>
               <p id="tip-role" class="tip-role"></p>
@@ -270,7 +315,7 @@
       <!-- Center chat -->
       <section
         id="chat"
-        class="chat-mod-chat chat flex w-1/3 min-w-0 flex-col overflow-hidden bg-gnom-panel"
+        class="chat-mod-chat chat flex min-w-0 flex-1 flex-col overflow-hidden bg-gnom-panel"
         data-tooltip-id="chat"
         aria-label="Chat layer"
       >
@@ -339,51 +384,6 @@
         </p>
       </section>
 
-      <!-- Right Flex review -->
-      <aside
-        id="flex-review"
-        class="chat-mod-platz chat-mod-platz-r flex-review flex w-1/3 min-w-0 flex-col items-stretch justify-start gap-2 overflow-auto border-l border-gnom-border bg-gnom-panel p-2.5"
-        aria-label="Flex Feedback rechts neben Chat"
-      >
-        <div class="flex-review-head flex items-center justify-between gap-2">
-          <span class="flex-review-title text-[13px] font-semibold text-gnom-flex" id="flex-review-title">Flex</span>
-          <span
-            class="flex-review-badge rounded-full bg-violet-500/25 px-1.5 py-0.5 text-2xs uppercase tracking-wide text-gnom-text"
-            id="flex-review-badge"
-            hidden
-          >Feedback</span>
-        </div>
-        <p class="flex-review-q m-0 whitespace-pre-wrap text-xs leading-snug text-gnom-text" id="flex-review-q">
-          Nach einem Ergebnis fragt Flex hier nach Feedback.
-        </p>
-        <div
-          class="flex-review-btns flex flex-wrap gap-1.5"
-          id="flex-review-btns"
-          role="group"
-          aria-label="Flex Aktionen"
-        >
-          <!-- dynamic buttons after Execute done -->
-        </div>
-        <div class="flex-review-note-row flex items-center gap-1.5" id="flex-review-note-row" hidden>
-          <input
-            type="text"
-            id="flex-review-note"
-            class="flex-review-note h-8 min-w-0 flex-1 rounded-md border border-gnom-border bg-gnom-card px-2 text-xs text-gnom-text placeholder:text-gnom-muted focus:border-gnom-flex focus:outline-none focus:ring-1 focus:ring-gnom-flex/40"
-            maxlength="200"
-            placeholder="Flag/Notiz zum Button (z.B. dunkler, mehr DE)…"
-            autocomplete="off"
-          />
-          <button
-            type="button"
-            id="flex-review-note-save"
-            class="flex-review-note-save h-8 shrink-0 rounded-md border border-gnom-border bg-gnom-card px-2.5 text-[11px] text-gnom-text transition hover:border-gnom-flex hover:text-gnom-flex"
-            title="Nur als Wish speichern"
-          >Merken</button>
-        </div>
-        <p class="flex-review-hint muted m-0 text-[11px] text-gnom-muted" id="flex-review-hint">
-          Rechts = Flex lernt · Notiz + Button = Wunsch speichern
-        </p>
-      </aside>
     </section>
   </div>
 

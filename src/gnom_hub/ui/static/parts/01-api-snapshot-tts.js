@@ -922,7 +922,7 @@
   }
 
   /**
-   * Flex panel in right Platzhalter (chat-mod-platz-r).
+   * Flex panel in Box 1 (placeholder area stays).
    * After done: quality feedback + learn / re-brainstorm / re-build.
    */
   let _lastFlexReviewKey = "";
@@ -941,6 +941,22 @@
     root.classList.toggle("is-active", active);
     root.classList.toggle("ring-1", active);
     root.classList.toggle("ring-gnom-flex/40", active);
+    // Ensure Box1 live layer is visible when Flex wants feedback
+    if (active) {
+      try {
+        const live = document.getElementById("box1-layer-live");
+        if (live && typeof showInfoLayer === "function") {
+          showInfoLayer("live");
+        } else if (live) {
+          document.querySelectorAll("#box1-content .info-layer").forEach(function (l) {
+            l.hidden = l !== live;
+            l.classList.toggle("is-active", l === live);
+          });
+        }
+      } catch (_e) {
+        /* ignore */
+      }
+    }
     if (titleEl) titleEl.textContent = p.title || "Flex";
     if (badgeEl) {
       badgeEl.hidden = !active;
@@ -952,7 +968,7 @@
     if (qEl) qEl.textContent = qText;
     if (hintEl) {
       hintEl.textContent =
-        p.hint || "Rechts = Flex lernt · Notiz + Button = Wunsch";
+        p.hint || "Box 1 = Flex lernt · Notiz + Button = Wunsch";
     }
     const noteRow = document.getElementById("flex-review-note-row");
     if (noteRow) noteRow.hidden = !active;

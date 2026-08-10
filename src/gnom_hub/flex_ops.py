@@ -10,7 +10,7 @@ class FlexOpsMixin:
 
     def flex_review_panel(self) -> dict[str, Any]:
         """
-        Content for the right Platzhalter next to chat.
+        Content for Flex feedback panel in Box 1.
 
         Active after stage=done with worker output — Flex asks quality + next steps.
         """
@@ -26,7 +26,7 @@ class FlexOpsMixin:
                 "title": "Flex",
                 "question": "Nach einem Ergebnis fragt Flex hier nach Feedback.",
                 "buttons": [],
-                "hint": "Platzhalter rechts = Flex lernt & steuert",
+                "hint": "Box 1 = Flex lernt & steuert",
             }
 
         qnotes = (st.quality_notes or "").strip()

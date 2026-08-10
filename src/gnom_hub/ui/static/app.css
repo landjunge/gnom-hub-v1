@@ -1660,7 +1660,7 @@ body.worker-fs-open {
   height: 100%;
 }
 
-/* Chat nimmt den linken Platz (ex-Platzhalter + ex-Chat) = 2/3 */
+/* Chat fills remaining width after left Platzhalter (Flex is in Box 1) */
 .chat-mod-chat {
   flex: 1 1 auto;
   width: auto;
@@ -1668,15 +1668,7 @@ body.worker-fs-open {
   max-width: none;
 }
 
-/* Flex-Feedback = 1/3 rechts (unter Box 3) */
-.chat-mod-platz-r {
-  flex: 0 0 calc(100% / 3);
-  width: calc(100% / 3);
-  min-width: 0;
-  max-width: none;
-}
-
-/* Flex feedback panel — no colored frame */
+/* Flex feedback panel — in Box 1 under placeholder */
 .flex-review {
   display: flex;
   flex-direction: column;
@@ -1686,13 +1678,19 @@ body.worker-fs-open {
   padding: 10px;
   overflow: auto;
   min-height: 0;
-  background: var(--bg-panel);
-  border: 0;
-  border-radius: 0;
+  background: color-mix(in srgb, var(--bg-panel, #14161a) 92%, #a78bfa);
+  border: 1px solid color-mix(in srgb, var(--flex, #a78bfa) 35%, var(--border, #333));
+  border-radius: 10px;
+  margin: 8px 0 10px;
+}
+
+.flex-review.box1-flex-review {
+  max-height: min(48vh, 360px);
 }
 
 .flex-review.is-active {
-  box-shadow: none;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--flex, #a78bfa) 45%, transparent);
+  border-color: color-mix(in srgb, var(--flex, #a78bfa) 55%, var(--border, #333));
 }
 
 .flex-review-head {
@@ -3111,4 +3109,15 @@ a:focus-visible {
 .boxes.pages-expanded .box-2,
 .boxes.pages-expanded .box-3 {
   min-height: 280px;
+}
+
+/* Box1 live: placeholder stays, Flex panel below */
+#box1-layer-live {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+}
+#box1-layer-live .box1-placeholder {
+  flex: 0 0 auto;
 }
