@@ -61,3 +61,7 @@ Alles darüber hinaus → `PRE_PLAN.md` / Roadmap, nicht blockierend.
 ---
 
 **Ende V1 Scope — v1.0.0 complete**
+
+## Runtime constraint
+
+**No Docker.** Gnom-Hub V1 is a local Python process (venv + FastAPI + static SPA). Do not add Dockerfile/compose for the default path.

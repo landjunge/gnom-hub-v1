@@ -500,6 +500,7 @@ HTML: complete `</html>`, real interaction, structure-before-CSS. Soft retries (
 - Not a second workflow engine (no Ruffus/Airflow in the hot path)
 - Not multiplayer / unattended full autonomy
 - Not a cloud lock-in: keys in `User/Key.txt`, data under `data/`
+- **Not Docker / Compose / K8s** — run with `./scripts/start.sh` and a local `.venv` only
 
 ## Key source paths
 

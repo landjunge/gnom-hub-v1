@@ -182,3 +182,7 @@ Canonical real-user regression — **Playwright on UI + Gnom Tools**:
 **Checklist:** [`docs/STABILITY.md`](docs/STABILITY.md)
 
 Before calling work “done” on chat/LLM/pipeline: `quality_check.sh` + when relevant `user_landing_e2e.py`.
+
+## No Docker
+
+Do **not** add `Dockerfile`, Compose, or container-based runbooks. Runtime is local: `.venv` + `./scripts/start.sh` + CI on `ubuntu-latest` with pip/venv caches only.

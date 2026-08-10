@@ -239,6 +239,7 @@ CI uses **ephemeral `.venv` + Actions cache**. Locally keep a long-lived `.venv`
 | Commit `.venv` or wheels | Repo bloat, platform skew |
 | `pip install` without pins in CI lint | Random ruff rule drift |
 | Cache Playwright browsers in default PR CI | Minutes of download for unused extra |
+| Docker image as dev/runtime | **Out of scope** — no Dockerfile; use `.venv` + scripts |
 
 ---
 

@@ -39,14 +39,14 @@ Exploration stays cheap and reversible. Workers (cost, files, side effects) star
 | **Brainstorm → Execute** | Send = dialogue only; workers after **Execute** |
 | **Visible desk** | 8 agent cards · 3 boxes · who works where |
 | **One HTML file** | Landing tasks → one worker, one complete page |
-| **Local & portable** | `User/Key.txt` · USB-friendly `data/` · no cloud lock-in |
+| **Local & portable** | `User/Key.txt` · USB-friendly `data/` · **no Docker** · no cloud lock-in |
 | **Honest auth** | Placeholders (`sk-your-…`) ≠ ready; workers say **FEHLER**, not fake stubs |
 | **Safe computer-use** | Mouse/keyboard/shell dry-run until **God-Mode** |
 | **Visible tools** | Registry · plugins · prefetch · **Tools** badge · light trace |
 | **Flex** | Standing wishes as absolute orders · inject + nudge workers |
 
 **For:** desktop multi-agent control, HTML deliverables with preview, cost/key/cancel ops.  
-**Not for:** unattended full autonomy, LangGraph drop-in, silent PC control on every message.
+**Not for:** Docker/K8s deploys, unattended full autonomy, LangGraph drop-in, silent PC control on every message.
 
 ### Screenshots
 
@@ -63,6 +63,7 @@ Exploration stays cheap and reversible. Workers (cost, files, side effects) star
 ## Quick start
 
 ```bash
+# No Docker — venv + local FastAPI only
 cd gnom-hub-v1
 ./scripts/install.sh && source .venv/bin/activate
 ./scripts/start.sh

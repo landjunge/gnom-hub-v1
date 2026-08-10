@@ -39,14 +39,14 @@ Exploration bleibt günstig und umkehrbar. Worker (Kosten, Dateien, Nebenwirkung
 | **Brainstorm → Execute** | Send = nur Dialog; Worker erst nach **Execute** |
 | **Sichtbarer Tisch** | 8 Agenten-Karten · 3 Boxen · wer wo arbeitet |
 | **Eine HTML-Datei** | Landing → ein Worker, eine komplette Seite |
-| **Lokal & portabel** | `User/Key.txt` · USB-taugliches `data/` · kein Cloud-Zwang |
+| **Lokal & portabel** | `User/Key.txt` · USB-taugliches `data/` · **kein Docker** · kein Cloud-Zwang |
 | **Ehrliche Auth** | Platzhalter (`sk-your-…`) ≠ ready; Worker sagen **FEHLER**, keine Fake-Stubs |
 | **Sicheres Computer-Use** | Maus/Tastatur/Shell dry-run bis **God-Mode** |
 | **Sichtbare Tools** | Registry · Plugins · Prefetch · Badge **Tools** · Light-Trace |
 | **Flex** | Dauerwünsche als absolute Aufträge · Inject + Nudge für Worker |
 
 **Für:** Desktop-Multi-Agenten-Steuerung, HTML-Ergebnisse mit Preview, Kosten/Key/Cancel-Ops.  
-**Nicht für:** unattended Vollautonomie, LangGraph-Drop-in, stille PC-Steuerung bei jeder Nachricht.
+**Nicht für:** Docker/K8s-Deploys, unattended Vollautonomie, LangGraph-Drop-in, stille PC-Steuerung bei jeder Nachricht.
 
 ### Screenshots
 
@@ -63,6 +63,7 @@ Exploration bleibt günstig und umkehrbar. Worker (Kosten, Dateien, Nebenwirkung
 ## Schnellstart
 
 ```bash
+# Kein Docker — nur venv + lokales FastAPI
 cd gnom-hub-v1
 ./scripts/install.sh && source .venv/bin/activate
 ./scripts/start.sh
