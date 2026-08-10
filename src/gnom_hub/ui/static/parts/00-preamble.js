@@ -322,6 +322,34 @@
       paintBoxesModule(agentId);
       fillBox1AgentInfo(agentId);
     }
+    // Worker card click → show that worker's page in Box 3 stage
+    try {
+      if (
+        /^worker[1-4]$/.test(agentId) &&
+        typeof lastWorkerOutputs !== "undefined" &&
+        lastWorkerOutputs &&
+        lastWorkerOutputs.length &&
+        typeof focusBox3WorkerResult === "function"
+      ) {
+        let idx = -1;
+        for (let i = 0; i < lastWorkerOutputs.length; i++) {
+          const w = String(
+            (lastWorkerOutputs[i] && lastWorkerOutputs[i].worker) || ""
+          ).toLowerCase();
+          if (w === agentId || w.indexOf(agentId) >= 0) {
+            idx = i;
+            break;
+          }
+        }
+        if (idx < 0) {
+          const n = parseInt(agentId.replace("worker", ""), 10) - 1;
+          if (n >= 0 && n < lastWorkerOutputs.length) idx = n;
+        }
+        if (idx >= 0) focusBox3WorkerResult(idx);
+      }
+    } catch (_e) {
+      /* ignore */
+    }
   }
 
   /**

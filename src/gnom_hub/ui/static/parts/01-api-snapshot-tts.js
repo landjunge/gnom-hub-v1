@@ -388,9 +388,44 @@
     renderBox3Workers(p);
 
     if (p.pending_question && p.pending_question.text) {
-      showClarify(p.pending_question.text);
+      const qOpts =
+        Array.isArray(p.pending_question.options) &&
+        p.pending_question.options.length
+          ? p.pending_question.options
+          : null;
+      showClarify(p.pending_question.text, qOpts);
     } else if (p.stage !== "clarify") {
       hideClarify();
+      // Brainstorm / Flex options → Box1 pick cards
+      if (
+        typeof parseChoiceList === "function" &&
+        typeof renderChoiceCards === "function" &&
+        (p.stage === "brainstorm" ||
+          p.stage === "idle" ||
+          p.stage === "done" ||
+          !p.stage)
+      ) {
+        let picks = parseChoiceList(p.brainstorm_notes || "");
+        if (!picks.length && Array.isArray(p.brainstorm_turns)) {
+          for (let ti = p.brainstorm_turns.length - 1; ti >= 0; ti--) {
+            const turn = p.brainstorm_turns[ti];
+            if (turn && (turn.role === "assistant" || turn.role === "brainstorm")) {
+              picks = parseChoiceList(turn.text || "");
+              if (picks.length) break;
+            }
+          }
+        }
+        if (!picks.length && p.flex_notes) {
+          picks = parseChoiceList(p.flex_notes);
+        }
+        if (picks.length) {
+          renderChoiceCards(picks, "suggest", "Agent-Vorschläge — antippen");
+          if (typeof bindChoiceCardChrome === "function") bindChoiceCardChrome();
+        } else if (typeof hideChoiceCards === "function") {
+          const grid = document.getElementById("box1-choice-grid");
+          if (grid && grid.querySelector(".mode-suggest")) hideChoiceCards();
+        }
+      }
     }
 
     if (typeof renderDeferredClarify === "function") {

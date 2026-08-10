@@ -128,15 +128,195 @@
     });
   }
 
-  function showClarify(question) {
+  /**
+   * Parse numbered / lettered / bullet options from agent text into pick cards.
+   * Supports: "1. …", "1) …", "A) …", "- …", "• …" (min 2, max 8).
+   */
+  function parseChoiceList(text) {
+    const s = String(text || "");
+    if (!s.trim()) return [];
+    const lines = s.split(/\r?\n/);
+    const found = [];
+    const re =
+      /^\s*(?:(?:\d{1,2})[.)]\s+|([A-Da-d])[.)]\s+|[-*•]\s+)(.+\S)\s*$/;
+    lines.forEach(function (line) {
+      const m = line.match(re);
+      if (!m) return;
+      const body = (m[2] || "").trim();
+      if (body.length < 2 || body.length > 220) return;
+      if (/^#{1,3}\s/.test(body) || /^```/.test(body)) return;
+      found.push(body);
+    });
+    const uniq = [];
+    found.forEach(function (x) {
+      if (uniq.indexOf(x) < 0) uniq.push(x);
+    });
+    if (uniq.length < 2) return [];
+    return uniq.slice(0, 8);
+  }
+
+  function hideChoiceCards() {
+    const host = document.getElementById("box1-choice-cards");
+    const grid = document.getElementById("box1-choice-grid");
+    if (host) host.hidden = true;
+    if (grid) grid.innerHTML = "";
+  }
+
+  /**
+   * Render interactive pick cards in Box 1.
+   * mode: "clarify" → onClarify; "suggest" → fill chat input.
+   */
+  function renderChoiceCards(cards, mode, title) {
+    const host = document.getElementById("box1-choice-cards");
+    const grid = document.getElementById("box1-choice-grid");
+    const titleEl = document.getElementById("box1-choice-title");
+    if (!host || !grid) return;
+    const list = Array.isArray(cards) ? cards : [];
+    if (!list.length) {
+      hideChoiceCards();
+      return;
+    }
+    const m = mode === "clarify" ? "clarify" : "suggest";
+    if (titleEl) {
+      titleEl.textContent =
+        title ||
+        (m === "clarify"
+          ? "Bitte wählen (Clarify)"
+          : "Vorschläge — antippen statt tippen");
+    }
+    grid.innerHTML = "";
+    list.forEach(function (c, i) {
+      let text = "";
+      let label = String.fromCharCode(65 + (i % 26));
+      let value = "";
+      if (typeof c === "string") {
+        text = c;
+        value = c;
+      } else if (c && typeof c === "object") {
+        text = String(c.text || c.label || c.value || "").trim();
+        value = String(c.value || c.text || c.label || "").trim();
+        if (c.label) label = String(c.label).slice(0, 12);
+      }
+      if (!text) return;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "box1-choice-card mode-" + m;
+      btn.setAttribute("role", "option");
+      btn.dataset.value = value;
+      btn.dataset.mode = m;
+      const lab = document.createElement("span");
+      lab.className = "choice-label";
+      lab.textContent = label;
+      const body = document.createElement("span");
+      body.className = "choice-text";
+      body.textContent = text;
+      const hint = document.createElement("span");
+      hint.className = "choice-hint";
+      hint.textContent =
+        m === "clarify" ? "Klick = Antwort senden" : "Klick = in Chat übernehmen";
+      btn.appendChild(lab);
+      btn.appendChild(body);
+      btn.appendChild(hint);
+      btn.addEventListener("click", function () {
+        grid.querySelectorAll(".box1-choice-card").forEach(function (el) {
+          el.classList.remove("is-picked");
+        });
+        btn.classList.add("is-picked");
+        onChoiceCardPick(value, text, m);
+      });
+      grid.appendChild(btn);
+    });
+    host.hidden = false;
+    try {
+      const live = document.getElementById("box1-layer-live");
+      if (live) {
+        document.querySelectorAll("#box1-content .info-layer").forEach(function (l) {
+          l.hidden = l !== live;
+          l.classList.toggle("is-active", l === live);
+        });
+      }
+    } catch (_e) {
+      /* ignore */
+    }
+  }
+
+  function onChoiceCardPick(value, text, mode) {
+    const v = String(value || text || "").trim();
+    if (!v) return;
+    if (mode === "clarify") {
+      if (typeof onClarify === "function") {
+        onClarify(v);
+      } else {
+        appendChat("you", "[clarify] " + v);
+        api("POST", "/api/clarify", { option: v })
+          .then(function (snap) {
+            if (typeof applySnapshot === "function") applySnapshot(snap);
+            hideChoiceCards();
+            hideClarify();
+          })
+          .catch(function (err) {
+            toast("Clarify failed: " + (err.message || err), "error");
+          });
+      }
+      return;
+    }
+    const input =
+      (els && els.chatInput) ||
+      document.getElementById("chat-input") ||
+      document.getElementById("msg");
+    if (input) {
+      input.value = v;
+      try {
+        input.focus();
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      } catch (_e) {
+        /* ignore */
+      }
+      toast("Übernommen — Enter zum Senden", "ok");
+    } else if (typeof appendChat === "function") {
+      appendChat("you", v);
+    }
+  }
+
+  function bindChoiceCardChrome() {
+    const clear = document.getElementById("box1-choice-clear");
+    if (clear && !clear._bound) {
+      clear._bound = true;
+      clear.addEventListener("click", function () {
+        hideChoiceCards();
+      });
+    }
+  }
+
+  function showClarify(question, options) {
     if (els.clarify) els.clarify.hidden = false;
     if (els.clarifyQ) els.clarifyQ.textContent = question || "Please choose:";
     if (els.clarify) els.clarify.dataset.tooltipId = "clarify";
+    const opts =
+      Array.isArray(options) && options.length
+        ? options
+        : ["Yes", "No", "Whatever", "Later"];
+    renderChoiceCards(
+      opts.map(function (o, i) {
+        return {
+          label: String.fromCharCode(65 + (i % 26)),
+          text: String(o),
+          value: String(o),
+        };
+      }),
+      "clarify",
+      "Clarify — eine Option wählen"
+    );
+    bindChoiceCardChrome();
   }
 
   function hideClarify() {
     if (els.clarify) els.clarify.hidden = true;
     if (els.clarifyQ) els.clarifyQ.textContent = "";
+    const grid = document.getElementById("box1-choice-grid");
+    if (grid && grid.querySelector(".mode-clarify")) {
+      hideChoiceCards();
+    }
   }
 
   let busyJobId = null; // job holding pipeline (may differ from currentJobId after 409)
@@ -2187,6 +2367,7 @@
       // Hide only after successful response (applySnapshot may keep it if still clarify)
       if (!(snap.pipeline && snap.pipeline.stage === "clarify")) {
         hideClarify();
+        if (typeof hideChoiceCards === "function") hideChoiceCards();
       }
       const low = String(answer || "").toLowerCase();
       const deferred =

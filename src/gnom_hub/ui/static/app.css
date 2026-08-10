@@ -2913,3 +2913,202 @@ a:focus-visible {
   outline: 1px solid color-mix(in srgb, #ef5350 40%, transparent);
   outline-offset: -1px;
 }
+
+/* Box1 interactive choice cards */
+.box1-choice-cards {
+  margin: 8px 0 10px;
+  padding: 8px 10px 10px;
+  border: 1px solid var(--border, #333);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg, #0d0f12) 88%, #1a2330);
+  max-height: min(42vh, 320px);
+  overflow: auto;
+}
+.box1-choice-cards[hidden] {
+  display: none !important;
+}
+.box1-choice-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.box1-choice-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted, #9aa3ad);
+}
+.box1-choice-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+@media (min-width: 420px) {
+  .box1-choice-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.box1-choice-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #333);
+  background: color-mix(in srgb, #141820 90%, var(--accent-hi, #7db7ff));
+  color: var(--text, #e8eaed);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, transform 0.08s;
+}
+.box1-choice-card:hover,
+.box1-choice-card:focus-visible {
+  border-color: var(--accent-hi, #7db7ff);
+  background: color-mix(in srgb, var(--accent-hi, #7db7ff) 18%, #141820);
+  outline: none;
+}
+.box1-choice-card:active {
+  transform: scale(0.98);
+}
+.box1-choice-card.is-picked {
+  border-color: #6bcf8e;
+  background: color-mix(in srgb, #6bcf8e 22%, #141820);
+}
+.box1-choice-card .choice-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent-hi, #7db7ff);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.box1-choice-card .choice-text {
+  font-size: 0.9rem;
+  line-height: 1.35;
+  color: var(--text, #e8eaed);
+}
+.box1-choice-card .choice-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted, #9aa3ad);
+}
+.box1-choice-card.mode-clarify .choice-label {
+  color: #f0c674;
+}
+.box1-choice-card.mode-suggest .choice-label {
+  color: #7db7ff;
+}
+
+/* Box2 real page stage */
+.box2-page-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 28;
+  display: none;
+  flex-direction: column;
+  min-height: 0;
+  background: #0b0c0e;
+}
+.box2-page-stage.is-open {
+  display: flex !important;
+}
+.box2-page-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px;
+  background: #14161a;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.box2-page-label {
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.box2-page-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #0b0c0e;
+}
+.box2-page-body iframe.box-page-frame,
+.box3-result-body iframe.box-page-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+  border: 0;
+  background: #111;
+  flex: 1 1 auto;
+}
+
+/* Box3 worker tabs + actions */
+.box3-worker-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 0 1 auto;
+  max-width: 42%;
+}
+.box3-worker-tabs[hidden] {
+  display: none !important;
+}
+.box3-worker-tab {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #1a1d22;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.box3-worker-tab:hover {
+  border-color: var(--accent-hi, #7db7ff);
+  color: var(--text);
+}
+.box3-worker-tab.is-active {
+  background: color-mix(in srgb, var(--accent-hi, #7db7ff) 22%, #1a1d22);
+  border-color: var(--accent-hi, #7db7ff);
+  color: var(--text);
+  font-weight: 600;
+}
+.box3-result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  flex: 0 0 auto;
+}
+.box3-result-label {
+  flex: 1 1 auto;
+  min-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Fullscreen anchored to boxes module */
+.worker-fs-overlay.in-boxes {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  border-radius: inherit;
+}
+.boxes {
+  position: relative;
+}
+.boxes.pages-expanded .box-2,
+.boxes.pages-expanded .box-3 {
+  min-height: 280px;
+}

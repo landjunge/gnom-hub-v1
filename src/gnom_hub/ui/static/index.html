@@ -109,6 +109,14 @@
               <div id="tip-how" class="tip-how tip-params"></div>
               <p id="tip-example" class="tip-example"></p>
             </div>
+            <!-- Interactive pick cards (clarify / brainstorm options) -->
+            <div id="box1-choice-cards" class="box1-choice-cards" hidden aria-label="Auswahlkarten">
+              <div class="box1-choice-head">
+                <span id="box1-choice-title" class="box1-choice-title">Auswahl</span>
+                <button type="button" id="box1-choice-clear" class="btn-ws-sm" title="Karten ausblenden">×</button>
+              </div>
+              <div id="box1-choice-grid" class="box1-choice-grid" role="listbox"></div>
+            </div>
             <div id="cold-browser" class="cold-browser" hidden>
               <h2 class="tip-title">COLD archives</h2>
               <ul id="cold-list" class="cold-list"></ul>
@@ -156,6 +164,14 @@
       <div class="boxes-right">
       <div id="box2" class="box box-2" data-tooltip-id="box2" aria-label="Box 2">
         <div class="agent-layer-stack" data-box="box2" id="box2-layers"></div>
+        <!-- Real HTML page in Box 2 (not a popup) -->
+        <div id="box2-page-stage" class="box2-page-stage" hidden>
+          <div class="box2-page-bar">
+            <span id="box2-page-label" class="box2-page-label">Seite</span>
+            <button type="button" id="box2-page-close" class="btn-ws-sm" title="Seite schließen · Brainstorm wieder zeigen">×</button>
+          </div>
+          <div id="box2-page-body" class="box2-page-body"></div>
+        </div>
       </div>
 
       <div id="box3" class="box box-3" data-tooltip-id="box3" aria-label="Box 3">
@@ -168,8 +184,17 @@
         <!-- Always-on top: worker deliverable the user must see after Execute -->
         <div id="box3-result-stage" class="box3-result-stage" hidden>
           <div class="box3-result-bar">
+            <div id="box3-worker-tabs" class="box3-worker-tabs" hidden aria-label="Worker wählen"></div>
             <span id="box3-result-label" class="box3-result-label">Worker-Ergebnis</span>
-            <button type="button" id="box3-result-fs" class="btn-ws-sm" title="Vollbild">⛶</button>
+            <div class="box3-result-actions" role="toolbar" aria-label="Worker actions">
+              <button type="button" id="box3-btn-copy" class="btn-ws-sm" title="Ergebnis kopieren">Copy</button>
+              <button type="button" id="box3-btn-dl" class="btn-ws-sm" title="Herunterladen">↓</button>
+              <button type="button" id="box3-btn-open" class="btn-ws-sm" title="Seite in Box 2+3 (Shift = Browser-Tab)">↗</button>
+              <button type="button" id="box3-btn-keep" class="btn-ws-sm" title="HTML dauerhaft behalten">Keep</button>
+              <button type="button" id="box3-btn-temp" class="btn-ws-sm" title="Temp-Workspace">Temp</button>
+              <button type="button" id="box3-btn-perm" class="btn-ws-sm" title="Permanent-Workspace">Perm</button>
+              <button type="button" id="box3-result-fs" class="btn-ws-sm" title="Vollbild in den Boxen">⛶</button>
+            </div>
           </div>
           <div id="box3-tool-strip" class="box3-tool-strip" hidden></div>
           <div id="box3-dod-checklist" class="box3-dod-checklist" hidden></div>

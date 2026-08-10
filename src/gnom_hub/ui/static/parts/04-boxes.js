@@ -161,6 +161,270 @@
     renderDynamicContent(body, htmlOrText || "", { title: title || agentId });
   }
 
+  function paintHtmlPage(host, html, title) {
+    if (!host) return;
+    revokeBox3Blobs(host);
+    host.innerHTML = "";
+    host.classList.add("box-page-host");
+    const frame = document.createElement("iframe");
+    frame.className = "worker-preview-frame box-page-frame box3-live-frame";
+    frame.setAttribute("title", title || "Seite");
+    frame.setAttribute(
+      "sandbox",
+      "allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
+    );
+    const docHtml = wrapHtmlDocument(html);
+    try {
+      const blob = new Blob([docHtml], { type: "text/html;charset=utf-8" });
+      frame.src = URL.createObjectURL(blob);
+      frame._blobUrl = frame.src;
+    } catch (_e) {
+      frame.srcdoc = docHtml;
+    }
+    host.appendChild(frame);
+  }
+
+  function closeBox2Page() {
+    const stage = document.getElementById("box2-page-stage");
+    const body = document.getElementById("box2-page-body");
+    if (body) {
+      revokeBox3Blobs(body);
+      body.innerHTML = "";
+    }
+    if (stage) {
+      stage.hidden = true;
+      stage.classList.remove("is-open");
+    }
+    const boxes = document.querySelector(".boxes");
+    if (boxes) boxes.classList.remove("pages-expanded");
+  }
+
+  function showBox2Page(out, raw, html) {
+    const stage = document.getElementById("box2-page-stage");
+    const body = document.getElementById("box2-page-body");
+    const label = document.getElementById("box2-page-label");
+    if (!stage || !body) {
+      if (html) setBox2(String(raw || html));
+      return;
+    }
+    const name = (out && (out.name || out.worker)) || "Seite";
+    if (label) {
+      label.textContent =
+        name + " · Seite in Box 2" + (html ? " · HTML" : " · Text");
+    }
+    if (html) {
+      paintHtmlPage(body, html, name);
+    } else {
+      body.innerHTML = "";
+      const pre = document.createElement("pre");
+      pre.className = "result-block box3-result-pre";
+      pre.textContent = String(raw || "").slice(0, 30000);
+      body.appendChild(pre);
+    }
+    stage.hidden = false;
+    stage.removeAttribute("hidden");
+    stage.classList.add("is-open");
+    const boxes = document.querySelector(".boxes");
+    if (boxes) boxes.classList.add("pages-expanded");
+    const closeBtn = document.getElementById("box2-page-close");
+    if (closeBtn && !closeBtn._bound) {
+      closeBtn._bound = true;
+      closeBtn.addEventListener("click", closeBox2Page);
+    }
+  }
+
+  /** Focused worker → Box3; second HTML worker → Box2 page. */
+  function syncWorkerPagesToBoxes() {
+    const outs = lastWorkerOutputs || [];
+    if (!outs.length) {
+      closeBox2Page();
+      return;
+    }
+    const focusIdx =
+      typeof box3FocusIdx === "number" && box3FocusIdx >= 0 ? box3FocusIdx : 0;
+    const htmlIdx = [];
+    outs.forEach(function (o, i) {
+      if (extractHtml(String((o && o.result) || ""))) htmlIdx.push(i);
+    });
+    let side = -1;
+    for (let i = 0; i < htmlIdx.length; i++) {
+      if (htmlIdx[i] !== focusIdx) {
+        side = htmlIdx[i];
+        break;
+      }
+    }
+    if (side >= 0) {
+      const o = outs[side];
+      const raw = String((o && o.result) || "");
+      showBox2Page(o, raw, extractHtml(raw));
+    } else {
+      const stage = document.getElementById("box2-page-stage");
+      if (stage && stage.classList.contains("is-open") && htmlIdx.length === 1) {
+        const o = outs[htmlIdx[0]];
+        const raw = String((o && o.result) || "");
+        showBox2Page(o, raw, extractHtml(raw));
+      } else if (htmlIdx.length === 0) {
+        closeBox2Page();
+      }
+    }
+  }
+
+  function currentBox3Worker() {
+    const outs = lastWorkerOutputs || [];
+    const idx =
+      typeof box3FocusIdx === "number" &&
+      box3FocusIdx >= 0 &&
+      box3FocusIdx < outs.length
+        ? box3FocusIdx
+        : 0;
+    return { out: outs[idx] || null, idx: idx };
+  }
+
+  function renderBox3WorkerTabs() {
+    const tabs = document.getElementById("box3-worker-tabs");
+    if (!tabs) return;
+    const outs = lastWorkerOutputs || [];
+    tabs.innerHTML = "";
+    if (outs.length < 2) {
+      tabs.hidden = true;
+      return;
+    }
+    tabs.hidden = false;
+    outs.forEach(function (o, i) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className =
+        "box3-worker-tab" + (i === box3FocusIdx ? " is-active" : "");
+      btn.textContent = (o && (o.name || o.worker)) || "W" + (i + 1);
+      btn.title = "Worker " + (i + 1) + " anzeigen";
+      btn.addEventListener("click", function () {
+        focusBox3WorkerResult(i);
+      });
+      tabs.appendChild(btn);
+    });
+  }
+
+  function focusBox3WorkerResult(idx) {
+    const outs = lastWorkerOutputs || [];
+    if (!outs.length) return;
+    const next = Math.max(0, Math.min(outs.length - 1, idx | 0));
+    box3FocusIdx = next;
+    const out = outs[next];
+    lastBox3StageKey = "";
+    showBox3ResultStage(out, next);
+    renderBox3WorkerTabs();
+    try {
+      syncWorkerPagesToBoxes();
+    } catch (_e) {
+      /* ignore */
+    }
+    try {
+      const wid = String((out && out.worker) || "").toLowerCase();
+      let agentId = null;
+      if (/worker\s*1|w1/.test(wid) || wid === "worker1") agentId = "worker1";
+      else if (/worker\s*2|w2/.test(wid) || wid === "worker2") agentId = "worker2";
+      else if (/worker\s*3|w3/.test(wid) || wid === "worker3") agentId = "worker3";
+      else if (/worker\s*4|w4/.test(wid) || wid === "worker4") agentId = "worker4";
+      else agentId = "worker" + Math.min(next + 1, 4);
+      if (agentId) highlightWorkerResult(agentId);
+    } catch (_e) {
+      /* ignore */
+    }
+  }
+
+  function bindBox3ResultActions() {
+    function withCurrent(fn) {
+      return function (ev) {
+        const cur = currentBox3Worker();
+        if (!cur.out) {
+          toast("Kein Worker-Ergebnis", "info");
+          return;
+        }
+        const raw = String(cur.out.result || "");
+        const html = extractHtml(raw) || "";
+        fn(cur.out, cur.idx, raw, html, ev);
+      };
+    }
+    const copy = document.getElementById("box3-btn-copy");
+    if (copy && !copy._bound) {
+      copy._bound = true;
+      copy.addEventListener(
+        "click",
+        withCurrent(function (out, idx, raw) {
+          const text = raw || "";
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard
+              .writeText(text)
+              .then(function () {
+                toast("Kopiert", "ok");
+              })
+              .catch(function () {
+                toast("Clipboard failed", "error");
+              });
+          } else {
+            toast("Clipboard not available", "error");
+          }
+        })
+      );
+    }
+    const dl = document.getElementById("box3-btn-dl");
+    if (dl && !dl._bound) {
+      dl._bound = true;
+      dl.addEventListener(
+        "click",
+        withCurrent(function (out, idx, raw, html) {
+          downloadWorkerResult(out, raw, html);
+        })
+      );
+    }
+    const open = document.getElementById("box3-btn-open");
+    if (open && !open._bound) {
+      open._bound = true;
+      open.addEventListener(
+        "click",
+        withCurrent(function (out, idx, raw, html, ev) {
+          if (!html) {
+            toast("Kein HTML — lade Text herunter", "info");
+            downloadWorkerResult(out, raw, html);
+            return;
+          }
+          const forceTab = !!(ev && ev.shiftKey);
+          openWorkerInTab(html, forceTab);
+        })
+      );
+    }
+    const keep = document.getElementById("box3-btn-keep");
+    if (keep && !keep._bound) {
+      keep._bound = true;
+      keep.addEventListener(
+        "click",
+        withCurrent(function (out, idx) {
+          keepWorkerToPersonalWs(out, idx);
+        })
+      );
+    }
+    const temp = document.getElementById("box3-btn-temp");
+    if (temp && !temp._bound) {
+      temp._bound = true;
+      temp.addEventListener(
+        "click",
+        withCurrent(function (out, idx, raw, html) {
+          _saveWorkerToWorkspace(out, raw, html, "temp");
+        })
+      );
+    }
+    const perm = document.getElementById("box3-btn-perm");
+    if (perm && !perm._bound) {
+      perm._bound = true;
+      perm.addEventListener(
+        "click",
+        withCurrent(function (out, idx, raw, html) {
+          _saveWorkerToWorkspace(out, raw, html, "perm");
+        })
+      );
+    }
+  }
+
   /**
    * Extract real HTML documents for Preview iframes.
    * Strict on purpose: QA/a11y notes often mention tags (e.g. </html>) and must
@@ -694,6 +958,10 @@
 
   function renderBox3Workers(pipeline) {
     const outputs = normalizeWorkerOutputs(pipeline);
+    const prevFocusName =
+      lastWorkerOutputs && lastWorkerOutputs[box3FocusIdx]
+        ? lastWorkerOutputs[box3FocusIdx].worker
+        : null;
     lastWorkerOutputs = outputs;
     updateBox3Toolbar();
     if (pipeline) {
@@ -719,6 +987,7 @@
           null;
         renderDodChecklist(v);
       }
+      renderBox3WorkerTabs();
       return;
     }
 
@@ -781,18 +1050,44 @@
     const contentChanged = renderKey !== lastBox3RenderKey;
     lastBox3RenderKey = renderKey;
 
+    // Preserve focus across progressive worker arrivals
+    let focusIdx = 0;
+    if (contentChanged && prevFocusName) {
+      const keepIdx = outputs.findIndex(function (o) {
+        return o && o.worker === prevFocusName;
+      });
+      if (keepIdx !== -1) focusIdx = keepIdx;
+    } else if (!contentChanged && typeof box3FocusIdx === "number") {
+      focusIdx = Math.max(0, Math.min(outputs.length - 1, box3FocusIdx));
+    } else {
+      // first paint: prefer first HTML, else longest (best)
+      let pick = 0;
+      for (let i = 0; i < outputs.length; i++) {
+        if (extractHtml(String((outputs[i] && outputs[i].result) || ""))) {
+          pick = i;
+          break;
+        }
+      }
+      if (pick === 0 && best) {
+        const bi = outputs.indexOf(best);
+        if (bi >= 0) pick = bi;
+      }
+      focusIdx = pick;
+    }
+    box3FocusIdx = focusIdx;
+    const focused = outputs[focusIdx] || best;
+
     // PRIMARY: always-open result stage (what the user looks at)
-    const shown = showBox3ResultStage(best, 0);
+    const shown = showBox3ResultStage(focused, focusIdx);
     if (!shown) {
-      // Fallback text if renderDynamicContent failed somehow
       const body = document.getElementById("box3-result-body");
       const stage = document.getElementById("box3-result-stage");
-      if (body && stage && best) {
+      if (body && stage && focused) {
         revokeBox3Blobs(body);
         body.innerHTML = "";
         const pre = document.createElement("pre");
         pre.className = "result-block box3-result-pre";
-        pre.textContent = String(best.result || "").slice(0, 20000);
+        pre.textContent = String(focused.result || "").slice(0, 20000);
         body.appendChild(pre);
         stage.hidden = false;
         stage.removeAttribute("hidden");
@@ -800,14 +1095,27 @@
       }
     }
 
-    /* Box3-only highlight — never activateAgentLayer(worker): that hid Box2 brainstorm */
+    renderBox3WorkerTabs();
+    bindBox3ResultActions();
     try {
-      highlightWorkerResult(firstAgentId);
+      syncWorkerPagesToBoxes();
     } catch (_e) {
       /* ignore */
     }
 
-    box3FocusIdx = 0;
+    /* Box3-only highlight — never activateAgentLayer(worker): that hid Box2 brainstorm */
+    try {
+      const wid = String((focused && focused.worker) || "").toLowerCase();
+      let agentId = firstAgentId;
+      if (/worker\s*1|w1/.test(wid) || wid === "worker1") agentId = "worker1";
+      else if (/worker\s*2|w2/.test(wid) || wid === "worker2") agentId = "worker2";
+      else if (/worker\s*3|w3/.test(wid) || wid === "worker3") agentId = "worker3";
+      else if (/worker\s*4|w4/.test(wid) || wid === "worker4") agentId = "worker4";
+      highlightWorkerResult(agentId);
+    } catch (_e) {
+      /* ignore */
+    }
+
     bindBoxLayerControls();
     if (contentChanged && typeof focusBox3 === "function") {
       try {
@@ -1166,20 +1474,39 @@
     toast("Downloaded " + a.download, "ok");
   }
 
-  function openWorkerInTab(html) {
+  function openWorkerInTab(html, forceExternal) {
+    // Default: real page in Box 2 + Box 3 (no popup). Shift / force → browser tab.
+    if (!forceExternal) {
+      const cur = currentBox3Worker();
+      const out = (cur && cur.out) || { name: "Seite" };
+      const raw = (cur && cur.out && cur.out.result) || html;
+      showBox2Page(out, raw, html);
+      if (cur && cur.out && typeof showBox3ResultStage === "function") {
+        lastBox3StageKey = "";
+        showBox3ResultStage(out, cur.idx);
+      }
+      try {
+        focusBox3();
+      } catch (_e) {
+        /* ignore */
+      }
+      toast("Seite in Box 2 + 3 — kein Popup", "ok");
+      return;
+    }
     const doc = wrapHtmlDocument(html);
     const blob = new Blob([doc], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const win = window.open(url, "_blank");
     if (!win) {
-      toast("Popup blocked — allow popups for new tab", "error");
+      toast("Popup blockiert — Seite bleibt in Box 2/3", "info");
       URL.revokeObjectURL(url);
+      openWorkerInTab(html, false);
       return;
     }
     setTimeout(function () {
       URL.revokeObjectURL(url);
     }, 60000);
-    toast("Opened in new tab", "ok");
+    toast("Im Browser-Tab geöffnet", "ok");
   }
 
   async function _saveWorkerToWorkspace(out, raw, html, zone) {
@@ -1218,9 +1545,9 @@
     closeWorkerFullscreen();
     const overlay = document.createElement("div");
     overlay.id = "worker-fs-overlay";
-    overlay.className = "worker-fs-overlay";
+    overlay.className = "worker-fs-overlay in-boxes";
     overlay.setAttribute("role", "dialog");
-    overlay.setAttribute("aria-label", "Fullscreen preview");
+    overlay.setAttribute("aria-label", "Seiten-Ansicht in Boxen");
 
     const bar = document.createElement("div");
     bar.className = "worker-fs-bar";
@@ -1273,8 +1600,21 @@
     overlay.addEventListener("click", function (ev) {
       if (ev.target === overlay) closeWorkerFullscreen();
     });
-    document.body.appendChild(overlay);
+    const boxes = document.querySelector(".boxes");
+    if (boxes) {
+      boxes.appendChild(overlay);
+      boxes.classList.add("pages-expanded");
+    } else {
+      document.body.appendChild(overlay);
+    }
     document.body.classList.add("worker-fs-open");
+    if (html) {
+      try {
+        showBox2Page(out, raw, html);
+      } catch (_e) {
+        /* ignore */
+      }
+    }
   }
 
   /** Scroll Box 3 into view and flash highlight after Execute. */

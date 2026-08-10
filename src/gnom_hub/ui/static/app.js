@@ -322,6 +322,34 @@
       paintBoxesModule(agentId);
       fillBox1AgentInfo(agentId);
     }
+    // Worker card click → show that worker's page in Box 3 stage
+    try {
+      if (
+        /^worker[1-4]$/.test(agentId) &&
+        typeof lastWorkerOutputs !== "undefined" &&
+        lastWorkerOutputs &&
+        lastWorkerOutputs.length &&
+        typeof focusBox3WorkerResult === "function"
+      ) {
+        let idx = -1;
+        for (let i = 0; i < lastWorkerOutputs.length; i++) {
+          const w = String(
+            (lastWorkerOutputs[i] && lastWorkerOutputs[i].worker) || ""
+          ).toLowerCase();
+          if (w === agentId || w.indexOf(agentId) >= 0) {
+            idx = i;
+            break;
+          }
+        }
+        if (idx < 0) {
+          const n = parseInt(agentId.replace("worker", ""), 10) - 1;
+          if (n >= 0 && n < lastWorkerOutputs.length) idx = n;
+        }
+        if (idx >= 0) focusBox3WorkerResult(idx);
+      }
+    } catch (_e) {
+      /* ignore */
+    }
   }
 
   /**
@@ -1065,9 +1093,44 @@
     renderBox3Workers(p);
 
     if (p.pending_question && p.pending_question.text) {
-      showClarify(p.pending_question.text);
+      const qOpts =
+        Array.isArray(p.pending_question.options) &&
+        p.pending_question.options.length
+          ? p.pending_question.options
+          : null;
+      showClarify(p.pending_question.text, qOpts);
     } else if (p.stage !== "clarify") {
       hideClarify();
+      // Brainstorm / Flex options → Box1 pick cards
+      if (
+        typeof parseChoiceList === "function" &&
+        typeof renderChoiceCards === "function" &&
+        (p.stage === "brainstorm" ||
+          p.stage === "idle" ||
+          p.stage === "done" ||
+          !p.stage)
+      ) {
+        let picks = parseChoiceList(p.brainstorm_notes || "");
+        if (!picks.length && Array.isArray(p.brainstorm_turns)) {
+          for (let ti = p.brainstorm_turns.length - 1; ti >= 0; ti--) {
+            const turn = p.brainstorm_turns[ti];
+            if (turn && (turn.role === "assistant" || turn.role === "brainstorm")) {
+              picks = parseChoiceList(turn.text || "");
+              if (picks.length) break;
+            }
+          }
+        }
+        if (!picks.length && p.flex_notes) {
+          picks = parseChoiceList(p.flex_notes);
+        }
+        if (picks.length) {
+          renderChoiceCards(picks, "suggest", "Agent-Vorschläge — antippen");
+          if (typeof bindChoiceCardChrome === "function") bindChoiceCardChrome();
+        } else if (typeof hideChoiceCards === "function") {
+          const grid = document.getElementById("box1-choice-grid");
+          if (grid && grid.querySelector(".mode-suggest")) hideChoiceCards();
+        }
+      }
     }
 
     if (typeof renderDeferredClarify === "function") {
@@ -3679,15 +3742,195 @@
     });
   }
 
-  function showClarify(question) {
+  /**
+   * Parse numbered / lettered / bullet options from agent text into pick cards.
+   * Supports: "1. …", "1) …", "A) …", "- …", "• …" (min 2, max 8).
+   */
+  function parseChoiceList(text) {
+    const s = String(text || "");
+    if (!s.trim()) return [];
+    const lines = s.split(/\r?\n/);
+    const found = [];
+    const re =
+      /^\s*(?:(?:\d{1,2})[.)]\s+|([A-Da-d])[.)]\s+|[-*•]\s+)(.+\S)\s*$/;
+    lines.forEach(function (line) {
+      const m = line.match(re);
+      if (!m) return;
+      const body = (m[2] || "").trim();
+      if (body.length < 2 || body.length > 220) return;
+      if (/^#{1,3}\s/.test(body) || /^```/.test(body)) return;
+      found.push(body);
+    });
+    const uniq = [];
+    found.forEach(function (x) {
+      if (uniq.indexOf(x) < 0) uniq.push(x);
+    });
+    if (uniq.length < 2) return [];
+    return uniq.slice(0, 8);
+  }
+
+  function hideChoiceCards() {
+    const host = document.getElementById("box1-choice-cards");
+    const grid = document.getElementById("box1-choice-grid");
+    if (host) host.hidden = true;
+    if (grid) grid.innerHTML = "";
+  }
+
+  /**
+   * Render interactive pick cards in Box 1.
+   * mode: "clarify" → onClarify; "suggest" → fill chat input.
+   */
+  function renderChoiceCards(cards, mode, title) {
+    const host = document.getElementById("box1-choice-cards");
+    const grid = document.getElementById("box1-choice-grid");
+    const titleEl = document.getElementById("box1-choice-title");
+    if (!host || !grid) return;
+    const list = Array.isArray(cards) ? cards : [];
+    if (!list.length) {
+      hideChoiceCards();
+      return;
+    }
+    const m = mode === "clarify" ? "clarify" : "suggest";
+    if (titleEl) {
+      titleEl.textContent =
+        title ||
+        (m === "clarify"
+          ? "Bitte wählen (Clarify)"
+          : "Vorschläge — antippen statt tippen");
+    }
+    grid.innerHTML = "";
+    list.forEach(function (c, i) {
+      let text = "";
+      let label = String.fromCharCode(65 + (i % 26));
+      let value = "";
+      if (typeof c === "string") {
+        text = c;
+        value = c;
+      } else if (c && typeof c === "object") {
+        text = String(c.text || c.label || c.value || "").trim();
+        value = String(c.value || c.text || c.label || "").trim();
+        if (c.label) label = String(c.label).slice(0, 12);
+      }
+      if (!text) return;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "box1-choice-card mode-" + m;
+      btn.setAttribute("role", "option");
+      btn.dataset.value = value;
+      btn.dataset.mode = m;
+      const lab = document.createElement("span");
+      lab.className = "choice-label";
+      lab.textContent = label;
+      const body = document.createElement("span");
+      body.className = "choice-text";
+      body.textContent = text;
+      const hint = document.createElement("span");
+      hint.className = "choice-hint";
+      hint.textContent =
+        m === "clarify" ? "Klick = Antwort senden" : "Klick = in Chat übernehmen";
+      btn.appendChild(lab);
+      btn.appendChild(body);
+      btn.appendChild(hint);
+      btn.addEventListener("click", function () {
+        grid.querySelectorAll(".box1-choice-card").forEach(function (el) {
+          el.classList.remove("is-picked");
+        });
+        btn.classList.add("is-picked");
+        onChoiceCardPick(value, text, m);
+      });
+      grid.appendChild(btn);
+    });
+    host.hidden = false;
+    try {
+      const live = document.getElementById("box1-layer-live");
+      if (live) {
+        document.querySelectorAll("#box1-content .info-layer").forEach(function (l) {
+          l.hidden = l !== live;
+          l.classList.toggle("is-active", l === live);
+        });
+      }
+    } catch (_e) {
+      /* ignore */
+    }
+  }
+
+  function onChoiceCardPick(value, text, mode) {
+    const v = String(value || text || "").trim();
+    if (!v) return;
+    if (mode === "clarify") {
+      if (typeof onClarify === "function") {
+        onClarify(v);
+      } else {
+        appendChat("you", "[clarify] " + v);
+        api("POST", "/api/clarify", { option: v })
+          .then(function (snap) {
+            if (typeof applySnapshot === "function") applySnapshot(snap);
+            hideChoiceCards();
+            hideClarify();
+          })
+          .catch(function (err) {
+            toast("Clarify failed: " + (err.message || err), "error");
+          });
+      }
+      return;
+    }
+    const input =
+      (els && els.chatInput) ||
+      document.getElementById("chat-input") ||
+      document.getElementById("msg");
+    if (input) {
+      input.value = v;
+      try {
+        input.focus();
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      } catch (_e) {
+        /* ignore */
+      }
+      toast("Übernommen — Enter zum Senden", "ok");
+    } else if (typeof appendChat === "function") {
+      appendChat("you", v);
+    }
+  }
+
+  function bindChoiceCardChrome() {
+    const clear = document.getElementById("box1-choice-clear");
+    if (clear && !clear._bound) {
+      clear._bound = true;
+      clear.addEventListener("click", function () {
+        hideChoiceCards();
+      });
+    }
+  }
+
+  function showClarify(question, options) {
     if (els.clarify) els.clarify.hidden = false;
     if (els.clarifyQ) els.clarifyQ.textContent = question || "Please choose:";
     if (els.clarify) els.clarify.dataset.tooltipId = "clarify";
+    const opts =
+      Array.isArray(options) && options.length
+        ? options
+        : ["Yes", "No", "Whatever", "Later"];
+    renderChoiceCards(
+      opts.map(function (o, i) {
+        return {
+          label: String.fromCharCode(65 + (i % 26)),
+          text: String(o),
+          value: String(o),
+        };
+      }),
+      "clarify",
+      "Clarify — eine Option wählen"
+    );
+    bindChoiceCardChrome();
   }
 
   function hideClarify() {
     if (els.clarify) els.clarify.hidden = true;
     if (els.clarifyQ) els.clarifyQ.textContent = "";
+    const grid = document.getElementById("box1-choice-grid");
+    if (grid && grid.querySelector(".mode-clarify")) {
+      hideChoiceCards();
+    }
   }
 
   let busyJobId = null; // job holding pipeline (may differ from currentJobId after 409)
@@ -5738,6 +5981,7 @@
       // Hide only after successful response (applySnapshot may keep it if still clarify)
       if (!(snap.pipeline && snap.pipeline.stage === "clarify")) {
         hideClarify();
+        if (typeof hideChoiceCards === "function") hideChoiceCards();
       }
       const low = String(answer || "").toLowerCase();
       const deferred =
@@ -6006,6 +6250,270 @@
       document.getElementById("box2-" + agentId);
     if (!body) return;
     renderDynamicContent(body, htmlOrText || "", { title: title || agentId });
+  }
+
+  function paintHtmlPage(host, html, title) {
+    if (!host) return;
+    revokeBox3Blobs(host);
+    host.innerHTML = "";
+    host.classList.add("box-page-host");
+    const frame = document.createElement("iframe");
+    frame.className = "worker-preview-frame box-page-frame box3-live-frame";
+    frame.setAttribute("title", title || "Seite");
+    frame.setAttribute(
+      "sandbox",
+      "allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
+    );
+    const docHtml = wrapHtmlDocument(html);
+    try {
+      const blob = new Blob([docHtml], { type: "text/html;charset=utf-8" });
+      frame.src = URL.createObjectURL(blob);
+      frame._blobUrl = frame.src;
+    } catch (_e) {
+      frame.srcdoc = docHtml;
+    }
+    host.appendChild(frame);
+  }
+
+  function closeBox2Page() {
+    const stage = document.getElementById("box2-page-stage");
+    const body = document.getElementById("box2-page-body");
+    if (body) {
+      revokeBox3Blobs(body);
+      body.innerHTML = "";
+    }
+    if (stage) {
+      stage.hidden = true;
+      stage.classList.remove("is-open");
+    }
+    const boxes = document.querySelector(".boxes");
+    if (boxes) boxes.classList.remove("pages-expanded");
+  }
+
+  function showBox2Page(out, raw, html) {
+    const stage = document.getElementById("box2-page-stage");
+    const body = document.getElementById("box2-page-body");
+    const label = document.getElementById("box2-page-label");
+    if (!stage || !body) {
+      if (html) setBox2(String(raw || html));
+      return;
+    }
+    const name = (out && (out.name || out.worker)) || "Seite";
+    if (label) {
+      label.textContent =
+        name + " · Seite in Box 2" + (html ? " · HTML" : " · Text");
+    }
+    if (html) {
+      paintHtmlPage(body, html, name);
+    } else {
+      body.innerHTML = "";
+      const pre = document.createElement("pre");
+      pre.className = "result-block box3-result-pre";
+      pre.textContent = String(raw || "").slice(0, 30000);
+      body.appendChild(pre);
+    }
+    stage.hidden = false;
+    stage.removeAttribute("hidden");
+    stage.classList.add("is-open");
+    const boxes = document.querySelector(".boxes");
+    if (boxes) boxes.classList.add("pages-expanded");
+    const closeBtn = document.getElementById("box2-page-close");
+    if (closeBtn && !closeBtn._bound) {
+      closeBtn._bound = true;
+      closeBtn.addEventListener("click", closeBox2Page);
+    }
+  }
+
+  /** Focused worker → Box3; second HTML worker → Box2 page. */
+  function syncWorkerPagesToBoxes() {
+    const outs = lastWorkerOutputs || [];
+    if (!outs.length) {
+      closeBox2Page();
+      return;
+    }
+    const focusIdx =
+      typeof box3FocusIdx === "number" && box3FocusIdx >= 0 ? box3FocusIdx : 0;
+    const htmlIdx = [];
+    outs.forEach(function (o, i) {
+      if (extractHtml(String((o && o.result) || ""))) htmlIdx.push(i);
+    });
+    let side = -1;
+    for (let i = 0; i < htmlIdx.length; i++) {
+      if (htmlIdx[i] !== focusIdx) {
+        side = htmlIdx[i];
+        break;
+      }
+    }
+    if (side >= 0) {
+      const o = outs[side];
+      const raw = String((o && o.result) || "");
+      showBox2Page(o, raw, extractHtml(raw));
+    } else {
+      const stage = document.getElementById("box2-page-stage");
+      if (stage && stage.classList.contains("is-open") && htmlIdx.length === 1) {
+        const o = outs[htmlIdx[0]];
+        const raw = String((o && o.result) || "");
+        showBox2Page(o, raw, extractHtml(raw));
+      } else if (htmlIdx.length === 0) {
+        closeBox2Page();
+      }
+    }
+  }
+
+  function currentBox3Worker() {
+    const outs = lastWorkerOutputs || [];
+    const idx =
+      typeof box3FocusIdx === "number" &&
+      box3FocusIdx >= 0 &&
+      box3FocusIdx < outs.length
+        ? box3FocusIdx
+        : 0;
+    return { out: outs[idx] || null, idx: idx };
+  }
+
+  function renderBox3WorkerTabs() {
+    const tabs = document.getElementById("box3-worker-tabs");
+    if (!tabs) return;
+    const outs = lastWorkerOutputs || [];
+    tabs.innerHTML = "";
+    if (outs.length < 2) {
+      tabs.hidden = true;
+      return;
+    }
+    tabs.hidden = false;
+    outs.forEach(function (o, i) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className =
+        "box3-worker-tab" + (i === box3FocusIdx ? " is-active" : "");
+      btn.textContent = (o && (o.name || o.worker)) || "W" + (i + 1);
+      btn.title = "Worker " + (i + 1) + " anzeigen";
+      btn.addEventListener("click", function () {
+        focusBox3WorkerResult(i);
+      });
+      tabs.appendChild(btn);
+    });
+  }
+
+  function focusBox3WorkerResult(idx) {
+    const outs = lastWorkerOutputs || [];
+    if (!outs.length) return;
+    const next = Math.max(0, Math.min(outs.length - 1, idx | 0));
+    box3FocusIdx = next;
+    const out = outs[next];
+    lastBox3StageKey = "";
+    showBox3ResultStage(out, next);
+    renderBox3WorkerTabs();
+    try {
+      syncWorkerPagesToBoxes();
+    } catch (_e) {
+      /* ignore */
+    }
+    try {
+      const wid = String((out && out.worker) || "").toLowerCase();
+      let agentId = null;
+      if (/worker\s*1|w1/.test(wid) || wid === "worker1") agentId = "worker1";
+      else if (/worker\s*2|w2/.test(wid) || wid === "worker2") agentId = "worker2";
+      else if (/worker\s*3|w3/.test(wid) || wid === "worker3") agentId = "worker3";
+      else if (/worker\s*4|w4/.test(wid) || wid === "worker4") agentId = "worker4";
+      else agentId = "worker" + Math.min(next + 1, 4);
+      if (agentId) highlightWorkerResult(agentId);
+    } catch (_e) {
+      /* ignore */
+    }
+  }
+
+  function bindBox3ResultActions() {
+    function withCurrent(fn) {
+      return function (ev) {
+        const cur = currentBox3Worker();
+        if (!cur.out) {
+          toast("Kein Worker-Ergebnis", "info");
+          return;
+        }
+        const raw = String(cur.out.result || "");
+        const html = extractHtml(raw) || "";
+        fn(cur.out, cur.idx, raw, html, ev);
+      };
+    }
+    const copy = document.getElementById("box3-btn-copy");
+    if (copy && !copy._bound) {
+      copy._bound = true;
+      copy.addEventListener(
+        "click",
+        withCurrent(function (out, idx, raw) {
+          const text = raw || "";
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard
+              .writeText(text)
+              .then(function () {
+                toast("Kopiert", "ok");
+              })
+              .catch(function () {
+                toast("Clipboard failed", "error");
+              });
+          } else {
+            toast("Clipboard not available", "error");
+          }
+        })
+      );
+    }
+    const dl = document.getElementById("box3-btn-dl");
+    if (dl && !dl._bound) {
+      dl._bound = true;
+      dl.addEventListener(
+        "click",
+        withCurrent(function (out, idx, raw, html) {
+          downloadWorkerResult(out, raw, html);
+        })
+      );
+    }
+    const open = document.getElementById("box3-btn-open");
+    if (open && !open._bound) {
+      open._bound = true;
+      open.addEventListener(
+        "click",
+        withCurrent(function (out, idx, raw, html, ev) {
+          if (!html) {
+            toast("Kein HTML — lade Text herunter", "info");
+            downloadWorkerResult(out, raw, html);
+            return;
+          }
+          const forceTab = !!(ev && ev.shiftKey);
+          openWorkerInTab(html, forceTab);
+        })
+      );
+    }
+    const keep = document.getElementById("box3-btn-keep");
+    if (keep && !keep._bound) {
+      keep._bound = true;
+      keep.addEventListener(
+        "click",
+        withCurrent(function (out, idx) {
+          keepWorkerToPersonalWs(out, idx);
+        })
+      );
+    }
+    const temp = document.getElementById("box3-btn-temp");
+    if (temp && !temp._bound) {
+      temp._bound = true;
+      temp.addEventListener(
+        "click",
+        withCurrent(function (out, idx, raw, html) {
+          _saveWorkerToWorkspace(out, raw, html, "temp");
+        })
+      );
+    }
+    const perm = document.getElementById("box3-btn-perm");
+    if (perm && !perm._bound) {
+      perm._bound = true;
+      perm.addEventListener(
+        "click",
+        withCurrent(function (out, idx, raw, html) {
+          _saveWorkerToWorkspace(out, raw, html, "perm");
+        })
+      );
+    }
   }
 
   /**
@@ -6541,6 +7049,10 @@
 
   function renderBox3Workers(pipeline) {
     const outputs = normalizeWorkerOutputs(pipeline);
+    const prevFocusName =
+      lastWorkerOutputs && lastWorkerOutputs[box3FocusIdx]
+        ? lastWorkerOutputs[box3FocusIdx].worker
+        : null;
     lastWorkerOutputs = outputs;
     updateBox3Toolbar();
     if (pipeline) {
@@ -6566,6 +7078,7 @@
           null;
         renderDodChecklist(v);
       }
+      renderBox3WorkerTabs();
       return;
     }
 
@@ -6628,18 +7141,44 @@
     const contentChanged = renderKey !== lastBox3RenderKey;
     lastBox3RenderKey = renderKey;
 
+    // Preserve focus across progressive worker arrivals
+    let focusIdx = 0;
+    if (contentChanged && prevFocusName) {
+      const keepIdx = outputs.findIndex(function (o) {
+        return o && o.worker === prevFocusName;
+      });
+      if (keepIdx !== -1) focusIdx = keepIdx;
+    } else if (!contentChanged && typeof box3FocusIdx === "number") {
+      focusIdx = Math.max(0, Math.min(outputs.length - 1, box3FocusIdx));
+    } else {
+      // first paint: prefer first HTML, else longest (best)
+      let pick = 0;
+      for (let i = 0; i < outputs.length; i++) {
+        if (extractHtml(String((outputs[i] && outputs[i].result) || ""))) {
+          pick = i;
+          break;
+        }
+      }
+      if (pick === 0 && best) {
+        const bi = outputs.indexOf(best);
+        if (bi >= 0) pick = bi;
+      }
+      focusIdx = pick;
+    }
+    box3FocusIdx = focusIdx;
+    const focused = outputs[focusIdx] || best;
+
     // PRIMARY: always-open result stage (what the user looks at)
-    const shown = showBox3ResultStage(best, 0);
+    const shown = showBox3ResultStage(focused, focusIdx);
     if (!shown) {
-      // Fallback text if renderDynamicContent failed somehow
       const body = document.getElementById("box3-result-body");
       const stage = document.getElementById("box3-result-stage");
-      if (body && stage && best) {
+      if (body && stage && focused) {
         revokeBox3Blobs(body);
         body.innerHTML = "";
         const pre = document.createElement("pre");
         pre.className = "result-block box3-result-pre";
-        pre.textContent = String(best.result || "").slice(0, 20000);
+        pre.textContent = String(focused.result || "").slice(0, 20000);
         body.appendChild(pre);
         stage.hidden = false;
         stage.removeAttribute("hidden");
@@ -6647,14 +7186,27 @@
       }
     }
 
-    /* Box3-only highlight — never activateAgentLayer(worker): that hid Box2 brainstorm */
+    renderBox3WorkerTabs();
+    bindBox3ResultActions();
     try {
-      highlightWorkerResult(firstAgentId);
+      syncWorkerPagesToBoxes();
     } catch (_e) {
       /* ignore */
     }
 
-    box3FocusIdx = 0;
+    /* Box3-only highlight — never activateAgentLayer(worker): that hid Box2 brainstorm */
+    try {
+      const wid = String((focused && focused.worker) || "").toLowerCase();
+      let agentId = firstAgentId;
+      if (/worker\s*1|w1/.test(wid) || wid === "worker1") agentId = "worker1";
+      else if (/worker\s*2|w2/.test(wid) || wid === "worker2") agentId = "worker2";
+      else if (/worker\s*3|w3/.test(wid) || wid === "worker3") agentId = "worker3";
+      else if (/worker\s*4|w4/.test(wid) || wid === "worker4") agentId = "worker4";
+      highlightWorkerResult(agentId);
+    } catch (_e) {
+      /* ignore */
+    }
+
     bindBoxLayerControls();
     if (contentChanged && typeof focusBox3 === "function") {
       try {
@@ -7013,20 +7565,39 @@
     toast("Downloaded " + a.download, "ok");
   }
 
-  function openWorkerInTab(html) {
+  function openWorkerInTab(html, forceExternal) {
+    // Default: real page in Box 2 + Box 3 (no popup). Shift / force → browser tab.
+    if (!forceExternal) {
+      const cur = currentBox3Worker();
+      const out = (cur && cur.out) || { name: "Seite" };
+      const raw = (cur && cur.out && cur.out.result) || html;
+      showBox2Page(out, raw, html);
+      if (cur && cur.out && typeof showBox3ResultStage === "function") {
+        lastBox3StageKey = "";
+        showBox3ResultStage(out, cur.idx);
+      }
+      try {
+        focusBox3();
+      } catch (_e) {
+        /* ignore */
+      }
+      toast("Seite in Box 2 + 3 — kein Popup", "ok");
+      return;
+    }
     const doc = wrapHtmlDocument(html);
     const blob = new Blob([doc], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const win = window.open(url, "_blank");
     if (!win) {
-      toast("Popup blocked — allow popups for new tab", "error");
+      toast("Popup blockiert — Seite bleibt in Box 2/3", "info");
       URL.revokeObjectURL(url);
+      openWorkerInTab(html, false);
       return;
     }
     setTimeout(function () {
       URL.revokeObjectURL(url);
     }, 60000);
-    toast("Opened in new tab", "ok");
+    toast("Im Browser-Tab geöffnet", "ok");
   }
 
   async function _saveWorkerToWorkspace(out, raw, html, zone) {
@@ -7065,9 +7636,9 @@
     closeWorkerFullscreen();
     const overlay = document.createElement("div");
     overlay.id = "worker-fs-overlay";
-    overlay.className = "worker-fs-overlay";
+    overlay.className = "worker-fs-overlay in-boxes";
     overlay.setAttribute("role", "dialog");
-    overlay.setAttribute("aria-label", "Fullscreen preview");
+    overlay.setAttribute("aria-label", "Seiten-Ansicht in Boxen");
 
     const bar = document.createElement("div");
     bar.className = "worker-fs-bar";
@@ -7120,8 +7691,21 @@
     overlay.addEventListener("click", function (ev) {
       if (ev.target === overlay) closeWorkerFullscreen();
     });
-    document.body.appendChild(overlay);
+    const boxes = document.querySelector(".boxes");
+    if (boxes) {
+      boxes.appendChild(overlay);
+      boxes.classList.add("pages-expanded");
+    } else {
+      document.body.appendChild(overlay);
+    }
     document.body.classList.add("worker-fs-open");
+    if (html) {
+      try {
+        showBox2Page(out, raw, html);
+      } catch (_e) {
+        /* ignore */
+      }
+    }
   }
 
   /** Scroll Box 3 into view and flash highlight after Execute. */
