@@ -53,3 +53,6 @@ mutmut-junit.xml
 
 # Tool / pip caches
 .cache/
+
+# Node (ESLint UI tooling)
+node_modules/

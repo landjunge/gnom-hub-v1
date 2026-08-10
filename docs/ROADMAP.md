@@ -309,6 +309,15 @@
 | Slice B: DoD prompt from same Spec | planned |
 | Slice D: UI checklist | planned |
 
+## V3.8.1 ESLint (UI)
+
+| Item | Status |
+|------|--------|
+| eslint.config.js flat config | **done** |
+| docs/ESLINT.md | **done** |
+| npm run lint:js on app.js | **done** (0 errors / warn baseline) |
+| CI hard gate max-warnings 0 | optional |
+
 ## Post-V3.7 (optional)
 
 | Item | Notes |

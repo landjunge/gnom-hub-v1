@@ -1,0 +1,17 @@
+{
+  "name": "gnom-hub-ui",
+  "private": true,
+  "description": "Dev tooling for Gnom-Hub desktop UI (ESLint). App runtime is Python.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "lint:js": "eslint \"src/gnom_hub/ui/static/app.js\"",
+    "lint:js:fix": "eslint \"src/gnom_hub/ui/static/app.js\" --max-warnings 0",
+    "lint:js:all": "eslint \"src/gnom_hub/ui/static/**/*.js\""
+  },
+  "devDependencies": {
+    "eslint": "9.22.0",
+    "globals": "16.0.0"
+  }
+}
