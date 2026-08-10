@@ -4,7 +4,7 @@
 
 | | |
 |--|--|
-| **Version** | 3.9.1 ([notes](docs/CHANGELOG_3.9.md)) |
+| **Version** | 3.10.0 ([notes](docs/CHANGELOG_3.10.md)) |
 | **Docs** | [Hub arch](docs/HUB_ARCHITECTURE.md) · [Plugins](docs/PLUGINS.md) · [Merges](docs/MERGE_STATUS.md) · [V4 plan](docs/V4_PLAN.md) |
 | **Stack** | Python ≥3.10 · FastAPI · desktop SPA |
 | **UI** | `http://127.0.0.1:8080/` |

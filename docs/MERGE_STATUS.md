@@ -49,3 +49,12 @@ Desk improvement wave **complete** for freeze-conform work:
 - Cancel / export race hygiene
 
 Still optional (not blocking): neural embeddings package, live E2E with keys, skill marketplace, auto-update, mobile UI.
+
+## V4 Skills wave (3.10.0)
+
+| Area | Status |
+|------|--------|
+| Playbook skills + API/UI | shipped this branch |
+| Local catalog / install | shipped |
+| Neural plugin (optional) | shipped |
+| Mobile CSS | shipped |

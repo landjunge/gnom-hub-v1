@@ -76,8 +76,32 @@ _WORKER_L5_TOOLS = (
 )
 
 
-def worker_system_prompt(*, wants_html: bool = False) -> str:
-    """Assemble layered worker system prompt (L1–L5)."""
+def _worker_skill_block(*blobs: str) -> str:
+    """Soft-match playbook skills from hub (no-op if hub unavailable)."""
+    try:
+        from gnom_hub.hub import get_hub
+        from gnom_hub.skills.inject import skills_prompt_block
+
+        hub = get_hub()
+        skills = getattr(hub, "skills", None)
+        if skills is None:
+            return ""
+        text = "\n".join(blobs)
+        htmlish = task_wants_html(text)
+        matched = skills.match(
+            agent="worker1",
+            text=text,
+            plan_mode="full_page_html" if htmlish else "",
+            task_kind="html_page" if htmlish else "",
+            limit=3,
+        )
+        return skills_prompt_block(matched)
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def worker_system_prompt(*, wants_html: bool = False, skill_block: str = "") -> str:
+    """Assemble layered worker system prompt (L1–L5) + optional playbook skills."""
     parts = [
         _WORKER_L1_ROLE,
         _WORKER_L2_PRIORITY,
@@ -86,7 +110,11 @@ def worker_system_prompt(*, wants_html: bool = False) -> str:
     ]
     if wants_html:
         parts.insert(2, _WORKER_L3_HTML)
-    return "\n".join(parts)
+    base = "\n".join(parts)
+    extra = (skill_block or "").strip()
+    if extra:
+        return base + "\n\n" + extra
+    return base
 
 
 def task_wants_html(*blobs: str) -> bool:
@@ -188,7 +216,9 @@ class WorkerAgent(BaseAgent):
                     wants_html = kind == "html_page" or task_wants_html(
                         task, user_text, "\n".join(requirements[:12])
                     )
-                    system = worker_system_prompt(wants_html=wants_html)
+                    system = worker_system_prompt(
+                        wants_html=wants_html, skill_block=_worker_skill_block(task, user_text)
+                    )
                     system = (
                         system
                         + "\nALWAYS finish — never cut mid-file. No max token excuses.\n"
@@ -324,7 +354,9 @@ class WorkerAgent(BaseAgent):
                 )
                 wants_html = task_wants_html(task, user_text, "\n".join(requirements[:12]))
                 return self.ask(
-                    system=worker_system_prompt(wants_html=wants_html),
+                    system=worker_system_prompt(
+                        wants_html=wants_html, skill_block=_worker_skill_block(task, user_text)
+                    ),
                     user=_with_memory(body, memory_ctx),
                     # Workers: no token limit (BaseAgent omits max_tokens for role=worker)
                     max_tokens=None,

@@ -92,6 +92,7 @@
     stageBadge: document.getElementById("stage-badge"),
     llmBadge: document.getElementById("llm-badge"),
     toolsBadge: document.getElementById("tools-badge"),
+    skillsBadge: document.getElementById("skills-badge"),
     costBadge: document.getElementById("cost-badge"),
     usageModal: document.getElementById("usage-modal"),
     memBadge: document.getElementById("mem-badge"),
@@ -111,6 +112,7 @@
     toolsModal: document.getElementById("tools-modal"),
     flexSelect: document.getElementById("flex-preset-select"),
     vectorModal: document.getElementById("vector-modal"),
+    skillsModal: document.getElementById("skills-modal"),
   };
 
   let activeStage = "idle";
@@ -818,6 +820,12 @@
           : "";
       els.memBadge.textContent = "Mem: " + short + nodes;
       els.memBadge.title = snap.memory_summary;
+    }
+    if (els.skillsBadge && snap.skills) {
+      const sc = snap.skills.count != null ? snap.skills.count : 0;
+      const en = snap.skills.enabled != null ? snap.skills.enabled : sc;
+      els.skillsBadge.textContent = "Skills: " + en + "/" + sc;
+      els.skillsBadge.title = "Playbook skills enabled/total — click to manage";
     }
     if (els.vecBadge && snap.vectors) {
       const emb = snap.vectors.embedder || "bow";
@@ -3240,6 +3248,121 @@
     toast("Flex is fixed — personal companion only", "info");
   }
 
+
+
+  function closeSkillsModal() {
+    if (els.skillsModal) els.skillsModal.hidden = true;
+  }
+
+  async function openSkillsModal() {
+    if (!els.skillsModal) return;
+    els.skillsModal.hidden = false;
+    await refreshSkillsModal();
+  }
+
+  async function refreshSkillsModal() {
+    const ul = document.getElementById("skills-list");
+    const countEl = document.getElementById("skills-count");
+    const catEl = document.getElementById("skills-catalog");
+    try {
+      const data = await api("GET", "/api/skills");
+      const skills = data.skills || [];
+      if (countEl) {
+        const en = skills.filter(function (s) { return s.enabled !== false; }).length;
+        countEl.textContent = "Skills: " + en + "/" + skills.length + " enabled";
+      }
+      if (ul) {
+        ul.innerHTML = "";
+        if (!skills.length) {
+          const li = document.createElement("li");
+          li.className = "muted";
+          li.textContent = "(no skills loaded)";
+          ul.appendChild(li);
+        } else {
+          skills.forEach(function (s) {
+            const li = document.createElement("li");
+            li.style.display = "flex";
+            li.style.gap = "6px";
+            li.style.alignItems = "center";
+            const lab = document.createElement("span");
+            lab.style.flex = "1";
+            lab.textContent =
+              (s.enabled === false ? "○ " : "● ") +
+              (s.id || "?") +
+              " · " +
+              (s.name || "") +
+              " [" +
+              (s.source || "?") +
+              "]";
+            lab.title = (s.description || "") + " · triggers: " + ((s.triggers || []).join(", ") || "—");
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "btn-ws-sm";
+            btn.textContent = s.enabled === false ? "Enable" : "Disable";
+            btn.addEventListener("click", function () {
+              toggleSkill(s.id, s.enabled === false);
+            });
+            li.appendChild(lab);
+            li.appendChild(btn);
+            ul.appendChild(li);
+          });
+        }
+      }
+      if (catEl) {
+        const cat = data.catalog;
+        if (cat && cat.entries) {
+          catEl.textContent = cat.entries
+            .map(function (e) {
+              return (e.trust || "?") + " · " + e.id + " v" + (e.version || "") + " — " + (e.path || "");
+            })
+            .join("\n");
+        } else {
+          catEl.textContent = "No catalog";
+        }
+      }
+    } catch (err) {
+      toast("Skills load failed: " + err.message, "error");
+    }
+  }
+
+  async function toggleSkill(id, enable) {
+    try {
+      await api("POST", "/api/skills/" + encodeURIComponent(id) + "/enable", {
+        enabled: !!enable,
+      });
+      toast((enable ? "Enabled " : "Disabled ") + id, "ok");
+      await refreshSkillsModal();
+    } catch (err) {
+      toast("Skill toggle failed: " + err.message, "error");
+    }
+  }
+
+  async function reloadSkills() {
+    try {
+      const data = await api("POST", "/api/skills/reload");
+      toast("Skills reloaded: " + ((data.skills || []).length), "ok");
+      await refreshSkillsModal();
+    } catch (err) {
+      toast("Skills reload failed: " + err.message, "error");
+    }
+  }
+
+  async function installSkillPath() {
+    const input = document.getElementById("skills-install-path");
+    const path = input ? String(input.value || "").trim() : "";
+    if (!path) {
+      toast("Enter a local skill folder path", "info");
+      return;
+    }
+    try {
+      const data = await api("POST", "/api/skills/install", { path: path });
+      toast("Installed skill: " + (data.id || path), "ok");
+      if (input) input.value = "";
+      await refreshSkillsModal();
+    } catch (err) {
+      toast("Install failed: " + err.message, "error");
+    }
+  }
 /* part: 03-chat-jobs-ops.js  lines 1950-3681 of app.js — edit parts, run scripts/build_ui_js.py */
   function toggleMic() {
     const SR =
@@ -7045,6 +7168,15 @@
         }
       });
     }
+    if (els.skillsBadge) {
+      els.skillsBadge.addEventListener("click", openSkillsModal);
+      els.skillsBadge.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          openSkillsModal();
+        }
+      });
+    }
     if (els.vecBadge) {
       els.vecBadge.addEventListener("click", openVectorModal);
       els.vecBadge.addEventListener("keydown", function (ev) {
@@ -7091,6 +7223,17 @@
     if (vectorAddBtn) vectorAddBtn.addEventListener("click", addVectorDoc);
     const vectorEmbedApply = document.getElementById("vector-embedder-apply");
     if (vectorEmbedApply) vectorEmbedApply.addEventListener("click", applyVectorEmbedder);
+    const skillsClose = document.getElementById("skills-close");
+    if (skillsClose) skillsClose.addEventListener("click", closeSkillsModal);
+    if (els.skillsModal) {
+      els.skillsModal.addEventListener("click", function (ev) {
+        if (ev.target === els.skillsModal) closeSkillsModal();
+      });
+    }
+    const skillsReload = document.getElementById("skills-reload");
+    if (skillsReload) skillsReload.addEventListener("click", reloadSkills);
+    const skillsInstallBtn = document.getElementById("skills-install-btn");
+    if (skillsInstallBtn) skillsInstallBtn.addEventListener("click", installSkillPath);
     const vectorQuery = document.getElementById("vector-query");
     if (vectorQuery) {
       vectorQuery.addEventListener("keydown", function (ev) {

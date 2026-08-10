@@ -339,6 +339,15 @@
         }
       });
     }
+    if (els.skillsBadge) {
+      els.skillsBadge.addEventListener("click", openSkillsModal);
+      els.skillsBadge.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          openSkillsModal();
+        }
+      });
+    }
     if (els.vecBadge) {
       els.vecBadge.addEventListener("click", openVectorModal);
       els.vecBadge.addEventListener("keydown", function (ev) {
@@ -385,6 +394,17 @@
     if (vectorAddBtn) vectorAddBtn.addEventListener("click", addVectorDoc);
     const vectorEmbedApply = document.getElementById("vector-embedder-apply");
     if (vectorEmbedApply) vectorEmbedApply.addEventListener("click", applyVectorEmbedder);
+    const skillsClose = document.getElementById("skills-close");
+    if (skillsClose) skillsClose.addEventListener("click", closeSkillsModal);
+    if (els.skillsModal) {
+      els.skillsModal.addEventListener("click", function (ev) {
+        if (ev.target === els.skillsModal) closeSkillsModal();
+      });
+    }
+    const skillsReload = document.getElementById("skills-reload");
+    if (skillsReload) skillsReload.addEventListener("click", reloadSkills);
+    const skillsInstallBtn = document.getElementById("skills-install-btn");
+    if (skillsInstallBtn) skillsInstallBtn.addEventListener("click", installSkillPath);
     const vectorQuery = document.getElementById("vector-query");
     if (vectorQuery) {
       vectorQuery.addEventListener("keydown", function (ev) {
