@@ -119,3 +119,44 @@ def test_api_vector_embedder(tmp_path, monkeypatch):
         bad = c.post("/api/vector/embedder", json={"backend": "nope", "reindex": False})
         assert bad.status_code == 400
     hub_mod._HUB = None
+
+
+def test_probe_neural_fastembed_installed():
+    from gnom_hub.memory.neural_embed import probe_neural
+
+    p = probe_neural()
+    assert "fastembed" in p
+    # CI may or may not have package; if installed, True
+    try:
+        import fastembed  # noqa: F401
+
+        assert p["fastembed"] is True
+    except ImportError:
+        assert p["fastembed"] is False
+
+
+def test_api_vector_embedder_fastembed_if_available(tmp_path, monkeypatch):
+    try:
+        import fastembed  # noqa: F401
+    except ImportError:
+        return  # skip without package
+    from fastapi.testclient import TestClient
+
+    import gnom_hub.hub as hub_mod
+    from gnom_hub.api.app import create_app
+
+    monkeypatch.setattr(hub_mod, "project_root", lambda: tmp_path)
+    monkeypatch.setattr(hub_mod, "_HUB", None)
+    app = create_app()
+    with TestClient(app) as c:
+        r = c.get("/api/vector")
+        assert r.status_code == 200
+        emb = r.json().get("embedder") or {}
+        assert emb.get("neural_available", {}).get("fastembed") is True
+        r2 = c.post(
+            "/api/vector/embedder",
+            json={"backend": "fastembed", "reindex": False},
+        )
+        assert r2.status_code == 200, r2.text
+        assert r2.json()["embedder"]["active"] == "fastembed"
+    hub_mod._HUB = None

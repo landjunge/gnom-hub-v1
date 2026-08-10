@@ -74,3 +74,19 @@ Rules: no core tool name clash · only trusted code · God-Mode gates for shell/
 | GET | `/api/mcp/tools` | MCP-lite list |
 | GET | `/api/vector` | docs + **embedder** status |
 | POST | `/api/vector/embedder` | `{backend, reindex}` switch |
+
+## embeddings_neural (optional)
+
+Install:
+
+```bash
+pip install -r requirements-embeddings.txt
+# or: pip install 'gnom-hub[embeddings]'
+```
+
+Then:
+- Tools: `embeddings_neural_status` / `embeddings_neural_use`
+- Desk Vector modal: select **fastembed** → Apply + reindex
+- Preference saved in `data/hot/vector_embedder.json` (restored on hub start)
+
+Default remains **bow** if package missing.

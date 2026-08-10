@@ -33,3 +33,8 @@
 - Seed `qa_checklist`; Telegram `/skills` `/skill_on` `/skill_off`
 - Mobile box tabs ≤640px
 - Docs: ORCHESTRATION.md · GITHUB_HOLDER_3.10.md
+
+## Neural install
+
+- `requirements-embeddings.txt` + fastembed wired in API/UI
+- Preference restore via `data/hot/vector_embedder.json`

@@ -2851,7 +2851,31 @@
         countEl.textContent =
           "Docs: " + (data.count || 0) + " · embedder: " + emb;
       }
-      if (embSel && emb) embSel.value = emb;
+      if (embSel && emb) {
+        try {
+          embSel.value = emb;
+        } catch (e) {}
+        var nav =
+          data.embedder && data.embedder.neural_available
+            ? data.embedder.neural_available
+            : null;
+        if (nav && embSel.options) {
+          Array.prototype.forEach.call(embSel.options, function (opt) {
+            if (opt.value === "fastembed") {
+              opt.disabled = !(nav.fastembed);
+              opt.textContent = nav.fastembed
+                ? "fastembed (neural)"
+                : "fastembed (not installed)";
+            }
+            if (opt.value === "sbert") {
+              opt.disabled = !(nav.sentence_transformers);
+              opt.textContent = nav.sentence_transformers
+                ? "sbert (neural)"
+                : "sbert (not installed)";
+            }
+          });
+        }
+      }
       if (!ul) return;
       ul.innerHTML = "";
       const docs = data.docs || [];
