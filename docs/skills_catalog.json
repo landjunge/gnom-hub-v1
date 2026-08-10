@@ -8,7 +8,10 @@
       "version": "0.1.0",
       "trust": "bundled",
       "path": "skills/html_landing",
-      "tags": ["html", "frontend"]
+      "tags": [
+        "html",
+        "frontend"
+      ]
     },
     {
       "id": "tool_honesty",
@@ -16,7 +19,9 @@
       "version": "0.1.0",
       "trust": "bundled",
       "path": "skills/tool_honesty",
-      "tags": ["tools"]
+      "tags": [
+        "tools"
+      ]
     },
     {
       "id": "de_desk",
@@ -24,7 +29,20 @@
       "version": "0.1.0",
       "trust": "bundled",
       "path": "skills/de_desk",
-      "tags": ["language"]
+      "tags": [
+        "language"
+      ]
+    },
+    {
+      "id": "qa_checklist",
+      "name": "QA checklist playbook",
+      "version": "0.1.0",
+      "trust": "bundled",
+      "path": "skills/qa_checklist",
+      "tags": [
+        "qa",
+        "testing"
+      ]
     }
   ]
 }

@@ -1674,3 +1674,14 @@
       toast("Install failed: " + err.message, "error");
     }
   }
+
+
+  async function learnSkillFromLast() {
+    try {
+      const data = await api("POST", "/api/skills/learn_from_last");
+      toast("Skill gespeichert: " + (data.id || "learned"), "ok");
+      await refreshSkillsModal();
+    } catch (err) {
+      toast("Learn failed: " + err.message, "error");
+    }
+  }

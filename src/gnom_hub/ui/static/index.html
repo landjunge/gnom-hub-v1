@@ -38,7 +38,7 @@
   <div id="app">
     <header class="top-bar">
       <div class="top-bar-head">
-        <h1 class="app-title">Gnom-Hub <span id="ver-badge" class="ver-badge">v3.10.0</span></h1>
+        <h1 class="app-title">Gnom-Hub <span id="ver-badge" class="ver-badge">v3.10.1</span></h1>
         <div class="top-meta top-meta-badges">
           <span id="llm-badge" class="llm-badge" title="LLM key status">LLM: —</span>
           <span id="cost-badge" class="cost-badge" title="Click: usage & jobs" role="button" tabindex="0">$0.00</span>
@@ -91,6 +91,11 @@
 
     <!-- 3 boxes: pro Agent ein Layer (Klick = Layer + 1px Modulrahmen) -->
     <section class="boxes" aria-label="Main panels">
+      <div id="mobile-box-tabs" class="mobile-box-tabs" hidden role="tablist" aria-label="Boxes">
+        <button type="button" class="mobile-box-tab is-active" data-box-tab="1" role="tab">Box 1</button>
+        <button type="button" class="mobile-box-tab" data-box-tab="2" role="tab">Box 2</button>
+        <button type="button" class="mobile-box-tab" data-box-tab="3" role="tab">Box 3</button>
+      </div>
       <div id="box1" class="box box-1" data-tooltip-id="box1" aria-label="Box 1">
         <div class="agent-layer-stack" data-box="box1" id="box1-layers"></div>
         <!-- shared overlays (not per-agent chrome) -->
@@ -554,6 +559,7 @@
         <button type="button" id="skills-reload" class="btn-ws-sm">Reload</button>
         <input id="skills-install-path" class="tune-input" type="text" placeholder="Local folder path to install…" style="flex:1;min-width:140px" />
         <button type="button" id="skills-install-btn" class="btn-ws-sm">Install</button>
+        <button type="button" id="skills-learn-last" class="btn-ws-sm" title="Save playbook from last Execute">Als Skill speichern</button>
       </div>
       <ul id="skills-list" class="ws-list" style="max-height:280px"></ul>
       <pre id="skills-catalog" class="trace-body muted" style="max-height:120px;margin-top:8px">Catalog…</pre>

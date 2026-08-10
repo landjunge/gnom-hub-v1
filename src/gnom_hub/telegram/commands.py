@@ -24,8 +24,30 @@ class TelegramCommandMixin:
                 "/cancel — soft-cancel running job\n"
                 "/last — last worker results\n"
                 "/reset — clear HOT (WARM kept)\n"
-                "/yes /no /whatever /later — clarify"
+                "/yes /no /whatever /later — clarify\n"
+                "/skills — list playbook skills\n"
+                "/skill_on <id> · /skill_off <id>"
             )
+        if cmd in ("skills", "skill"):
+            skills = getattr(self, "skills", None)
+            if skills is None:
+                return "skills unavailable"
+            lines = ["Skills (playbooks):"]
+            for s in skills.skills:
+                mark = "on" if s.enabled else "off"
+                lines.append(f"  [{mark}] {s.id} — {s.name} ({s.source})")
+            if not skills.skills:
+                lines.append("  (none)")
+            return "\n".join(lines)
+        if cmd in ("skill_on", "skill_off"):
+            skills = getattr(self, "skills", None)
+            if skills is None:
+                return "skills unavailable"
+            sid = (arg or "").strip()
+            if not sid:
+                return "Usage: /skill_on <id> or /skill_off <id>"
+            out = skills.set_enabled(sid, cmd == "skill_on")
+            return str(out)
         if cmd == "status":
             st = self.pipeline.state
             packs_n = len(self.list_session_packs())

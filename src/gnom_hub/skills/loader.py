@@ -231,3 +231,61 @@ class SkillLoader:
         shutil.copytree(src_p, dest)
         self.discover_and_load()
         return {"ok": True, "id": name, "path": str(dest), "skills": self.list_dicts()}
+
+    def save_learned(
+        self,
+        *,
+        name: str,
+        body: str,
+        dest_root: Path,
+        skill_id: str | None = None,
+        tags: list[str] | None = None,
+        triggers: list[str] | None = None,
+        agents: list[str] | None = None,
+        description: str = "",
+    ) -> dict[str, Any]:
+        """Write a user-confirmed learned skill (markdown only)."""
+        import re
+
+        body = (body or "").strip()
+        name = (name or "").strip() or "Learned skill"
+        if not body:
+            return {"ok": False, "error": "body required"}
+        if len(body) > 10000:
+            body = body[:10000] + "…"
+        sid = (skill_id or "").strip()
+        if not sid:
+            slug = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")[:48] or "learned"
+            sid = f"learned_{slug}"
+        dest_root = Path(dest_root)
+        dest_root.mkdir(parents=True, exist_ok=True)
+        folder = dest_root / sid
+        folder.mkdir(parents=True, exist_ok=True)
+        tags_l = tags or ["learned"]
+        trig_l = triggers or []
+        agents_l = agents or []
+        tags_s = ", ".join(tags_l)
+        trig_s = ", ".join(trig_l)
+        agents_s = ", ".join(agents_l)
+        desc = (description or name)[:200]
+        md = (
+            f"---\n"
+            f"id: {sid}\n"
+            f"name: {name}\n"
+            f"version: 0.1.0\n"
+            f"enabled: true\n"
+            f"description: {desc}\n"
+            f"tags: [{tags_s}]\n"
+            f"agents: [{agents_s}]\n"
+            f"triggers: [{trig_s}]\n"
+            f"---\n\n"
+            f"{body.strip()}\n"
+        )
+        (folder / "skill.md").write_text(md, encoding="utf-8")
+        self.discover_and_load()
+        return {
+            "ok": True,
+            "id": sid,
+            "path": str(folder / "skill.md"),
+            "skills": self.list_dicts(),
+        }

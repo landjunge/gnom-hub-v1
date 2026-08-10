@@ -2754,3 +2754,44 @@ body.phase3-off .btn-archive {
     font-size: 0.8rem;
   }
 }
+
+
+/* Mobile box tabs (shown via JS under 640px) */
+.mobile-box-tabs {
+  display: none;
+  gap: 6px;
+  padding: 4px 0 8px;
+  width: 100%;
+}
+.mobile-box-tabs:not([hidden]) {
+  display: flex;
+}
+.mobile-box-tab {
+  flex: 1;
+  min-height: 40px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  color: var(--text);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.mobile-box-tab.is-active {
+  border-color: var(--accent-hi);
+  background: #2a2d36;
+  font-weight: 600;
+}
+@media (max-width: 640px) {
+  body.mobile-box-mode .box-1,
+  body.mobile-box-mode .box-2,
+  body.mobile-box-mode .box-3 {
+    display: none !important;
+  }
+  body.mobile-box-mode.show-box-1 .box-1,
+  body.mobile-box-mode.show-box-2 .box-2,
+  body.mobile-box-mode.show-box-3 .box-3 {
+    display: flex !important;
+    max-height: none;
+    min-height: 50vh;
+  }
+}

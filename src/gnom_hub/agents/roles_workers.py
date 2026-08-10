@@ -78,26 +78,17 @@ _WORKER_L5_TOOLS = (
 
 def _worker_skill_block(*blobs: str) -> str:
     """Soft-match playbook skills from hub (no-op if hub unavailable)."""
-    try:
-        from gnom_hub.hub import get_hub
-        from gnom_hub.skills.inject import skills_prompt_block
+    from gnom_hub.skills.match import skill_block_for
 
-        hub = get_hub()
-        skills = getattr(hub, "skills", None)
-        if skills is None:
-            return ""
-        text = "\n".join(blobs)
-        htmlish = task_wants_html(text)
-        matched = skills.match(
-            agent="worker1",
-            text=text,
-            plan_mode="full_page_html" if htmlish else "",
-            task_kind="html_page" if htmlish else "",
-            limit=3,
-        )
-        return skills_prompt_block(matched)
-    except Exception:  # noqa: BLE001
-        return ""
+    text = "\n".join(blobs)
+    htmlish = task_wants_html(text)
+    return skill_block_for(
+        agent="worker1",
+        text=text,
+        plan_mode="full_page_html" if htmlish else "",
+        task_kind="html_page" if htmlish else "",
+        limit=3,
+    )
 
 
 def worker_system_prompt(*, wants_html: bool = False, skill_block: str = "") -> str:

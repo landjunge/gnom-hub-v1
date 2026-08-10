@@ -25,3 +25,11 @@
 
 ### Version
 - `__version__` = 3.10.0
+
+## 3.10.1 finish
+
+- Learned skills S2: learn / learn_from_last + UI **Als Skill speichern**
+- Skill inject: Brainstorm + Coordinator + Workers
+- Seed `qa_checklist`; Telegram `/skills` `/skill_on` `/skill_off`
+- Mobile box tabs ≤640px
+- Docs: ORCHESTRATION.md · GITHUB_HOLDER_3.10.md
