@@ -318,6 +318,7 @@
 | npm run lint:js on app.js | **done** (0 errors / warn baseline) |
 | Flat plugins: @eslint/js, no-unsanitized, promise | **done** |
 | docs/ESLINT_FLAT_MIGRATION.md | **done** |
+| FlatCompat deep dive + example config | **done** |
 | CI hard gate max-warnings 0 | optional |
 
 ## Post-V3.7 (optional)

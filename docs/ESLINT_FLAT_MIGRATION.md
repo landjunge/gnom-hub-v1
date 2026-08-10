@@ -131,6 +131,8 @@ const foo = require("eslint-plugin-foo");
 
 Optional bridge (temporary): `@eslint/eslintrc` `FlatCompat` — use only as a stepping stone, then remove.
 
+→ Deep dive: [ESLINT_FLATCOMPAT.md](ESLINT_FLATCOMPAT.md) · example: `eslint.flatcompat.example.js`
+
 ```js
 const { FlatCompat } = require("@eslint/eslintrc");
 const compat = new FlatCompat({ baseDirectory: __dirname });

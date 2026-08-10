@@ -8,9 +8,11 @@
   "scripts": {
     "lint:js": "eslint \"src/gnom_hub/ui/static/app.js\"",
     "lint:js:fix": "eslint \"src/gnom_hub/ui/static/app.js\" --max-warnings 0",
-    "lint:js:all": "eslint \"src/gnom_hub/ui/static/**/*.js\""
+    "lint:js:all": "eslint \"src/gnom_hub/ui/static/**/*.js\"",
+    "lint:js:compat": "eslint -c eslint.flatcompat.example.js \"src/gnom_hub/ui/static/app.js\""
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.0",
     "@eslint/js": "^9.22.0",
     "eslint": "9.22.0",
     "eslint-plugin-no-unsanitized": "^4.1.2",
