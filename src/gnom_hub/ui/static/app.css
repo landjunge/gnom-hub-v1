@@ -1,32 +1,43 @@
 /* Gnom-Hub — calm dark UI (no rainbow chrome) */
 
 :root {
+  /* Surfaces — calm dark desk */
   --bg: #121316;
   --bg-panel: #1a1b1f;
   --bg-card: #1e1f24;
-  --bg-elev: #22242a;
-  --text: #d8dbe0;
-  --text-muted: #7a7f88;
-  --border: #2c2e34;
+  --bg-elev: #24262d;
+  --text: #e2e4e9;
+  --text-muted: #8b909a;
+  --border: #2e3138;
   --accent: #6b7280;
-  --accent-hi: #9ca3af;
+  --accent-hi: #a1a8b3;
+  --ok: #3d9b6a;
+  --warn: #c9a227;
+  --err: #c45c5c;
   --gap: clamp(4px, 0.35vw, 8px);
   --pad-x: clamp(8px, 1vw, 16px);
   --pad-y: clamp(6px, 0.8vh, 12px);
   --layout-w: 100%;
   --card-h: clamp(64px, 8.5vh, 96px);
   --chat-h: clamp(140px, 18vh, 220px);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --shadow-soft: 0 4px 18px rgba(0, 0, 0, 0.28);
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent-hi);
 
-  /* System agents — max. kräftig, Flex = reines Gelb */
-  --c-brainstorm: #ff0000;
-  --c-memory: #0066ff;
-  --c-flex: #ffff00;
-  --c-coordinator: #00cc44;
-  /* Workers — andere Palette, knallig, kein Grau */
-  --c-worker1: #00d4ff;
-  --c-worker2: #7c3aed;
-  --c-worker3: #ff2d95;
-  --c-worker4: #ff6600;
+  /*
+   * Agent colors — same roles, one coherent family on dark UI.
+   * Avoid pure #f00/#ff0 neon clash; keep high chroma for identity.
+   */
+  --c-brainstorm: #ef5350;
+  --c-memory: #42a5f5;
+  --c-flex: #f0c000;
+  --c-coordinator: #26c281;
+  --c-worker1: #29b6f6;
+  --c-worker2: #8b6cf6;
+  --c-worker3: #ec5f9b;
+  --c-worker4: #ff8a3d;
 }
 
 * {
@@ -2794,4 +2805,85 @@ body.phase3-off .btn-archive {
     max-height: none;
     min-height: 50vh;
   }
+}
+
+
+/* —— quality polish 3.10: cohesion, a11y, calm motion —— */
+button:focus-visible,
+.btn:focus-visible,
+.btn-ws-sm:focus-visible,
+.agent-card:focus-visible,
+.tune-input:focus-visible,
+.mobile-box-tab:focus-visible,
+a:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.top-bar-head .ver-badge,
+.top-bar-head .stage-badge,
+.tools-badge,
+.vec-badge,
+#skills-badge {
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.01em;
+}
+
+.agent-card {
+  border-radius: var(--radius-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.agent-card.is-active-stage,
+.agent-card.is-layer-active {
+  box-shadow: 0 0 0 1px var(--card-color, var(--border)),
+    0 0 14px rgba(0, 0, 0, 0.35);
+}
+
+.box {
+  border-radius: 0; /* desk grid stays sharp */
+}
+
+.modal-panel {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+}
+
+.toast {
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-soft);
+}
+
+.toast.toast-ok {
+  border-left: 3px solid var(--ok);
+}
+
+.toast.toast-error {
+  border-left: 3px solid var(--err);
+}
+
+.toast.toast-info {
+  border-left: 3px solid var(--accent-hi);
+}
+
+/* Chat send / primary actions — calmer hover */
+.top-toolbar button:active {
+  transform: translateY(0.5px);
+}
+
+/* Reduced motion: no infinite pulses (stability for sensitive users) */
+@media (prefers-reduced-motion: reduce) {
+  .agent-card.is-active-stage,
+  .btn-mic.listening,
+  * {
+    animation: none !important;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Status green/red tokens (cards) */
+.agent-card[data-enabled="true"] .card-status {
+  color: var(--ok);
 }
