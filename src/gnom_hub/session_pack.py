@@ -198,17 +198,19 @@ class SessionPackMixin:
                 ]
             }
         st = self.pipeline.state
+        from copy import deepcopy
+
         pipeline = {
             "stage": st.stage.value,
             "mode": st.mode,
             "user_text": st.user_text,
             "memory_context": st.memory_context,
             "brainstorm_notes": st.brainstorm_notes,
-            "brainstorm_turns": list(st.brainstorm_turns or []),
-            "distilled_requirements": list(st.distilled_requirements),
+            "brainstorm_turns": deepcopy(list(st.brainstorm_turns or [])),
+            "distilled_requirements": deepcopy(list(st.distilled_requirements)),
             "flex_notes": st.flex_notes,
-            "worker_results": list(st.worker_results),
-            "worker_outputs": list(st.worker_outputs or []),
+            "worker_results": deepcopy(list(st.worker_results)),
+            "worker_outputs": deepcopy(list(st.worker_outputs or [])),
             "quality_notes": getattr(st, "quality_notes", "") or "",
             "warnings": list(st.warnings),
             "error": st.error,

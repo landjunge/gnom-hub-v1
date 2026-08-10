@@ -278,8 +278,15 @@ def _pipeline_cancel_requested() -> bool:
     try:
         from gnom_hub.hub import get_hub
 
-        fn = getattr(get_hub().pipeline, "cancel_check", None)
-        return bool(callable(fn) and fn())
+        hub = get_hub()
+        pipe = getattr(hub, "pipeline", None)
+        if pipe is None:
+            return False
+        fn = getattr(pipe, "cancel_check", None)
+        if not callable(fn):
+            return False
+        # Sticky True after cancel_job was a real bug; still tolerate exceptions.
+        return bool(fn())
     except Exception:  # noqa: BLE001
         return False
 
