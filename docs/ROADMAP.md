@@ -355,12 +355,14 @@
 | Expanded DE/EN page-intent scoring phrases | **done** |
 | Plan toast on Execute done (mode + score) | **done** |
 | docs/CHANGELOG_3.9.md | **done** |
+| Pluggable embedders + embeddings_lite plugin | **done** |
+| docs/PLUGINS.md · HUB_ARCHITECTURE.md · MERGE_STATUS.md | **done** |
 
 ## Post-V3.7 (optional)
 
 | Item | Notes |
 |------|--------|
-| True embeddings | Replace lexical vector |
+| True embeddings | **partial** — pluggable backends + `embeddings_lite` plugin (bow/char_ngram/hashing); neural models optional external |
 | Skill marketplace | Agent tool install |
 | Auto-update | Channel + checksum |
 | Mobile / remote UI | Explicitly out of V1 |

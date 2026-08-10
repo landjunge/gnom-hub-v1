@@ -1,15 +1,17 @@
-"""Vector lite: BM25 (short-doc tuned) + bag-of-words cosine (no heavy deps)."""
+"""Vector lite: BM25 (short-doc tuned) + pluggable cosine embedder (no heavy deps)."""
 
 from __future__ import annotations
 
 import json
 import math
 import re
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 from gnom_hub.config.paths import project_root
 from gnom_hub.memory.atomic import atomic_write_text
+from gnom_hub.memory.embedders import embed_bow, resolve_backend
 
 _TOKEN = re.compile(r"[a-z0-9äöüß]{2,}", re.IGNORECASE)
 
@@ -82,12 +84,8 @@ def _tokenize(text: str, *, drop_stop: bool = False, bigrams: bool = True) -> li
 
 
 def _embed(text: str) -> dict[str, float]:
-    """L2-normalized bag-of-words on unigrams only (stable stored vec)."""
-    counts: dict[str, float] = {}
-    for t in _unigrams(text, drop_stop=True):
-        counts[t] = counts.get(t, 0.0) + 1.0
-    norm = math.sqrt(sum(v * v for v in counts.values())) or 1.0
-    return {k: v / norm for k, v in counts.items()}
+    """Default embedder (bag-of-words) — VectorStore may override per instance."""
+    return embed_bow(text)
 
 
 def _cosine(a: dict[str, float], b: dict[str, float]) -> float:
@@ -166,8 +164,69 @@ class VectorStore:
         self.bm25_weight = float(bm25_weight)
         self.cosine_weight = float(cosine_weight)
         self.min_score = float(min_score)
+        self.embedder_name: str = "bow"
+        self._embed_fn: Callable[[str], dict[str, float]] = embed_bow
         self._docs: list[dict[str, Any]] = []
         self.load()
+
+    def set_embedder(
+        self,
+        name: str | None = None,
+        *,
+        fn: Callable[[str], dict[str, float]] | None = None,
+        reindex: bool = False,
+    ) -> dict[str, Any]:
+        """
+        Switch embedding backend.
+
+        name: bow | char_ngram | hashing (or custom label when fn given)
+        fn: optional custom embed callable (plugin / neural model wrapper)
+        reindex: recompute stored vecs with the new embedder
+        """
+        if fn is not None:
+            self._embed_fn = fn
+            self.embedder_name = (name or "custom").strip() or "custom"
+        else:
+            key, emb = resolve_backend(name)
+            self.embedder_name = key
+            self._embed_fn = emb
+        n = 0
+        if reindex:
+            n = self.reindex()
+        return {
+            "ok": True,
+            "embedder": self.embedder_name,
+            "reindexed": n,
+            "docs": self.count(),
+        }
+
+    def reindex(self) -> int:
+        """Recompute vec for every stored doc with current embedder."""
+        n = 0
+        for d in self._docs:
+            text = str(d.get("text") or "")
+            if not text.strip():
+                continue
+            d["vec"] = self._embed_fn(text)
+            d.setdefault("meta", {})
+            if isinstance(d["meta"], dict):
+                d["meta"]["embedder"] = self.embedder_name
+            n += 1
+        if n:
+            self.save()
+        return n
+
+    def embedder_status(self) -> dict[str, Any]:
+        from gnom_hub.memory.embedders import backend_info
+
+        info = backend_info()
+        return {
+            "active": self.embedder_name,
+            "docs": self.count(),
+            "backends": info["backends"],
+            "default": info["default"],
+            "note": info["heavy_models"],
+        }
 
     def load(self) -> None:
         self._docs = []
@@ -191,8 +250,10 @@ class VectorStore:
         text = (text or "").strip()
         if not text:
             return doc_id
-        vec = _embed(text)
-        entry = {"id": doc_id, "text": text, "meta": meta or {}, "vec": vec}
+        vec = self._embed_fn(text)
+        meta_out = dict(meta or {})
+        meta_out.setdefault("embedder", self.embedder_name)
+        entry = {"id": doc_id, "text": text, "meta": meta_out, "vec": vec}
         for i, d in enumerate(self._docs):
             if d.get("id") == doc_id:
                 self._docs[i] = entry
@@ -296,7 +357,7 @@ class VectorStore:
         ]
         bm25 = _bm25_scores(q_toks, docs_toks, k1=use_k1, b=use_b)
         max_b = max(bm25) if bm25 else 0.0
-        qv = _embed(q)
+        qv = self._embed_fn(q)
         scored: list[tuple[float, dict[str, Any]]] = []
         for i, d in enumerate(self._docs):
             b_raw = bm25[i] if i < len(bm25) else 0.0
@@ -305,7 +366,7 @@ class VectorStore:
             if isinstance(vec, dict) and vec:
                 c = _cosine(qv, {str(k): float(v) for k, v in vec.items()})
             else:
-                c = _cosine(qv, _embed(str(d.get("text") or "")))
+                c = _cosine(qv, self._embed_fn(str(d.get("text") or "")))
             hybrid = self.bm25_weight * b_norm + self.cosine_weight * c
             hybrid *= _source_boost(d.get("meta") if isinstance(d.get("meta"), dict) else None)
             scored.append((hybrid, d))

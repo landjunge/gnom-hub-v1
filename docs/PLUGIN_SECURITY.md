@@ -1,5 +1,7 @@
 # Plugins — loading, authoring & security
 
+Catalog: [PLUGINS.md](PLUGINS.md).
+
 ## How load works
 
 1. Scan `plugins/<name>/plugin.json` (skip `_template` / `.*`)

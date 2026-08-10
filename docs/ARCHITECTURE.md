@@ -1,6 +1,6 @@
 # Gnom-Hub Architecture (overview)
 
-Short map of the running system. Deep dive: [CODE_ANALYSIS_FOR_AI.md](CODE_ANALYSIS_FOR_AI.md).  
+Short map of the running system. Exact overview: [HUB_ARCHITECTURE.md](HUB_ARCHITECTURE.md). Deep dive: [CODE_ANALYSIS_FOR_AI.md](CODE_ANALYSIS_FOR_AI.md). Plugins: [PLUGINS.md](PLUGINS.md). Merge wave: [MERGE_STATUS.md](MERGE_STATUS.md).  
 Agent contracts: [AGENTS_DEFINITION.md](AGENTS_DEFINITION.md).  
 Mermaid style guide + **class palette**: [MERMAID.md](MERMAID.md).  
 MCP-lite tools server: [MCP_ARCHITECTURE.md](MCP_ARCHITECTURE.md).  

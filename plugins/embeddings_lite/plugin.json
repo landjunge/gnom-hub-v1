@@ -1,0 +1,50 @@
+{
+  "id": "embeddings_lite",
+  "name": "Embeddings Lite",
+  "version": "0.1.0",
+  "enabled": true,
+  "description": "Switch VectorStore embedder (bow | char_ngram | hashing). No heavy deps. Neural models optional via custom register.",
+  "tags": ["memory", "vector", "embeddings"],
+  "tools": [
+    {
+      "name": "embeddings_status",
+      "description": "Show active vector embedder backend and available backends.",
+      "module": "main.py",
+      "handler": "status",
+      "retries": 0,
+      "tags": ["memory"],
+      "input_schema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "embeddings_use",
+      "description": "Switch embedder: bow | char_ngram | hashing. Optional reindex=true recomputes stored vectors.",
+      "module": "main.py",
+      "handler": "use_backend",
+      "retries": 0,
+      "tags": ["memory"],
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "backend": { "type": "string", "description": "bow | char_ngram | hashing" },
+          "reindex": { "type": "boolean", "description": "Recompute all stored vecs (default false)" }
+        },
+        "required": ["backend"]
+      }
+    },
+    {
+      "name": "embeddings_reindex",
+      "description": "Recompute all vector docs with the active embedder.",
+      "module": "main.py",
+      "handler": "reindex",
+      "retries": 0,
+      "tags": ["memory"],
+      "input_schema": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ]
+}
