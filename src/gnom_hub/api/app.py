@@ -12,6 +12,8 @@ from pydantic import BaseModel, Field
 
 from gnom_hub.core.errors import classify_tool_exception, envelope_http
 from gnom_hub.hub import get_hub
+from gnom_hub.plugins.mcp_protocol import jsonrpc_dispatch
+from gnom_hub.plugins.mcp_protocol import tools_call as mcp_tools_call
 from gnom_hub.plugins.retry import ToolFailed
 
 STATIC_DIR = Path(__file__).resolve().parents[1] / "ui" / "static"
@@ -958,7 +960,18 @@ def create_app() -> FastAPI:
 
     @app.get("/api/mcp/tools")
     def mcp_tools() -> dict[str, Any]:
+        """MCP tools/list body (MCP-lite discovery)."""
         return get_hub().tools.mcp_manifest()
+
+    @app.post("/api/mcp")
+    def mcp_jsonrpc(body: dict[str, Any]) -> dict[str, Any]:
+        """Minimal JSON-RPC 2.0 surface: tools/list, tools/call, initialize, ping."""
+        return jsonrpc_dispatch(get_hub().tools, body if isinstance(body, dict) else {})
+
+    @app.post("/api/mcp/call")
+    def mcp_call(body: ToolCallBody) -> dict[str, Any]:
+        """MCP tools/call-shaped response (content[] + isError)."""
+        return mcp_tools_call(get_hub().tools, body.name, body.arguments)
 
     @app.post("/api/tools/call")
     def tools_call(body: ToolCallBody) -> dict[str, Any]:

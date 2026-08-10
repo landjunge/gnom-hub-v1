@@ -3,6 +3,7 @@
 Short map of the running system. Deep dive: [CODE_ANALYSIS_FOR_AI.md](CODE_ANALYSIS_FOR_AI.md).  
 Agent contracts: [AGENTS_DEFINITION.md](AGENTS_DEFINITION.md).  
 Mermaid style guide + **class palette**: [MERMAID.md](MERMAID.md).  
+MCP-lite tools server: [MCP_ARCHITECTURE.md](MCP_ARCHITECTURE.md).  
 README diagrams: [README.md](../README.md) · [README_DE.md](../README_DE.md).
 
 ## One sentence

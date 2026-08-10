@@ -385,6 +385,7 @@ Flex-Vertrag: [docs/AGENTS_DEFINITION.md](docs/AGENTS_DEFINITION.md) · Tests: [
 | [docs/KEYS_AND_MODELS.md](docs/KEYS_AND_MODELS.md) | Keys & Modelle |
 | [docs/PLUGIN_SECURITY.md](docs/PLUGIN_SECURITY.md) | Plugin-Trust & Authoring |
 | [docs/ERROR_HANDLING.md](docs/ERROR_HANDLING.md) | Fehler-Schichten · Envelopes · Retries |
+| [docs/MCP_ARCHITECTURE.md](docs/MCP_ARCHITECTURE.md) | MCP-lite Server-Architektur |
 | [docs/TOOLS_PORTFOLIO.md](docs/TOOLS_PORTFOLIO.md) | Computer-Use-Libs |
 | [docs/AGENTS_DEFINITION.md](docs/AGENTS_DEFINITION.md) | Agenten-Roster · Flex |
 | [docs/WORKFLOWS_AND_PRESETS.md](docs/WORKFLOWS_AND_PRESETS.md) | Presets · plan_mode |
