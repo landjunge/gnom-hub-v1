@@ -176,6 +176,20 @@ class CoordinatorAgent(BaseAgent):
                             "independent non-HTML workstreams (research vs implement is OK "
                             "only if plan_mode is team)."
                         )
+                    try:
+                        from gnom_hub.skills.match import skill_block_for
+
+                        sb = skill_block_for(
+                            agent="coordinator",
+                            text=user_text + "\n" + "\n".join(clean[:8]),
+                            plan_mode=effective,
+                            task_kind=kind,
+                            limit=2,
+                        )
+                        if sb:
+                            sys = sys + "\n\n" + sb
+                    except Exception:  # noqa: BLE001
+                        pass
                     raw = self.ask(
                         system=sys,
                         user=(

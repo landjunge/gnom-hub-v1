@@ -72,6 +72,19 @@ class BrainstormAgent(BaseAgent):
                         "- Keine volle HTML/CSS/JS-Implementierung hier.\n"
                         f"{brainstorm_system_extra(kind)}"
                     )
+                    try:
+                        from gnom_hub.skills.match import skill_block_for
+
+                        sb = skill_block_for(
+                            agent="brainstorm",
+                            text=user_text,
+                            task_kind=kind,
+                            limit=2,
+                        )
+                        if sb:
+                            system = system + "\n\n" + sb
+                    except Exception:  # noqa: BLE001
+                        pass
                     is_diag = kind == "diagnose"
                     is_fast = kind in ("tool_drill", "browser_nav", "go_only")
                     return self.ask(

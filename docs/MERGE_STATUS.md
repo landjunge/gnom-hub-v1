@@ -58,3 +58,7 @@ Still optional (not blocking): neural embeddings package, live E2E with keys, sk
 | Local catalog / install | shipped |
 | Neural plugin (optional) | shipped |
 | Mobile CSS | shipped |
+
+## 3.10.1 finish
+
+Learned skills S2, orchestration docs, mobile tabs, qa_checklist, telegram skills — see [GITHUB_HOLDER_3.10.md](GITHUB_HOLDER_3.10.md).

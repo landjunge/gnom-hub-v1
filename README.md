@@ -4,8 +4,8 @@
 
 | | |
 |--|--|
-| **Version** | 3.10.0 ([notes](docs/CHANGELOG_3.10.md)) |
-| **Docs** | [Hub arch](docs/HUB_ARCHITECTURE.md) · [Plugins](docs/PLUGINS.md) · [Merges](docs/MERGE_STATUS.md) · [V4 plan](docs/V4_PLAN.md) |
+| **Version** | 3.10.1 ([notes](docs/CHANGELOG_3.10.md)) |
+| **Docs** | [Hub arch](docs/HUB_ARCHITECTURE.md) · [Plugins](docs/PLUGINS.md) · [Merges](docs/MERGE_STATUS.md) · [V4 plan](docs/V4_PLAN.md) · [Orchestration](docs/ORCHESTRATION.md) · [GitHub 3.10](docs/GITHUB_HOLDER_3.10.md) |
 | **Stack** | Python ≥3.10 · FastAPI · desktop SPA |
 | **UI** | `http://127.0.0.1:8080/` |
 | **LLM** | DeepSeek (`deepseek-v4-flash`) · optional Ollama |

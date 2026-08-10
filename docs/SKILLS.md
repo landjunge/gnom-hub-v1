@@ -34,6 +34,12 @@ Body markdown…
 | POST | `/api/skills/reload` |
 | POST | `/api/skills/{id}/enable` body `{enabled}` |
 | POST | `/api/skills/install` body `{path}` local folder |
+| POST | `/api/skills/learn` | `{name, body, tags?, triggers?}` |
+| POST | `/api/skills/learn_from_last` | draft from last Execute |
+
+## Learned (S2)
+
+UI: **Als Skill speichern** in Skills modal (from last Execute).
 
 ## Rules
 

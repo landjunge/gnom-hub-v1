@@ -109,3 +109,34 @@ def test_api_skills(tmp_path, monkeypatch):
         r2 = c.post("/api/skills/reload")
         assert r2.status_code == 200
     hub_mod._HUB = None
+
+
+def test_save_learned(tmp_path: Path):
+    root = Path(__file__).resolve().parents[1]
+    user = tmp_path / "user"
+    loader = SkillLoader([root / "skills", user])
+    loader.discover_and_load()
+    out = loader.save_learned(
+        name="My learned",
+        body="# Rule\nAlways use dark theme.",
+        dest_root=user,
+        tags=["learned", "theme"],
+        triggers=["dark"],
+    )
+    assert out["ok"] is True
+    assert loader.get(out["id"]) is not None
+    assert "dark theme" in (loader.get(out["id"]).body or "")
+
+
+def test_qa_checklist_bundled():
+    root = Path(__file__).resolve().parents[1]
+    loader = SkillLoader([root / "skills"])
+    loader.discover_and_load()
+    assert loader.get("qa_checklist") is not None
+
+
+def test_skill_block_for_no_hub():
+    from gnom_hub.skills.match import skill_block_for
+
+    # may return "" without hub or with hub — should not raise
+    skill_block_for(agent="worker1", text="landing page html", plan_mode="full_page_html")

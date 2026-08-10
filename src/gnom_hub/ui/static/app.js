@@ -3363,6 +3363,17 @@
       toast("Install failed: " + err.message, "error");
     }
   }
+
+
+  async function learnSkillFromLast() {
+    try {
+      const data = await api("POST", "/api/skills/learn_from_last");
+      toast("Skill gespeichert: " + (data.id || "learned"), "ok");
+      await refreshSkillsModal();
+    } catch (err) {
+      toast("Learn failed: " + err.message, "error");
+    }
+  }
 /* part: 03-chat-jobs-ops.js  lines 1950-3681 of app.js — edit parts, run scripts/build_ui_js.py */
   function toggleMic() {
     const SR =
@@ -7234,6 +7245,8 @@
     if (skillsReload) skillsReload.addEventListener("click", reloadSkills);
     const skillsInstallBtn = document.getElementById("skills-install-btn");
     if (skillsInstallBtn) skillsInstallBtn.addEventListener("click", installSkillPath);
+    const skillsLearnLast = document.getElementById("skills-learn-last");
+    if (skillsLearnLast) skillsLearnLast.addEventListener("click", learnSkillFromLast);
     const vectorQuery = document.getElementById("vector-query");
     if (vectorQuery) {
       vectorQuery.addEventListener("keydown", function (ev) {
@@ -7283,3 +7296,33 @@
     init();
   }
 })();
+
+
+  function initMobileBoxTabs() {
+    const bar = document.getElementById("mobile-box-tabs");
+    if (!bar) return;
+    function apply() {
+      const narrow = window.matchMedia("(max-width: 640px)").matches;
+      bar.hidden = !narrow;
+      document.body.classList.toggle("mobile-box-mode", narrow);
+      if (narrow && !document.body.className.match(/show-box-/)) {
+        document.body.classList.add("show-box-1");
+      }
+      if (!narrow) {
+        document.body.classList.remove("show-box-1", "show-box-2", "show-box-3");
+      }
+    }
+    bar.querySelectorAll("[data-box-tab]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const n = btn.getAttribute("data-box-tab") || "1";
+        document.body.classList.remove("show-box-1", "show-box-2", "show-box-3");
+        document.body.classList.add("show-box-" + n);
+        bar.querySelectorAll(".mobile-box-tab").forEach(function (b) {
+          b.classList.toggle("is-active", b === btn);
+        });
+      });
+    });
+    window.addEventListener("resize", apply);
+    apply();
+  }
+  initMobileBoxTabs();
