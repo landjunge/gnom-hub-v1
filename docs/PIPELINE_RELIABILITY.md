@@ -33,3 +33,14 @@ No zombie clarify box; user can Send again when ready.
 ```bash
 pytest tests/test_prefetch_why_clarify_later.py tests/test_jobs_cancel.py -q
 ```
+
+## Resume deferred clarify
+
+- Desk: Box 1 list **Parked (Later)** → **Resume**
+- API: `POST /api/clarify/resume?index=0`
+- Re-opens as active clarify (Yes/No/Whatever/Later); does **not** auto-run workers
+
+## Job timeout
+
+Wall-clock timeout sets `timeout=true` → terminal **error** with `FEHLER — job timeout…`
+(user Cancel stays `cancelled`).

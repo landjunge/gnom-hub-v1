@@ -68,9 +68,9 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 ### Product & history
 | Doc | Keywords |
 |-----|----------|
-| [CHANGELOG_3.10.md](CHANGELOG_3.10.md) | skills, changelog, 3.10, install, skill, api, embeddings, fastembed, 640px, catalog |
+| [CHANGELOG_3.10.md](CHANGELOG_3.10.md) | skills, changelog, 3.10, install, api, skill, clarify, embeddings, fastembed, job |
 | [CHANGELOG_3.9.md](CHANGELOG_3.9.md) | changelog, 3.9, api, embedder, vector, get, plugins, bow, cancel, char_ngram |
-| [MERGE_STATUS.md](MERGE_STATUS.md) | hub, gnom, merged, pull, com, github, https, landjunge, status, merge |
+| [MERGE_STATUS.md](MERGE_STATUS.md) | hub, gnom, pull, com, github, https, landjunge, merged, status, merge |
 | [PLAN_VS_CODE.md](PLAN_VS_CODE.md) | plan, code, vs, nicht, backup, brainstorm, checkpoint, clean, execute, pre |
 | [PRE_PLAN.md](PRE_PLAN.md) | plan, pre, box, wird, chat, worker, brainstorm, coordinator, desktop, destillation |
 | [ROADMAP.md](ROADMAP.md) | done, status, item, roadmap, worker, execute, result, save, api, backup |
@@ -91,7 +91,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 |-----|----------|
 | [BUG_HUNT_TEAM.md](BUG_HUNT_TEAM.md) | orchestrator, cancel, team, bug, hunt, can, god, jobs, mode, telegram |
 | [MEMORY_FRESHNESS.md](MEMORY_FRESHNESS.md) | freshness, memory, sync, vector, warm, hot, write, fact, hit, index |
-| [PIPELINE_RELIABILITY.md](PIPELINE_RELIABILITY.md) | pipeline, reliability, busy, prefetch, tests, tool, why, cancel, clarify, later |
+| [PIPELINE_RELIABILITY.md](PIPELINE_RELIABILITY.md) | pipeline, reliability, clarify, later, busy, cancel, prefetch, tests, timeout, tool |
 
 ### Root meta
 | Doc | Keywords |

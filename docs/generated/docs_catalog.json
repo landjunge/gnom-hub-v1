@@ -108,19 +108,19 @@
         "changelog",
         "3.10",
         "install",
-        "skill",
         "api",
+        "skill",
+        "clarify",
         "embeddings",
         "fastembed",
+        "job",
         "640px",
+        "box",
         "catalog",
-        "clarify",
-        "css",
-        "data",
-        "enable"
+        "css"
       ],
-      "chars": 1939,
-      "lines": 60
+      "chars": 2105,
+      "lines": 66
     },
     {
       "file": "CHANGELOG_3.9.md",
@@ -562,12 +562,12 @@
       "keywords": [
         "hub",
         "gnom",
-        "merged",
         "pull",
         "com",
         "github",
         "https",
         "landjunge",
+        "merged",
         "status",
         "merge",
         "plugin",
@@ -575,8 +575,8 @@
         "cancel",
         "embeddings"
       ],
-      "chars": 2886,
-      "lines": 65
+      "chars": 3969,
+      "lines": 78
     },
     {
       "file": "MERMAID.md",
@@ -658,21 +658,21 @@
       "keywords": [
         "pipeline",
         "reliability",
-        "busy",
-        "prefetch",
-        "tests",
-        "tool",
-        "why",
-        "cancel",
         "clarify",
         "later",
+        "busy",
+        "cancel",
+        "prefetch",
+        "tests",
+        "timeout",
+        "tool",
+        "why",
         "box",
-        "sp\u00e4ter",
-        "test_jobs_cancel",
-        "workers"
+        "job",
+        "resume"
       ],
-      "chars": 1013,
-      "lines": 36
+      "chars": 1358,
+      "lines": 47
     },
     {
       "file": "PLAN_VS_CODE.md",

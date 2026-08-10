@@ -107,6 +107,31 @@ class JobsMixin:
             """
             # Re-read cancel under lock with pipeline (caller holds lock)
             if job.get("cancel"):
+                # Timeout is a hard FEHLER (honest fail); user cancel stays cancelled
+                if job.get("timeout"):
+                    err = job.get("error") or "FEHLER — job timeout — cancelled mid-pipeline"
+                    job["status"] = "error"
+                    job["error"] = err
+                    job["stage"] = "error"
+                    job["finished"] = True
+                    self.last_error = err
+                    try:
+                        st = self.pipeline.state
+                        st.error = err
+                        from gnom_hub.pipeline.models import PipelineStage
+
+                        if st.stage.value not in ("done", "error", "brainstorm", "idle"):
+                            abort = getattr(self.pipeline, "_abort_cancelled", None)
+                            if callable(abort):
+                                abort()
+                        # Prefer error stage for desk FEHLER surface
+                        try:
+                            st.stage = PipelineStage.error
+                        except Exception:  # noqa: BLE001
+                            pass
+                    except Exception:  # noqa: BLE001
+                        pass
+                    return
                 job["status"] = "cancelled"
                 job["error"] = job.get("error") or "cancelled by user"
                 job["stage"] = "cancelled"
@@ -243,9 +268,10 @@ class JobsMixin:
                     if job.get("finished"):
                         return
                     job["cancel"] = True
+                    job["timeout"] = True
                     job["stage"] = "cancelling"
                     job["error"] = (
-                        job.get("error") or f"job timeout after {int(timeout_s)}s — cancelled"
+                        job.get("error") or f"FEHLER — job timeout after {int(timeout_s)}s"
                     )
                     try:
                         self._append_trace(

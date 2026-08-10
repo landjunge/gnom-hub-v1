@@ -62,3 +62,16 @@ Still optional (not blocking): neural embeddings package, live E2E with keys, sk
 ## 3.10.1 finish
 
 Learned skills S2, orchestration docs, mobile tabs, qa_checklist, telegram skills — see [GITHUB_HOLDER_3.10.md](GITHUB_HOLDER_3.10.md).
+
+## 3.10.x reliability & docs wave (merged)
+
+| PR | Title | Status |
+|----|-------|--------|
+| [#30](https://github.com/landjunge/gnom-hub-v1/pull/30)–[#33](https://github.com/landjunge/gnom-hub-v1/pull/33) | Neural install path · simple install · mermaid | **merged** |
+| [#34](https://github.com/landjunge/gnom-hub-v1/pull/34) | Tauri deferred endgame | **merged** |
+| [#35](https://github.com/landjunge/gnom-hub-v1/pull/35) | UI quality polish | **merged** |
+| [#36](https://github.com/landjunge/gnom-hub-v1/pull/36)–[#38](https://github.com/landjunge/gnom-hub-v1/pull/38) | README/INDEX search | **merged** |
+| [#39](https://github.com/landjunge/gnom-hub-v1/pull/39)–[#40](https://github.com/landjunge/gnom-hub-v1/pull/40) | Memory freshness (HOT+WARM+Vector) | **merged** |
+| [#41](https://github.com/landjunge/gnom-hub-v1/pull/41)–[#42](https://github.com/landjunge/gnom-hub-v1/pull/42) | Prefetch why · Clarify Later | **merged** |
+
+Docs: [MEMORY_FRESHNESS.md](MEMORY_FRESHNESS.md) · [PIPELINE_RELIABILITY.md](PIPELINE_RELIABILITY.md) · [INSTALL_SIMPLE.md](INSTALL_SIMPLE.md)
