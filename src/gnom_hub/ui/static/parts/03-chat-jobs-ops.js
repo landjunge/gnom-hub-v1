@@ -208,7 +208,7 @@
       const sec = (Date.now() - jobTimerStart) / 1000;
       const t = document.getElementById("job-timer");
       if (t) t.textContent = formatDuration(sec);
-    }, 100);
+    }, 250);
   }
 
   function stopJobTimer() {
@@ -1290,6 +1290,8 @@
     const deadline = Date.now() + (maxMs || 180000);
     let lastStage = "";
     let lastToolLogLen = 0;
+    // Adaptive poll: snappy at start, calm later (speed + stability)
+    let pollDelayMs = 180;
     try {
       while (Date.now() < deadline) {
         let job;
@@ -1378,8 +1380,22 @@
           await resyncState();
           return job;
         }
+        // Faster while queued/early; back off when stable mid-work
+        if (document.hidden) {
+          pollDelayMs = 900;
+        } else if (
+          lastStage === "work" ||
+          lastStage === "worker1" ||
+          lastStage === "worker2" ||
+          lastStage === "worker3" ||
+          lastStage === "worker4"
+        ) {
+          pollDelayMs = Math.min(650, pollDelayMs + 40);
+        } else {
+          pollDelayMs = Math.min(500, Math.max(180, pollDelayMs + 25));
+        }
         await new Promise(function (resolve) {
-          setTimeout(resolve, 450);
+          setTimeout(resolve, pollDelayMs);
         });
       }
       // Timeout: cancel orphan + resync so UI is not left mid-pipeline

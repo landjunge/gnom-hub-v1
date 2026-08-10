@@ -38,3 +38,10 @@
 
 - `requirements-embeddings.txt` + fastembed wired in API/UI
 - Preference restore via `data/hot/vector_embedder.json`
+
+## UI quality polish
+
+- Coherent agent color family (no pure neon clash); CSS tokens ok/warn/err/radius
+- Adaptive job poll (faster start, calmer mid-work, slower when tab hidden)
+- focus-visible + prefers-reduced-motion
+- docs/UI_QUALITY.md

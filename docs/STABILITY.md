@@ -1,6 +1,8 @@
 # Stability checklist (track A)
 
-Goal: **trust the hub** before adding features. Run this after chat/Execute/LLM/key changes.
+Goal: **trust the hub** before adding features.
+
+UI polish (colors, poll, a11y): [UI_QUALITY.md](UI_QUALITY.md). Run this after chat/Execute/LLM/key changes.
 
 ---
 

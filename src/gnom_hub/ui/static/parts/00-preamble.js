@@ -19,14 +19,14 @@
   const _FLEX_PRESETS = ["personal", "security", "neutral", "researcher"]; // kept for desk docs/export
 
   const COLOR_HEX = {
-    brainstorm: "#ff0000",
-    memory: "#0066ff",
-    flex: "#ffff00",
-    coordinator: "#00cc44",
-    worker1: "#00d4ff",
-    worker2: "#7c3aed",
-    worker3: "#ff2d95",
-    worker4: "#ff6600",
+    brainstorm: "#ef5350",
+    memory: "#42a5f5",
+    flex: "#f0c000",
+    coordinator: "#26c281",
+    worker1: "#29b6f6",
+    worker2: "#8b6cf6",
+    worker3: "#ec5f9b",
+    worker4: "#ff8a3d",
   };
 
   const SLIDER_TIPS = {
