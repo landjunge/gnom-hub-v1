@@ -431,13 +431,15 @@ class JobsMixin:
             out["snapshot"] = None
         return out
 
-    def cancel_job(self, job_id: str) -> dict[str, Any]:
+    def cancel_job(self, job_id: str, *, as_timeout: bool = False) -> dict[str, Any]:
         """
         Soft-cancel request (M2/H5).
 
         Sets cancel flag immediately so cancel_check trips, but keeps status
         ``running`` until the worker thread finalizes — so UI poll stays busy
         while the pipeline lock is still held.
+
+        as_timeout=True → finalize as FEHLER error (client poll deadline), not soft cancel.
 
         Also forces pipeline.cancel_check to true for in-flight cooperative aborts.
         """
@@ -462,7 +464,13 @@ class JobsMixin:
         ):
             job["cancel"] = True
             job["stage"] = "cancelling"
-            job["error"] = job.get("error") or "cancelled by user"
+            if as_timeout:
+                job["timeout"] = True
+                job["error"] = (
+                    job.get("error") or "FEHLER — client poll timeout — cancelled mid-pipeline"
+                )
+            else:
+                job["error"] = job.get("error") or "cancelled by user"
             # Job runner wires: pipeline.cancel_check = lambda: bool(job.get("cancel"))
             # Do not install a separate cancel_check here — sticky True broke later
             # tool loops and flaked tests (agent_bridge) when hub is process-global.

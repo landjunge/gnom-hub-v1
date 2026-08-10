@@ -69,3 +69,10 @@
 - Tools badge title + toast include prefetch **why**
 - Session pack / checkpoint persist **deferred_clarifies**
 - Job error poll surfaces **FEHLER** clearly
+
+## Box3 honesty · pack tools · poll timeout FEHLER
+
+- Box3 DoD checklist gets `validation` again + FEHLER banner CSS
+- Session pack: tool_calls + tool_log round-trip
+- Client poll cancel `?as_timeout=1` → server FEHLER finalize
+- Toast/chat FEHLER dedupe on job error

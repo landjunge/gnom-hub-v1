@@ -226,6 +226,8 @@ class SessionPackMixin:
                 else None
             ),
             "deferred_clarifies": list(getattr(st, "deferred_clarifies", None) or [])[-12:],
+            "tool_calls": deepcopy(list(getattr(st, "tool_calls", None) or [])),
+            "tool_log": deepcopy(list(getattr(st, "tool_log", None) or [])[-40:]),
         }
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         pack_label = (label or st.user_text or "session").strip()[:80] or "session"
@@ -562,6 +564,8 @@ class SessionPackMixin:
                     for d in (data.get("deferred_clarifies") or [])
                     if isinstance(d, dict) and d.get("text")
                 ][-12:],
+                tool_calls=[c for c in (data.get("tool_calls") or []) if isinstance(c, dict)],
+                tool_log=[e for e in (data.get("tool_log") or []) if isinstance(e, dict)][-40:],
                 worker_results=list(data.get("worker_results") or []),
                 worker_outputs=list(data.get("worker_outputs") or []),
                 quality_notes=str(data.get("quality_notes") or ""),

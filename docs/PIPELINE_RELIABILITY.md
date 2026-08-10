@@ -48,3 +48,8 @@ Wall-clock timeout sets `timeout=true` → terminal **error** with `FEHLER — j
 ## Session pack / checkpoint
 
 `deferred_clarifies` round-trips in session pack export/import and light checkpoints.
+
+## Client poll vs server timeout
+
+`POST /api/jobs/{id}/cancel?as_timeout=1` marks `timeout` so finalize is **error/FEHLER**
+(not soft `cancelled`). Desk poll deadline uses this path.

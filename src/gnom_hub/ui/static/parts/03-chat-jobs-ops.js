@@ -1387,9 +1387,16 @@
               "unknown error";
             const msg = String(err);
             const label = /FEHLER/i.test(msg) ? msg : "FEHLER — " + msg;
-            // One system line here; callers may toast again with same text — ok
-            appendChat("system", label.slice(0, 240));
-            if (typeof toast === "function") toast(label.slice(0, 120), "error");
+            if (typeof lastReportedPipelineError !== "undefined") {
+              if (lastReportedPipelineError !== label) {
+                lastReportedPipelineError = label;
+                appendChat("system", label.slice(0, 240));
+                if (typeof toast === "function") toast(label.slice(0, 120), "error");
+              }
+            } else {
+              appendChat("system", label.slice(0, 240));
+              if (typeof toast === "function") toast(label.slice(0, 120), "error");
+            }
           }
           await resyncState();
           return job;
@@ -1414,7 +1421,12 @@
       }
       // Timeout: cancel orphan + resync so UI is not left mid-pipeline
       try {
-        await api("POST", "/api/jobs/" + encodeURIComponent(jobId) + "/cancel");
+        await api(
+          "POST",
+          "/api/jobs/" +
+            encodeURIComponent(jobId) +
+            "/cancel?as_timeout=1"
+        );
         appendChat("system", "FEHLER — client poll timeout — cancel requested.");
       } catch (_c) {
         /* ignore */
