@@ -1,4 +1,4 @@
-"""Worker tool prefetch: web_fetch + memory_search + pipeline.tool_call events."""
+"""Worker tool prefetch: plan, budgets, design, workspace, web_fetch, memory."""
 
 from __future__ import annotations
 
@@ -10,13 +10,52 @@ from gnom_hub.memory.hot import HotMemory
 from gnom_hub.memory.vector_store import VectorStore
 from gnom_hub.memory.warm import WarmMemory
 from gnom_hub.plugins.registry import ToolRegistry, ToolSpec
-from gnom_hub.tools.worker_prefetch import prefetch_for_workers, tool_calls_needed
+from gnom_hub.tools.worker_prefetch import (
+    PrefetchReport,
+    default_max_tool_calls,
+    extract_urls,
+    extract_workspace_files,
+    plan_prefetch,
+    prefetch_for_workers,
+    tool_calls_needed,
+    wants_design_tools,
+)
 
 
 def test_tool_calls_needed_detects_url_and_memory():
     assert "web_fetch" in tool_calls_needed("see https://example.com/x")
     assert "memory_search" in tool_calls_needed("always dark theme please")
     assert tool_calls_needed("plain hello") == []
+
+
+def test_plan_prefetch_html_order():
+    plan = plan_prefetch("Build HTML landing https://docs.example.com/a always dark")
+    names = [s.name for s in plan]
+    assert "color_palette" in names
+    assert "html_scaffold" in names
+    assert "web_fetch" in names
+    assert "memory_search" in names
+    # design before net before memory by priority
+    assert names.index("color_palette") < names.index("web_fetch")
+    assert names.index("web_fetch") < names.index("memory_search")
+
+
+def test_extract_urls_ranks_docs():
+    blob = "see https://spam.example.com/x?utm_source=1 and https://docs.example.com/guide"
+    urls = extract_urls(blob, max_urls=2)
+    assert urls[0].startswith("https://docs.example.com")
+
+
+def test_extract_workspace_files():
+    files = extract_workspace_files("update index.html and styles.css please")
+    assert "index.html" in files
+    assert "styles.css" in files
+
+
+def test_default_max_tool_calls():
+    assert default_max_tool_calls("plain text task") == 6
+    assert default_max_tool_calls("HTML landing page") == 8
+    assert wants_design_tools("Startseite mit Formular")
 
 
 def test_prefetch_emits_memory_search_tool_call(tmp_path: Path):
@@ -48,6 +87,7 @@ def test_prefetch_emits_memory_search_tool_call(tmp_path: Path):
         memory=mem,
     )
     assert "Memory search" in ctx or "dark theme" in ctx.lower()
+    assert "[prefetch]" in ctx
     names = [e.get("name") for e in events]
     assert "memory_search" in names
     assert any(e.get("ok") for e in events if e.get("name") == "memory_search")
@@ -183,3 +223,78 @@ def test_prefetch_skips_install_if_already_there():
     )
     assert installs["n"] == 0
     assert any(e.get("name") == "install_tool" for e in events)
+
+
+def test_prefetch_design_and_report():
+    bus = EventBus()
+    tools = ToolRegistry()
+
+    def palette(seed: str = "dark", count: int = 5):
+        return {
+            "ok": True,
+            "primary": "#5b8def",
+            "accent": "#7c3aed",
+            "surface": "#0f172a",
+            "text": "#e6edf3",
+            "css": ":root { --color-primary: #5b8def; }\n",
+        }
+
+    def scaffold(kind: str = "landing", title: str = "Page", seed: str = "dark"):
+        return {"ok": True, "kind": kind, "html": "<!DOCTYPE html><html></html>"}
+
+    def contrast(fg: str = "", bg: str = ""):
+        return {"ok": True, "ratio": 12.0, "grade": "AAA", "aa_normal": True}
+
+    def tokens(seed: str = "dark"):
+        return {"ok": True, "css": ":root { --space-4: 1rem; }\n"}
+
+    tools.register(ToolSpec(name="color_palette", description="p", handler=palette, plugin="d"))
+    tools.register(ToolSpec(name="html_scaffold", description="s", handler=scaffold, plugin="d"))
+    tools.register(ToolSpec(name="contrast_check", description="c", handler=contrast, plugin="d"))
+    tools.register(ToolSpec(name="css_tokens", description="t", handler=tokens, plugin="d"))
+
+    rep = prefetch_for_workers(
+        "HTML landing page ocean",
+        bus=bus,
+        tools=tools,
+        return_report=True,
+    )
+    assert isinstance(rep, PrefetchReport)
+    assert "color_palette" in rep.executed
+    assert "html_scaffold" in rep.executed
+    assert "contrast_check" in rep.executed
+    assert rep.calls_used >= 3
+    assert "[prefetch]" in rep.context
+    assert "color_palette" in rep.context
+
+
+def test_prefetch_workspace_read():
+    tools = ToolRegistry()
+
+    def read_ws(name: str = "", zone: str = "temp", max_chars: int = 4000):
+        if name == "index.html" and zone == "temp":
+            return {"ok": True, "name": name, "zone": zone, "text": "<h1>Existing</h1>"}
+        return {"ok": False, "error": "not found"}
+
+    tools.register(ToolSpec(name="workspace_read", description="r", handler=read_ws, plugin="core"))
+    ctx = prefetch_for_workers("Please improve index.html layout", tools=tools)
+    assert "workspace_read" in ctx
+    assert "Existing" in ctx
+
+
+def test_prefetch_context_char_budget():
+    tools = ToolRegistry()
+
+    def big_fetch(url: str, max_chars: int = 8000):
+        return {"ok": True, "url": url, "text": "X" * 5000}
+
+    tools.register(ToolSpec(name="web_fetch", description="f", handler=big_fetch, plugin="core"))
+    ctx = prefetch_for_workers(
+        "https://a.example.com/1 https://b.example.com/2 https://c.example.com/3",
+        tools=tools,
+        max_tool_calls=3,
+        max_urls=3,
+        max_context_chars=800,
+    )
+    assert len(ctx) <= 900  # header + truncated
+    assert "truncated" in ctx or len(ctx) < 850

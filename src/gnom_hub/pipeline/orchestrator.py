@@ -1147,18 +1147,19 @@ def _prefetch_worker_tools(
     tools: Any = None,
     memory: Any = None,
     max_urls: int = 3,
-    max_tool_calls: int = 5,
+    max_tool_calls: int | None = None,
     record: list | None = None,
 ) -> str:
-    from gnom_hub.tools.worker_prefetch import prefetch_for_workers
+    from gnom_hub.tools.worker_prefetch import default_max_tool_calls, prefetch_for_workers
 
+    cap = max_tool_calls if max_tool_calls is not None else default_max_tool_calls(blob or "")
     return prefetch_for_workers(
         blob,
         bus=bus,
         tools=tools,
         memory=memory,
         max_urls=max_urls,
-        max_tool_calls=max_tool_calls,
+        max_tool_calls=cap,
         record=record,
     )
 

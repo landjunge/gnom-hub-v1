@@ -286,6 +286,16 @@
 | Snapshot test for tool_calls UI contract | **done** |
 | Tool history: click JSON · copy · manual session log · fail badge | **done** |
 
+## V3.7.7 (Prefetch deepen)
+
+| Item | Status |
+|------|--------|
+| plan_prefetch + PrefetchStep priorities | **done** |
+| Category budgets + adaptive max_tool_calls | **done** |
+| URL ranking · workspace_read · css_tokens | **done** |
+| PrefetchReport + context char cap | **done** |
+| docs/WORKER_PREFETCH.md | **done** |
+
 ## Post-V3.7 (optional)
 
 | Item | Notes |

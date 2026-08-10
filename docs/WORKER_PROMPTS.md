@@ -38,6 +38,8 @@ HTML detection: keywords like `html`, `landing`, `website`, `seite`, `dashboard`
 
 ## Prefetch strategy (tools)
 
+**Deep dive:** [WORKER_PREFETCH.md](WORKER_PREFETCH.md) (plan · budgets · categories).
+
 | Trigger | Tools | Purpose |
 |---------|-------|---------|
 | Package keywords (playwright, pillow, …) | `install_tool` dry → real | Self-heal deps |
