@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from gnom_hub.pipeline.dod_gate import (
+    build_dod_spec,
     check_worker_draft,
     definition_of_done,
     format_retry_hint,
     html_complete,
+    render_dod_prompt,
     should_retry,
     validate_worker_draft,
 )
@@ -122,3 +124,29 @@ def test_orchestrator_wrappers():
     bad = _validate_worker_draft("<html>x", user_text="html landing", task="t")
     assert bad["ok"] is False
     assert "score" in bad and "retryable" in bad
+
+
+def test_dod_prompt_parity_from_spec():
+    """Slice B: prompt is rendered only from DoDSpec."""
+    reqs = ["complete HTML", "User: always dark theme"]
+    spec = build_dod_spec("landing page interactive", reqs)
+    text = render_dod_prompt(spec)
+    assert text == definition_of_done("landing page interactive", reqs)
+    assert "User: always dark theme" in text
+    assert "[!]" in text
+    assert "incomplete_html" in spec.codes() or any(i.id == "incomplete_html" for i in spec.items)
+    # req lines appear once in MUSS section
+    assert text.count("complete HTML") >= 1
+
+
+def test_dod_spec_palette_item():
+    tools = [
+        {
+            "name": "color_palette",
+            "ok": True,
+            "result": {"primary": "#5b8def", "surface": "#0f172a"},
+        }
+    ]
+    spec = build_dod_spec("html landing", [], tool_calls=tools)
+    assert any(i.id == "prefetch_palette_unused" for i in spec.items)
+    assert "#5b8def" in render_dod_prompt(spec)

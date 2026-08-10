@@ -292,8 +292,8 @@ Effort: Slice A–B ~0.5–1d · C ~0.5d · D ~0.5d · E optional.
 ## 10. Empfohlene Reihenfolge
 
 1. **Slice A** extract + parity (safe)  
-2. **Slice C** prefetch palette + wishes (highest product value after V3.7.7 prefetch)  
-3. **Slice B** unified prompt from spec  
+2. **Slice C** prefetch palette + wishes — **done**  
+3. **Slice B** unified prompt from spec — **done**  
 4. **Slice D** UI checklist  
 5. **Slice E** only if soft fails stay noisy  
 
@@ -301,12 +301,12 @@ Effort: Slice A–B ~0.5–1d · C ~0.5d · D ~0.5d · E optional.
 
 ## 11. Acceptance
 
-- [ ] Existing honesty + HTML gate tests still pass  
-- [ ] New `test_dod_gate.py` covers codes + retryable  
+- [x] Existing honesty + HTML gate tests still pass  
+- [x] New `test_dod_gate.py` covers codes + retryable  
 - [ ] HTML run with design prefetch: unused palette → should-fail + one retry hint  
-- [ ] Absolute wish missing → must-fail + Flex nudge  
-- [ ] `worker_error` never burns 2 LLM retries  
-- [ ] Docs: `DOD_GATE.md` + ROADMAP V3.8.x  
+- [x] Absolute wish missing → must-fail + Flex nudge  
+- [x] `worker_error` never burns 2 LLM retries  
+- [x] Docs: `DOD_GATE.md` + ROADMAP V3.8.x  
 
 ---
 

@@ -306,7 +306,7 @@
 | docs/DOD_GATE.md | **done** |
 | Slice A: extract dod_gate.py parity | **done** |
 | Slice C: wish + prefetch palette checks | **done** |
-| Slice B: DoD prompt from same Spec | planned |
+| Slice B: DoD prompt from same Spec | **done** |
 | Slice D: UI checklist | planned |
 
 ## V3.8.1 ESLint (UI)
@@ -324,6 +324,19 @@
 | Flat-Config override strategies S1–S10 | **done** |
 | Override specificity self-test (npm run lint:js:specificity) | **done** |
 | CI hard gate max-warnings 0 | optional |
+
+## V3.9.0 — Agent tool stack (desk)
+
+| Item | Status |
+|------|--------|
+| agent_bridge TOOL_CALL loop + browser tools | **done** |
+| tool_scenarios S1–S7 forced drills | **done** |
+| Plugins: file_ops, git_ops, shell_safe, playwright_browser | **done** |
+| chat_policy routing (tool/browser/html/go-only) | **done** |
+| busy 409 + cancel + tool_log snapshot | **done** |
+| Auto-execute exceptions documented (AGENTS.md) | **done** |
+| Unit tests: chat_policy + agent_bridge | **done** |
+| One-worker HTML reminder in brainstorm HTML intent | **done** |
 
 ## Post-V3.7 (optional)
 

@@ -7,7 +7,7 @@ Lessons from live desk use (compress into agent behavior):
 3. Go-only ("mach das was ich gesagt habe") → prior concrete task
 4. Flex = personal companion only (not designer/worker)
 5. Workers: no token cap; tools via TOOL_CALL / forced scenarios
-6. Landing/page with effects → multi-worker team
+6. Landing/page HTML → ONE worker full single-file page (never multi half-pages)
 7. Never invent tool results; tool_ensure if deps missing
 """
 
@@ -153,9 +153,9 @@ def brainstorm_system_extra(kind: str) -> str:
     if kind == "html_page":
         return (
             "# Intent: HTML / LANDING\n"
-            "- Team path: research + full single-file HTML + polish.\n"
+            "- ONE worker builds ONE complete single-file HTML (not multi half-pages).\n"
             "- Mention modern effects once (glass/gradient/scroll-reveal) — no full code here.\n"
-            "- Clear build order → no soft question (Hub executes).\n"
+            "- Clear build order → no soft question when intent is clear (Hub executes).\n"
         )
     if kind == "diagnose":
         return (

@@ -6,6 +6,7 @@ Deterministic Definition-of-Done checks run **after every worker draft** (and on
 |-------|--------|
 | Lint codes | `pipeline/dod_lint.py` · [DOD_LINT.md](DOD_LINT.md) |
 | Gate engine | `pipeline/dod_gate.py` |
+| Spec (prompt) | `build_dod_spec` → `render_dod_prompt` / `definition_of_done` |
 | Orchestrator | thin wrappers + retry loop |
 | Events | `pipeline.dod_gate`, `pipeline.quality_retry` |
 

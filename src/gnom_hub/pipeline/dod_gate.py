@@ -133,44 +133,179 @@ def css_heavy_without_js(body: str) -> bool:
     )
 
 
-# ── DoD prompt ────────────────────────────────────────────────────────
+# ── DoD Spec (prompt + gate share the same structural checklist) ──────
 
 
-def definition_of_done(user_text: str, requirements: list[str] | None = None) -> str:
+@dataclass
+class DoDItem:
+    """One checklist line for prompt inject and gate parity."""
+
+    id: str
+    label: str
+    severity: str = "must"  # must | should | info
+    kind: str = "check"  # check | req | wish | order
+
+
+@dataclass
+class DoDSpec:
+    wants_html: bool
+    items: list[DoDItem] = field(default_factory=list)
+    user_snippet: str = ""
+    req_lines: list[str] = field(default_factory=list)
+    wish_lines: list[str] = field(default_factory=list)
+    palette: dict[str, str] = field(default_factory=dict)
+
+    def codes(self) -> list[str]:
+        return [i.id for i in self.items]
+
+
+def build_dod_spec(
+    user_text: str,
+    requirements: list[str] | None = None,
+    *,
+    task: str = "",
+    tool_calls: list[dict] | None = None,
+) -> DoDSpec:
+    """Build the single source of truth used by prompt + (conceptually) gate."""
     from gnom_hub.agents.roles_helpers import _is_flex_meta_requirement
     from gnom_hub.memory.dedupe import dedupe_texts
 
     raw = [str(r) for r in (requirements or []) if r and not _is_flex_meta_requirement(str(r))]
-    reqs = dedupe_texts(raw, strategy="requirement", limit=6)
+    reqs = list(dedupe_texts(raw, strategy="requirement", limit=6))
+    wishes = [r for r in reqs if str(r).lower().startswith(("flex-wish:", "user:", "wish:"))]
+    wants = wants_html_artifact(user_text, task)
+    items: list[DoDItem] = [
+        DoDItem(
+            "order",
+            "ORDER: (1) structure (2) core functions/interactions "
+            "(3) error/empty states (4) CSS last (~30% max).",
+            severity="info",
+            kind="order",
+        ),
+    ]
+    if wants:
+        items.extend(
+            [
+                DoDItem(
+                    "incomplete_html",
+                    "Single complete document: <!DOCTYPE html> … </html>",
+                    "must",
+                    "check",
+                ),
+                DoDItem(
+                    "missing_html_close",
+                    "No mid-file truncation; close all tags/braces",
+                    "must",
+                    "check",
+                ),
+                DoDItem(
+                    "no_interaction",
+                    "At least one working interaction (onclick / addEventListener / form)",
+                    "should",
+                    "check",
+                ),
+                DoDItem(
+                    "empty_states",
+                    "Empty/error states only AFTER core functions, never instead of them",
+                    "should",
+                    "check",
+                ),
+                DoDItem(
+                    "css_budget",
+                    "Prefer minimal CSS over incomplete JS",
+                    "should",
+                    "check",
+                ),
+            ]
+        )
+    else:
+        items.append(
+            DoDItem(
+                "runnable",
+                "If code is required: runnable/readable end-to-end, not stubs-only",
+                "must",
+                "check",
+            )
+        )
+    items.append(
+        DoDItem(
+            "budget",
+            "If budget is tight: drop decoration, keep structure + functions + </html>",
+            "info",
+            "order",
+        )
+    )
+    for r in reqs:
+        items.append(DoDItem("req", r, "must", "req"))
+    for w in wishes:
+        items.append(DoDItem("wish_missing", w, "must", "wish"))
+    palette = extract_palette_from_tool_calls(tool_calls)
+    if palette:
+        items.append(
+            DoDItem(
+                "prefetch_palette_unused",
+                f"Reuse prefetched palette (primary {palette.get('primary') or '…'})",
+                "should",
+                "check",
+            )
+        )
+    return DoDSpec(
+        wants_html=wants,
+        items=items,
+        user_snippet=(user_text or "").strip()[:400],
+        req_lines=reqs,
+        wish_lines=wishes,
+        palette=palette,
+    )
+
+
+def render_dod_prompt(spec: DoDSpec) -> str:
+    """Render DoD prompt text from Spec (prompt never invents extra gates)."""
     lines = [
         DOD_MARK_START,
         "DONE means functional complete — not 'draft exists' or 'pretty CSS only'.",
-        (
-            "ORDER: (1) structure (2) core functions/interactions "
-            "(3) error/empty states (4) CSS last (~30% max)."
-        ),
-        "If HTML/page/landing/UI is required:",
-        "  [ ] Single complete document: <!DOCTYPE html> … </html>",
-        "  [ ] No mid-file truncation; close all tags/braces",
-        "  [ ] At least one working interaction (onclick / addEventListener / form)",
-        "  [ ] Empty/error states only AFTER core functions, never instead of them",
-        "  [ ] Prefer minimal CSS over incomplete JS",
-        "If code is required: runnable/readable end-to-end, not stubs-only.",
-        "If budget is tight: drop decoration, keep structure + functions + </html>.",
     ]
-    if reqs:
+    for it in spec.items:
+        if it.kind == "order" and it.id == "order":
+            lines.append(it.label)
+
+    if spec.wants_html:
+        lines.append("If HTML/page/landing/UI is required:")
+        for it in spec.items:
+            if it.kind == "check" and it.id not in ("runnable",):
+                lines.append(f"  [ ] {it.label}")
+    else:
+        for it in spec.items:
+            if it.kind == "check" and it.id == "runnable":
+                lines.append(it.label + ".")
+
+    for it in spec.items:
+        if it.id == "budget":
+            lines.append(it.label + ".")
+
+    if spec.req_lines:
         lines.append("Requirements (MUSS):")
-        lines.extend(f"  [ ] {r}" for r in reqs)
-        wish_lines = [
-            r for r in reqs if str(r).lower().startswith(("flex-wish:", "user:", "wish:"))
-        ]
-        if wish_lines:
-            lines.append("STANDING WISHES — ABSOLUTE (no pushback, implement fully):")
-            lines.extend(f"  [!] {r}" for r in wish_lines)
-    if (user_text or "").strip():
-        lines.append(f"User task: {(user_text or '').strip()[:400]}")
+        lines.extend(f"  [ ] {r}" for r in spec.req_lines)
+    if spec.wish_lines:
+        lines.append("STANDING WISHES — ABSOLUTE (no pushback, implement fully):")
+        lines.extend(f"  [!] {r}" for r in spec.wish_lines)
+    if spec.user_snippet:
+        lines.append(f"User task: {spec.user_snippet}")
     lines.append(DOD_MARK_END)
     return "\n".join(lines)
+
+
+def definition_of_done(
+    user_text: str,
+    requirements: list[str] | None = None,
+    *,
+    task: str = "",
+    tool_calls: list[dict] | None = None,
+) -> str:
+    """Prompt inject — always generated from the same DoDSpec as gate concepts."""
+    return render_dod_prompt(
+        build_dod_spec(user_text, requirements, task=task, tool_calls=tool_calls)
+    )
 
 
 # ── Prefetch / wish extraction ────────────────────────────────────────
