@@ -54,7 +54,7 @@ Alles darüber hinaus → `PRE_PLAN.md` / Roadmap, nicht blockierend.
 - Web-Surfing-Agent
 - Echte Kernel-Rechte
 - Auto-Update-Kanal
-- True embeddings
+- True embeddings → **partial** (pluggable bow/char_ngram/hashing + embeddings_lite; neural optional)
 - Self-explaining videos
 - Mobile UI
 

@@ -88,3 +88,34 @@ def test_rank_eval_still_passes_with_default_bow():
     report = json.loads(proc.stdout)
     assert report.get("pass") is True
     assert float(report.get("p_at_1") or 0) >= 0.85
+
+
+def test_api_vector_embedder(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    import gnom_hub.hub as hub_mod
+    from gnom_hub.api.app import create_app
+
+    monkeypatch.setattr(hub_mod, "project_root", lambda: tmp_path)
+    monkeypatch.setattr(hub_mod, "_HUB", None)
+    app = create_app()
+    with TestClient(app) as c:
+        r = c.get("/api/vector")
+        assert r.status_code == 200
+        body = r.json()
+        assert "embedder" in body
+        assert body["embedder"].get("active") == "bow"
+        r2 = c.post("/api/vector/add", json={"text": "User prefers dark theme UI"})
+        assert r2.status_code == 200
+        r3 = c.post(
+            "/api/vector/embedder",
+            json={"backend": "char_ngram", "reindex": True},
+        )
+        assert r3.status_code == 200
+        assert r3.json()["embedder"]["active"] == "char_ngram"
+        r4 = c.post("/api/vector/search", json={"query": "dark theme", "limit": 3})
+        assert r4.status_code == 200
+        assert r4.json().get("embedder") == "char_ngram"
+        bad = c.post("/api/vector/embedder", json={"backend": "nope", "reindex": False})
+        assert bad.status_code == 400
+    hub_mod._HUB = None

@@ -29,3 +29,8 @@
 - Pluggable VectorStore embedders: `bow` (default), `char_ngram`, `hashing`
 - Plugin `embeddings_lite`: status / use / reindex tools; env `GNOM_EMBEDDINGS`
 - Docs: PLUGINS.md, HUB_ARCHITECTURE.md, MERGE_STATUS.md
+
+### Vector desk closeout
+- `GET /api/vector` includes embedder status; `POST /api/vector/embedder`
+- Vector modal: select bow / char_ngram / hashing + reindex
+- Vec badge shows non-default embedder; snapshot.vectors.embedder

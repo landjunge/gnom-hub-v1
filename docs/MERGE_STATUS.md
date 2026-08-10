@@ -35,3 +35,15 @@ git checkout main && git pull
 PYTHONPATH=src pytest tests/ -q
 python scripts/vector_rank_eval.py
 ```
+
+## Wave closeout
+
+Desk improvement wave **complete** for freeze-conform work:
+
+- Coordinator scoring + observability
+- Plugin disk discovery + catalog
+- Embeddings lite (no heavy deps) + Vector UI/API switch
+- Hub architecture + merge status docs
+- Cancel / export race hygiene
+
+Still optional (not blocking): neural embeddings package, live E2E with keys, skill marketplace, auto-update, mobile UI.
