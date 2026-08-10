@@ -1,0 +1,67 @@
+{
+  "id": "web_design",
+  "name": "Web Design",
+  "version": "0.1.0",
+  "enabled": true,
+  "description": "Local design helpers for HTML workers: palettes, WCAG contrast, page scaffolds, CSS tokens. No network, no extra deps.",
+  "tags": ["design", "web", "html", "css"],
+  "tools": [
+    {
+      "name": "color_palette",
+      "description": "Generate a cohesive hex palette from a seed color or preset (dark|light|brand|ocean|forest|sunset). Returns primary/accent/surface/text + CSS variables.",
+      "module": "main.py",
+      "handler": "color_palette",
+      "retries": 0,
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "seed": { "type": "string", "description": "Hex like #5b8def or preset name" },
+          "count": { "type": "integer", "description": "1–8 shades, default 5" }
+        }
+      }
+    },
+    {
+      "name": "contrast_check",
+      "description": "WCAG contrast ratio between two hex colors. Reports AA/AAA pass for normal and large text.",
+      "module": "main.py",
+      "handler": "contrast_check",
+      "retries": 0,
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "fg": { "type": "string", "description": "Foreground hex #RRGGBB" },
+          "bg": { "type": "string", "description": "Background hex #RRGGBB" }
+        },
+        "required": ["fg", "bg"]
+      }
+    },
+    {
+      "name": "html_scaffold",
+      "description": "Return a minimal semantic HTML5 scaffold (landing|dashboard|form|article) with CSS variables and empty content slots.",
+      "module": "main.py",
+      "handler": "html_scaffold",
+      "retries": 0,
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "kind": { "type": "string", "description": "landing|dashboard|form|article (default landing)" },
+          "title": { "type": "string" },
+          "seed": { "type": "string", "description": "Optional palette seed/preset" }
+        }
+      }
+    },
+    {
+      "name": "css_tokens",
+      "description": "Design tokens as CSS custom properties: spacing scale, radii, type scale, font stacks, shadows.",
+      "module": "main.py",
+      "handler": "css_tokens",
+      "retries": 0,
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "seed": { "type": "string", "description": "Optional color seed for --color-* tokens" }
+        }
+      }
+    }
+  ]
+}
