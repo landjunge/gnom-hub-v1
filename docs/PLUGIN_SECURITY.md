@@ -57,6 +57,23 @@ Per tool: `name`, `description`, `module`, `handler`, `input_schema`, `retries`,
 
 Dev reload: `POST /api/plugins/reload?plugin_id=echo`
 
+## Drop-in discovery (desk)
+
+`GET /api/plugins` returns:
+
+| Field | Meaning |
+|-------|---------|
+| `plugins` | Successfully loaded plugins |
+| `disk` | Inventory of `plugins/*` folders (status: loaded / disabled / error / no_manifest / not_loaded) |
+| `tools` | Registered tools (core + plugins) |
+| `errors` | Load/validation failures |
+
+`PluginLoader.scan_disk()` does **not** execute plugin code — only reads `plugin.json`.  
+Hot-reload: `POST /api/plugins/reload` (also returns `disk`).
+
+UI: Tools modal lists **Plugins on disk** then **Registered tools**.
+
+
 ## Failures
 
 | Case | Behavior |

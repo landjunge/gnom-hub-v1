@@ -88,6 +88,11 @@ def _html_page_score(
         ("web ui", 2),
         ("spa ", 2),
         (" pwa", 2),
+        ("onepager", 3),
+        ("one-pager", 3),
+        ("one pager", 3),
+        ("einzelne seite", 3),
+        ("einzeldatei", 3),
     )
     for phrase, weight in strong_positives:
         if phrase in blob:
@@ -112,6 +117,21 @@ def _html_page_score(
         ("feature cards", 1),
         ("feature grid", 1),
         ("html datei", 3),
+        ("seite für", 2),
+        ("landing für", 3),
+        ("landingpage für", 3),
+        ("webseite bauen", 3),
+        ("webseite erstellen", 3),
+        ("website bauen", 3),
+        ("website erstellen", 3),
+        ("mach eine seite", 3),
+        ("bau mir", 2),
+        ("baue mir", 2),
+        ("create a page", 3),
+        ("make a page", 3),
+        ("make me a page", 3),
+        ("landing page for", 3),
+        ("dark theme landing", 3),
     )
     for phrase, weight in medium_positives:
         if phrase in blob:
@@ -149,6 +169,11 @@ def _html_page_score(
         ("rest api", -3),
         ("openapi", -3),
         ("swagger", -3),
+        ("unit test only", -3),
+        ("nur tests", -3),
+        ("refactor only", -3),
+        ("nur refactor", -3),
+        ("code review only", -3),
     )
     for phrase, weight in strong_negatives:
         if phrase in blob:

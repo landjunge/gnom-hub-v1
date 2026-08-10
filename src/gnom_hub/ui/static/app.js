@@ -1822,9 +1822,10 @@
           });
         }
         if (line) {
+          const host = om.host ? " @ " + om.host : "";
           line.textContent = om.ok
-            ? "Ollama models: " + ((om.models || []).join(", ") || "(none pulled)")
-            : "Ollama models: offline";
+            ? "Ollama models" + host + ": " + ((om.models || []).join(", ") || "(none pulled)")
+            : "Ollama offline" + host + " — start ollama serve or use DeepSeek";
         }
       } catch (_e) {
         /* ignore */

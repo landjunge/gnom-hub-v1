@@ -101,6 +101,7 @@ Doc: [`WORKFLOWS_AND_PRESETS.md`](WORKFLOWS_AND_PRESETS.md).
 
 | Date | quality | user E2E | notes |
 |------|---------|----------|-------|
+| 2026-08-10 | **v3.9.1** + suite 482 | CI green | plugin disk discovery; cancel isolation; DE scoring expand |
 | 2026-08-10 | PR #13 + export pin | (merge) | scoring heuristic full_page_html; deep-copy export pin; Box3 plan badge |
 | 2026-08-10 | **402** + acceptance_tools | **PASS** UI DoD hosts, S6/S7, browser, busy 409, one-worker HTML + validation checklist (no key → worker_error) | ESLint hard gate + Slice D live-verified |
 | 2026-08-05 | 119 pass | PASS (4 workers, quality poor) | thinking-on burned tokens |

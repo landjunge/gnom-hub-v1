@@ -508,6 +508,7 @@ class Orchestrator:
             + (f" · {dry_n}× dry-run (God-Mode?)" if dry_n else "")
         )
         self._state.resolved_plan_mode = "tool_drill"
+        self._state.plan_html_score = 0
         self.bus.emit(
             "pipeline.worker",
             {
@@ -587,6 +588,7 @@ class Orchestrator:
             else f"Browser-Nav failed: {nav.get('error') or 'unknown'}"
         )
         self._state.resolved_plan_mode = "browser_tools"
+        self._state.plan_html_score = 0
         self.bus.emit(
             "pipeline.worker",
             {

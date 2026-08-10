@@ -349,6 +349,10 @@
 | LLM multi-worker HTML only when `plan_mode=team` | **done** (PR #13) |
 | Export pin deep-copy + html_score in markdown | **done** |
 | Box 3 label shows Plan mode + score | **done** |
+| Plugin disk inventory (`scan_disk` + Tools modal) | **done** |
+| Version single source `__version__` = 3.9.1 | **done** |
+| Tool-loop cancel isolation (no sticky hub cancel) | **done** |
+| Expanded DE/EN page-intent scoring phrases | **done** |
 
 ## Post-V3.7 (optional)
 
