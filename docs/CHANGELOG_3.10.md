@@ -63,3 +63,9 @@
 - Resume deferred clarify (API + Box 1 list)
 - Job timeout → FEHLER error (not soft-cancelled only)
 - Prefetch why lines in quality_notes
+
+## Desk hardening
+
+- Tools badge title + toast include prefetch **why**
+- Session pack / checkpoint persist **deferred_clarifies**
+- Job error poll surfaces **FEHLER** clearly

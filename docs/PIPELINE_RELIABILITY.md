@@ -44,3 +44,7 @@ pytest tests/test_prefetch_why_clarify_later.py tests/test_jobs_cancel.py -q
 
 Wall-clock timeout sets `timeout=true` → terminal **error** with `FEHLER — job timeout…`
 (user Cancel stays `cancelled`).
+
+## Session pack / checkpoint
+
+`deferred_clarifies` round-trips in session pack export/import and light checkpoints.

@@ -1378,6 +1378,19 @@
         if (st === "done" || st === "error" || st === "clarify" || st === "cancelled") {
           // Always resync so can_execute / stage match server after soft-cancel
           hideBusyBanner();
+          if (st === "error") {
+            const err =
+              job.error ||
+              (job.snapshot &&
+                job.snapshot.pipeline &&
+                job.snapshot.pipeline.error) ||
+              "unknown error";
+            const msg = String(err);
+            const label = /FEHLER/i.test(msg) ? msg : "FEHLER — " + msg;
+            // One system line here; callers may toast again with same text — ok
+            appendChat("system", label.slice(0, 240));
+            if (typeof toast === "function") toast(label.slice(0, 120), "error");
+          }
           await resyncState();
           return job;
         }
@@ -1402,13 +1415,13 @@
       // Timeout: cancel orphan + resync so UI is not left mid-pipeline
       try {
         await api("POST", "/api/jobs/" + encodeURIComponent(jobId) + "/cancel");
-        appendChat("system", "Job timed out — cancel requested.");
+        appendChat("system", "FEHLER — client poll timeout — cancel requested.");
       } catch (_c) {
         /* ignore */
       }
       hideBusyBanner();
       await resyncState();
-      throw new Error("Pipeline timeout");
+      throw new Error("FEHLER — pipeline poll timeout");
     } finally {
       if (currentJobId === jobId) currentJobId = null;
     }
