@@ -1320,10 +1320,11 @@
           for (let ti = lastToolLogLen; ti < tlog.length; ti++) {
             const e = tlog[ti] || {};
             const mode = e.mode ? " · " + e.mode : "";
+            const why = e.reason ? " · why: " + String(e.reason).slice(0, 80) : "";
             const ok = e.ok === false ? "FAIL" : "ok";
             appendChat(
               "system",
-              "Tool: " + (e.tool || "?") + " " + ok + mode
+              "Tool: " + (e.tool || e.name || "?") + " " + ok + mode + why
             );
           }
           lastToolLogLen = tlog.length;
@@ -2162,7 +2163,21 @@
       if (!(snap.pipeline && snap.pipeline.stage === "clarify")) {
         hideClarify();
       }
-      if (snap.pipeline && snap.pipeline.stage === "done") {
+      const low = String(answer || "").toLowerCase();
+      const deferred =
+        (snap.pipeline &&
+          Array.isArray(snap.pipeline.deferred_clarifies) &&
+          snap.pipeline.deferred_clarifies.length) ||
+        low.indexOf("later") >= 0 ||
+        low.indexOf("später") >= 0 ||
+        low.indexOf("spaeter") >= 0;
+      if (deferred && snap.pipeline && snap.pipeline.stage !== "done") {
+        appendChat(
+          "system",
+          "Clarify → Later: parked (no workers). Task stays in notes; Send again when ready."
+        );
+        toast("Clarify deferred — no zombie job", "info");
+      } else if (snap.pipeline && snap.pipeline.stage === "done") {
         appendChat("system", "Pipeline done.");
         toast("Pipeline done", "ok");
       }

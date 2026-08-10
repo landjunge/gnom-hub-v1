@@ -45,6 +45,8 @@ class PipelineState:
     distilled_requirements: list[str] = field(default_factory=list)
     flex_notes: str = ""
     pending_question: DistillQuestion | None = None
+    # Parked clarify answers (Later) — not zombies; user can resume later
+    deferred_clarifies: list[dict] = field(default_factory=list)
     worker_results: list[str] = field(default_factory=list)
     worker_outputs: list[dict] = field(default_factory=list)
     # Light tool trace (prefetch / registry calls this run)

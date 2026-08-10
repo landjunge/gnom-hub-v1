@@ -91,6 +91,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 |-----|----------|
 | [BUG_HUNT_TEAM.md](BUG_HUNT_TEAM.md) | orchestrator, cancel, team, bug, hunt, can, god, jobs, mode, telegram |
 | [MEMORY_FRESHNESS.md](MEMORY_FRESHNESS.md) | freshness, memory, sync, vector, warm, hot, write, fact, hit, index |
+| [PIPELINE_RELIABILITY.md](PIPELINE_RELIABILITY.md) | pipeline, reliability, busy, prefetch, tests, tool, why, cancel, clarify, later |
 
 ### Root meta
 | Doc | Keywords |
@@ -130,6 +131,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 - [MERMAID.md](MERMAID.md) — Mermaid — Syntax-Referenz (Gnom-Hub)
 - [MUTMUT.md](MUTMUT.md) — mutmut configuration (deep)
 - [ORCHESTRATION.md](ORCHESTRATION.md) — Agent orchestration (exact)
+- [PIPELINE_RELIABILITY.md](PIPELINE_RELIABILITY.md) — Pipeline reliability — prefetch why · clarify Later · busy/cancel
 - [PLAN_VS_CODE.md](PLAN_VS_CODE.md) — Plan vs Code — V1.0 COMPLETE
 - [PLUGIN_SECURITY.md](PLUGIN_SECURITY.md) — Plugins — loading, authoring & security
 - [PLUGINS.md](PLUGINS.md) — Plugins — catalog & desk details

@@ -197,9 +197,10 @@ class JobsMixin:
                     if not isinstance(data, dict):
                         return
                     entry = {
-                        "tool": str(data.get("tool") or "?"),
+                        "tool": str(data.get("tool") or data.get("name") or "?"),
                         "ok": bool(data.get("ok", True)),
-                        "mode": str(data.get("mode") or ""),
+                        "mode": str(data.get("mode") or "prefetch"),
+                        "reason": str(data.get("reason") or "")[:200],
                         "agent": str(data.get("agent") or ""),
                         "scenario": str(data.get("scenario") or ""),
                     }

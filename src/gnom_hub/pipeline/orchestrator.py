@@ -608,17 +608,86 @@ class Orchestrator:
         self._finish()
         return True
 
+    @staticmethod
+    def _is_defer_clarify_option(option: str) -> bool:
+        low = (option or "").strip().lower()
+        if not low:
+            return False
+        defer_exact = {
+            "later",
+            "später",
+            "spaeter",
+            "spater",
+            "not now",
+            "später entscheiden",
+            "spaeter entscheiden",
+            "spater entscheiden",
+            "decide later",
+            "remind me later",
+        }
+        if low in defer_exact:
+            return True
+        return low.startswith(("später", "spaeter", "later"))
+
+    def _defer_clarify(self, answer: str, q: Any) -> PipelineState:
+        """Park clarify without running workers — leave desk usable (brainstorm)."""
+        qid = str(getattr(q, "id", "") or "q")
+        qtext = str(getattr(q, "text", "") or "").strip()
+        entry = {
+            "id": qid,
+            "text": qtext[:300],
+            "option": answer,
+        }
+        deferred = list(self._state.deferred_clarifies or [])
+        deferred.append(entry)
+        self._state.deferred_clarifies = deferred[-12:]
+        note = f"Deferred clarify ({answer}): {qtext[:180]}"
+        if note and note not in (self._state.distilled_requirements or []):
+            self._state.distilled_requirements.append(note)
+        try:
+            store = getattr(self, "memory_store", None)
+            hot = getattr(store, "hot", None) if store is not None else None
+            if hot is not None and hasattr(hot, "add_fact"):
+                hot.add_fact(note[:160])
+                if hasattr(hot, "save"):
+                    hot.save()
+        except Exception:  # noqa: BLE001
+            pass
+        self._state.pending_question = None
+        self._state.error = None
+        self._state.mode = "brainstorm"
+        self._set_stage(PipelineStage.brainstorm)
+        self._clarified_once = True
+        self.bus.emit(
+            "pipeline.clarify_deferred",
+            {
+                "id": qid,
+                "text": qtext[:200],
+                "option": answer,
+                "count": len(self._state.deferred_clarifies),
+            },
+        )
+        self.bus.emit(
+            "pipeline.stage",
+            {"stage": "brainstorm", "deferred_clarify": True},
+        )
+        return self._state
+
     def answer_clarify(self, option: str) -> PipelineState:
         """
         Apply clarify answer then run workers.
 
         H2: keep ``pending_question`` until work reaches a terminal success
         (done). On cancel/error the question stays so the user can re-answer.
+
+        Special: **Later** / Später → defer (no workers, no zombie clarify stage).
         """
         if self._state.stage != PipelineStage.clarify or self._state.pending_question is None:
             raise ValueError("No pending clarification question")
         answer = option.strip()
         q = self._state.pending_question
+        if self._is_defer_clarify_option(answer):
+            return self._defer_clarify(answer, q)
         clarify_line = f"User clarified ({q.id}): {answer}"
         if clarify_line not in self._state.distilled_requirements:
             self._state.distilled_requirements.append(clarify_line)

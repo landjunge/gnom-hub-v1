@@ -353,6 +353,9 @@ def _emit_tool_call(
     args: dict[str, Any],
     result: Any,
     record: list[dict[str, Any]] | None = None,
+    *,
+    reason: str = "",
+    mode: str = "prefetch",
 ) -> None:
     ok = True
     err = None
@@ -396,6 +399,7 @@ def _emit_tool_call(
         summary = {"type": type(result).__name__}
     payload = {
         "name": name,
+        "tool": name,  # alias for job tool_log listener
         "args": {
             k: (str(v)[:120] if not isinstance(v, (int, float, bool)) else v)
             for k, v in (args or {}).items()
@@ -403,6 +407,8 @@ def _emit_tool_call(
         "ok": ok,
         "error": err,
         "result": summary,
+        "reason": (reason or "").strip()[:220],
+        "mode": (mode or "prefetch").strip()[:40] or "prefetch",
     }
     if bus is not None:
         bus.emit("pipeline.tool_call", payload)
@@ -525,7 +531,7 @@ def prefetch_for_workers(
             st = _call_tool(tools, "install_tool", args_dry)
             calls += 1
             cat_used["install"] = cat_used.get("install", 0) + 1
-            _emit_tool_call(bus, "install_tool", args_dry, st, record=record)
+            _emit_tool_call(bus, "install_tool", args_dry, st, record=record, reason=step.reason)
             executed.append("install_tool")
             installed = bool(isinstance(st, dict) and st.get("already_installed"))
             if installed:
@@ -539,7 +545,7 @@ def prefetch_for_workers(
             res = _call_tool(tools, "install_tool", args_inst)
             calls += 1
             cat_used["install"] = cat_used.get("install", 0) + 1
-            _emit_tool_call(bus, "install_tool", args_inst, res, record=record)
+            _emit_tool_call(bus, "install_tool", args_inst, res, record=record, reason=step.reason + " · install")
             if isinstance(res, dict) and res.get("ok"):
                 add_chunk(f"install_tool: installed {pkg}")
             else:
@@ -581,7 +587,7 @@ def prefetch_for_workers(
             res = _call_tool(tools, step.name, dict(step.args))
             calls += 1
             cat_used["design"] = cat_used.get("design", 0) + 1
-            _emit_tool_call(bus, step.name, dict(step.args), res, record=record)
+            _emit_tool_call(bus, step.name, dict(step.args), res, record=record, reason=step.reason)
             executed.append(step.name)
             if not (isinstance(res, dict) and res.get("ok")):
                 err = res.get("error") if isinstance(res, dict) else "failed"
@@ -625,7 +631,7 @@ def prefetch_for_workers(
             res = _call_tool(tools, "workspace_read", dict(step.args))
             calls += 1
             cat_used["workspace"] = cat_used.get("workspace", 0) + 1
-            _emit_tool_call(bus, "workspace_read", dict(step.args), res, record=record)
+            _emit_tool_call(bus, "workspace_read", dict(step.args), res, record=record, reason=step.reason)
             executed.append("workspace_read")
             if isinstance(res, dict) and res.get("ok"):
                 body = str(res.get("text") or "")[:4000]
@@ -639,7 +645,7 @@ def prefetch_for_workers(
                     res2 = _call_tool(tools, "workspace_read", alt_args)
                     calls += 1
                     cat_used["workspace"] = cat_used.get("workspace", 0) + 1
-                    _emit_tool_call(bus, "workspace_read", alt_args, res2, record=record)
+                    _emit_tool_call(bus, "workspace_read", alt_args, res2, record=record, reason=step.reason + " · perm")
                     if isinstance(res2, dict) and res2.get("ok"):
                         body = str(res2.get("text") or "")[:4000]
                         add_chunk(
@@ -663,7 +669,7 @@ def prefetch_for_workers(
             )
             calls += 1
             cat_used["net"] = cat_used.get("net", 0) + 1
-            _emit_tool_call(bus, "web_fetch", args, res, record=record)
+            _emit_tool_call(bus, "web_fetch", args, res, record=record, reason=step.reason)
             executed.append("web_fetch")
             u = args.get("url", "")
             if isinstance(res, dict) and res.get("ok"):
@@ -699,7 +705,7 @@ def prefetch_for_workers(
                 hits = {"ok": False, "error": "no memory backend"}
             calls += 1
             cat_used["memory"] = cat_used.get("memory", 0) + 1
-            _emit_tool_call(bus, "memory_search", args, hits, record=record)
+            _emit_tool_call(bus, "memory_search", args, hits, record=record, reason=step.reason)
             executed.append("memory_search")
             if isinstance(hits, list) and hits:
                 lines = []
