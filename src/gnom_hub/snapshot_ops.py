@@ -124,6 +124,18 @@ class SnapshotOpsMixin:
                 "count": self.vectors.count(),
                 "embedder": getattr(self.vectors, "embedder_name", "bow"),
             },
+            "skills": {
+                "count": len(
+                    getattr(self, "skill_list", None)
+                    or getattr(getattr(self, "skills", None), "skills", [])
+                    or []
+                ),
+                "enabled": sum(
+                    1
+                    for s in (getattr(getattr(self, "skills", None), "skills", None) or [])
+                    if getattr(s, "enabled", True)
+                ),
+            },
             "cold": {"count": len(self.cold.list_archives(200))},
             "plugins": self.plugin_list,
             "tools": self.tools.list_tools(),

@@ -1559,3 +1559,118 @@
     toast("Flex is fixed — personal companion only", "info");
   }
 
+
+
+  function closeSkillsModal() {
+    if (els.skillsModal) els.skillsModal.hidden = true;
+  }
+
+  async function openSkillsModal() {
+    if (!els.skillsModal) return;
+    els.skillsModal.hidden = false;
+    await refreshSkillsModal();
+  }
+
+  async function refreshSkillsModal() {
+    const ul = document.getElementById("skills-list");
+    const countEl = document.getElementById("skills-count");
+    const catEl = document.getElementById("skills-catalog");
+    try {
+      const data = await api("GET", "/api/skills");
+      const skills = data.skills || [];
+      if (countEl) {
+        const en = skills.filter(function (s) { return s.enabled !== false; }).length;
+        countEl.textContent = "Skills: " + en + "/" + skills.length + " enabled";
+      }
+      if (ul) {
+        ul.innerHTML = "";
+        if (!skills.length) {
+          const li = document.createElement("li");
+          li.className = "muted";
+          li.textContent = "(no skills loaded)";
+          ul.appendChild(li);
+        } else {
+          skills.forEach(function (s) {
+            const li = document.createElement("li");
+            li.style.display = "flex";
+            li.style.gap = "6px";
+            li.style.alignItems = "center";
+            const lab = document.createElement("span");
+            lab.style.flex = "1";
+            lab.textContent =
+              (s.enabled === false ? "○ " : "● ") +
+              (s.id || "?") +
+              " · " +
+              (s.name || "") +
+              " [" +
+              (s.source || "?") +
+              "]";
+            lab.title = (s.description || "") + " · triggers: " + ((s.triggers || []).join(", ") || "—");
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "btn-ws-sm";
+            btn.textContent = s.enabled === false ? "Enable" : "Disable";
+            btn.addEventListener("click", function () {
+              toggleSkill(s.id, s.enabled === false);
+            });
+            li.appendChild(lab);
+            li.appendChild(btn);
+            ul.appendChild(li);
+          });
+        }
+      }
+      if (catEl) {
+        const cat = data.catalog;
+        if (cat && cat.entries) {
+          catEl.textContent = cat.entries
+            .map(function (e) {
+              return (e.trust || "?") + " · " + e.id + " v" + (e.version || "") + " — " + (e.path || "");
+            })
+            .join("\n");
+        } else {
+          catEl.textContent = "No catalog";
+        }
+      }
+    } catch (err) {
+      toast("Skills load failed: " + err.message, "error");
+    }
+  }
+
+  async function toggleSkill(id, enable) {
+    try {
+      await api("POST", "/api/skills/" + encodeURIComponent(id) + "/enable", {
+        enabled: !!enable,
+      });
+      toast((enable ? "Enabled " : "Disabled ") + id, "ok");
+      await refreshSkillsModal();
+    } catch (err) {
+      toast("Skill toggle failed: " + err.message, "error");
+    }
+  }
+
+  async function reloadSkills() {
+    try {
+      const data = await api("POST", "/api/skills/reload");
+      toast("Skills reloaded: " + ((data.skills || []).length), "ok");
+      await refreshSkillsModal();
+    } catch (err) {
+      toast("Skills reload failed: " + err.message, "error");
+    }
+  }
+
+  async function installSkillPath() {
+    const input = document.getElementById("skills-install-path");
+    const path = input ? String(input.value || "").trim() : "";
+    if (!path) {
+      toast("Enter a local skill folder path", "info");
+      return;
+    }
+    try {
+      const data = await api("POST", "/api/skills/install", { path: path });
+      toast("Installed skill: " + (data.id || path), "ok");
+      if (input) input.value = "";
+      await refreshSkillsModal();
+    } catch (err) {
+      toast("Install failed: " + err.message, "error");
+    }
+  }

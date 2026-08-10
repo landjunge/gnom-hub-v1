@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "description": "Local skill catalog (trust-first). Install copies into data/skills/user/.",
+  "entries": [
+    {
+      "id": "html_landing",
+      "name": "Single-file HTML landing",
+      "version": "0.1.0",
+      "trust": "bundled",
+      "path": "skills/html_landing",
+      "tags": ["html", "frontend"]
+    },
+    {
+      "id": "tool_honesty",
+      "name": "Tool honesty",
+      "version": "0.1.0",
+      "trust": "bundled",
+      "path": "skills/tool_honesty",
+      "tags": ["tools"]
+    },
+    {
+      "id": "de_desk",
+      "name": "German desk defaults",
+      "version": "0.1.0",
+      "trust": "bundled",
+      "path": "skills/de_desk",
+      "tags": ["language"]
+    }
+  ]
+}

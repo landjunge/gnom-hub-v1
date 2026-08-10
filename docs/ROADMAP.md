@@ -362,11 +362,11 @@
 
 | Track | Status |
 |-------|--------|
-| Phase 0 Freeze wording (playbook skills OK) | **planned** |
-| Phase 1 Local Skills foundation | **planned** |
-| Phase 2 Local skill/plugin catalog (trust-first) | **planned** |
-| Phase 3 Neural embeddings optional plugin | **planned** |
-| Phase 4 Mobile / responsive desk | **planned** |
+| Phase 0 Freeze wording (playbook skills OK) | **done** |
+| Phase 1 Local Skills foundation | **done** |
+| Phase 2 Local skill/plugin catalog (trust-first) | **done** (local catalog + install) |
+| Phase 3 Neural embeddings optional plugin | **done** (plugin; needs extra) |
+| Phase 4 Mobile / responsive desk | **done** (CSS ≤640px) |
 
 ## Post-V3.7 (optional)
 

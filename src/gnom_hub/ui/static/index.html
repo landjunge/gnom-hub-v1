@@ -38,7 +38,7 @@
   <div id="app">
     <header class="top-bar">
       <div class="top-bar-head">
-        <h1 class="app-title">Gnom-Hub <span id="ver-badge" class="ver-badge">v3.9.1</span></h1>
+        <h1 class="app-title">Gnom-Hub <span id="ver-badge" class="ver-badge">v3.10.0</span></h1>
         <div class="top-meta top-meta-badges">
           <span id="llm-badge" class="llm-badge" title="LLM key status">LLM: —</span>
           <span id="cost-badge" class="cost-badge" title="Click: usage & jobs" role="button" tabindex="0">$0.00</span>
@@ -46,6 +46,7 @@
           <span id="vec-badge" class="vec-badge" title="Open vector store (click)" role="button" tabindex="0">Vec: —</span>
           <span id="god-badge" class="god-badge" title="God-Mode: off = Shell/GUI dry-run · on = echte Desktop-Aktionen. Klick zum Umschalten." role="button" tabindex="0">God: off</span>
           <span id="cold-badge" class="cold-badge" title="COLD archives — click to browse" role="button" tabindex="0">Cold: —</span>
+          <span id="skills-badge" class="tools-badge" role="button" tabindex="0" title="Playbook skills — click">Skills: —</span>
           <span id="tools-badge" class="tools-badge" role="button" tabindex="0" title="Tool calls this run — click for history">Tools: 0</span>
           <span id="stage-badge" class="stage-badge" title="Pipeline stage">idle</span>
         </div>
@@ -539,6 +540,26 @@
   </div>
 
   <!-- Tools browser -->
+
+  <!-- Skills playbooks -->
+  <div id="skills-modal" class="modal" hidden>
+    <div class="modal-panel trace-panel">
+      <div class="modal-head">
+        <h2 class="modal-title">Skills (playbooks)</h2>
+        <button type="button" id="skills-close" class="modal-close" title="Close">×</button>
+      </div>
+      <p id="skills-count" class="system-line muted">Skills: 0</p>
+      <p class="system-hint muted">Markdown playbooks for agents — not tools, not a workflow engine.</p>
+      <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <button type="button" id="skills-reload" class="btn-ws-sm">Reload</button>
+        <input id="skills-install-path" class="tune-input" type="text" placeholder="Local folder path to install…" style="flex:1;min-width:140px" />
+        <button type="button" id="skills-install-btn" class="btn-ws-sm">Install</button>
+      </div>
+      <ul id="skills-list" class="ws-list" style="max-height:280px"></ul>
+      <pre id="skills-catalog" class="trace-body muted" style="max-height:120px;margin-top:8px">Catalog…</pre>
+    </div>
+  </div>
+
   <div id="tools-modal" class="modal" hidden>
     <div class="modal-panel trace-panel">
       <div class="modal-head">

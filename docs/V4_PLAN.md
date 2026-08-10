@@ -1,6 +1,6 @@
 # V4 Plan — Skills, Marketplace, Neural Embeddings, Mobile UI
 
-**Stand:** 2026-08-10 · Status: **design only** (no unfreeze until Phase 0 decision)  
+**Stand:** 2026-08-10 · Status: **Phase 0–4 implemented (3.10.0)** (no unfreeze until Phase 0 decision)  
 **Basis:** V3.9.1 desk wave complete ([MERGE_STATUS.md](MERGE_STATUS.md))  
 **Constraint map:** [HUB_ARCHITECTURE.md](HUB_ARCHITECTURE.md) · [WORKFLOWS_AND_PRESETS.md](WORKFLOWS_AND_PRESETS.md) · [PLUGIN_SECURITY.md](PLUGIN_SECURITY.md)
 

@@ -34,6 +34,7 @@ from gnom_hub.presets import PresetsMixin
 from gnom_hub.security.god_mode import god_mode_from_env
 from gnom_hub.session_ops import SessionOpsMixin
 from gnom_hub.session_pack import SessionPackMixin
+from gnom_hub.skills.loader import SkillLoader
 from gnom_hub.snapshot_ops import SnapshotOpsMixin
 from gnom_hub.system_ops import SystemOpsMixin
 from gnom_hub.telegram.commands import TelegramCommandMixin
@@ -95,6 +96,11 @@ class Hub(
         self.plugins = PluginLoader(self.root / "plugins", self.tools)
         self._register_core_tools()
         self.plugin_list = self.plugins.discover_and_load()
+        # Playbook skills (prompt inject only — not a workflow engine)
+        user_skills = self.root / "data" / "skills" / "user"
+        user_skills.mkdir(parents=True, exist_ok=True)
+        self.skills = SkillLoader([self.root / "skills", user_skills])
+        self.skill_list = self.skills.discover_and_load()
         self.pipeline = self._new_pipeline()
         self._jobs: dict[str, dict[str, Any]] = {}
         # Last reasoning stream per agent id (for TTS — not written Box content)
@@ -124,6 +130,7 @@ class Hub(
             self.root / "data" / "workspace" / "temp",
             self.root / "data" / "workspace" / "perm",
             self.root / "data" / "workspace" / "exports",
+            self.root / "data" / "skills" / "user",
         ):
             _d.mkdir(parents=True, exist_ok=True)
         try:

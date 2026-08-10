@@ -1,6 +1,7 @@
 # Presets & plan_mode (frozen design)
 
-**Decision (2026-08-05):** No workflow engine. No skill files. No graph.
+**Decision (2026-08-05, updated 2026-08-10):** No workflow engine. No graph.
+Playbook **skills** (markdown inject) are allowed — they are *not* workflow recipes.
 Config snapshots + one plan strategy flag. Pipeline stays fixed.
 
 ## Mental model (3 things only)
@@ -37,12 +38,19 @@ API: `POST /api/plan-mode` · System dropdown. Also stored inside team presets.
 
 ## Explicitly out of scope (do not build)
 
-- Workflow JSON/YAML recipes with seed prompts  
-- SKILL.md / Agent Skills marketplace  
+- Workflow JSON/YAML recipes with seed prompts / stage graphs  
+- Remote auto-install marketplace that executes untrusted code  
 - Second orchestrator (LangGraph, CrewAI Flows, …)  
 - Visual workflow editor  
 - Peer handoffs between workers  
 - Dynamic agent spawn beyond the fixed 8  
+
+## Allowed (V4 playbook skills)
+
+- Local `skills/*/skill.md` + `data/skills/user/*` — prompt inject only  
+- Soft triggers (tags / plan_mode hints) — **not** a router replacing Coordinator  
+- Local catalog + manual install of **text-only** skill packs  
+- See [V4_PLAN.md](V4_PLAN.md) · [SKILLS.md](SKILLS.md)
 
 If a future need appears: extend **plan_mode** enum + one code branch, or a thicker Team snapshot — not a new subsystem.
 

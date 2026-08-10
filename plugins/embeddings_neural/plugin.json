@@ -1,0 +1,33 @@
+{
+  "id": "embeddings_neural",
+  "name": "Neural Embeddings (optional)",
+  "version": "0.1.0",
+  "enabled": true,
+  "description": "Optional sbert/fastembed backend if package installed. Core stays bow.",
+  "tags": ["memory", "vector", "embeddings", "optional"],
+  "tools": [
+    {
+      "name": "embeddings_neural_status",
+      "description": "Check if neural embedding backends are importable.",
+      "module": "main.py",
+      "handler": "status",
+      "retries": 0,
+      "tags": ["memory"]
+    },
+    {
+      "name": "embeddings_neural_use",
+      "description": "Activate neural embedder if available (fastembed|sbert). reindex optional.",
+      "module": "main.py",
+      "handler": "use_neural",
+      "retries": 0,
+      "tags": ["memory"],
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "backend": { "type": "string", "description": "fastembed | sbert" },
+          "reindex": { "type": "boolean" }
+        }
+      }
+    }
+  ]
+}

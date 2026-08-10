@@ -147,6 +147,12 @@
       els.memBadge.textContent = "Mem: " + short + nodes;
       els.memBadge.title = snap.memory_summary;
     }
+    if (els.skillsBadge && snap.skills) {
+      const sc = snap.skills.count != null ? snap.skills.count : 0;
+      const en = snap.skills.enabled != null ? snap.skills.enabled : sc;
+      els.skillsBadge.textContent = "Skills: " + en + "/" + sc;
+      els.skillsBadge.title = "Playbook skills enabled/total — click to manage";
+    }
     if (els.vecBadge && snap.vectors) {
       const emb = snap.vectors.embedder || "bow";
       els.vecBadge.textContent =
