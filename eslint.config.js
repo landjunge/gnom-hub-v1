@@ -1,15 +1,18 @@
 /**
  * ESLint Flat Config (ESLint ≥ 9) — Gnom-Hub desktop UI
  *
- * Plugins (flat-native):
- *   @eslint/js              → js.configs.recommended
- *   eslint-plugin-no-unsanitized → XSS on innerHTML / document.write
- *   eslint-plugin-promise   → promise/flat/recommended
+ * Plugin integration pattern (see docs/ESLINT_PLUGIN_INTEGRATION.md):
+ *   1. require plugin module
+ *   2. pick flat config (configs.recommended / configs["flat/…"])
+ *   3. integratePlugin(name, base, { files, rules }) → scoped block
+ *   4. project overrides last (wins)
  *
- * Lint target: built bundle `src/gnom_hub/ui/static/app.js`
- * (parts/*.js are IIFE fragments — lint the built file only.)
+ * Plugins:
+ *   @eslint/js                  → js.configs.recommended
+ *   eslint-plugin-no-unsanitized → XSS (innerHTML)
+ *   eslint-plugin-promise       → promise/flat/recommended
  *
- * Docs: docs/ESLINT.md
+ * Lint target: built `app.js` (parts/ ignored — IIFE fragments).
  */
 "use strict";
 
@@ -18,12 +21,55 @@ const globals = require("globals");
 const noUnsanitized = require("eslint-plugin-no-unsanitized");
 const promise = require("eslint-plugin-promise");
 
-/** Shared file scope for UI static scripts */
+/** @type {string[]} */
 const UI_FILES = ["src/gnom_hub/ui/static/**/*.js"];
+
+/**
+ * Integrate a plugin's flat config into our array.
+ *
+ * @param {string} name block label (debug / --print-config)
+ * @param {import("eslint").Linter.Config | import("eslint").Linter.Config[]} base
+ *        plugin.configs.recommended or flat/recommended (object or array)
+ * @param {object} [opts]
+ * @param {string[]} [opts.files]
+ * @param {import("eslint").Linter.RulesRecord} [opts.rules] overrides (merged last)
+ * @param {import("eslint").Linter.Config["languageOptions"]} [opts.languageOptions]
+ * @returns {import("eslint").Linter.Config[]}
+ */
+function integratePlugin(name, base, opts = {}) {
+  const files = opts.files || UI_FILES;
+  const ruleOverrides = opts.rules || {};
+  const blocks = Array.isArray(base) ? base : [base];
+
+  return blocks.map((block, i) => {
+    const mergedRules = {
+      ...(block.rules || {}),
+      ...ruleOverrides,
+    };
+    /** @type {import("eslint").Linter.Config} */
+    const out = {
+      ...block,
+      name: blocks.length > 1 ? `${name}/${i}` : name,
+      files: block.files || files,
+      rules: mergedRules,
+    };
+    if (opts.languageOptions) {
+      out.languageOptions = {
+        ...(block.languageOptions || {}),
+        ...opts.languageOptions,
+        globals: {
+          ...((block.languageOptions && block.languageOptions.globals) || {}),
+          ...((opts.languageOptions && opts.languageOptions.globals) || {}),
+        },
+      };
+    }
+    return out;
+  });
+}
 
 /** @type {import("eslint").Linter.Config[]} */
 module.exports = [
-  // ── Global ignores (flat: top-level ignores entry) ─────────────────
+  // ── Global ignores ─────────────────────────────────────────────────
   {
     name: "gnom-hub/ignores",
     ignores: [
@@ -33,18 +79,13 @@ module.exports = [
       "**/data/**",
       "**/dist/**",
       "**/build/**",
-      // fragments share one IIFE — do not lint in isolation
       "src/gnom_hub/ui/static/parts/**",
       "**/vendor/**",
     ],
   },
 
-  // ── @eslint/js recommended (core) ──────────────────────────────────
-  // Spread recommended, then narrow to UI files + browser languageOptions.
-  {
-    name: "gnom-hub/js-recommended",
-    files: UI_FILES,
-    ...js.configs.recommended,
+  // ── @eslint/js (core “plugin” / official package) ──────────────────
+  ...integratePlugin("gnom-hub/js-recommended", js.configs.recommended, {
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "script",
@@ -53,51 +94,36 @@ module.exports = [
         ...globals.es2021,
       },
     },
-  },
+  }),
 
-  // ── eslint-plugin-no-unsanitized (DOM XSS) ─────────────────────────
-  // configs.recommended already registers the plugin + two rules.
-  {
-    name: "gnom-hub/no-unsanitized",
-    files: UI_FILES,
-    ...noUnsanitized.configs.recommended,
-    // Large legacy UI assigns HTML strings often — warn first, promote to error later
+  // ── eslint-plugin-no-unsanitized ───────────────────────────────────
+  // base already sets plugins: { "no-unsanitized": … } + rules
+  ...integratePlugin("gnom-hub/no-unsanitized", noUnsanitized.configs.recommended, {
     rules: {
-      ...noUnsanitized.configs.recommended.rules,
+      // legacy UI builds HTML strings — warn until safeHtml helper exists
       "no-unsanitized/property": "warn",
       "no-unsanitized/method": "warn",
     },
-  },
+  }),
 
-  // ── eslint-plugin-promise (flat recommended) ───────────────────────
-  {
-    name: "gnom-hub/promise",
-    files: UI_FILES,
-    ...promise.configs["flat/recommended"],
+  // ── eslint-plugin-promise ──────────────────────────────────────────
+  ...integratePlugin("gnom-hub/promise", promise.configs["flat/recommended"], {
     rules: {
-      ...promise.configs["flat/recommended"].rules,
-      // fire-and-forget fetch/toast paths are common in this UI
       "promise/always-return": "off",
       "promise/catch-or-return": "warn",
       "promise/no-nesting": "warn",
       "promise/no-return-in-finally": "warn",
     },
-  },
+  }),
 
-  // ── Project overrides (hub-specific) ───────────────────────────────
+  // ── Project overrides (no new plugins required — last wins) ───────
   {
     name: "gnom-hub/ui-overrides",
     files: UI_FILES,
     linterOptions: {
       reportUnusedDisableDirectives: "warn",
     },
-    // plugins already registered by previous blocks; re-declare if adding local rules
-    plugins: {
-      "no-unsanitized": noUnsanitized,
-      promise,
-    },
     rules: {
-      // Core extras beyond recommended (or tighten)
       "eqeqeq": ["warn", "smart"],
       "no-var": "warn",
       "prefer-const": ["warn", { destructuring: "all" }],
@@ -126,8 +152,6 @@ module.exports = [
       "array-callback-return": ["warn", { allowImplicit: true }],
       "radix": ["warn", "as-needed"],
       "yoda": ["warn", "never"],
-
-      // Style off — no Prettier fight
       "strict": "off",
       "curly": "off",
       "quotes": "off",

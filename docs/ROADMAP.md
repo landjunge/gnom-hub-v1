@@ -320,6 +320,7 @@
 | docs/ESLINT_FLAT_MIGRATION.md | **done** |
 | FlatCompat deep dive + example config | **done** |
 | FlatCompat override layers L1–L3 | **done** |
+| FlatConfig plugin integration helper + docs | **done** |
 | CI hard gate max-warnings 0 | optional |
 
 ## Post-V3.7 (optional)
