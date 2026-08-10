@@ -2855,7 +2855,7 @@
         try {
           embSel.value = emb;
         } catch (e) {}
-        var nav =
+        const nav =
           data.embedder && data.embedder.neural_available
             ? data.embedder.neural_available
             : null;
