@@ -10,6 +10,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from gnom_hub import __version__
 from gnom_hub.core.errors import classify_tool_exception, envelope_http
 from gnom_hub.hub import get_hub
 from gnom_hub.plugins.mcp_protocol import jsonrpc_dispatch
@@ -174,7 +175,7 @@ class ShellBody(BaseModel):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Gnom-Hub v1", version="3.7.1")
+    app = FastAPI(title="Gnom-Hub v1", version=__version__)
 
     @app.get("/api/health")
     def health() -> dict[str, Any]:
@@ -182,7 +183,7 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "service": "gnom-hub-v1",
-            "version": "3.7.1",
+            "version": __version__,
             "telegram": hub.telegram.enabled,
             "telegram_running": hub.telegram.running,
             "llm": {
@@ -195,10 +196,17 @@ def create_app() -> FastAPI:
     @app.get("/api/ollama/models")
     def ollama_models() -> dict[str, Any]:
         hub = get_hub()
-        models = hub.llm.list_ollama_models()
+        # Force probe so System modal reflects current Ollama process state
+        ok = (
+            hub.llm.ollama_available(force=True)
+            if hasattr(hub.llm, "ollama_available")
+            else hub.llm.has_provider("ollama")
+        )
+        models = hub.llm.list_ollama_models() if ok else []
+        snap = hub.llm.providers_snapshot() if hasattr(hub.llm, "providers_snapshot") else {}
         return {
-            "ok": hub.llm.has_provider("ollama"),
-            "host": hub.llm.providers_snapshot().get("ollama_host"),
+            "ok": bool(ok),
+            "host": snap.get("ollama_host"),
             "models": models,
         }
 
@@ -1038,13 +1046,19 @@ def create_app() -> FastAPI:
     def plugins() -> dict[str, Any]:
         hub = get_hub()
         errs = getattr(hub.plugins, "errors", None) or []
+        disk = []
+        if hasattr(hub.plugins, "scan_disk"):
+            try:
+                disk = hub.plugins.scan_disk()
+            except Exception:  # noqa: BLE001
+                disk = []
         return {
             "plugins": hub.plugin_list,
+            "disk": disk,
             "tools": hub.tools.list_tools(),
             "errors": errs,
         }
 
-    @app.post("/api/plugins/reload")
     @app.post("/api/plugins/reload")
     def plugins_reload(plugin_id: str = "") -> dict[str, Any]:
         """Hot-reload plugins. Optional ?plugin_id= for single plugin; else full scan."""
@@ -1053,13 +1067,28 @@ def create_app() -> FastAPI:
         if pid:
             result = hub.plugins.reload(pid)
             hub.plugin_list = list(hub.plugins.loaded)
+            if isinstance(result, dict) and hasattr(hub.plugins, "scan_disk"):
+                result = dict(result)
+                result["disk"] = hub.plugins.scan_disk()
+                result["tools"] = hub.tools.list_tools()
             return result
         if hasattr(hub, "reload_plugins"):
-            return hub.reload_plugins()
+            out = hub.reload_plugins()
+            if isinstance(out, dict) and hasattr(hub.plugins, "scan_disk"):
+                out = dict(out)
+                out["disk"] = hub.plugins.scan_disk()
+            return out
         # fallback: reload registry scan
-        result = hub.plugins.reload() if hasattr(hub.plugins, "reload") else {"ok": False}
+        result = hub.plugins.reload_all() if hasattr(hub.plugins, "reload_all") else {"ok": False}
         hub.plugin_list = list(getattr(hub.plugins, "loaded", []) or [])
-        return result if isinstance(result, dict) else {"ok": True, "plugins": hub.plugin_list}
+        if isinstance(result, dict):
+            result = dict(result)
+            result["plugins"] = hub.plugin_list
+            result["tools"] = hub.tools.list_tools()
+            if hasattr(hub.plugins, "scan_disk"):
+                result["disk"] = hub.plugins.scan_disk()
+            return result
+        return {"ok": True, "plugins": hub.plugin_list}
 
     @app.get("/api/mcp/tools")
     def mcp_tools() -> dict[str, Any]:

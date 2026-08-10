@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from gnom_hub import __version__
+
 
 class TraceOpsMixin:
     """Mixin extracted from Hub — pure move."""
@@ -112,7 +114,7 @@ class TraceOpsMixin:
             {
                 "format": "gnom-hub-trace",
                 "format_version": 1,
-                "app_version": "3.7.1",
+                "app_version": __version__,
                 "exported_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
                 "count": len(events),
                 "trace": events,

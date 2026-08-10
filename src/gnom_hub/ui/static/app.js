@@ -2478,15 +2478,71 @@
           errs.length ? "info" : "ok"
         );
       }
+      const disk = data.disk || [];
+      const errs = data.errors || [];
+      const plugs = data.plugins || [];
       if (countEl) {
+        const loadedN = plugs.length || disk.filter(function (d) {
+          return d.status === "loaded";
+        }).length;
+        const diskN = disk.length;
         countEl.textContent =
           "Tools: " +
           tools.length +
-          " · plugins: " +
-          (data.plugins ? data.plugins.length : 0);
+          " · plugins loaded: " +
+          loadedN +
+          (diskN ? " · on disk: " + diskN : "") +
+          (errs.length ? " · errors: " + errs.length : "");
       }
       if (ul) {
         ul.innerHTML = "";
+        // Drop-in inventory first (what is on disk)
+        if (disk.length) {
+          const head = document.createElement("li");
+          head.className = "muted";
+          head.style.fontWeight = "600";
+          head.textContent = "Plugins on disk (drop-in)";
+          ul.appendChild(head);
+          disk.forEach(function (d) {
+            const li = document.createElement("li");
+            const st = d.status || "?";
+            li.textContent =
+              (d.id || d.folder || "?") +
+              " · " +
+              st +
+              (d.version ? " v" + d.version : "") +
+              (d.tool_count != null
+                ? " · " + d.tool_count + " tools"
+                : d.tool_count_declared != null
+                  ? " · " + d.tool_count_declared + " declared"
+                  : "");
+            if (d.description) li.title = String(d.description);
+            if (d.error) li.title = (li.title ? li.title + " · " : "") + d.error;
+            if (st === "error" || st === "no_manifest") {
+              li.style.opacity = "0.85";
+            }
+            ul.appendChild(li);
+          });
+        }
+        if (errs.length) {
+          const headE = document.createElement("li");
+          headE.className = "muted";
+          headE.style.fontWeight = "600";
+          headE.textContent = "Load errors";
+          ul.appendChild(headE);
+          errs.forEach(function (e) {
+            const li = document.createElement("li");
+            li.textContent =
+              (e.plugin || e.path || "?") + " — " + String(e.error || "").slice(0, 120);
+            li.title = JSON.stringify(e);
+            ul.appendChild(li);
+          });
+        }
+        const headT = document.createElement("li");
+        headT.className = "muted";
+        headT.style.fontWeight = "600";
+        headT.textContent = "Registered tools";
+        ul.appendChild(headT);
         if (!tools.length) {
           const li = document.createElement("li");
           li.className = "muted";

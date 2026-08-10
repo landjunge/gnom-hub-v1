@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from gnom_hub import __version__
 from gnom_hub.ui.tooltips import TOOLTIPS
 
 
@@ -75,7 +76,7 @@ class SystemOpsMixin:
             "god_mode": self.god_mode.enabled,
             "ui_lang": self.ui_lang,
             "checkpoint_exists": self._checkpoint_path.is_file(),
-            "version": "3.7.1",
+            "version": __version__,
             "providers": self.llm.providers_snapshot(),
             "backups": self.list_backups()[:8],
             "packs": self.list_session_packs()[:12],

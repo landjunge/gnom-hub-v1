@@ -1,3 +1,3 @@
 """Gnom-Hub v1 – Local multi-agent hub (brainstorm first, then execute)."""
 
-__version__ = "3.7.1"
+__version__ = "3.9.1"
