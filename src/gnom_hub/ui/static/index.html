@@ -46,6 +46,7 @@
           <span id="vec-badge" class="vec-badge" title="Open vector store (click)" role="button" tabindex="0">Vec: —</span>
           <span id="god-badge" class="god-badge" title="God-Mode: off = Shell/GUI dry-run · on = echte Desktop-Aktionen. Klick zum Umschalten." role="button" tabindex="0">God: off</span>
           <span id="cold-badge" class="cold-badge" title="COLD archives — click to browse" role="button" tabindex="0">Cold: —</span>
+          <span id="docs-badge" class="tools-badge" role="button" tabindex="0" title="Search docs — click">Docs</span>
           <span id="skills-badge" class="tools-badge" role="button" tabindex="0" title="Playbook skills — click">Skills: —</span>
           <span id="tools-badge" class="tools-badge" role="button" tabindex="0" title="Tool calls this run — click for history">Tools: 0</span>
           <span id="stage-badge" class="stage-badge" title="Pipeline stage">idle</span>
@@ -550,6 +551,24 @@
   <!-- Tools browser -->
 
   <!-- Skills playbooks -->
+
+  <!-- Docs search -->
+  <div id="docs-modal" class="modal" hidden>
+    <div class="modal-panel trace-panel">
+      <div class="modal-head">
+        <h2 class="modal-title">Documentation search</h2>
+        <button type="button" id="docs-close" class="modal-close" title="Close">×</button>
+      </div>
+      <p class="system-hint muted">Local index over docs/*.md — no external search engine.</p>
+      <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <input id="docs-query" class="tune-input" type="search" placeholder="Search docs… e.g. skills, embeddings, install" style="flex:1;min-width:160px" />
+        <button type="button" id="docs-search-btn" class="btn-ws-sm">Search</button>
+      </div>
+      <ul id="docs-hits" class="ws-list" style="max-height:320px"></ul>
+      <pre id="docs-hint" class="trace-body muted" style="max-height:80px;margin-top:8px">Tip: keywords from docs/INDEX.md · API GET /api/docs/search?q=</pre>
+    </div>
+  </div>
+
   <div id="skills-modal" class="modal" hidden>
     <div class="modal-panel trace-panel">
       <div class="modal-head">

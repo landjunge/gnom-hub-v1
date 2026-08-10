@@ -1725,3 +1725,81 @@
       toast("Install failed: " + err.message, "error");
     }
   }
+
+
+  function closeDocsModal() {
+    if (els.docsModal) els.docsModal.hidden = true;
+  }
+
+  async function openDocsModal() {
+    if (!els.docsModal) return;
+    els.docsModal.hidden = false;
+    const q = document.getElementById("docs-query");
+    if (q) {
+      q.focus();
+      if (q.value) await runDocsSearch();
+    }
+  }
+
+  async function runDocsSearch() {
+    const qEl = document.getElementById("docs-query");
+    const ul = document.getElementById("docs-hits");
+    const hint = document.getElementById("docs-hint");
+    const q = qEl ? String(qEl.value || "").trim() : "";
+    if (!ul) return;
+    if (!q) {
+      ul.innerHTML = "";
+      const li = document.createElement("li");
+      li.className = "muted";
+      li.textContent = "Type a query — e.g. skills, plan_mode, install";
+      ul.appendChild(li);
+      return;
+    }
+    try {
+      const data = await api(
+        "GET",
+        "/api/docs/search?q=" + encodeURIComponent(q) + "&limit=16"
+      );
+      const hits = data.hits || [];
+      ul.innerHTML = "";
+      if (!hits.length) {
+        const li = document.createElement("li");
+        li.className = "muted";
+        li.textContent = "No hits for: " + q;
+        ul.appendChild(li);
+        return;
+      }
+      hits.forEach(function (h) {
+        const li = document.createElement("li");
+        li.style.display = "flex";
+        li.style.flexDirection = "column";
+        li.style.gap = "2px";
+        li.style.padding = "6px 0";
+        const top = document.createElement("span");
+        top.innerHTML = "";
+        const title = document.createElement("strong");
+        title.textContent =
+          (h.score != null ? h.score + " · " : "") + (h.title || h.file || "?");
+        top.appendChild(title);
+        const meta = document.createElement("span");
+        meta.className = "muted";
+        meta.style.fontSize = "0.9em";
+        meta.textContent =
+          (h.path || h.file || "") +
+          " · " +
+          (h.topic || "") +
+          " · " +
+          ((h.keywords || []).slice(0, 6).join(", ") || "—");
+        li.appendChild(top);
+        li.appendChild(meta);
+        ul.appendChild(li);
+      });
+      if (hint) {
+        hint.textContent =
+          hits.length +
+          " hits · local catalog · rebuild: python scripts/build_docs_index.py";
+      }
+    } catch (err) {
+      toast("Docs search failed: " + err.message, "error");
+    }
+  }

@@ -1356,7 +1356,66 @@ def create_app() -> FastAPI:
         hub.skill_list = list(skills.skills)
         return out
 
+
+    @app.get("/api/docs")
+    def docs_catalog(limit: int = Query(200, ge=1, le=500)) -> dict[str, Any]:
+        """List documentation catalog (from generated index)."""
+        import json
+
+        hub = get_hub()
+        cat = hub.root / "docs" / "generated" / "docs_catalog.json"
+        if cat.is_file():
+            try:
+                data = json.loads(cat.read_text(encoding="utf-8"))
+                docs = list(data.get("docs") or [])[:limit]
+                return {
+                    "ok": True,
+                    "count": len(docs),
+                    "version": data.get("version"),
+                    "docs": docs,
+                }
+            except Exception:  # noqa: BLE001
+                pass
+        # live fallback
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "build_docs_index",
+            str(hub.root / "scripts" / "build_docs_index.py"),
+        )
+        if spec and spec.loader:
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            rows = mod.collect()[:limit]
+            return {"ok": True, "count": len(rows), "docs": rows, "version": "live"}
+        return {"ok": False, "count": 0, "docs": []}
+
+    @app.get("/api/docs/search")
+    def docs_search(
+        q: str = Query("", min_length=0, max_length=200),
+        limit: int = Query(12, ge=1, le=40),
+    ) -> dict[str, Any]:
+        """Local docs search engine (markdown catalog — no external service)."""
+        import importlib.util
+
+        hub = get_hub()
+        script = hub.root / "scripts" / "build_docs_index.py"
+        if not script.is_file():
+            raise HTTPException(status_code=501, detail="docs index script missing")
+        spec = importlib.util.spec_from_file_location("build_docs_index", str(script))
+        if not spec or not spec.loader:
+            raise HTTPException(status_code=501, detail="docs index load failed")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        rows = mod.collect()
+        query = (q or "").strip()
+        if not query:
+            return {"ok": True, "query": "", "hits": [], "count": 0}
+        hits = mod.search(rows, query, limit=limit)
+        return {"ok": True, "query": query, "hits": hits, "count": len(hits)}
+
     @app.get("/api/mcp/tools")
+
     def mcp_tools() -> dict[str, Any]:
         """MCP tools/list body (MCP-lite discovery)."""
         return get_hub().tools.mcp_manifest()

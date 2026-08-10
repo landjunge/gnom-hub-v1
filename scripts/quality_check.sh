@@ -16,6 +16,8 @@ export PYTHONPATH="${ROOT}/src${PYTHONPATH:+:$PYTHONPATH}"
 
 echo "▸ mermaid_check"
 python scripts/mermaid_check.py --write-inventory docs/generated/mermaid_inventory.md
+echo "▸ docs index"
+python scripts/build_docs_index.py --check
 
 echo "▸ pytest"
 pytest tests/ -q --tb=short

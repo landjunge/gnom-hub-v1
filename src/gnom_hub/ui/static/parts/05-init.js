@@ -339,6 +339,15 @@
         }
       });
     }
+    if (els.docsBadge) {
+      els.docsBadge.addEventListener("click", openDocsModal);
+      els.docsBadge.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          openDocsModal();
+        }
+      });
+    }
     if (els.skillsBadge) {
       els.skillsBadge.addEventListener("click", openSkillsModal);
       els.skillsBadge.addEventListener("keydown", function (ev) {
@@ -409,6 +418,24 @@
     if (skillsInstallBtn) skillsInstallBtn.addEventListener("click", installSkillPath);
     const skillsLearnLast = document.getElementById("skills-learn-last");
     if (skillsLearnLast) skillsLearnLast.addEventListener("click", learnSkillFromLast);
+    const docsClose = document.getElementById("docs-close");
+    if (docsClose) docsClose.addEventListener("click", closeDocsModal);
+    if (els.docsModal) {
+      els.docsModal.addEventListener("click", function (ev) {
+        if (ev.target === els.docsModal) closeDocsModal();
+      });
+    }
+    const docsSearchBtn = document.getElementById("docs-search-btn");
+    if (docsSearchBtn) docsSearchBtn.addEventListener("click", runDocsSearch);
+    const docsQuery = document.getElementById("docs-query");
+    if (docsQuery) {
+      docsQuery.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          runDocsSearch();
+        }
+      });
+    }
     const vectorQuery = document.getElementById("vector-query");
     if (vectorQuery) {
       vectorQuery.addEventListener("keydown", function (ev) {
