@@ -95,8 +95,7 @@ def use_neural(backend: str = "fastembed", reindex: bool = False) -> dict[str, A
             name = "sbert"
         else:
             return fail(
-                f"backend {b!r} not importable. Available: {probe}. "
-                "Install optional package first."
+                f"backend {b!r} not importable. Available: {probe}. Install optional package first."
             )
         out = vs.set_embedder(name, fn=fn, reindex=bool(reindex))
         return ok(**out, available=probe)

@@ -89,7 +89,12 @@ class SkillLoader:
             if not root.is_dir():
                 continue
             source = "bundled"
-            if "data" in root.parts and "skills" in root.parts or root.name == "user" and "data" in str(root):
+            if (
+                "data" in root.parts
+                and "skills" in root.parts
+                or root.name == "user"
+                and "data" in str(root)
+            ):
                 source = "user"
             for child in sorted(root.iterdir()):
                 if not child.is_dir() or child.name.startswith(("_", ".")):
