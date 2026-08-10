@@ -9,6 +9,7 @@
     "lint:js": "eslint \"src/gnom_hub/ui/static/app.js\"",
     "lint:js:fix": "eslint \"src/gnom_hub/ui/static/app.js\" --max-warnings 0",
     "lint:js:all": "eslint \"src/gnom_hub/ui/static/**/*.js\"",
+    "lint:js:specificity": "node scripts/eslint_override_specificity.mjs",
     "lint:js:compat": "eslint -c eslint.flatcompat.example.js \"src/gnom_hub/ui/static/app.js\""
   },
   "devDependencies": {

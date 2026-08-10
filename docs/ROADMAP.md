@@ -322,6 +322,7 @@
 | FlatCompat override layers L1–L3 | **done** |
 | FlatConfig plugin integration helper + docs | **done** |
 | Flat-Config override strategies S1–S10 | **done** |
+| Override specificity self-test (npm run lint:js:specificity) | **done** |
 | CI hard gate max-warnings 0 | optional |
 
 ## Post-V3.7 (optional)

@@ -213,7 +213,21 @@ Need to change a rule?
 
 ---
 
-## 8. Related
+## 8. Automated specificity test
+
+```bash
+npm run lint:js:specificity
+# node scripts/eslint_override_specificity.mjs
+# node scripts/eslint_override_specificity.mjs --json
+```
+
+Asserts:
+
+1. **Later block wins** — synthetic config (`no-console` error→off, `eqeqeq` off→warn smart)
+2. **Order beats “narrower” glob** — narrow `files` first + broad later → broad wins
+3. **Production strategies** — `no-console`/`always-return` off, XSS warn, `no-var`/`eqeqeq` warn, plugins registered
+
+## 9. Related
 
 - Plugin wiring: [ESLINT_PLUGIN_INTEGRATION.md](ESLINT_PLUGIN_INTEGRATION.md)  
 - FlatCompat L1–L3: [ESLINT_FLATCOMPAT.md](ESLINT_FLATCOMPAT.md)  
