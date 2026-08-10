@@ -367,6 +367,10 @@
       hideClarify();
     }
 
+    if (typeof renderDeferredClarify === "function") {
+      renderDeferredClarify(p.deferred_clarifies || []);
+    }
+
     // Later / deferred clarify hygiene — surface reminder, no zombie box
     if (Array.isArray(p.deferred_clarifies) && p.deferred_clarifies.length) {
       const n = p.deferred_clarifies.length;

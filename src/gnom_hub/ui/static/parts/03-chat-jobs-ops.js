@@ -2208,3 +2208,64 @@
   w.GnomHub.setBox3 = setBox3;
   w.GnomHub.applySnapshot = applySnapshot;
 
+
+
+  function renderDeferredClarify(items) {
+    const box = document.getElementById("deferred-clarify");
+    const ul = document.getElementById("deferred-clarify-list");
+    if (!box || !ul) return;
+    const list = Array.isArray(items) ? items : [];
+    if (!list.length) {
+      box.hidden = true;
+      ul.innerHTML = "";
+      return;
+    }
+    box.hidden = false;
+    ul.innerHTML = "";
+    list.forEach(function (item, idx) {
+      const li = document.createElement("li");
+      li.style.display = "flex";
+      li.style.alignItems = "center";
+      li.style.justifyContent = "space-between";
+      li.style.gap = "8px";
+      const span = document.createElement("span");
+      span.textContent = String((item && item.text) || "?").slice(0, 100);
+      span.className = "muted";
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn-ws-sm";
+      btn.textContent = "Resume";
+      btn.title = "Re-open this clarify";
+      btn.addEventListener("click", function () {
+        resumeDeferredClarify(idx);
+      });
+      li.appendChild(span);
+      li.appendChild(btn);
+      ul.appendChild(li);
+    });
+  }
+
+  async function resumeDeferredClarify(index) {
+    if (chatBusy) {
+      toast("Busy — wait for current job", "info");
+      return;
+    }
+    setChatBusy(true);
+    try {
+      const snap = await api(
+        "POST",
+        "/api/clarify/resume?index=" + encodeURIComponent(String(index))
+      );
+      applySnapshot(snap);
+      if (snap.pipeline && snap.pipeline.pending_question) {
+        showClarify(snap.pipeline.pending_question.text);
+        appendChat("system", "Clarify resumed — answer Yes/No/Whatever/Later.");
+        toast("Clarify resumed", "ok");
+      }
+    } catch (err) {
+      toast("Resume failed: " + err.message, "error");
+      await resyncState();
+    } finally {
+      setChatBusy(false);
+    }
+  }

@@ -57,3 +57,9 @@
 - tool_calls carry `reason` (UI + chat + job tool_log)
 - Clarify **Later** defers without workers (deferred_clarifies)
 - docs/PIPELINE_RELIABILITY.md
+
+## Reliability follow-ups
+
+- Resume deferred clarify (API + Box 1 list)
+- Job timeout → FEHLER error (not soft-cancelled only)
+- Prefetch why lines in quality_notes

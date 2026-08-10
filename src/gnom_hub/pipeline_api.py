@@ -76,6 +76,16 @@ class PipelineApiMixin:
                 self.last_error = self.pipeline.state.error
             return self.snapshot()
 
+    def resume_deferred_clarify(self, index: int = -1) -> dict[str, Any]:
+        """Re-open a Later-parked clarify (sync, no workers until answered)."""
+        self.last_error = None
+        with self._pipeline_lock_obj():
+            fn = getattr(self.pipeline, "resume_deferred_clarify", None)
+            if not callable(fn):
+                raise TypeError("resume deferred not supported")
+            fn(index)
+            return self.snapshot()
+
     def restore_for_reexecute(
         self,
         *,

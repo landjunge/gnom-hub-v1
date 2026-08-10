@@ -673,6 +673,38 @@ class Orchestrator:
         )
         return self._state
 
+    def resume_deferred_clarify(self, index: int = -1) -> PipelineState:
+        """Re-open a parked Later clarify as active pending_question (no auto-workers)."""
+        from gnom_hub.pipeline.models import DistillQuestion
+
+        deferred = list(self._state.deferred_clarifies or [])
+        if not deferred:
+            raise ValueError("No deferred clarifications")
+        idx = int(index)
+        if idx < 0:
+            idx = len(deferred) + idx
+        if idx < 0 or idx >= len(deferred):
+            raise ValueError("deferred index out of range")
+        entry = deferred.pop(idx)
+        self._state.deferred_clarifies = deferred
+        qid = str(entry.get("id") or f"deferred-{idx}")
+        qtext = str(entry.get("text") or "Please clarify").strip() or "Please clarify"
+        self._state.pending_question = DistillQuestion(
+            id=qid,
+            text=qtext,
+            options=["Yes", "No", "Whatever", "Later"],
+        )
+        self._state.error = None
+        self._state.mode = "execute"
+        self._clarified_once = False
+        self._set_stage(PipelineStage.clarify)
+        self.bus.emit(
+            "pipeline.clarify_resumed",
+            {"id": qid, "text": qtext[:200], "remaining": len(deferred)},
+        )
+        self.bus.emit("pipeline.stage", {"stage": "clarify", "resumed": True})
+        return self._state
+
     def answer_clarify(self, option: str) -> PipelineState:
         """
         Apply clarify answer then run workers.
@@ -1071,6 +1103,7 @@ class Orchestrator:
             warn = "All worker results were empty."
             self._state.quality_notes = ((self._state.quality_notes or "") + "\n" + warn).strip()
             self._state.warnings = list(self._state.warnings or []) + ["empty_worker_results"]
+        self._append_prefetch_why_notes()
         self.bus.emit(
             "pipeline.quality",
             {"notes": self._state.quality_notes, "workers": len(outputs)},
@@ -1197,6 +1230,28 @@ class Orchestrator:
                 "nudges": list(self._state.agent_nudges),
             },
         )
+
+    def _append_prefetch_why_notes(self) -> None:
+        try:
+            whys: list[str] = []
+            seen_w: set[str] = set()
+            for tc in self._state.tool_calls or []:
+                if not isinstance(tc, dict):
+                    continue
+                r = str(tc.get("reason") or "").strip()
+                if not r or r in seen_w:
+                    continue
+                seen_w.add(r)
+                name = str(tc.get("name") or tc.get("tool") or "?")
+                whys.append(f"{name}: {r}")
+            if not whys:
+                return
+            line = "Prefetch why: " + "; ".join(whys[:8])
+            qn = (self._state.quality_notes or "").strip()
+            if line not in qn:
+                self._state.quality_notes = (qn + "\n" + line).strip() if qn else line
+        except Exception:  # noqa: BLE001
+            pass
 
     def _finish(self) -> None:
         # Last chance: never store memory / mark done after soft-cancel (H7)

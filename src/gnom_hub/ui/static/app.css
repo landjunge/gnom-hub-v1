@@ -2887,3 +2887,13 @@ a:focus-visible {
 .agent-card[data-enabled="true"] .card-status {
   color: var(--ok);
 }
+
+/* Deferred clarify park list */
+.deferred-clarify {
+  margin-top: 6px;
+  border-top: 1px dashed var(--border);
+  padding-top: 6px;
+}
+.deferred-clarify .btn-ws-sm {
+  margin-left: 6px;
+}

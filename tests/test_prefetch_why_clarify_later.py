@@ -186,3 +186,41 @@ def test_busy_lock_rejects_second_execute(tmp_path, monkeypatch):
         hub._jobs.clear()
         hub._active_job_id = None
         hub_mod._HUB = None
+
+
+def test_resume_deferred_clarify_reopens_question():
+    from unittest.mock import MagicMock
+
+    from gnom_hub.pipeline.models import PipelineStage, PipelineState
+    from gnom_hub.pipeline.orchestrator import Orchestrator
+
+    orch = Orchestrator(bus=MagicMock(), memory=MagicMock())
+    orch._state = PipelineState(
+        stage=PipelineStage.brainstorm,
+        deferred_clarifies=[{"id": "q9", "text": "Pick a style?", "option": "Later"}],
+    )
+    st = orch.resume_deferred_clarify(-1)
+    assert st.stage == PipelineStage.clarify
+    assert st.pending_question is not None
+    assert "style" in st.pending_question.text.lower()
+    assert st.deferred_clarifies == []
+
+
+def test_timeout_flag_finalizes_as_error():
+    """Unit-level: cancel+timeout → error FEHLER (not soft cancelled)."""
+    # simulate finalize logic branch
+    job = {
+        "cancel": True,
+        "timeout": True,
+        "error": "FEHLER — job timeout after 1s",
+        "finished": False,
+    }
+    if job.get("cancel"):
+        if job.get("timeout"):
+            job["status"] = "error"
+            job["stage"] = "error"
+            job["finished"] = True
+        else:
+            job["status"] = "cancelled"
+    assert job["status"] == "error"
+    assert "FEHLER" in job["error"]

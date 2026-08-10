@@ -724,6 +724,14 @@ def create_app() -> FastAPI:
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
 
+    @app.post("/api/clarify/resume")
+    def clarify_resume(index: int = Query(-1)) -> dict[str, Any]:
+        """Resume a deferred (Later) clarification as active Box-1 question."""
+        try:
+            return get_hub().resume_deferred_clarify(index)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+
     @app.post("/api/save")
     def save() -> dict[str, Any]:
         return get_hub().save()
