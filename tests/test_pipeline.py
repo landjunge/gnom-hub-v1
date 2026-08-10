@@ -254,10 +254,13 @@ def test_answer_clarify_keeps_question_on_cancel():
     assert st.stage == PipelineStage.clarify
     assert st.pending_question is not None
     pipe.cancel_check = lambda: True
-    st2 = pipe.answer_clarify("Schnell und einfach")
-    assert st2.pending_question is not None
-    assert st2.stage == PipelineStage.clarify
-    assert st2.error is None
+    try:
+        st2 = pipe.answer_clarify("Schnell und einfach")
+        assert st2.pending_question is not None
+        assert st2.stage == PipelineStage.clarify
+        assert st2.error is None
+    finally:
+        pipe.cancel_check = None
 
 
 def test_worker_partials_published_before_cancel():
@@ -284,10 +287,13 @@ def test_worker_partials_published_before_cancel():
         return n >= 1
 
     pipe.cancel_check = cancel_after_partials
-    st = pipe.execute()
-    assert st.stage.value != "done"
-    # Either we got a partial or cancelled very early (still no crash)
-    assert st.error is None
+    try:
+        st = pipe.execute()
+        assert st.stage.value != "done"
+        # Either we got a partial or cancelled very early (still no crash)
+        assert st.error is None
+    finally:
+        pipe.cancel_check = None
 
 
 def test_pipeline_state_defaults():
@@ -390,14 +396,17 @@ def test_cooperative_cancel_mid_execute():
         return n["c"] >= 2
 
     pipe.cancel_check = cancel_soon
-    st = pipe.execute()
-    # Should not complete full worker run when cancelled early
-    assert n["c"] >= 2
-    assert st.stage.value != "done"
-    # H1: re-executable — notes kept, not stuck mid-stage
-    assert st.stage.value == "brainstorm"
-    assert (st.brainstorm_notes or "").strip()
-    assert st.error is None
+    try:
+        st = pipe.execute()
+        # Should not complete full worker run when cancelled early
+        assert n["c"] >= 2
+        assert st.stage.value != "done"
+        # H1: re-executable — notes kept, not stuck mid-stage
+        assert st.stage.value == "brainstorm"
+        assert (st.brainstorm_notes or "").strip()
+        assert st.error is None
+    finally:
+        pipe.cancel_check = None
 
 
 def test_start_cancel_is_not_hard_error():
@@ -414,10 +423,13 @@ def test_start_cancel_is_not_hard_error():
     bus = EventBus()
     pipe = Pipeline(bus, llm_manager=None, memory=FakeMem())
     pipe.cancel_check = lambda: True
-    st = pipe.start("full one-shot should cancel")
-    assert st.stage.value in ("idle", "brainstorm")
-    assert st.error is None
-    assert st.stage.value != "error"
+    try:
+        st = pipe.start("full one-shot should cancel")
+        assert st.stage.value in ("idle", "brainstorm")
+        assert st.error is None
+        assert st.stage.value != "error"
+    finally:
+        pipe.cancel_check = None
 
 
 def test_abort_cancelled_restores_can_execute_snapshot():
@@ -436,17 +448,20 @@ def test_abort_cancelled_restores_can_execute_snapshot():
     pipe.brainstorm_turn("only brainstorm ideas for cancel restore")
     assert (pipe.state.brainstorm_notes or "").strip()
     pipe.cancel_check = lambda: True
-    pipe.execute()
-    assert pipe.state.stage.value == "brainstorm"
-    # Mimic snapshot rule
-    st = pipe.state
-    can_execute = bool((st.brainstorm_notes or "").strip()) and st.stage.value in (
-        "brainstorm",
-        "idle",
-        "done",
-        "error",
-    )
-    assert can_execute is True
+    try:
+        pipe.execute()
+        assert pipe.state.stage.value == "brainstorm"
+        # Mimic snapshot rule
+        st = pipe.state
+        can_execute = bool((st.brainstorm_notes or "").strip()) and st.stage.value in (
+            "brainstorm",
+            "idle",
+            "done",
+            "error",
+        )
+        assert can_execute is True
+    finally:
+        pipe.cancel_check = None
 
 
 def test_html_gates_and_dod():

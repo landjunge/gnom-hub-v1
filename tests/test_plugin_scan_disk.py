@@ -60,3 +60,24 @@ def test_scan_disk_no_manifest(tmp_path: Path):
     loader = PluginLoader(tmp_path, reg)
     disk = loader.scan_disk()
     assert disk[0]["status"] == "no_manifest"
+
+
+def test_api_plugins_includes_disk(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    import gnom_hub.hub as hub_mod
+    from gnom_hub.api.app import create_app
+
+    monkeypatch.setattr(hub_mod, "project_root", lambda: tmp_path)
+    monkeypatch.setattr(hub_mod, "_HUB", None)
+    # minimal plugins dir under tmp root if hub uses project plugins
+    app = create_app()
+    with TestClient(app) as c:
+        r = c.get("/api/plugins")
+        assert r.status_code == 200
+        body = r.json()
+        assert "tools" in body
+        assert "plugins" in body
+        assert "disk" in body
+        assert isinstance(body["disk"], list)
+    hub_mod._HUB = None

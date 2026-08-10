@@ -56,9 +56,12 @@ def test_cancel_does_not_leave_mid_stage_stuck(tmp_path, monkeypatch):
         # Force cancel flag on next execute via hub
         hub = hub_mod.get_hub()
         hub.pipeline.cancel_check = lambda: True
-        st = hub.pipeline.execute()
-        assert st.stage.value == "brainstorm"
-        assert st.error is None
-        snap = hub.snapshot()
-        assert snap["pipeline"]["can_execute"] is True
+        try:
+            st = hub.pipeline.execute()
+            assert st.stage.value == "brainstorm"
+            assert st.error is None
+            snap = hub.snapshot()
+            assert snap["pipeline"]["can_execute"] is True
+        finally:
+            hub.pipeline.cancel_check = None
     hub_mod._HUB = None

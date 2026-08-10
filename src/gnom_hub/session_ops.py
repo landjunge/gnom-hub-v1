@@ -129,6 +129,12 @@ class SessionOpsMixin:
                 cancelled_jobs += 1
                 _ = jid
         self._active_job_id = None
+        try:
+            pipe = getattr(self, "pipeline", None)
+            if pipe is not None:
+                pipe.cancel_check = None
+        except Exception:  # noqa: BLE001
+            pass
 
         archived = None
         with self._pipeline_lock_obj():
@@ -172,6 +178,12 @@ class SessionOpsMixin:
                 job["error"] = job.get("error") or "cancelled by clean"
                 job["stage"] = "cancelled"
         self._active_job_id = None
+        try:
+            pipe = getattr(self, "pipeline", None)
+            if pipe is not None:
+                pipe.cancel_check = None
+        except Exception:  # noqa: BLE001
+            pass
         archived = None
         with self._pipeline_lock_obj():
             if self.hot.session.get("messages") or self.hot.session.get("facts"):
