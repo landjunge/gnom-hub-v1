@@ -24,3 +24,8 @@
 ### API
 - `GET /api/plugins` → `disk` field
 - `GET /api/ollama/models` force-probes availability
+
+### Memory / embeddings (follow-up)
+- Pluggable VectorStore embedders: `bow` (default), `char_ngram`, `hashing`
+- Plugin `embeddings_lite`: status / use / reindex tools; env `GNOM_EMBEDDINGS`
+- Docs: PLUGINS.md, HUB_ARCHITECTURE.md, MERGE_STATUS.md
