@@ -337,6 +337,7 @@
 | Auto-execute exceptions documented (AGENTS.md) | **done** |
 | Unit tests: chat_policy + agent_bridge | **done** |
 | One-worker HTML reminder in brainstorm HTML intent | **done** |
+| Desk acceptance (tools + DoD UI hosts + one-worker) | **done** |
 
 ## Post-V3.7 (optional)
 
