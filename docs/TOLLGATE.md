@@ -1,0 +1,44 @@
+# Gnom + Tollgate
+
+Gnom is a **client**. Tollgate owns keys, budgets, and routing.
+
+## Default (in-process)
+
+With `tollgate` installed in the same venv:
+
+```bash
+export GNOM_WS=$HOME/WS-gnom-hub-v1
+export TOLLGATE_HOME=$GNOM_WS   # same User/Key.txt
+export GNOM_TOLLGATE_LLM=1      # default: all cloud LLM via Tollgate
+# gnom-hub
+```
+
+Brave search and ElevenLabs budget already go through the gateway.
+
+## HTTP mode (separate Tollgate process — like n8n)
+
+```bash
+# terminal 1
+export TOLLGATE_HOME=$HOME/WS-gnom-hub-v1
+cd ~/tollgate && ./scripts/desk-up.sh
+
+# terminal 2 — Gnom
+export TOLLGATE_URL=http://127.0.0.1:8787
+export TOLLGATE_CONSUMER=gnom   # or gnom:<secret> if auth on
+export GNOM_WS=$HOME/WS-gnom-hub-v1
+# start gnom-hub
+```
+
+## n8n
+
+| Field | Value |
+|-------|--------|
+| OpenAI Base URL | `http://127.0.0.1:8787/v1` |
+| API Key | `n8n` or `n8n:<secret>` |
+| Model | `tollgate/free` |
+
+## Opt out
+
+```bash
+export GNOM_TOLLGATE_LLM=0   # legacy direct DeepSeek client only
+```

@@ -73,6 +73,15 @@ class Hub(
         self.user_workspace = ensure_user_workspace(self.root)
         ensure_env_from_key_txt(self.root)
         self.keys = load_keys(self.root)
+        # Tollgate shares the same User/ secrets + ledger (unless already set)
+        try:
+            from gnom_hub.config.paths import personal_workspace
+
+            ws = personal_workspace(self.root)
+            os.environ.setdefault("TOLLGATE_HOME", str(ws))
+            os.environ.setdefault("GNOM_WS", str(ws))
+        except Exception:  # noqa: BLE001
+            pass
         self.bus = EventBus()
         self.agents = AgentManager(self.bus)
         self.llm = LLMManager(keys=self.keys)
@@ -165,6 +174,13 @@ class Hub(
         # Auto-start telegram poll if GNOM_TELEGRAM_POLL=1
         if os.getenv("GNOM_TELEGRAM_POLL", "").strip() in ("1", "true", "yes"):
             self.telegram_start()
+        # Tollgate control plane: background status/model refresh (keys_app.json)
+        try:
+            from tollgate import get_keys_service
+
+            get_keys_service().auto_update("start")
+        except Exception:  # noqa: BLE001
+            pass
 
     def _new_pipeline(self) -> Pipeline:
         pipe = Pipeline(
