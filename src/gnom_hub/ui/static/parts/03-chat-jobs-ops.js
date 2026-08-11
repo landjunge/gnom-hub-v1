@@ -446,7 +446,7 @@
     if (!chatBusy && !busyJobId) hideBusyBanner();
   }
 
-  function updateCostBadge(llm) {
+  function updateCostBadge(llm, tollgate) {
     const el = els.costBadge || document.getElementById("cost-badge");
     if (!el) return;
     const spent = llm && typeof llm.spent_usd === "number" ? llm.spent_usd : 0;
@@ -458,6 +458,9 @@
       llm && llm.max_budget_usd != null && llm.max_budget_usd !== ""
         ? Number(llm.max_budget_usd)
         : null;
+    const dayTot = (tollgate && tollgate.usage_totals) || {};
+    const dayUsd = dayTot.usd != null ? Number(dayTot.usd) : null;
+    const dayCalls = dayTot.calls != null ? Number(dayTot.calls) : null;
     let text = "$" + spent.toFixed(4);
     if (budget != null && !isNaN(budget) && budget > 0) {
       text += " / $" + budget.toFixed(2);
@@ -467,15 +470,25 @@
     } else {
       el.classList.remove("cost-warn", "cost-hot");
     }
+    if (dayUsd != null && !isNaN(dayUsd) && dayUsd > 0) {
+      text += " · day $" + dayUsd.toFixed(3);
+    }
     el.textContent = text;
     el.title =
       "Session spend $" +
       spent.toFixed(6) +
-      (budget != null && !isNaN(budget) ? " · budget $" + budget : " · no budget cap") +
+      (budget != null && !isNaN(budget) ? " · session budget $" + budget : " · no session budget") +
       " · " +
       tok +
       " tokens" +
-      (llm && llm.free_only ? " · free_only" : "");
+      (llm && llm.free_only ? " · free_only" : "") +
+      (llm && llm.via_tollgate ? " · via Tollgate" : "") +
+      (dayUsd != null
+        ? " · Tollgate day $" +
+          dayUsd.toFixed(4) +
+          (dayCalls != null ? " · " + dayCalls + " calls" : "")
+        : "") +
+      (tollgate && tollgate.home ? " · home=" + tollgate.home : "");
   }
 
   function loadResultHistory() {

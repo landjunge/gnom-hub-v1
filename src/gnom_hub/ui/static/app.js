@@ -814,10 +814,14 @@
       const ok = (ds || ol) && !blocked;
       const tok =
         (snap.llm.prompt_tokens || 0) + (snap.llm.completion_tokens || 0);
+      const viaTg = !!snap.llm.via_tollgate;
+      const tg = snap.tollgate || {};
+      const tgOk = tg.ok !== false;
       let label = "LLM: stub";
       if (blocked) label = "LLM: auth blocked";
       else if (placeholder && !ok) label = "LLM: key placeholder";
       else if (!ok && sys === "missing") label = "LLM: no key";
+      else if (viaTg && (ds || ol)) label = "LLM: Tollgate";
       else if (ds && ol) label = "LLM: DeepSeek+Ollama";
       else if (ds) label = "LLM: DeepSeek";
       else if (ol) label = "LLM: Ollama";
@@ -825,8 +829,18 @@
       els.llmBadge.classList.toggle("has-key", ok);
       els.llmBadge.classList.toggle("auth-warn", placeholder && !ok);
       els.llmBadge.classList.toggle("auth-bad", blocked || (!ok && !placeholder && sys === "missing"));
+      const tot = (tg.usage_totals || {});
       els.llmBadge.title =
-        "deepseek=" +
+        "via_tollgate=" +
+        (viaTg ? "yes" : "no") +
+        (tg.url ? " url=" + tg.url : " in-process") +
+        " home=" +
+        (tg.home || "?") +
+        " tg.ok=" +
+        (tgOk ? "yes" : "no") +
+        (tot.calls != null ? " day_calls=" + tot.calls : "") +
+        (tot.usd != null ? " day_usd=" + Number(tot.usd).toFixed(4) : "") +
+        " deepseek=" +
         (ds ? "yes" : "no") +
         " ollama=" +
         (ol ? "yes" : "no") +
@@ -840,9 +854,9 @@
         (snap.llm.prompt_tokens || 0) +
         " completion=" +
         (snap.llm.completion_tokens || 0) +
-        " — set User/Key.txt DEEPSEEK_API_KEY (not sk-your-…)";
+        " — keys: User/Key.txt · desk: tollgate doctor";
     }
-    updateCostBadge(snap.llm);
+    updateCostBadge(snap.llm, snap.tollgate);
     if (els.memBadge && snap.memory_summary) {
       const short = String(snap.memory_summary).replace(/^HOT:\s*/i, "");
       const nodes =
@@ -4076,7 +4090,7 @@
     if (!chatBusy && !busyJobId) hideBusyBanner();
   }
 
-  function updateCostBadge(llm) {
+  function updateCostBadge(llm, tollgate) {
     const el = els.costBadge || document.getElementById("cost-badge");
     if (!el) return;
     const spent = llm && typeof llm.spent_usd === "number" ? llm.spent_usd : 0;
@@ -4088,6 +4102,9 @@
       llm && llm.max_budget_usd != null && llm.max_budget_usd !== ""
         ? Number(llm.max_budget_usd)
         : null;
+    const dayTot = (tollgate && tollgate.usage_totals) || {};
+    const dayUsd = dayTot.usd != null ? Number(dayTot.usd) : null;
+    const dayCalls = dayTot.calls != null ? Number(dayTot.calls) : null;
     let text = "$" + spent.toFixed(4);
     if (budget != null && !isNaN(budget) && budget > 0) {
       text += " / $" + budget.toFixed(2);
@@ -4097,15 +4114,25 @@
     } else {
       el.classList.remove("cost-warn", "cost-hot");
     }
+    if (dayUsd != null && !isNaN(dayUsd) && dayUsd > 0) {
+      text += " · day $" + dayUsd.toFixed(3);
+    }
     el.textContent = text;
     el.title =
       "Session spend $" +
       spent.toFixed(6) +
-      (budget != null && !isNaN(budget) ? " · budget $" + budget : " · no budget cap") +
+      (budget != null && !isNaN(budget) ? " · session budget $" + budget : " · no session budget") +
       " · " +
       tok +
       " tokens" +
-      (llm && llm.free_only ? " · free_only" : "");
+      (llm && llm.free_only ? " · free_only" : "") +
+      (llm && llm.via_tollgate ? " · via Tollgate" : "") +
+      (dayUsd != null
+        ? " · Tollgate day $" +
+          dayUsd.toFixed(4) +
+          (dayCalls != null ? " · " + dayCalls + " calls" : "")
+        : "") +
+      (tollgate && tollgate.home ? " · home=" + tollgate.home : "");
   }
 
   function loadResultHistory() {
