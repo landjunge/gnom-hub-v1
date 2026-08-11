@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from gnom_hub import __version__
@@ -40,6 +41,42 @@ def _worst_validation(worker_outputs: list | None) -> dict[str, Any] | None:
 
 class SnapshotOpsMixin:
     """Mixin extracted from Hub — pure move."""
+
+    def _tollgate_snapshot(self) -> dict[str, Any]:
+        """Compact Tollgate status for UI (no secrets)."""
+        out: dict[str, Any] = {
+            "home": (os.getenv("TOLLGATE_HOME") or os.getenv("GNOM_WS") or "").strip() or None,
+            "url": (os.getenv("TOLLGATE_URL") or "").strip() or None,
+            "llm_via": os.getenv("GNOM_TOLLGATE_LLM", "1").strip().lower()
+            not in ("0", "false", "no", "off"),
+            "ok": False,
+        }
+        try:
+            from tollgate import get_keys_service
+            from tollgate.paths import path_snapshot
+
+            snap = path_snapshot()
+            out["portable"] = snap
+            out["home"] = snap.get("data_home") or out["home"]
+            st = get_keys_service().app_status()
+            out["ok"] = bool(st.get("ok", True))
+            out["app"] = {
+                "prefer_free": (st.get("config") or {}).get("prefer_free")
+                if isinstance(st.get("config"), dict)
+                else None,
+            }
+            # usage totals if available
+            try:
+                from tollgate.usage_ledger import usage_summary
+
+                u = usage_summary()
+                out["usage_day"] = u.get("day")
+                out["usage_totals"] = u.get("totals")
+            except Exception:  # noqa: BLE001
+                pass
+        except Exception as e:  # noqa: BLE001
+            out["error"] = str(e)[:160]
+        return out
 
     def pipeline_dict(self) -> dict[str, Any]:
         st = self.pipeline.state
@@ -156,7 +193,11 @@ class SnapshotOpsMixin:
                 "completion_tokens": usage["completion_tokens"],
                 "default_model": self.llm.default_model,
                 "providers": self.llm.providers_snapshot(),
+                "via_tollgate": os.getenv("GNOM_TOLLGATE_LLM", "1").strip().lower()
+                not in ("0", "false", "no", "off"),
+                "tollgate_url": (os.getenv("TOLLGATE_URL") or "").strip() or None,
             },
+            "tollgate": self._tollgate_snapshot(),
             "version": __version__,
             "flex_presets": list(FLEX_PRESETS),
             "plan_mode": getattr(self, "plan_mode", "default") or "default",

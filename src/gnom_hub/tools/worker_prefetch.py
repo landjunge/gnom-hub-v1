@@ -66,6 +66,27 @@ _CATEGORY_CAPS = {
     "workspace": 2,
 }
 
+# Research / current-events language → web_search (Tollgate/Brave)
+_SEARCH_HINTS = (
+    "search",
+    "suche",
+    "recherch",
+    "lookup",
+    "nachschlagen",
+    "aktuell",
+    "current",
+    "news",
+    "latest",
+    "who is",
+    "was ist",
+    "wie funktioniert",
+    "find out",
+    "google",
+    "web search",
+    "im internet",
+    "online",
+)
+
 # Task keywords → allowlisted install_tool package key
 # Keep aligned with plugins/install_tool/main.py _ALLOW
 _PACKAGE_HINTS: list[tuple[str, tuple[str, ...]]] = [
@@ -329,8 +350,23 @@ def plan_prefetch(
             )
         )
 
-    # ── memory (priority 50) ──────────────────────────────────────────
+    # ── web_search via Tollgate/Brave (priority 42) ───────────────────
     low = text.lower()
+    if any(h in low for h in _SEARCH_HINTS) and not extract_urls(text, max_urls=1):
+        # Only when no explicit URL — otherwise web_fetch is enough
+        q = " ".join(text.split())[:160]
+        steps.append(
+            PrefetchStep(
+                name="web_search",
+                category="net",
+                priority=42,
+                cost=1,
+                reason="research/current-events language",
+                args={"query": q, "count": 5, "country": "DE", "search_lang": "de"},
+            )
+        )
+
+    # ── memory (priority 50) ──────────────────────────────────────────
     if any(h in low for h in _MEMORY_HINTS):
         steps.append(
             PrefetchStep(
@@ -693,6 +729,40 @@ def prefetch_for_workers(
             else:
                 err = res.get("error") if isinstance(res, dict) else "fetch failed"
                 add_chunk(f"URL: {u}\n(fetch failed: {err})")
+            continue
+
+        if step.name == "web_search":
+            from gnom_hub.tools.brave_search import brave_web_search
+
+            args = dict(step.args)
+            res = _call_tool(
+                tools,
+                "web_search",
+                args,
+                fallback=lambda query, count=5, country="DE", search_lang="de": brave_web_search(
+                    str(query),
+                    count=int(count or 5),
+                    country=str(country or "DE"),
+                    search_lang=str(search_lang or "de"),
+                ),
+            )
+            calls += 1
+            cat_used["net"] = cat_used.get("net", 0) + 1
+            _emit_tool_call(bus, "web_search", args, res, record=record, reason=step.reason)
+            executed.append("web_search")
+            if isinstance(res, dict) and res.get("ok"):
+                lines = [f"web_search: {args.get('query', '')}"]
+                for hit in (res.get("results") or [])[:5]:
+                    if not isinstance(hit, dict):
+                        continue
+                    lines.append(
+                        f"- {hit.get('title') or ''}\n  {hit.get('url') or ''}\n  "
+                        f"{str(hit.get('description') or '')[:200]}"
+                    )
+                add_chunk("\n".join(lines)[:3000])
+            else:
+                err = res.get("error") if isinstance(res, dict) else "search failed"
+                add_chunk(f"web_search failed: {err}")
             continue
 
         if step.name == "memory_search":
