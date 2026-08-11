@@ -1,0 +1,9 @@
+# Gnom-Hub product site — allow full indexing
+User-agent: *
+Allow: /
+
+# Sitemaps
+Sitemap: https://landjunge.github.io/gnom-hub-v1/sitemap.xml
+
+# Crawl delay optional (be nice to shared hosts)
+# Crawl-delay: 1

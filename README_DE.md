@@ -4,6 +4,7 @@
 
 | | |
 |--|--|
+| **Website** | **[landjunge.github.io/gnom-hub-v1](https://landjunge.github.io/gnom-hub-v1/de.html)** · [EN](https://landjunge.github.io/gnom-hub-v1/) · [Docs](https://landjunge.github.io/gnom-hub-v1/docs.html) |
 | **Version** | 3.10.1 · [Changelog](docs/CHANGELOG_3.10.md) · [Release-Notes](docs/GITHUB_HOLDER_3.10.md) |
 | **Docs suchen** | Desk-Badge **Docs** · `GET /api/docs/search?q=` · `python scripts/build_docs_index.py --search "…"` |
 | **Doc-Index** | **[docs/INDEX.md](docs/INDEX.md)** (auto) · [Katalog JSON](docs/generated/docs_catalog.json) |
