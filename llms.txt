@@ -1,0 +1,28 @@
+# Gnom-Hub
+
+> Local multi-agent control hub — brainstorm freely, execute only when you press Execute.
+> Desktop desk for AI agents. No Docker. Python · FastAPI.
+> Not unattended full autonomy. Not a LangGraph drop-in.
+
+## Start here
+
+- Website: https://landjunge.github.io/gnom-hub-v1/
+- Ecosystem (with Tollgate): https://landjunge.github.io/gnom-hub-v1/ecosystem.html
+- [README](README.md) · [README DE](README_DE.md)
+- [docs/INDEX.md](docs/INDEX.md)
+- UI: http://127.0.0.1:8080/ after `./scripts/start.sh`
+
+## Related
+
+- Tollgate (agent safety layer): https://github.com/landjunge/tollgate
+  Site: https://landjunge.github.io/tollgate/
+
+## Product rule
+
+Brainstorm freely. Execute only when you press Execute.
+
+## Stack
+
+- Python ≥ 3.10 · FastAPI · desktop SPA
+- DeepSeek default · optional Ollama
+- Keys in User/Key.txt
