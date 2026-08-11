@@ -1,0 +1,27 @@
+# Gnom-Hub
+> Local multi-agent control hub — brainstorm freely, Execute only on purpose.
+> No Docker. Python + FastAPI. Visible agent cards. Safe computer-use.
+
+- Site: https://landjunge.github.io/gnom-hub-v1/
+- DE: https://landjunge.github.io/gnom-hub-v1/de.html
+- Docs: https://landjunge.github.io/gnom-hub-v1/docs.html
+- Ecosystem: https://landjunge.github.io/gnom-hub-v1/ecosystem.html
+- Launch: https://landjunge.github.io/gnom-hub-v1/blog/launch.html
+- Press kit: https://landjunge.github.io/gnom-hub-v1/press/
+- Repo: https://github.com/landjunge/gnom-hub-v1
+- Discussions: https://github.com/landjunge/gnom-hub-v1/discussions
+
+## Product rules
+- Send / chat = dialogue and planning only
+- Execute = start workers that may spend money or touch files
+- Computer-use stays dry-run until deliberate God-Mode
+- Optional Tollgate integration for Protect · Route · Prove
+
+## Sibling project
+- Tollgate (agent safety layer): https://landjunge.github.io/tollgate/
+- Repo: https://github.com/landjunge/tollgate
+- 10-min cold path: https://landjunge.github.io/tollgate/blog/checklist.html
+
+## Stack
+- Python, FastAPI, local desktop-first
+- Default LLM: DeepSeek (configurable); optional Ollama

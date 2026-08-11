@@ -27,12 +27,37 @@
     <priority>0.85</priority>
   </url>
   <url>
+    <loc>https://landjunge.github.io/gnom-hub-v1/blog/launch.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <url>
+    <loc>https://landjunge.github.io/gnom-hub-v1/press/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://landjunge.github.io/gnom-hub-v1/llms.txt</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
     <loc>https://landjunge.github.io/gnom-hub-v1/assets/gnom-hub-ui.png</loc>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
     <loc>https://landjunge.github.io/gnom-hub-v1/assets/gnom-hub-tools.png</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://landjunge.github.io/gnom-hub-v1/assets/stack-share.png</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://landjunge.github.io/gnom-hub-v1/assets/promo-square.png</loc>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
