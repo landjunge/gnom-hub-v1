@@ -37,8 +37,23 @@ export GNOM_WS=$HOME/WS-gnom-hub-v1
 | API Key | `n8n` or `n8n:<secret>` |
 | Model | `tollgate/free` |
 
+## Tools via Tollgate
+
+| Tool | Path |
+|------|------|
+| `web_search` | Brave → gateway admit + ledger |
+| `elevenlabs_budget` | EL floor via Tollgate |
+| LLM chat | `GNOM_TOLLGATE_LLM=1` (default) |
+
 ## Opt out
 
 ```bash
 export GNOM_TOLLGATE_LLM=0   # legacy direct DeepSeek client only
+```
+
+## Desk check
+
+```bash
+# Tollgate repo
+./scripts/desk-check.sh
 ```

@@ -147,27 +147,64 @@ class ToolsOpsMixin:
             )
         )
 
+        # Tollgate-gated web search (Brave admit + ledger)
+        try:
+            from gnom_hub.tools.brave_search import brave_web_search
+
+            self.tools.register(
+                ToolSpec(
+                    name="web_search",
+                    description=(
+                        "Web search via Brave through Tollgate (budgets, circuits, ledger). "
+                        "Prefer for live facts; pair with web_fetch for page body."
+                    ),
+                    handler=lambda query, count=5, country="DE", search_lang="de": brave_web_search(
+                        str(query),
+                        count=int(count or 5),
+                        country=str(country or "DE"),
+                        search_lang=str(search_lang or "de"),
+                    ),
+                    input_schema={
+                        "type": "object",
+                        "properties": {
+                            "query": {"type": "string"},
+                            "count": {"type": "integer"},
+                            "country": {"type": "string"},
+                            "search_lang": {"type": "string"},
+                        },
+                        "required": ["query"],
+                    },
+                    plugin="core",
+                    tags=("net", "search", "tollgate"),
+                )
+            )
+        except Exception:  # noqa: BLE001 — tollgate optional at import time
+            pass
+
+        try:
+            from gnom_hub.tools.elevenlabs_budget import check_budget
+
+            self.tools.register(
+                ToolSpec(
+                    name="elevenlabs_budget",
+                    description=(
+                        "Check ElevenLabs character budget / floor via Tollgate "
+                        "(ELEVENLABS_MIN_REMAINING). cost=planned chars to spend."
+                    ),
+                    handler=lambda cost=0: check_budget(cost=int(cost or 0)),
+                    input_schema={
+                        "type": "object",
+                        "properties": {"cost": {"type": "integer"}},
+                    },
+                    plugin="core",
+                    tags=("tts", "tollgate"),
+                )
+            )
+        except Exception:  # noqa: BLE001
+            pass
+
         from gnom_hub.tools.browser_tools import browser_open_url
 
-        self.tools.register(
-            ToolSpec(
-                name="web_fetch",
-                description=(
-                    "Fetch public http(s) URL as plain text. "
-                    "Blocks private IPs unless GNOM_WEB_ALLOW_LOCAL=1."
-                ),
-                handler=lambda url, max_chars=8000: web_fetch(str(url), max_chars=int(max_chars)),
-                input_schema={
-                    "type": "object",
-                    "properties": {
-                        "url": {"type": "string"},
-                        "max_chars": {"type": "integer"},
-                    },
-                    "required": ["url"],
-                },
-                plugin="core",
-            )
-        )
         self.tools.register(
             ToolSpec(
                 name="browser_open",
