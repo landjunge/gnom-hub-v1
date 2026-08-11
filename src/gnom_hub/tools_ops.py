@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -597,6 +598,21 @@ class ToolsOpsMixin:
         wrk_a = auth.get("worker_effective") or auth.get("worker") or "?"
         blocked = "yes" if auth.get("session_auth_blocked") else "no"
         tcalls = len(getattr(st, "tool_calls", None) or [])
+        via_tg = os.getenv("GNOM_TOLLGATE_LLM", "1").strip().lower() not in (
+            "0",
+            "false",
+            "no",
+            "off",
+        )
+        tg_url = (os.getenv("TOLLGATE_URL") or "").strip() or "in-process"
+        tg_bit = f"tollgate={'on' if via_tg else 'off'}:{tg_url}"
+        try:
+            snap = self._tollgate_snapshot() if hasattr(self, "_tollgate_snapshot") else {}
+            tot = (snap or {}).get("usage_totals") or {}
+            if tot.get("calls") is not None:
+                tg_bit += f" day_calls={tot.get('calls')} day_usd={float(tot.get('usd') or 0):.4f}"
+        except Exception:  # noqa: BLE001
+            pass
         return (
             f"stage={st.stage.value} "
             f"deepseek={'yes' if self.llm.has_provider('deepseek') else 'no'} "
@@ -605,7 +621,8 @@ class ToolsOpsMixin:
             f"god={self.god_mode.enabled} "
             f"vectors={self.vectors.count()} "
             f"plugins={len(self.plugin_list)} "
-            f"tools={len(self.tools)}"
+            f"tools={len(self.tools)} "
+            f"{tg_bit}"
         )
 
 
