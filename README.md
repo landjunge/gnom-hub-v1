@@ -4,7 +4,7 @@
 
 | | |
 |--|--|
-| **Website** | **[landjunge.github.io/gnom-hub-v1](https://landjunge.github.io/gnom-hub-v1/)** · [DE](https://landjunge.github.io/gnom-hub-v1/de.html) · [Docs hub](https://landjunge.github.io/gnom-hub-v1/docs.html) · [Ecosystem](https://landjunge.github.io/gnom-hub-v1/ecosystem.html) · [Launch](https://landjunge.github.io/gnom-hub-v1/blog/launch.html) · [Press](https://landjunge.github.io/gnom-hub-v1/press/) · [llms.txt](https://landjunge.github.io/gnom-hub-v1/llms.txt) |
+| **Website** | **[landjunge.github.io/gnom-hub-v1](https://landjunge.github.io/gnom-hub-v1/)** · [DE](https://landjunge.github.io/gnom-hub-v1/de.html) · [Docs hub](https://landjunge.github.io/gnom-hub-v1/docs.html) · [Ecosystem](https://landjunge.github.io/gnom-hub-v1/ecosystem.html) · [Launch](https://landjunge.github.io/gnom-hub-v1/blog/launch.html) · [Press](https://landjunge.github.io/gnom-hub-v1/press/) · [llms.txt](https://landjunge.github.io/gnom-hub-v1/llms.txt) · [GSC checklist](docs/GSC_CHECKLIST.md) |
 | **Pairs with** | **[Tollgate](https://github.com/landjunge/tollgate)** — agent safety layer · [site](https://landjunge.github.io/tollgate/) · [safety checklist](https://landjunge.github.io/tollgate/blog/checklist.html) |
 | **Version** | 3.10.1 · [Changelog](docs/CHANGELOG_3.10.md) · [Release notes](docs/GITHUB_HOLDER_3.10.md) |
 | **Search docs** | Desk badge **Docs** · `GET /api/docs/search?q=` · `python scripts/build_docs_index.py --search "…"` |

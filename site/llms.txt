@@ -1,6 +1,8 @@
-# Gnom-Hub
+# Gnom-Hub (landjunge/gnom-hub-v1)
 > Local multi-agent control hub — brainstorm freely, Execute only on purpose.
 > No Docker. Python + FastAPI. Visible agent cards. Safe computer-use.
+> Brand: landjunge · Not GNOME desktop software.
+
 
 - Site: https://landjunge.github.io/gnom-hub-v1/
 - DE: https://landjunge.github.io/gnom-hub-v1/de.html
