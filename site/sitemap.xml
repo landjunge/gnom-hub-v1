@@ -6,6 +6,7 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://landjunge.github.io/gnom-hub-v1/"/>
     <xhtml:link rel="alternate" hreflang="de" href="https://landjunge.github.io/gnom-hub-v1/de.html"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://landjunge.github.io/gnom-hub-v1/"/>
+    <lastmod>2026-08-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
@@ -13,51 +14,61 @@
     <loc>https://landjunge.github.io/gnom-hub-v1/de.html</loc>
     <xhtml:link rel="alternate" hreflang="en" href="https://landjunge.github.io/gnom-hub-v1/"/>
     <xhtml:link rel="alternate" hreflang="de" href="https://landjunge.github.io/gnom-hub-v1/de.html"/>
+    <lastmod>2026-08-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.95</priority>
   </url>
   <url>
     <loc>https://landjunge.github.io/gnom-hub-v1/docs.html</loc>
+    <lastmod>2026-08-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
     <loc>https://landjunge.github.io/gnom-hub-v1/ecosystem.html</loc>
+    <lastmod>2026-08-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
     <loc>https://landjunge.github.io/gnom-hub-v1/blog/launch.html</loc>
+    <lastmod>2026-08-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.95</priority>
   </url>
   <url>
     <loc>https://landjunge.github.io/gnom-hub-v1/press/</loc>
+    <lastmod>2026-08-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://landjunge.github.io/gnom-hub-v1/llms.txt</loc>
+    <lastmod>2026-08-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://landjunge.github.io/gnom-hub-v1/assets/gnom-hub-ui.png</loc>
+    <lastmod>2026-08-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
     <loc>https://landjunge.github.io/gnom-hub-v1/assets/gnom-hub-tools.png</loc>
+    <lastmod>2026-08-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
     <loc>https://landjunge.github.io/gnom-hub-v1/assets/stack-share.png</loc>
+    <lastmod>2026-08-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
     <loc>https://landjunge.github.io/gnom-hub-v1/assets/promo-square.png</loc>
+    <lastmod>2026-08-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>

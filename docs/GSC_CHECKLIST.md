@@ -28,6 +28,18 @@ Meta tag example (replace with the token GSC gives you):
 
 ---
 
+## 1b) Already automated (no login)
+
+| Action | Status |
+|--------|--------|
+| **IndexNow** keys on both Pages sites | deployed — `scripts/indexnow-ping.sh` |
+| Disambiguation page | https://landjunge.github.io/tollgate/what-is-tollgate.html |
+| Sitemap `lastmod` refresh | yes |
+
+IndexNow notifies Bing/Yandex/etc. immediately after deploy. **Google still needs GSC** (no public bulk API without OAuth).
+
+---
+
 ## 2) Submit sitemaps
 
 | Property | Sitemap URL |
@@ -50,8 +62,9 @@ Inspect + **Request indexing** for each (priority order):
 
 ### Tollgate
 1. `https://landjunge.github.io/tollgate/`
-2. `https://landjunge.github.io/tollgate/de.html`
-3. `https://landjunge.github.io/tollgate/blog/checklist.html`
+2. `https://landjunge.github.io/tollgate/what-is-tollgate.html`
+3. `https://landjunge.github.io/tollgate/de.html`
+4. `https://landjunge.github.io/tollgate/blog/checklist.html`
 4. `https://landjunge.github.io/tollgate/blog/launch.html`
 5. `https://landjunge.github.io/tollgate/blog/launch-de.html`
 6. `https://landjunge.github.io/tollgate/docs.html`
