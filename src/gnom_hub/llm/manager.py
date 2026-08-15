@@ -38,6 +38,53 @@ FREE_MODELS: frozenset[str] = frozenset(
 
 ClientFactory = Callable[[str], DeepSeekClient]
 
+_PROTECT_NEEDLES = (
+    "budget",
+    "tool-loop",
+    "tool loop",
+    "tool_call",
+    "blocked",
+    "quota",
+    "frozen",
+    "freeze",
+    "rate limit",
+    "agent protection",
+    "max_tokens_request",
+    "max_usd",
+    "max_calls",
+    "max_requests_minute",
+    "max_tool_calls",
+    "policy_deny",
+    "policy deny",
+    "admission",
+    "fail-closed",
+    "ledger corrupt",
+    "protection",
+)
+
+
+def raise_tollgate_chat_error(out: dict) -> None:
+    """Map a failed Tollgate chat payload to the matching LLM exception."""
+    err = str(out.get("error") or out.get("detail") or "tollgate chat failed")
+    if isinstance(out.get("error"), dict):
+        err = str(out["error"].get("message") or err)
+    raw = out.get("raw_openai") if isinstance(out.get("raw_openai"), dict) else out
+    if isinstance(raw.get("error"), dict):
+        err = str(raw["error"].get("message") or err)
+        tg = raw["error"].get("tollgate") if isinstance(raw["error"].get("tollgate"), dict) else {}
+        if tg.get("message"):
+            err = str(tg["message"])
+    low = err.lower()
+    if "key" in low or "missing" in low or "no provider" in low or "no free provider" in low:
+        raise MissingKeyError(err)
+    if "rate" in low or "429" in low:
+        raise RateLimitError(err)
+    if "auth" in low or "401" in low or "403" in low:
+        raise AuthError(err)
+    if any(x in low for x in _PROTECT_NEEDLES):
+        raise BudgetExceededError(err)
+    raise LLMError(err)
+
 
 class LLMManager:
     """
@@ -422,91 +469,40 @@ class LLMManager:
         if (provider or "") == "worker":
             intent = "paid_llm"
         base = (os.getenv("TOLLGATE_URL") or "").strip().rstrip("/")
-        if base:
-            from tollgate.client import TollgateClient
+        try:
+            if base:
+                from tollgate.client import TollgateClient
 
-            client = TollgateClient(
-                base_url=base,
-                consumer=os.getenv("TOLLGATE_CONSUMER", "gnom"),
-            )
-            out = client.chat(
-                payload,
-                intent=intent,
-                provider=provider or "",
-                model=model or ("tollgate/free" if prefer_free else "tollgate/auto"),
-                max_tokens=max_tokens,
-                temperature=temperature,
-                agent_id=f"gnom:{agent}",
-            )
-        else:
-            from tollgate import routed_chat
+                client = TollgateClient(
+                    base_url=base,
+                    consumer=os.getenv("TOLLGATE_CONSUMER", "gnom"),
+                )
+                out = client.chat(
+                    payload,
+                    intent=intent,
+                    provider=provider or "",
+                    model=model or ("tollgate/free" if prefer_free else "tollgate/auto"),
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    agent_id=f"gnom:{agent}",
+                )
+            else:
+                from tollgate import routed_chat
 
-            out = routed_chat(
-                payload,
-                intent=intent,
-                model=model or "",
-                provider=provider or "",
-                max_tokens=max_tokens,
-                temperature=temperature,
-                agent_id=f"gnom:{agent}",
-                prefer_free=prefer_free,
-            )
+                out = routed_chat(
+                    payload,
+                    intent=intent,
+                    model=model or "",
+                    provider=provider or "",
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    agent_id=f"gnom:{agent}",
+                    prefer_free=prefer_free,
+                )
+        except ModuleNotFoundError as e:
+            raise LLMError("tollgate package not installed") from e
         if not out.get("ok") and "choices" not in out:
-            err = str(out.get("error") or out.get("detail") or "tollgate chat failed")
-            if isinstance(out.get("error"), dict):
-                err = str(out["error"].get("message") or err)
-            # Prefer Tollgate human operator text when present
-            raw = out.get("raw_openai") if isinstance(out.get("raw_openai"), dict) else out
-            if isinstance(raw.get("error"), dict):
-                err = str(raw["error"].get("message") or err)
-                tg = (
-                    raw["error"].get("tollgate")
-                    if isinstance(raw["error"].get("tollgate"), dict)
-                    else {}
-                )
-                if tg.get("message"):
-                    err = str(tg["message"])
-            low = err.lower()
-            if (
-                "key" in low
-                or "missing" in low
-                or "no provider" in low
-                or "no free provider" in low
-            ):
-                raise MissingKeyError(err)
-            if "rate" in low or "429" in low:
-                raise RateLimitError(err)
-            if "auth" in low or "401" in low or "403" in low:
-                raise AuthError(err)
-            # Tollgate Protect: budget / tool-loop / freeze / agent caps → hard stop
-            if any(
-                x in low
-                for x in (
-                    "budget",
-                    "tool-loop",
-                    "tool loop",
-                    "tool_call",
-                    "blocked",
-                    "quota",
-                    "frozen",
-                    "freeze",
-                    "rate limit",
-                    "agent protection",
-                    "max_tokens_request",
-                    "max_usd",
-                    "max_calls",
-                    "max_requests_minute",
-                    "max_tool_calls",
-                    "policy_deny",
-                    "policy deny",
-                    "admission",
-                    "fail-closed",
-                    "ledger corrupt",
-                    "protection",
-                )
-            ):
-                raise BudgetExceededError(err)
-            raise LLMError(err)
+            raise_tollgate_chat_error(out)
         pt = int(out.get("prompt_tokens") or (out.get("usage") or {}).get("prompt_tokens") or 0)
         ct = int(
             out.get("completion_tokens") or (out.get("usage") or {}).get("completion_tokens") or 0

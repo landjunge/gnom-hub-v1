@@ -1,6 +1,6 @@
 {
   "version": "3.10.1",
-  "count": 48,
+  "count": 50,
   "docs": [
     {
       "file": "AGENTS_DEFINITION.md",
@@ -114,13 +114,13 @@
         "pack",
         "poll",
         "skill",
+        "chat",
         "clarify",
         "css",
-        "embeddings",
-        "error"
+        "embeddings"
       ],
-      "chars": 2551,
-      "lines": 79
+      "chars": 2649,
+      "lines": 80
     },
     {
       "file": "CHANGELOG_3.9.md",
@@ -409,6 +409,30 @@
       ],
       "chars": 2359,
       "lines": 67
+    },
+    {
+      "file": "GSC_CHECKLIST.md",
+      "path": "docs/GSC_CHECKLIST.md",
+      "title": "Google Search Console \u2014 Indexing checklist (Tollgate + Gnom-Hub)",
+      "topic": "Other",
+      "keywords": [
+        "github",
+        "https",
+        "landjunge",
+        "tollgate",
+        "html",
+        "gnom",
+        "hub",
+        "checklist",
+        "gsc",
+        "sitemap",
+        "google",
+        "pages",
+        "property",
+        "url"
+      ],
+      "chars": 4640,
+      "lines": 156
     },
     {
       "file": "HUB_ARCHITECTURE.md",
@@ -937,6 +961,30 @@
       ],
       "chars": 4574,
       "lines": 101
+    },
+    {
+      "file": "TOLLGATE.md",
+      "path": "docs/TOLLGATE.md",
+      "title": "Gnom + Tollgate",
+      "topic": "Other",
+      "keywords": [
+        "tollgate",
+        "gnom",
+        "export",
+        "hub",
+        "bash",
+        "n8n",
+        "default",
+        "desk",
+        "gnom_tollgate_llm",
+        "gnom_ws",
+        "home",
+        "http",
+        "via",
+        "brave"
+      ],
+      "chars": 1261,
+      "lines": 60
     },
     {
       "file": "TOOLS_PORTFOLIO.md",

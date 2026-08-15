@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
-from gnom_hub.llm.manager import LLMManager
+from gnom_hub.llm.manager import LLMManager, raise_tollgate_chat_error
 from gnom_hub.llm.types import BudgetExceededError, LLMError, LLMMessage
 
 
@@ -92,29 +92,10 @@ def test_optional_tollgate_may_fall_through_when_force_off(monkeypatch):
     assert r.content == "legacy-ok"
 
 
-def test_agent_protection_string_maps_to_budget_exceeded(monkeypatch):
-    monkeypatch.setenv("GNOM_TOLLGATE_LLM", "1")
-    monkeypatch.setenv("TOLLGATE_URL", "http://127.0.0.1:8787")
-    keys = {"DEEPSEEK_API_KEY": "sk-abcdefghijklmnop-realish"}
-    m = LLMManager(keys=keys)
-    monkeypatch.setattr(m, "deepseek_key", lambda override=None: keys["DEEPSEEK_API_KEY"])
-
-    # Direct unit of the error classifier inside _chat_via_tollgate:
+def test_agent_protection_string_maps_to_budget_exceeded():
     out = {
         "ok": False,
         "error": "agent protection: consumer gnom max_tokens_request 2003 > 50",
     }
-    # Re-use the public path with mocked TollgateClient
-    with patch("tollgate.client.TollgateClient") as TC:
-        inst = TC.return_value
-        inst.chat.return_value = out
-        with pytest.raises(BudgetExceededError, match="agent protection"):
-            m._chat_via_tollgate(
-                [LLMMessage(role="user", content="hi")],
-                model="deepseek-v4-flash",
-                provider="deepseek",
-                agent="brainstorm",
-                temperature=0.2,
-                max_tokens=2000,
-                prefer_free=False,
-            )
+    with pytest.raises(BudgetExceededError, match="agent protection"):
+        raise_tollgate_chat_error(out)

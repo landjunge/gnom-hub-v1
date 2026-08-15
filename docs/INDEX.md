@@ -90,8 +90,10 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 | Doc | Keywords |
 |-----|----------|
 | [BUG_HUNT_TEAM.md](BUG_HUNT_TEAM.md) | orchestrator, cancel, team, bug, hunt, can, god, jobs, mode, telegram |
+| [GSC_CHECKLIST.md](GSC_CHECKLIST.md) | github, https, landjunge, tollgate, html, gnom, hub, checklist, gsc, sitemap |
 | [MEMORY_FRESHNESS.md](MEMORY_FRESHNESS.md) | freshness, memory, sync, vector, warm, hot, write, fact, hit, index |
 | [PIPELINE_RELIABILITY.md](PIPELINE_RELIABILITY.md) | pipeline, reliability, clarify, timeout, cancel, later, busy, prefetch, tests, tool |
+| [TOLLGATE.md](TOLLGATE.md) | tollgate, gnom, export, hub, bash, n8n, default, desk, gnom_tollgate_llm, gnom_ws |
 
 ### Root meta
 | Doc | Keywords |
@@ -121,6 +123,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 - [ESLINT_OVERRIDE_STRATEGIES.md](ESLINT_OVERRIDE_STRATEGIES.md) — Flat Config — Override Strategies
 - [ESLINT_PLUGIN_INTEGRATION.md](ESLINT_PLUGIN_INTEGRATION.md) — Flat Config — Plugin Integration
 - [GITHUB_HOLDER_3.10.md](GITHUB_HOLDER_3.10.md) — GitHub holder summary — Gnom-Hub 3.10.x
+- [GSC_CHECKLIST.md](GSC_CHECKLIST.md) — Google Search Console — Indexing checklist (Tollgate + Gnom-Hub)
 - [HUB_ARCHITECTURE.md](HUB_ARCHITECTURE.md) — Gnom-Hub — exact architecture overview
 - [INSTALL_SIMPLE.md](INSTALL_SIMPLE.md) — Install — keep it simple
 - [KEYS_AND_MODELS.md](KEYS_AND_MODELS.md) — Keys & Models — single source of truth (for agents & humans)
@@ -143,6 +146,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 - [STABILITY.md](STABILITY.md) — Stability checklist (track A)
 - [TESTING.md](TESTING.md) — Testing
 - [TESTS_FROM_USER_DATA.md](TESTS_FROM_USER_DATA.md) — Tests abgeleitet aus Gnom-Daten (HOT / WARM / COLD / E2E)
+- [TOLLGATE.md](TOLLGATE.md) — Gnom + Tollgate
 - [TOOLS_PORTFOLIO.md](TOOLS_PORTFOLIO.md) — Tools portfolio (Computer-Use + hub)
 - [UI_ERROR_LAYER.md](UI_ERROR_LAYER.md) — UI layer — error logic
 - [UI_QUALITY.md](UI_QUALITY.md) — UI quality · colors · stability · speed
