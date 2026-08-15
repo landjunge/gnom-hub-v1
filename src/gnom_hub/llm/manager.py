@@ -286,12 +286,22 @@ class LLMManager:
                     prefer_free=prefer_free,
                 )
                 return self._account(result, agent_key)
+            except BudgetExceededError:
+                # F-03: Protect / budget / freeze is never bypassed by legacy DeepSeek
+                raise
             except (MissingKeyError, AuthError, RateLimitError, FreeOnlyError, LLMError):
-                if force_tg and not self.deepseek_key(api_key):
+                # GNOM_TOLLGATE_LLM=1 (force_tg): hard fail — no silent paid spillover
+                # as consumer "anonymous" via legacy client.
+                if force_tg:
                     raise
-                # fall through to legacy DeepSeek client if tollgate path fails
+                # Optional Tollgate path only: allow legacy DeepSeek when key present
+                if not self.deepseek_key(api_key):
+                    raise
+                # fall through to legacy DeepSeek
             except Exception as e:
-                if force_tg and not self.deepseek_key(api_key):
+                if force_tg:
+                    raise LLMError(str(e)) from e
+                if not self.deepseek_key(api_key):
                     raise LLMError(str(e)) from e
 
         # No DeepSeek key: Tollgate free, then Ollama
@@ -445,13 +455,57 @@ class LLMManager:
             err = str(out.get("error") or out.get("detail") or "tollgate chat failed")
             if isinstance(out.get("error"), dict):
                 err = str(out["error"].get("message") or err)
+            # Prefer Tollgate human operator text when present
+            raw = out.get("raw_openai") if isinstance(out.get("raw_openai"), dict) else out
+            if isinstance(raw.get("error"), dict):
+                err = str(raw["error"].get("message") or err)
+                tg = (
+                    raw["error"].get("tollgate")
+                    if isinstance(raw["error"].get("tollgate"), dict)
+                    else {}
+                )
+                if tg.get("message"):
+                    err = str(tg["message"])
             low = err.lower()
-            if "key" in low or "missing" in low or "no provider" in low:
+            if (
+                "key" in low
+                or "missing" in low
+                or "no provider" in low
+                or "no free provider" in low
+            ):
                 raise MissingKeyError(err)
             if "rate" in low or "429" in low:
                 raise RateLimitError(err)
             if "auth" in low or "401" in low or "403" in low:
                 raise AuthError(err)
+            # Tollgate Protect: budget / tool-loop / freeze / agent caps → hard stop
+            if any(
+                x in low
+                for x in (
+                    "budget",
+                    "tool-loop",
+                    "tool loop",
+                    "tool_call",
+                    "blocked",
+                    "quota",
+                    "frozen",
+                    "freeze",
+                    "rate limit",
+                    "agent protection",
+                    "max_tokens_request",
+                    "max_usd",
+                    "max_calls",
+                    "max_requests_minute",
+                    "max_tool_calls",
+                    "policy_deny",
+                    "policy deny",
+                    "admission",
+                    "fail-closed",
+                    "ledger corrupt",
+                    "protection",
+                )
+            ):
+                raise BudgetExceededError(err)
             raise LLMError(err)
         pt = int(out.get("prompt_tokens") or (out.get("usage") or {}).get("prompt_tokens") or 0)
         ct = int(
@@ -472,6 +526,14 @@ class LLMManager:
         )
 
     def _tollgate_admit(self, provider: str, model: str, *, agent: str) -> None:
+        """In-process admit for legacy path. Fail-closed when Tollgate is forced."""
+        force_tg = os.getenv("GNOM_TOLLGATE_LLM", "1").strip().lower() not in (
+            "0",
+            "false",
+            "no",
+            "off",
+        )
+        consumer = (os.getenv("TOLLGATE_CONSUMER") or "gnom").strip() or "gnom"
         try:
             from tollgate.gateway.admit import admit
             from tollgate.gateway.context import RequestClass, RequestContext
@@ -483,6 +545,7 @@ class LLMManager:
                 model=model,
                 ctx=RequestContext(
                     agent_id=f"gnom:{agent}",
+                    consumer=consumer,
                     request_class=RequestClass.INTERACTIVE,
                 ),
             )
@@ -490,8 +553,10 @@ class LLMManager:
                 raise BudgetExceededError(d.reason or "tollgate admit denied")
         except BudgetExceededError:
             raise
-        except Exception:  # noqa: BLE001 — never block chat if admit import fails
-            pass
+        except Exception as e:
+            # F-03: never silent-pass when Protect is on
+            if force_tg:
+                raise BudgetExceededError(f"tollgate admit failed — fail-closed ({e})") from e
 
     def _tollgate_record(
         self,
@@ -501,6 +566,7 @@ class LLMManager:
         completion_tokens: int,
         cost_usd: float,
     ) -> None:
+        consumer = (os.getenv("TOLLGATE_CONSUMER") or "gnom").strip() or "gnom"
         try:
             from tollgate.usage_ledger import record_usage
 
@@ -510,6 +576,7 @@ class LLMManager:
                 tokens_in=int(prompt_tokens or 0),
                 tokens_out=int(completion_tokens or 0),
                 usd=float(cost_usd or 0),
+                consumer=consumer,
                 meta={"model": model, "source": "gnom.llm_manager"},
             )
         except Exception:  # noqa: BLE001

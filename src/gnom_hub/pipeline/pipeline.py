@@ -506,6 +506,20 @@ class Pipeline:
         try:
             return llm_fn()
         except Exception as exc:  # noqa: BLE001
+            # Tollgate Protect / budget: hard fail — never mask with deterministic stubs
+            try:
+                from gnom_hub.agents.roles_helpers import (
+                    format_protect_user_message,
+                    is_protect_error,
+                )
+                from gnom_hub.llm.types import BudgetExceededError
+
+                if isinstance(exc, BudgetExceededError) or is_protect_error(exc):
+                    raise BudgetExceededError(format_protect_user_message(exc)) from exc
+            except BudgetExceededError:
+                raise
+            except Exception:  # noqa: BLE001 — import/helper failure → fall through
+                pass
             msg = f"{name}: LLM failed ({exc}); used stub"
             self._state.warnings.append(msg)
             self._bus.emit("pipeline.warning", {"stage": name, "error": str(exc)})

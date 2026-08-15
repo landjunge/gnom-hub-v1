@@ -1174,7 +1174,11 @@
     if (p.error && p.stage === "error") {
       if (p.error !== lastReportedPipelineError) {
         lastReportedPipelineError = p.error;
-        appendChat("system", "Error: " + p.error);
+        const pe = String(p.error || "");
+        const isProtect = /agent protection|budget|max_tokens|tollgate protect|fail-closed|protect —|🛑/i.test(
+          pe
+        );
+        appendChat("system", (isProtect ? "🛑 Protect: " : "Error: ") + pe);
       }
     } else if (p.stage === "done" || p.stage === "brainstorm" || !p.error) {
       lastReportedPipelineError = null;

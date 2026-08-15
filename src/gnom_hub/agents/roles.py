@@ -17,7 +17,10 @@ from gnom_hub.agents.roles_helpers import (  # noqa: F401
     _sanitize_memory_ctx,
     _stub_brainstorm,
     _with_memory,
+    format_protect_user_message,
+    is_protect_error,
 )
+from gnom_hub.llm.types import BudgetExceededError
 
 
 class BrainstormAgent(BaseAgent):
@@ -94,7 +97,12 @@ class BrainstormAgent(BaseAgent):
                         max_tokens=280 if is_fast else (420 if is_diag else 320),
                         temperature=0.25 if is_fast or is_diag else 0.75,
                     )
-                except Exception as exc:  # noqa: BLE001
+                except BudgetExceededError as exc:
+                    # F-03 UX: never mask Protect with a friendly stub
+                    raise BudgetExceededError(format_protect_user_message(exc)) from exc
+                except Exception as exc:
+                    if is_protect_error(exc):
+                        raise BudgetExceededError(format_protect_user_message(exc)) from exc
                     self.bus.emit(
                         "pipeline.warning",
                         {"stage": "brainstorm", "error": str(exc)},

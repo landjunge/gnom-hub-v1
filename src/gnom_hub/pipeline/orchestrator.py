@@ -375,7 +375,18 @@ class Orchestrator:
         except PipelineCancelled:
             return self._state
         except Exception as exc:  # noqa: BLE001
-            self._fail(str(exc))
+            try:
+                from gnom_hub.agents.roles_helpers import (
+                    format_protect_user_message,
+                    is_protect_error,
+                )
+
+                if is_protect_error(exc):
+                    self._fail(format_protect_user_message(exc))
+                else:
+                    self._fail(str(exc))
+            except Exception:  # noqa: BLE001
+                self._fail(str(exc))
         return self._state
 
     def execute(self) -> PipelineState:

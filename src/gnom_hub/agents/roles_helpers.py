@@ -5,6 +5,54 @@ from __future__ import annotations
 import re
 
 
+def is_protect_error(exc: BaseException | str) -> bool:
+    """True when the failure is Tollgate Protect / budget / freeze (not a flaky LLM)."""
+    msg = str(exc or "").lower()
+    if not msg:
+        return False
+    needles = (
+        "agent protection",
+        "budget",
+        "max_tokens_request",
+        "max_usd",
+        "max_calls",
+        "max_requests_minute",
+        "max_tool_calls",
+        "tool-loop",
+        "tool loop",
+        "blocked",
+        "quota",
+        "frozen",
+        "freeze",
+        "policy_deny",
+        "policy deny",
+        "fail-closed",
+        "ledger corrupt",
+        "tollgate protect",
+        "admission frozen",
+        "budgetexceeded",
+    )
+    return any(n in msg for n in needles)
+
+
+def format_protect_user_message(exc: BaseException | str) -> str:
+    """Human-facing Protect message for chat / toast (DE-friendly, short)."""
+    raw = str(exc or "").strip() or "request blocked"
+    # Already formatted once — do not wrap again (Brainstorm + orchestrator)
+    if "Tollgate Protect" in raw or raw.lstrip().startswith("🛑"):
+        return raw
+    # Strip noisy class prefixes
+    for prefix in ("BudgetExceededError:", "LLMError:", "Exception:"):
+        if raw.startswith(prefix):
+            raw = raw[len(prefix) :].strip()
+    return (
+        "🛑 Tollgate Protect — Anfrage gestoppt (kein Paid-Bypass).\n"
+        f"{raw}\n"
+        "Limits anpassen: Tollgate Dashboard / consumer-budget · "
+        "oder kürzere Nachricht senden."
+    )
+
+
 def _format_brainstorm_history(history: list[dict]) -> str:
     if not history:
         return ""

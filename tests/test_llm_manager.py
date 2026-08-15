@@ -25,6 +25,13 @@ def _fake_http_error(url, headers, body, timeout):
     return 401, json.dumps({"error": {"message": "bad key"}}).encode("utf-8")
 
 
+@pytest.fixture(autouse=True)
+def _legacy_mock_path(monkeypatch):
+    """These tests mock DeepSeek HTTP. Protect (default on) must not swallow the mock."""
+    monkeypatch.setenv("GNOM_TOLLGATE_LLM", "0")
+    monkeypatch.delenv("TOLLGATE_URL", raising=False)
+
+
 def test_chat_success_with_mock():
     mgr = LLMManager(
         keys={"DEEPSEEK_API_KEY": "sk-test"},

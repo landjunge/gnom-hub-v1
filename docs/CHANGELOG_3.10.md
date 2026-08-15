@@ -33,6 +33,7 @@
 - Seed `qa_checklist`; Telegram `/skills` `/skill_on` `/skill_off`
 - Mobile box tabs ≤640px
 - Docs: ORCHESTRATION.md · GITHUB_HOLDER_3.10.md
+- F-03 Protect: no stub / no legacy DeepSeek spillover when Tollgate denies; chat shows 🛑 Protect
 
 ## Neural install
 
