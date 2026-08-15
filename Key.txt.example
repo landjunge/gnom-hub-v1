@@ -23,3 +23,9 @@ WORKER_API_KEY = sk - your - worker - deepseek - key
 # TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
 # Required for real chats: comma-separated chat ids (secure default denies unknown)
 # TELEGRAM_ALLOWED_CHAT_IDS=123456789
+
+# ElevenLabs TTS (Agent X Files + Hub voice)
+# Key: https://elevenlabs.io/app/settings/api-keys
+# Never commit the real value. Hub / Agent X Files read ELEVENLABS_API_KEY from env.
+# ELEVENLABS_API_KEY=sk_your_elevenlabs_key
+# ELEVENLABS_MIN_REMAINING=5000
