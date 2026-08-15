@@ -111,6 +111,7 @@ Without a usable key (and without Ollama), workers report **FEHLER — kein Deli
 | Control | Action |
 |---------|--------|
 | **Send** | One brainstorm turn → Box 2 |
+| **TD** | Fill chat from last ThreadDesk packet (does not send) |
 | **Execute** | Distill → Flex → plan → worker(s) → Box 3 + Memory |
 | **Send+Exec** | Both in sequence |
 | **Mic** | Browser speech-to-text |

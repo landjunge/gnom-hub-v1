@@ -85,6 +85,7 @@
     btnSend: document.getElementById("btn-send"),
     btnExecute: document.getElementById("btn-execute"),
     btnMic: document.getElementById("btn-mic"),
+    btnTd: document.getElementById("btn-td"),
     btnSave: document.getElementById("btn-save"),
     btnHelp: document.getElementById("btn-help"),
     btnSystem: document.getElementById("btn-system"),

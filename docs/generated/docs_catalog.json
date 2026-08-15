@@ -1,6 +1,6 @@
 {
   "version": "3.10.1",
-  "count": 50,
+  "count": 51,
   "docs": [
     {
       "file": "AGENTS_DEFINITION.md",
@@ -108,19 +108,19 @@
         "changelog",
         "fehler",
         "3.10",
+        "api",
         "install",
         "job",
-        "api",
+        "chat",
         "pack",
         "poll",
         "skill",
-        "chat",
         "clarify",
         "css",
         "embeddings"
       ],
-      "chars": 2649,
-      "lines": 80
+      "chars": 2728,
+      "lines": 81
     },
     {
       "file": "CHANGELOG_3.9.md",
@@ -961,6 +961,30 @@
       ],
       "chars": 4574,
       "lines": 101
+    },
+    {
+      "file": "THREADDESK.md",
+      "path": "docs/THREADDESK.md",
+      "title": "Gnom-Hub v1 \u2190 ThreadDesk",
+      "topic": "Other",
+      "keywords": [
+        "threaddesk",
+        "gnom",
+        "chat",
+        "json",
+        "api",
+        "liest",
+        "nicht",
+        "sonst",
+        "ausgef\u00fchrt",
+        "bash",
+        "desk",
+        "dr\u00fcckst",
+        "execute",
+        "fremden"
+      ],
+      "chars": 543,
+      "lines": 23
     },
     {
       "file": "TOLLGATE.md",

@@ -214,6 +214,13 @@ def create_app() -> FastAPI:
             },
         }
 
+    @app.get("/api/threaddesk")
+    def threaddesk_peek() -> dict[str, Any]:
+        """Last ThreadDesk packet. Fills chat only — never Send/Execute."""
+        from gnom_hub.threaddesk_ops import peek
+
+        return peek()
+
     @app.get("/api/ollama/models")
     def ollama_models() -> dict[str, Any]:
         hub = get_hub()

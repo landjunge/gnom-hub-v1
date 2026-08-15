@@ -85,6 +85,7 @@
     btnSend: document.getElementById("btn-send"),
     btnExecute: document.getElementById("btn-execute"),
     btnMic: document.getElementById("btn-mic"),
+    btnTd: document.getElementById("btn-td"),
     btnSave: document.getElementById("btn-save"),
     btnHelp: document.getElementById("btn-help"),
     btnSystem: document.getElementById("btn-system"),
@@ -5552,6 +5553,21 @@
     }
   }
 
+  async function loadThreadDesk() {
+    try {
+      const pack = await api("GET", "/api/threaddesk");
+      if (!pack || !pack.present || !pack.text) {
+        toast("Kein ThreadDesk-Paket", "info");
+        return;
+      }
+      els.chatInput.value = pack.text;
+      els.chatInput.focus();
+      toast("ThreadDesk geladen — Send nicht gedrückt", "info");
+    } catch (_e) {
+      toast("ThreadDesk nicht lesbar", "error");
+    }
+  }
+
   async function sendChat() {
 
     const raw = (els.chatInput.value || "").trim();
@@ -7849,6 +7865,7 @@
     const btnCancelBusy = document.getElementById("btn-cancel-busy");
     if (btnCancelBusy) btnCancelBusy.addEventListener("click", cancelCurrentJob);
     if (els.btnMic) els.btnMic.addEventListener("click", toggleMic);
+    if (els.btnTd) els.btnTd.addEventListener("click", loadThreadDesk);
     const presetApply = document.getElementById("sys-preset-apply");
     const presetDel = document.getElementById("sys-preset-delete");
     if (presetApply) presetApply.addEventListener("click", applySelectedPreset);

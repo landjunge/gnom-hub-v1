@@ -1904,6 +1904,21 @@
     }
   }
 
+  async function loadThreadDesk() {
+    try {
+      const pack = await api("GET", "/api/threaddesk");
+      if (!pack || !pack.present || !pack.text) {
+        toast("Kein ThreadDesk-Paket", "info");
+        return;
+      }
+      els.chatInput.value = pack.text;
+      els.chatInput.focus();
+      toast("ThreadDesk geladen — Send nicht gedrückt", "info");
+    } catch (_e) {
+      toast("ThreadDesk nicht lesbar", "error");
+    }
+  }
+
   async function sendChat() {
 
     const raw = (els.chatInput.value || "").trim();

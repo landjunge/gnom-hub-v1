@@ -68,7 +68,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 ### Product & history
 | Doc | Keywords |
 |-----|----------|
-| [CHANGELOG_3.10.md](CHANGELOG_3.10.md) | skills, changelog, fehler, 3.10, install, job, api, pack, poll, skill |
+| [CHANGELOG_3.10.md](CHANGELOG_3.10.md) | skills, changelog, fehler, 3.10, api, install, job, chat, pack, poll |
 | [CHANGELOG_3.9.md](CHANGELOG_3.9.md) | changelog, 3.9, api, embedder, vector, get, plugins, bow, cancel, char_ngram |
 | [MERGE_STATUS.md](MERGE_STATUS.md) | hub, gnom, pull, com, github, https, landjunge, merged, status, merge |
 | [PLAN_VS_CODE.md](PLAN_VS_CODE.md) | plan, code, vs, nicht, backup, brainstorm, checkpoint, clean, execute, pre |
@@ -93,6 +93,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 | [GSC_CHECKLIST.md](GSC_CHECKLIST.md) | github, https, landjunge, tollgate, html, gnom, hub, checklist, gsc, sitemap |
 | [MEMORY_FRESHNESS.md](MEMORY_FRESHNESS.md) | freshness, memory, sync, vector, warm, hot, write, fact, hit, index |
 | [PIPELINE_RELIABILITY.md](PIPELINE_RELIABILITY.md) | pipeline, reliability, clarify, timeout, cancel, later, busy, prefetch, tests, tool |
+| [THREADDESK.md](THREADDESK.md) | threaddesk, gnom, chat, json, api, liest, nicht, sonst, ausgeführt, bash |
 | [TOLLGATE.md](TOLLGATE.md) | tollgate, gnom, export, hub, bash, n8n, default, desk, gnom_tollgate_llm, gnom_ws |
 
 ### Root meta
@@ -146,6 +147,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 - [STABILITY.md](STABILITY.md) — Stability checklist (track A)
 - [TESTING.md](TESTING.md) — Testing
 - [TESTS_FROM_USER_DATA.md](TESTS_FROM_USER_DATA.md) — Tests abgeleitet aus Gnom-Daten (HOT / WARM / COLD / E2E)
+- [THREADDESK.md](THREADDESK.md) — Gnom-Hub v1 ← ThreadDesk
 - [TOLLGATE.md](TOLLGATE.md) — Gnom + Tollgate
 - [TOOLS_PORTFOLIO.md](TOOLS_PORTFOLIO.md) — Tools portfolio (Computer-Use + hub)
 - [UI_ERROR_LAYER.md](UI_ERROR_LAYER.md) — UI layer — error logic

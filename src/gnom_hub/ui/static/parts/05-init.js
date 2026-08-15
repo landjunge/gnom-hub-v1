@@ -39,6 +39,7 @@
     const btnCancelBusy = document.getElementById("btn-cancel-busy");
     if (btnCancelBusy) btnCancelBusy.addEventListener("click", cancelCurrentJob);
     if (els.btnMic) els.btnMic.addEventListener("click", toggleMic);
+    if (els.btnTd) els.btnTd.addEventListener("click", loadThreadDesk);
     const presetApply = document.getElementById("sys-preset-apply");
     const presetDel = document.getElementById("sys-preset-delete");
     if (presetApply) presetApply.addEventListener("click", applySelectedPreset);
