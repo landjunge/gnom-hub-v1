@@ -11,6 +11,7 @@ Drei Rollen, **kein zweiter Provider-Stack** in Gnom.
 Lokal darf Gnom **Ollama** direkt sprechen. DeepSeek/OpenRouter/Zen nur über Tollgate (`GNOM_TOLLGATE_LLM=1`, Default).
 
 `GET /api/health` und Snapshot tragen `stack.providers_owner`. Default: `tollgate`.
+Nach einem Chat liegt die von Tollgate gewählte Route in `llm.last_route` (provider/model). Gnom wählt nicht selbst.
 
 Legacy (nicht der Desk-Pfad):
 

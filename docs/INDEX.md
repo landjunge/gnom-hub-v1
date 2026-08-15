@@ -68,7 +68,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 ### Product & history
 | Doc | Keywords |
 |-----|----------|
-| [CHANGELOG_3.10.md](CHANGELOG_3.10.md) | skills, changelog, 3.10, api, fehler, install, job, pack, poll, skill |
+| [CHANGELOG_3.10.md](CHANGELOG_3.10.md) | skills, changelog, 3.10, api, install, fehler, job, pack, skill, badge |
 | [CHANGELOG_3.9.md](CHANGELOG_3.9.md) | changelog, 3.9, api, embedder, vector, get, plugins, bow, cancel, char_ngram |
 | [MERGE_STATUS.md](MERGE_STATUS.md) | hub, gnom, pull, com, github, https, landjunge, merged, status, merge |
 | [PLAN_VS_CODE.md](PLAN_VS_CODE.md) | plan, code, vs, nicht, backup, brainstorm, checkpoint, clean, execute, pre |

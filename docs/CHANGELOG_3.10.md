@@ -36,6 +36,7 @@
 - F-03 Protect: no stub / no legacy DeepSeek spillover when Tollgate denies; chat shows 🛑 Protect
 - ThreadDesk: `GET /api/threaddesk` + **TD** fills chat only (no Send/Execute)
 - Stack: ThreadDesk prepare · Gnom desk · Tollgate providers (`stack.providers_owner`)
+- LLM badge shows last Tollgate provider (`llm.last_route`) — Gnom still does not pick
 
 ## Neural install
 

@@ -822,8 +822,10 @@
       if (blocked) label = "LLM: auth blocked";
       else if (placeholder && !ok) label = "LLM: key placeholder";
       else if (!ok && sys === "missing") label = "LLM: no key";
-      else if (viaTg && (ds || ol)) label = "LLM: Tollgate";
-      else if (ds && ol) label = "LLM: DeepSeek+Ollama";
+      else if (viaTg && (ds || ol)) {
+        const route = (snap.llm.last_route && snap.llm.last_route.provider) || "";
+        label = route ? "LLM: Tollgate/" + route : "LLM: Tollgate";
+      } else if (ds && ol) label = "LLM: DeepSeek+Ollama";
       else if (ds) label = "LLM: DeepSeek";
       else if (ol) label = "LLM: Ollama";
       els.llmBadge.textContent = ok ? label + " · " + tok + " tok" : label;
@@ -851,6 +853,11 @@
         (wrk || "?") +
         " blocked=" +
         (blocked ? "yes" : "no") +
+        (snap.llm.last_route && snap.llm.last_route.provider
+          ? " last=" +
+            snap.llm.last_route.provider +
+            (snap.llm.last_route.model ? "/" + snap.llm.last_route.model : "")
+          : "") +
         " prompt=" +
         (snap.llm.prompt_tokens || 0) +
         " completion=" +

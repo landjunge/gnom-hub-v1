@@ -42,6 +42,58 @@ def test_health_exposes_stack(tmp_path, monkeypatch):
     hub_mod._HUB = None
 
 
+def test_manager_remembers_tollgate_route(monkeypatch):
+    import sys
+    import types
+
+    from gnom_hub.llm.manager import LLMManager
+    from gnom_hub.llm.types import LLMMessage
+
+    fake = types.ModuleType("tollgate")
+
+    def routed_chat(*_a, **_k):
+        return {
+            "ok": True,
+            "content": "hi",
+            "model": "zen-free",
+            "routing": {"route": {"provider": "opencode_zen", "model": "zen-free"}},
+        }
+
+    fake.routed_chat = routed_chat
+    monkeypatch.setitem(sys.modules, "tollgate", fake)
+    monkeypatch.delenv("TOLLGATE_URL", raising=False)
+    m = LLMManager(keys={})
+    m._chat_via_tollgate(
+        [LLMMessage(role="user", content="hi")],
+        model="",
+        provider=None,
+        agent="brainstorm",
+        temperature=0.2,
+        max_tokens=16,
+        prefer_free=True,
+    )
+    route = m.usage_snapshot()["last_route"]
+    assert route["provider"] == "opencode_zen"
+    assert route["via"] == "tollgate"
+
+
+def test_extract_tollgate_route_from_payload():
+    from gnom_hub.stack import extract_tollgate_route
+
+    got = extract_tollgate_route(
+        {
+            "ok": True,
+            "model": "deepseek-v4-flash",
+            "routing": {"route": {"provider": "deepseek", "model": "deepseek-v4-flash"}},
+        }
+    )
+    assert got["via"] == "tollgate"
+    assert got["provider"] == "deepseek"
+    assert got["model"] == "deepseek-v4-flash"
+    empty = extract_tollgate_route({})
+    assert empty["provider"] == ""
+
+
 def test_gnom_has_no_openai_anthropic_clients():
     from pathlib import Path
 

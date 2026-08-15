@@ -127,6 +127,7 @@ class LLMManager:
         self._ollama_ok: bool | None = None
         # Session blocklist after 401/403 — avoid hammering dead keys
         self._auth_blocked: set[str] = set()
+        self._last_route: dict[str, str] | None = None
 
     @property
     def spent_usd(self) -> float:
@@ -146,6 +147,7 @@ class LLMManager:
             "prompt_tokens": self._prompt_tokens,
             "completion_tokens": self._completion_tokens,
             "by_agent": {k: dict(v) for k, v in self._by_agent.items()},
+            "last_route": dict(self._last_route) if self._last_route else None,
         }
 
     def reset_usage(self) -> dict:
@@ -512,6 +514,9 @@ class LLMManager:
         cost = float(out.get("cost") or 0.0)
         if cost <= 0 and pt + ct > 0 and not prefer_free:
             cost = estimate_cost_usd(mid, pt, ct)
+        from gnom_hub.stack import extract_tollgate_route
+
+        self._last_route = extract_tollgate_route(out)
         return LLMResult(
             content=content,
             model=mid,

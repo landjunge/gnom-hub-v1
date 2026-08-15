@@ -201,6 +201,7 @@ class SnapshotOpsMixin:
                 "via_tollgate": os.getenv("GNOM_TOLLGATE_LLM", "1").strip().lower()
                 not in ("0", "false", "no", "off"),
                 "tollgate_url": (os.getenv("TOLLGATE_URL") or "").strip() or None,
+                "last_route": usage.get("last_route"),
             },
             "tollgate": self._tollgate_snapshot(),
             "stack": self._stack_snapshot(),

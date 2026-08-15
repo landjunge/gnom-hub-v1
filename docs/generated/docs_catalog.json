@@ -108,19 +108,19 @@
         "changelog",
         "3.10",
         "api",
-        "fehler",
         "install",
+        "fehler",
         "job",
         "pack",
-        "poll",
         "skill",
+        "badge",
         "chat",
         "clarify",
         "css",
         "embeddings"
       ],
-      "chars": 2815,
-      "lines": 82
+      "chars": 2902,
+      "lines": 83
     },
     {
       "file": "CHANGELOG_3.9.md",
@@ -1002,13 +1002,13 @@
         "gnom_tollgate_llm",
         "client",
         "n8n",
+        "chat",
         "deepseek",
         "gnom_ws",
-        "home",
-        "http"
+        "home"
       ],
-      "chars": 1984,
-      "lines": 80
+      "chars": 2101,
+      "lines": 81
     },
     {
       "file": "TOOLS_PORTFOLIO.md",
