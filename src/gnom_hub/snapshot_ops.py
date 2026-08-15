@@ -78,6 +78,11 @@ class SnapshotOpsMixin:
             out["error"] = str(e)[:160]
         return out
 
+    def _stack_snapshot(self) -> dict[str, Any]:
+        from gnom_hub.stack import stack_snapshot
+
+        return stack_snapshot()
+
     def pipeline_dict(self) -> dict[str, Any]:
         st = self.pipeline.state
         q = None
@@ -198,6 +203,7 @@ class SnapshotOpsMixin:
                 "tollgate_url": (os.getenv("TOLLGATE_URL") or "").strip() or None,
             },
             "tollgate": self._tollgate_snapshot(),
+            "stack": self._stack_snapshot(),
             "version": __version__,
             "flex_presets": list(FLEX_PRESETS),
             "plan_mode": getattr(self, "plan_mode", "default") or "default",

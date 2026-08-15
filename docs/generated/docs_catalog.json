@@ -106,21 +106,21 @@
       "keywords": [
         "skills",
         "changelog",
-        "fehler",
         "3.10",
         "api",
+        "fehler",
         "install",
         "job",
-        "chat",
         "pack",
         "poll",
         "skill",
+        "chat",
         "clarify",
         "css",
         "embeddings"
       ],
-      "chars": 2728,
-      "lines": 81
+      "chars": 2815,
+      "lines": 82
     },
     {
       "file": "CHANGELOG_3.9.md",
@@ -972,24 +972,24 @@
         "gnom",
         "chat",
         "json",
+        "tollgate",
         "api",
-        "liest",
-        "nicht",
-        "sonst",
-        "ausgef\u00fchrt",
-        "bash",
-        "desk",
         "dr\u00fcckst",
         "execute",
-        "fremden"
+        "keine",
+        "liest",
+        "nicht",
+        "send",
+        "sonst",
+        "ausgef\u00fchrt"
       ],
-      "chars": 543,
-      "lines": 23
+      "chars": 707,
+      "lines": 25
     },
     {
       "file": "TOLLGATE.md",
       "path": "docs/TOLLGATE.md",
-      "title": "Gnom + Tollgate",
+      "title": "Stack: ThreadDesk \u00b7 Gnom \u00b7 Tollgate",
       "topic": "Other",
       "keywords": [
         "tollgate",
@@ -997,18 +997,18 @@
         "export",
         "hub",
         "bash",
-        "n8n",
         "default",
         "desk",
         "gnom_tollgate_llm",
+        "client",
+        "n8n",
+        "deepseek",
         "gnom_ws",
         "home",
-        "http",
-        "via",
-        "brave"
+        "http"
       ],
-      "chars": 1261,
-      "lines": 60
+      "chars": 1984,
+      "lines": 80
     },
     {
       "file": "TOOLS_PORTFOLIO.md",

@@ -20,3 +20,5 @@ Liest nur:
 - sonst `handoff.json`
 
 Override für Tests: `THREADDESK_ROOT`. Keine fremden Pfade. Kein POST an `/api/chat`.
+
+ThreadDesk kennt keine Provider. Cloud-Calls laufen erst, wenn du in Gnom **Send/Execute** drückst — und dann über **Tollgate**. Siehe [TOLLGATE.md](TOLLGATE.md).

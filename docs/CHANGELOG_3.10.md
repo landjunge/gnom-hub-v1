@@ -35,6 +35,7 @@
 - Docs: ORCHESTRATION.md · GITHUB_HOLDER_3.10.md
 - F-03 Protect: no stub / no legacy DeepSeek spillover when Tollgate denies; chat shows 🛑 Protect
 - ThreadDesk: `GET /api/threaddesk` + **TD** fills chat only (no Send/Execute)
+- Stack: ThreadDesk prepare · Gnom desk · Tollgate providers (`stack.providers_owner`)
 
 ## Neural install
 

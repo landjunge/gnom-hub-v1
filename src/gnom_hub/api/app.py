@@ -16,6 +16,7 @@ from gnom_hub.hub import get_hub
 from gnom_hub.plugins.mcp_protocol import jsonrpc_dispatch
 from gnom_hub.plugins.mcp_protocol import tools_call as mcp_tools_call
 from gnom_hub.plugins.retry import ToolFailed
+from gnom_hub.stack import stack_snapshot
 
 STATIC_DIR = Path(__file__).resolve().parents[1] / "ui" / "static"
 
@@ -212,6 +213,7 @@ def create_app() -> FastAPI:
                 "ollama": hub.llm.has_provider("ollama"),
                 "auth": (hub.llm.auth_snapshot() if hasattr(hub.llm, "auth_snapshot") else {}),
             },
+            "stack": stack_snapshot(),
         }
 
     @app.get("/api/threaddesk")

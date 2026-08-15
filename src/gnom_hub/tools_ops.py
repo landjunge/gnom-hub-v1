@@ -613,8 +613,10 @@ class ToolsOpsMixin:
                 tg_bit += f" day_calls={tot.get('calls')} day_usd={float(tot.get('usd') or 0):.4f}"
         except Exception:  # noqa: BLE001
             pass
+        owner = "tollgate" if via_tg else "gnom-legacy"
         return (
             f"stage={st.stage.value} "
+            f"providers={owner} "
             f"deepseek={'yes' if self.llm.has_provider('deepseek') else 'no'} "
             f"auth_sys={sys_a} auth_worker={wrk_a} auth_blocked={blocked} "
             f"tool_calls={tcalls} "

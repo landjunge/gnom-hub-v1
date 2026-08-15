@@ -1,3 +1,23 @@
+# Stack: ThreadDesk · Gnom · Tollgate
+
+Drei Rollen, **kein zweiter Provider-Stack** in Gnom.
+
+| Schicht | Rolle | Ruft Cloud-Provider? |
+|---------|--------|----------------------|
+| **ThreadDesk** | Kontext vorbereiten (`td gnom`, TD-Knopf) | nein |
+| **Gnom-Hub v1** | Desk, Brainstorm, Execute, Worker | nein — nur Client |
+| **Tollgate** | Keys, Budget, Route, Chat, Search, TTS | **ja, allein** |
+
+Lokal darf Gnom **Ollama** direkt sprechen. DeepSeek/OpenRouter/Zen nur über Tollgate (`GNOM_TOLLGATE_LLM=1`, Default).
+
+`GET /api/health` und Snapshot tragen `stack.providers_owner`. Default: `tollgate`.
+
+Legacy (nicht der Desk-Pfad):
+
+```bash
+export GNOM_TOLLGATE_LLM=0   # direkter DeepSeek-Client — nur Opt-out
+```
+
 # Gnom + Tollgate
 
 Gnom is a **client**. Tollgate owns keys, budgets, and routing.
