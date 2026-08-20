@@ -4,6 +4,8 @@ Stand: 2026-08-10 (polish pass)
 
 ## Color concept
 
+Shared with 4AllPass and Tollgate: `src/gnom_hub/ui/static/tokens.css` (copy of this `:root`). Products keep their logos; chrome stays this desk.
+
 One dark surface system + **agent identity accents** (not random neon):
 
 | Token | Role |

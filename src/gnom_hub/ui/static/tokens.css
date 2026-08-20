@@ -1,0 +1,25 @@
+/**
+ * Canonical desk tokens for the tool family.
+ * Gnom-Hub-V1 is the source. Copy into 4AllPass (`frontend/src/tokens.css`)
+ * and Tollgate (`dashboard_html.py` / `site/styles.css` mappings).
+ * Do not invent a second palette per product.
+ */
+:root {
+  --bg: #121316;
+  --bg-panel: #1a1b1f;
+  --bg-card: #1e1f24;
+  --bg-elev: #24262d;
+  --text: #e2e4e9;
+  --text-muted: #8b909a;
+  --border: #2e3138;
+  --accent: #6b7280;
+  --accent-hi: #a1a8b3;
+  --ok: #3d9b6a;
+  --warn: #c9a227;
+  --err: #c45c5c;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --shadow-soft: 0 4px 18px rgba(0, 0, 0, 0.28);
+  --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent-hi);
+}
