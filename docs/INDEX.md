@@ -20,7 +20,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 | [KEYS_AND_MODELS.md](KEYS_AND_MODELS.md) | deepseek, key, models, txt, keys, api, flash, model, thinking, default |
 | [PYTHON_CACHE.md](PYTHON_CACHE.md) | cache, pip, python, venv, bash, install, local, ruff_cache, caches, dev |
 | [STABILITY.md](STABILITY.md) | stability, scripts, deepseek, empty, execute, json, key, required, worker, bash |
-| [UI_QUALITY.md](UI_QUALITY.md) | quality, ui, agent, cards, identity, job, one, poll, speed, stability |
+| [UI_QUALITY.md](UI_QUALITY.md) | quality, ui, agent, cards, chrome, css, desk, identity, job, one |
 
 ### Architecture & agents
 | Doc | Keywords |
