@@ -27,3 +27,5 @@
 ## Stack
 - Python, FastAPI, local desktop-first
 - Default LLM: DeepSeek (configurable); optional Ollama
+Impressum: https://netzwerkpunkt.de/impressum
+Datenschutz: https://netzwerkpunkt.de/datenschutz
