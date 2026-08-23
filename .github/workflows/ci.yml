@@ -22,7 +22,7 @@ env:
   PYTHONDONTWRITEBYTECODE: "1"
   PIP_CACHE_DIR: ${{ github.workspace }}/.cache/pip
   # Bump to globally invalidate venv/pip caches after strategy changes.
-  CACHE_SEED: v2
+  CACHE_SEED: v3
 
 jobs:
   # No full app install. Ruff via official action (binary); mermaid is stdlib.
@@ -131,9 +131,25 @@ jobs:
           # Exact key only — never partial restore (ABI / dep skew risk).
           key: ${{ runner.os }}-${{ env.CACHE_SEED }}-venv-py${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', 'requirements/ci-dev.txt') }}
 
+      - name: Verify cached venv (cache hit)
+        if: steps.cache-venv.outputs.cache-hit == 'true'
+        id: verify-venv
+        run: |
+          set -euo pipefail
+          if [ ! -x .venv/bin/python ]; then
+            echo "broken=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::venv cache hit but .venv/bin/python missing — reinstalling"
+            rm -rf .venv
+            exit 0
+          fi
+          echo "broken=false" >> "$GITHUB_OUTPUT"
+          .venv/bin/python -c "import gnom_hub,pytest; print('venv cache hit ok', gnom_hub.__version__)"
+          # Editable install may point at old path — re-link cheaply without resolving deps.
+          .venv/bin/pip install --prefer-binary --no-deps -e . >/dev/null
+
       - name: Cache pip downloads
         id: cache-pip
-        if: steps.cache-venv.outputs.cache-hit != 'true'
+        if: steps.cache-venv.outputs.cache-hit != 'true' || steps.verify-venv.outputs.broken == 'true'
         uses: actions/cache@v4
         with:
           path: ${{ env.PIP_CACHE_DIR }}
@@ -142,22 +158,14 @@ jobs:
             ${{ runner.os }}-${{ env.CACHE_SEED }}-pipdl-py${{ matrix.python-version }}-
             ${{ runner.os }}-${{ env.CACHE_SEED }}-pipdl-
 
-      - name: Create venv + install (cache miss)
-        if: steps.cache-venv.outputs.cache-hit != 'true'
+      - name: Create venv + install (cache miss or broken)
+        if: steps.cache-venv.outputs.cache-hit != 'true' || steps.verify-venv.outputs.broken == 'true'
         run: |
           set -euo pipefail
           python -m venv .venv
           .venv/bin/python -m pip install --upgrade pip
           .venv/bin/pip install --prefer-binary --upgrade-strategy only-if-needed -e ".[dev]"
           .venv/bin/python -c "import gnom_hub,pytest,ruff; print('install ok', gnom_hub.__version__)"
-
-      - name: Verify cached venv (cache hit)
-        if: steps.cache-venv.outputs.cache-hit == 'true'
-        run: |
-          set -euo pipefail
-          .venv/bin/python -c "import gnom_hub,pytest; print('venv cache hit ok', gnom_hub.__version__)"
-          # Editable install may point at old path — re-link cheaply without resolving deps.
-          .venv/bin/pip install --prefer-binary --no-deps -e . >/dev/null
 
       - name: Pytest
         env:

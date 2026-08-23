@@ -1068,19 +1068,19 @@
         "ui",
         "agent",
         "cards",
+        "chrome",
+        "css",
+        "desk",
         "identity",
         "job",
         "one",
         "poll",
         "speed",
         "stability",
-        "status",
-        "text",
-        "toasts",
-        "100ms"
+        "status"
       ],
-      "chars": 1187,
-      "lines": 42
+      "chars": 1334,
+      "lines": 44
     },
     {
       "file": "V1_SCOPE.md",
