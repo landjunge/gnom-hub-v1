@@ -18,6 +18,19 @@
 
 ---
 
+## How this is built / Wie dieses Projekt entsteht
+
+**System Designer & Product Architect** — Daniel Filipek (landjunge)
+
+Ich arbeite anders: Ich entwickle Systeme und Produkte mit KI als technischem Partner.
+
+Produktvision, Prioritäten und Architekturentscheidungen kommen von mir. Implementierung, Tests und Dokumentation entstehen mit KI als technischem Partner. Ich bin kein klassischer Softwareentwickler. Stärke: Probleme erkennen, in eigenständige Werkzeuge zerlegen, Schnittstellen und Grenzen klar halten.
+
+Was ich einbringe: Idee, Systemdenken, Anforderungen, gewünschtes Verhalten, klare Grenzen.  
+Was überprüfbar sein muss: der Code, die Specs, die Tests. Reviews sind willkommen.
+
+Gnom-Hub-V1: Brainstorm frei, Execute nur auf Absicht. Die Produktregel kommt von mir.
+
 ## Map
 
 | Section | What you get |
