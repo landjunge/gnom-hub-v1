@@ -12,7 +12,9 @@ Personal WS bootstrap — KISS.
 
 from __future__ import annotations
 
+import os
 import shutil
+import tempfile
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -263,8 +265,19 @@ def ensure_user_workspace(
     pin_gnom_ws_env(hub)
     pws = personal_workspace(hub)
     if not pws.is_dir():
-        pws.mkdir(parents=True, exist_ok=True)
-        actions.append(f"created {pws.name}/")
+        try:
+            pws.mkdir(parents=True, exist_ok=True)
+            actions.append(f"created {pws.name}/")
+        except OSError as exc:
+            # Sibling location not writable (sandboxed/CI root, read-only
+            # parent dir, USB mounted read-only, ...). Fall back to a
+            # temp-based WS so the hub still boots instead of crashing.
+            fallback = Path(tempfile.gettempdir()) / pws.name
+            fallback.mkdir(parents=True, exist_ok=True)
+            os.environ["GNOM_WS"] = str(fallback)
+            warnings.append(f"{pws} not writable ({exc}); using temp WS fallback")
+            pws = fallback
+            actions.append(f"created {pws.name}/ (temp fallback)")
 
     ud = user_dir(hub)
     ud.mkdir(parents=True, exist_ok=True)

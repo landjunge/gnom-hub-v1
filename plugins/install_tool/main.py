@@ -80,14 +80,18 @@ def _check(key: str) -> dict[str, Any]:
             "import": meta["import"],
             "pip": meta["pip"],
         }
-    except Exception as exc:  # noqa: BLE001
+    except BaseException as exc:  # noqa: BLE001
+        # Some optional GUI deps (e.g. pyautogui → mouseinfo) call sys.exit()
+        # instead of raising ImportError when a system lib (tkinter) is
+        # missing. SystemExit/BaseException must be caught here too, or a
+        # single availability check crashes the whole caller (agent/tests).
         return {
             "ok": True,
             "installed": False,
             "package": _norm(key),
             "import": meta["import"],
             "pip": meta["pip"],
-            "error": str(exc),
+            "error": str(exc) or exc.__class__.__name__,
         }
 
 
