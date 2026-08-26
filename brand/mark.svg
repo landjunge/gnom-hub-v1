@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Gnom-Hub-V1 Bildmarke</title>
+  <desc id="desc">Ein geometrischer Gnom sitzt als bewusste Schaltstelle zwischen drei verbundenen Arbeitsknoten.</desc>
+  <defs>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#8ee59a"/>
+      <stop offset="1" stop-color="#3d9b6a"/>
+    </linearGradient>
+  </defs>
+  <rect x="36" y="36" width="440" height="440" rx="104" fill="#111512"/>
+  <path d="M256 142 166 274h180z" fill="url(#green)"/>
+  <circle cx="256" cy="286" r="62" fill="#e7e9e5"/>
+  <path d="M205 298c18 50 84 50 102 0-13 15-30 22-51 22s-38-7-51-22z" fill="#8b9290"/>
+  <circle cx="234" cy="278" r="7" fill="#111512"/>
+  <circle cx="278" cy="278" r="7" fill="#111512"/>
+  <path d="M256 130V92M171 332l-52 42M341 332l52 42" stroke="#6dcf7a" stroke-width="18" stroke-linecap="round"/>
+  <circle cx="256" cy="82" r="28" fill="#6dcf7a"/>
+  <circle cx="105" cy="386" r="28" fill="#6dcf7a"/>
+  <circle cx="407" cy="386" r="28" fill="#6dcf7a"/>
+  <path d="M176 396h160" stroke="#2f3631" stroke-width="18" stroke-linecap="round"/>
+</svg>
