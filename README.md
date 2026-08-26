@@ -1,8 +1,9 @@
-# gnom-hub-v1
+<p align="center"><img src="brand/mark.svg" width="180" alt="Gnom-Hub-V1 Bildmarke"></p>
+<p align="center"><img src="brand/wordmark.svg" width="600" alt="Gnom-Hub-V1"></p>
 
 <p align="center"><strong>Ein lokaler Arbeitsplatz für die Zusammenarbeit mit KI-Agenten.</strong></p>
 
-Im Gnom-Hub kannst du Ideen entwickeln, Aufgaben vorbereiten und erst dann bewusst ausführen.
+In Gnom-Hub-V1 kannst du Ideen entwickeln, Aufgaben vorbereiten und erst dann bewusst ausführen.
 
 ### 👤 [Für Nutzer – den Desk starten](#für-nutzer)
 
@@ -39,7 +40,7 @@ Die wichtigste Regel lautet:
 2. **Brainstormen** – eine Aufgabe im Chat besprechen.
 3. **Ausführen** – erst bei einem brauchbaren Plan Execute drücken.
 
-### Was gnom-hub-v1 nicht ist
+### Was Gnom-Hub-V1 nicht ist
 
 Es ist kein unbeaufsichtigter Autopilot und keine Cloud-Plattform. Es soll nicht bei jeder Nachricht still deinen Computer steuern.
 
@@ -60,7 +61,7 @@ Es ist kein unbeaufsichtigter Autopilot und keine Cloud-Plattform. Es soll nicht
 
 ## Für Entwickler
 
-gnom-hub-v1 verbindet eine lokale Oberfläche, FastAPI, Agentenrollen, Speicher, Werkzeuge und Plugins. Die technische Dokumentation bleibt darunter vollständig erhalten.
+Gnom-Hub-V1 verbindet eine lokale Oberfläche, FastAPI, Agentenrollen, Speicher, Werkzeuge und Plugins. Die technische Dokumentation bleibt darunter vollständig erhalten.
 
 ## How this is built / Wie dieses Projekt entsteht
 
