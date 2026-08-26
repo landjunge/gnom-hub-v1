@@ -93,13 +93,24 @@ Exploration stays cheap and reversible. Workers (cost, files, side effects) star
 
 ### Quick start
 
+One command (git + Python 3.10+, no Docker):
+
 ```bash
-# No Docker — venv + local FastAPI only
-cd gnom-hub-v1
-./scripts/install.sh && source .venv/bin/activate
-# optional better search: ./scripts/install_embeddings.sh
+curl -fsSL https://raw.githubusercontent.com/landjunge/gnom-hub-v1/main/scripts/get.sh | sh
+```
+
+Then put a real key in `User/Key.txt` and start the desk:
+
+```bash
+cd ~/gnom-hub-v1
 ./scripts/start.sh
 # → http://127.0.0.1:8080/
+```
+
+Already cloned:
+
+```bash
+./scripts/install.sh && ./scripts/start.sh
 ```
 
 ### Keys

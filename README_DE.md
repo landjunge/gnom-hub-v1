@@ -75,13 +75,24 @@ Exploration bleibt günstig und umkehrbar. Worker (Kosten, Dateien, Nebenwirkung
 
 ### Schnellstart
 
+Ein Befehl (git + Python 3.10+, kein Docker):
+
 ```bash
-# Kein Docker — nur venv + lokales FastAPI
-cd gnom-hub-v1
-./scripts/install.sh && source .venv/bin/activate
-# optional bessere Suche: ./scripts/install_embeddings.sh
+curl -fsSL https://raw.githubusercontent.com/landjunge/gnom-hub-v1/main/scripts/get.sh | sh
+```
+
+Danach echten Key in `User/Key.txt` und Desk starten:
+
+```bash
+cd ~/gnom-hub-v1
 ./scripts/start.sh
 # → http://127.0.0.1:8080/
+```
+
+Schon geklont:
+
+```bash
+./scripts/install.sh && ./scripts/start.sh
 ```
 
 ### Keys
