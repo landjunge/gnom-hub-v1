@@ -1,22 +1,66 @@
-# Gnom-Hub
+# gnom-hub-v1
 
-**Local multi-agent control hub** — brainstorm freely, execute only when you say so.
+<p align="center"><strong>Ein lokaler Arbeitsplatz für die Zusammenarbeit mit KI-Agenten.</strong></p>
 
-| | |
-|--|--|
-| **Website** | **[landjunge.github.io/gnom-hub-v1](https://landjunge.github.io/gnom-hub-v1/)** · [DE](https://landjunge.github.io/gnom-hub-v1/de.html) · [Docs hub](https://landjunge.github.io/gnom-hub-v1/docs.html) · [Ecosystem](https://landjunge.github.io/gnom-hub-v1/ecosystem.html) · [Launch](https://landjunge.github.io/gnom-hub-v1/blog/launch.html) · [Press](https://landjunge.github.io/gnom-hub-v1/press/) · [llms.txt](https://landjunge.github.io/gnom-hub-v1/llms.txt) · [GSC checklist](docs/GSC_CHECKLIST.md) |
-| **Pairs with** | **[Tollgate](https://github.com/landjunge/tollgate)** — agent safety layer · [site](https://landjunge.github.io/tollgate/) · [safety checklist](https://landjunge.github.io/tollgate/blog/checklist.html) |
-| **Version** | 3.10.1 · [Changelog](docs/CHANGELOG_3.10.md) · [Release notes](docs/GITHUB_HOLDER_3.10.md) |
-| **Search docs** | Desk badge **Docs** · `GET /api/docs/search?q=` · `python scripts/build_docs_index.py --search "…"` |
-| **Doc index** | **[docs/INDEX.md](docs/INDEX.md)** (auto) · [catalog JSON](docs/generated/docs_catalog.json) |
-| **Stack** | Python ≥3.10 · FastAPI · desktop SPA · **no Docker** |
-| **UI** | `http://127.0.0.1:8080/` |
-| **LLM** | DeepSeek (`deepseek-v4-flash`) · optional Ollama |
-| **License** | Private use |
+Im Gnom-Hub kannst du Ideen entwickeln, Aufgaben vorbereiten und erst dann bewusst ausführen.
 
-**Deutsch:** [README_DE.md](README_DE.md) · **AI handoff:** [docs/CODE_ANALYSIS_FOR_AI.md](docs/CODE_ANALYSIS_FOR_AI.md)
+### 👤 [Für Nutzer – den Desk starten](#für-nutzer)
+
+### 🛠️ [Für Entwickler – Aufbau und Erweiterungen](#für-entwickler)
 
 ---
+
+## Für Nutzer
+
+### Einfach erklärt
+
+Beim Arbeiten mit KI ist ein Chat schnell abgeschickt. Ein echter Agent kann aber Dateien verändern, Werkzeuge starten und Geld kosten.
+
+Gnom-Hub trennt deshalb zwei Dinge:
+
+- **Send** bedeutet reden und nachdenken.
+- **Execute** bedeutet wirklich ausführen.
+
+Die wichtigste Regel lautet:
+
+> **Brainstorm frei. Execute nur auf Absicht.**
+
+### Was du davon hast
+
+- Du siehst, welche Agenten an welcher Aufgabe arbeiten.
+- Ideen können zuerst ohne Ausführung entwickelt werden.
+- Worker starten erst nach deiner bewussten Entscheidung.
+- Dateien, Werkzeuge, Kosten und Status bleiben sichtbar.
+- Der Desk läuft lokal und benötigt kein Docker.
+
+### In drei Schritten
+
+1. **Installieren** – den lokalen Desk einrichten.
+2. **Brainstormen** – eine Aufgabe im Chat besprechen.
+3. **Ausführen** – erst bei einem brauchbaren Plan Execute drücken.
+
+### Was gnom-hub-v1 nicht ist
+
+Es ist kein unbeaufsichtigter Autopilot und keine Cloud-Plattform. Es soll nicht bei jeder Nachricht still deinen Computer steuern.
+
+### Heutiger Stand – ehrlich
+
+| Bereich | Aktueller Stand |
+|---|---|
+| Desk | Lokale Oberfläche mit Chat, Agentenkarten und Arbeitsboxen |
+| Trennung | Send für Dialog; Execute für Worker und Werkzeuge |
+| Modelle | DeepSeek; optional Ollama |
+| Speicher | HOT, WARM, COLD und optionale Vektorsuche |
+| Werkzeuge | Registry, Plugins und kontrollierte Computer-Nutzung |
+| Reife | Nutzbarer Prototyp; vor wichtigen Aufgaben selbst prüfen |
+
+[Produktseite](https://gnom-hub-v1.netzwerkpunkt.de/) · [Installation](#2--install)
+
+---
+
+## Für Entwickler
+
+gnom-hub-v1 verbindet eine lokale Oberfläche, FastAPI, Agentenrollen, Speicher, Werkzeuge und Plugins. Die technische Dokumentation bleibt darunter vollständig erhalten.
 
 ## How this is built / Wie dieses Projekt entsteht
 
