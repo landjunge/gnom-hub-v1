@@ -211,6 +211,105 @@
     syncActiveChatLog(lastClickedAgentId || "brainstorm");
   }
 
+  function buildPanelAgentTabs() {
+    const labels = { 1: "Agent answers", 2: "Chat", 3: "Results" };
+    [1, 2, 3].forEach(function (boxNum) {
+      const box = document.getElementById("box" + boxNum);
+      if (!box) return;
+      let nav = box.querySelector(".box-agent-nav");
+      if (!nav) {
+        nav = document.createElement("div");
+        nav.className = "box-agent-nav";
+        nav.setAttribute("role", "tablist");
+        nav.setAttribute("aria-label", labels[boxNum] + " by agent");
+        box.insertBefore(nav, box.firstChild);
+      }
+      nav.innerHTML = "";
+      const title = document.createElement("span");
+      title.className = "box-agent-nav-title";
+      title.textContent = "Box " + boxNum + " · " + labels[boxNum];
+      nav.appendChild(title);
+      AGENTS.forEach(function (agent) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "box-agent-tab color-" + agent.color;
+        btn.dataset.agent = agent.id;
+        btn.dataset.box = String(boxNum);
+        btn.setAttribute("role", "tab");
+        btn.textContent = agent.label;
+        btn.title = labels[boxNum] + " · " + agent.label;
+        btn.addEventListener("click", function () {
+          activateAgentLayerInBox(boxNum, agent.id, true);
+        });
+        nav.appendChild(btn);
+      });
+      if (boxNum === 1) buildAgentAnswerDeck();
+    });
+  }
+
+  function buildAgentAnswerDeck() {
+    const live = document.getElementById("box1-layer-live");
+    if (!live) return;
+    let deck = document.getElementById("box1-agent-answers");
+    if (!deck) {
+      deck = document.createElement("div");
+      deck.id = "box1-agent-answers";
+      deck.className = "box1-agent-answers";
+      live.insertBefore(deck, live.firstChild);
+    }
+    deck.innerHTML = "";
+    AGENTS.forEach(function (agent) {
+      const pane = document.createElement("div");
+      pane.className = "box1-answer-pane";
+      pane.dataset.agent = agent.id;
+      pane.hidden = true;
+      const empty = document.createElement("p");
+      empty.className = "muted empty-hint";
+      empty.textContent = agent.label + " has not answered yet.";
+      pane.appendChild(empty);
+      deck.appendChild(pane);
+    });
+  }
+
+  function mountChatInBox2() {
+    const box = document.getElementById("box2");
+    const chat = document.getElementById("chat-mod");
+    if (!box || !chat || chat.parentElement === box) return;
+    chat.classList.add("chat-in-box2");
+    box.appendChild(chat);
+  }
+
+  function activateAgentLayerInBox(boxNum, agentId, doPaint) {
+    if (!AGENTS.some(function (agent) { return agent.id === agentId; })) return;
+    const box = document.getElementById("box" + boxNum);
+    if (!box) return;
+    box.dataset.activeAgent = agentId;
+    box.querySelectorAll(".agent-layer").forEach(function (layer) {
+      const on = layer.dataset.agent === agentId;
+      layer.classList.toggle("is-active", on);
+      layer.hidden = !on;
+    });
+    box.querySelectorAll(".box-agent-tab").forEach(function (tab) {
+      const on = tab.dataset.agent === agentId;
+      tab.classList.toggle("is-active", on);
+      tab.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    if (boxNum === 1) {
+      box.querySelectorAll(".box1-answer-pane").forEach(function (pane) {
+        pane.hidden = pane.dataset.agent !== agentId;
+      });
+      fillBox1AgentInfo(agentId);
+    }
+    if (boxNum === 2) syncActiveChatLog(agentId);
+    if (boxNum === 3 && /^worker[1-4]$/.test(agentId)) {
+      const workerIdx = parseInt(agentId.replace("worker", "")) - 1;
+      if (typeof focusBox3WorkerResult === "function") {
+        focusBox3WorkerResult(workerIdx);
+      }
+    }
+    if (doPaint !== false) paintBoxesModule(agentId);
+  }
+
   function syncActiveChatLog(agentId) {
     const aid = agentId || lastClickedAgentId || "brainstorm";
     document.querySelectorAll(".chat-agent-layer").forEach(function (layer) {
@@ -280,6 +379,8 @@
         stack.appendChild(layer);
       });
     });
+    buildPanelAgentTabs();
+    mountChatInBox2();
     /* default: first agent layer visible until click */
     activateAgentLayer(lastClickedAgentId || "brainstorm", false);
   }
@@ -306,10 +407,8 @@
     if (!agentId) return;
     if (!AGENTS.some(function (a) { return a.id === agentId; })) return;
     lastClickedAgentId = agentId;
-    document.querySelectorAll(".agent-layer").forEach(function (layer) {
-      const on = layer.getAttribute("data-agent") === agentId;
-      layer.classList.toggle("is-active", on);
-      layer.hidden = !on;
+    [1, 2, 3].forEach(function (boxNum) {
+      activateAgentLayerInBox(boxNum, agentId, false);
     });
     document.querySelectorAll(".agent-card").forEach(function (card) {
       card.classList.toggle(
@@ -703,4 +802,3 @@
       }, 220);
     }, 4200);
   }
-

@@ -1451,6 +1451,29 @@
     return line;
   }
 
+  function appendAgentAnswer(who, text, agentId) {
+    if (who === "you") return;
+    const aid = agentId || "brainstorm";
+    const pane = document.querySelector(
+      '.box1-answer-pane[data-agent="' + aid + '"]'
+    );
+    if (!pane) return;
+    const empty = pane.querySelector(".empty-hint");
+    if (empty) empty.remove();
+    const entry = document.createElement("article");
+    entry.className = "box1-answer-entry";
+    const meta = document.createElement("div");
+    meta.className = "box1-answer-meta";
+    meta.textContent = (who === "system" ? "Agent" : who) + " · " + formatChatTime();
+    const body = document.createElement("div");
+    body.className = "box1-answer-text";
+    body.textContent = text;
+    entry.appendChild(meta);
+    entry.appendChild(body);
+    pane.appendChild(entry);
+    pane.scrollTop = pane.scrollHeight;
+  }
+
   function clearChatLog() {
     AGENTS.forEach(function (a) {
       const log = chatLogElForAgent(a.id);
@@ -2095,11 +2118,15 @@
 
   function appendChat(who, text) {
     /* Crux: write into active agent chat layer */
+    const box2 = document.getElementById("box2");
+    const activeChatAgent =
+      (box2 && box2.dataset.activeAgent) || lastClickedAgentId || "brainstorm";
     if (typeof syncActiveChatLog === "function") {
-      syncActiveChatLog(lastClickedAgentId || "brainstorm");
+      syncActiveChatLog(activeChatAgent);
     }
     if (!els.chatLog) return;
     renderChatLine(who, text, formatChatTime());
+    appendAgentAnswer(who, text, activeChatAgent);
     els.chatLog.scrollTop = els.chatLog.scrollHeight;
     persistChatLog();
   }

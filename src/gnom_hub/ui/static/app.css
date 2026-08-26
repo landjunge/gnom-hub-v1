@@ -766,6 +766,140 @@ html, body {
   transition: border-color 0.2s ease;
 }
 
+/* Each box owns its agent context; tabs stay visible while content changes. */
+.box-agent-nav {
+  position: relative;
+  z-index: 60;
+  flex: 0 0 38px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 7px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-bottom: 1px solid var(--border);
+  background: #15171b;
+  scrollbar-width: thin;
+}
+
+.box-agent-nav-title {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  flex: 0 0 auto;
+  padding-right: 6px;
+  color: var(--text);
+  background: #15171b;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.box-agent-tab {
+  --tab-color: var(--accent-hi);
+  flex: 0 0 auto;
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.box-agent-tab:hover,
+.box-agent-tab.is-active {
+  border-color: var(--tab-color);
+  color: var(--text);
+}
+
+.box-agent-tab.is-active {
+  background: color-mix(in srgb, var(--tab-color) 18%, var(--bg-card));
+  box-shadow: inset 0 -2px 0 var(--tab-color);
+}
+
+.box-agent-tab.color-brainstorm { --tab-color: var(--c-brainstorm); }
+.box-agent-tab.color-memory { --tab-color: var(--c-memory); }
+.box-agent-tab.color-flex { --tab-color: var(--c-flex); }
+.box-agent-tab.color-coordinator { --tab-color: var(--c-coordinator); }
+.box-agent-tab.color-worker1 { --tab-color: var(--c-worker1); }
+.box-agent-tab.color-worker2 { --tab-color: var(--c-worker2); }
+.box-agent-tab.color-worker3 { --tab-color: var(--c-worker3); }
+.box-agent-tab.color-worker4 { --tab-color: var(--c-worker4); }
+
+.box > .agent-layer-stack,
+.box > .box1-overlay,
+.box > .box2-page-stage,
+.box > .box3-result-stage,
+.box > .dual-layers,
+.box > .tune-layer {
+  top: 38px;
+}
+
+#box2 > .chat-in-box2 {
+  position: absolute;
+  inset: 38px 0 0;
+  z-index: 20;
+  width: auto;
+  height: auto !important;
+  min-height: 0 !important;
+  flex: none !important;
+  border: 0;
+  border-radius: 0;
+}
+
+#box2 > .chat-in-box2 .chat-mod-platz {
+  display: none;
+}
+
+.box1-agent-answers {
+  flex: 1 1 auto;
+  min-height: 90px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: #14161a;
+}
+
+.box1-answer-pane {
+  height: 100%;
+  padding: 8px;
+  overflow-y: auto;
+}
+
+.box1-answer-entry {
+  margin-bottom: 7px;
+  padding: 8px 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-card);
+}
+
+.box1-answer-meta {
+  margin-bottom: 4px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.box1-answer-text {
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#box1-layer-live > .box1-placeholder {
+  display: none;
+}
+
 /* Pro Agent ein Layer in Box 1/2/3 — Klick zeigt Layer N */
 .agent-layer-stack {
   position: absolute;
