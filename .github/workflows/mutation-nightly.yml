@@ -13,7 +13,7 @@ env:
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
   PYTHONDONTWRITEBYTECODE: "1"
   PIP_CACHE_DIR: ${{ github.workspace }}/.cache/pip
-  CACHE_SEED: v2
+  CACHE_SEED: v3
 
 jobs:
   mutation-and-rank:
@@ -35,8 +35,23 @@ jobs:
           path: .venv
           key: ${{ runner.os }}-${{ env.CACHE_SEED }}-venv-mut-py3.12-${{ hashFiles('pyproject.toml', 'requirements/ci-dev.txt') }}
 
+      - name: Verify cached venv
+        if: steps.cache-venv.outputs.cache-hit == 'true'
+        id: verify-venv
+        run: |
+          set -euo pipefail
+          if [ ! -x .venv/bin/python ]; then
+            echo "broken=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::venv cache hit but .venv/bin/python missing — reinstalling"
+            rm -rf .venv
+            exit 0
+          fi
+          echo "broken=false" >> "$GITHUB_OUTPUT"
+          .venv/bin/python -c "import gnom_hub,pytest; print('venv cache hit ok', gnom_hub.__version__)"
+          .venv/bin/python -m pip install --prefer-binary --no-deps -e .
+
       - name: Cache pip downloads
-        if: steps.cache-venv.outputs.cache-hit != 'true'
+        if: steps.cache-venv.outputs.cache-hit != 'true' || steps.verify-venv.outputs.broken == 'true'
         uses: actions/cache@v4
         with:
           path: ${{ env.PIP_CACHE_DIR }}
@@ -47,17 +62,11 @@ jobs:
             ${{ runner.os }}-${{ env.CACHE_SEED }}-pipdl-
 
       - name: Create venv + install
-        if: steps.cache-venv.outputs.cache-hit != 'true'
+        if: steps.cache-venv.outputs.cache-hit != 'true' || steps.verify-venv.outputs.broken == 'true'
         run: |
           python -m venv .venv
           .venv/bin/pip install --upgrade pip
           .venv/bin/pip install --prefer-binary -e ".[dev]"
-          .venv/bin/pip install --prefer-binary 'mutmut==2.4.5' toml
-
-      - name: Refresh editable on cache hit
-        if: steps.cache-venv.outputs.cache-hit == 'true'
-        run: |
-          .venv/bin/pip install --prefer-binary --no-deps -e .
           .venv/bin/pip install --prefer-binary 'mutmut==2.4.5' toml
 
       - name: Fast mutation check (must kill all)
