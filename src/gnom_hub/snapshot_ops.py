@@ -39,6 +39,25 @@ def _worst_validation(worker_outputs: list | None) -> dict[str, Any] | None:
     return worst
 
 
+def _flex_has_open_clarify(pipeline: Any) -> bool:
+    """True when Flex Box 1 already shows an open coordinator/clarify question."""
+    desk = getattr(pipeline, "flex_desk", None)
+    if desk is None:
+        return False
+    open_fn = getattr(desk, "open_questions", None)
+    questions = open_fn() if callable(open_fn) else []
+    for q in questions or []:
+        if isinstance(q, dict):
+            agent = str(q.get("agent_id") or "").strip().lower()
+            task = str(q.get("task_id") or "").strip().lower()
+        else:
+            agent = str(getattr(q, "agent_id", "") or "").strip().lower()
+            task = str(getattr(q, "task_id", "") or "").strip().lower()
+        if agent == "coordinator" or task == "clarify":
+            return True
+    return False
+
+
 def _deliverable_ok(st: Any) -> bool:
     """True when at least one worker body is a real deliverable, not FEHLER/stub.
 
@@ -110,7 +129,7 @@ class SnapshotOpsMixin:
     def pipeline_dict(self) -> dict[str, Any]:
         st = self.pipeline.state
         q = None
-        if st.pending_question is not None:
+        if st.pending_question is not None and not _flex_has_open_clarify(self.pipeline):
             q = {
                 "id": st.pending_question.id,
                 "text": st.pending_question.text,

@@ -328,8 +328,12 @@ def test_chat_clarify_then_continue(client: TestClient):
     # full path so clarify is reached
     r = client.post("/api/chat?sync=1&full=1", json={"text": "maybe dark mode?"})
     assert r.status_code == 200
-    assert r.json()["pipeline"]["stage"] == "clarify"
-    assert r.json()["pipeline"]["pending_question"]
+    data = r.json()
+    assert data["pipeline"]["stage"] == "clarify"
+    # Coordinator clarify lives on Flex Box 1; snapshot hides pending_question.
+    assert data["pipeline"]["pending_question"] is None
+    flex_qs = (data.get("flex_box1") or {}).get("questions") or []
+    assert any(fq.get("agent_id") == "coordinator" for fq in flex_qs)
 
     r2 = client.post("/api/clarify?sync=1", json={"option": "Schnell und einfach"})
     assert r2.status_code == 200
