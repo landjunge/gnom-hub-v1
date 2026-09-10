@@ -174,8 +174,13 @@ def scenario_s1_landing(page, run_dir: Path, log: StepLog) -> dict:
     page.keyboard.press("Enter")
     wait_brainstorm_ready(page)
     log.add("s1_brainstorm", status="ok", shot=shot(page, run_dir, "s1_02_brain"))
-    page.locator("#btn-execute").click()
-    wait_execute_done(page)
+    # Build language may auto-execute on Send. A second Execute burns budget
+    # and can hang if the first job already finished as FEHLER/done.
+    if stage_text(page) not in ("done", "clarify", "error"):
+        page.locator("#btn-execute").click()
+        wait_execute_done(page)
+    else:
+        wait_execute_done(page)
     log.add(
         "s1_execute", status="ok", stage=stage_text(page), shot=shot(page, run_dir, "s1_03_done")
     )
@@ -198,13 +203,15 @@ def scenario_s1_landing(page, run_dir: Path, log: StepLog) -> dict:
     except Exception:
         art["export_chars"] = 0
 
+    # HTML preview can replace Box 2 brainstorm text — the hard gate is
+    # an openable RESULT.html (≥800 chars), not leftover Box 2 prose.
     ok = (
-        len(_box2(page)) > 40
-        and stage_text(page) in ("done", "clarify")
-        and (panels >= 1 or len(outs) >= 1)
+        stage_text(page) in ("done", "clarify")
+        and (panels >= 1 or iframes >= 1 or len(outs) >= 1)
         and not err
-        and max_len >= 800  # real deliverable, not chrome-only "PASS"
+        and max_len >= 800
         and bool(art.get("chars", 0) >= 800)
+        and bool(art.get("has_html"))
     )
     detail = (
         f"stage={stage_text(page)} panels={panels} iframes={iframes} "

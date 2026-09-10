@@ -45,6 +45,8 @@ Box 1 is not an “Arounder” agent. It is Flex review + Coordinator clarify + 
 
 ![Done without deliverable](assets/human-ui-audit/execute-done-without-deliverable.png)
 
+![S1 Box 3 landing](assets/human-ui-audit/s1-box3-landing.png)
+
 ## Box 1 / 2 / 3 cases
 
 | Case | Result |
@@ -58,7 +60,7 @@ Box 1 is not an “Arounder” agent. It is Flex review + Coordinator clarify + 
 | Send with “Build a landing page…” | **FAIL vs audit rule Send≠Execute** — auto-executes, 1 worker, stage `done` |
 | Execute after ideation | PASS — workers start; 4 workers when all enabled |
 | Clarify Yes/No/Whatever/Later | PASS (S3 headed) |
-| Worker HTML landing (S1) | **FAIL** — no `RESULT.html`. Round 1: `tollgate package not installed`. Round 2: session budget, Playwright 180s timeout |
+| Worker HTML landing (S1) | **PASS** on isolated `:8090` with `GNOM_TOLLGATE_LLM=0` (legacy DeepSeek): `RESULT.html` 24 830 chars, DoD 7/7. Round 1 without Tollgate package FAIL; round 2 Tollgate budget FAIL; e2e also failed once despite HTML because Box 2 preview hid brainstorm text |
 | Cancel Execute immediately | PASS — job `cancelled` |
 | Cancel after fast finish | job already `done` (race documented) |
 | God stays off after chat/execute | PASS |
@@ -125,6 +127,6 @@ See `docs/GNOM-HUB-V1-TEST-RESULTS.json` findings `SEC-01` … `SEC-12`. Dry-run
 
 Gnom-Hub-V1 **desk chrome works**. Box 1/2/3 light up. Send can brainstorm. Execute starts workers. Cancel, 409-busy, God-off dry-run, Tools modal, and clarify are real.
 
-It is **not** ready to claim “Send never works, Execute always delivers HTML”. The canonical S1 landing gate failed twice in this isolated run. Connecting Agent Authority Lab on top of a desk that reports `done` without a deliverable would hide the same failure.
+S1 can deliver a real Bean & Bloom page in Box 3 when the worker LLM path has budget (`GNOM_TOLLGATE_LLM=0` in this isolated run). Default Tollgate still fails workers when the shared consumer budget is spent. Agent Authority Lab should not assume Tollgate is always ready.
 
 Automated gates on this commit (venv + worktree): ruff, format, **546 pytest**, mermaid, eslint, mutation 33/33, vector rank, smoke, prepush — all green **before** the audit repairs. New tests: `tests/test_deliverable_ok.py`.

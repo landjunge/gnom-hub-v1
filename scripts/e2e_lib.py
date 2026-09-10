@@ -85,11 +85,16 @@ def wait_brainstorm_ready(page: Any, timeout_ms: int = 180_000) -> None:
           const send = document.getElementById('btn-send');
           const ex = document.getElementById('btn-execute');
           const box2 = document.getElementById('box2-content');
+          const badge = document.getElementById('stage-badge');
+          const stage = badge ? badge.textContent.trim() : '';
           const free = send && !send.disabled && send.textContent !== '…';
           const hasBrain = box2 && box2.innerText && box2.innerText.length > 40
             && !box2.innerText.includes('Empty — send');
           const canEx = ex && !ex.disabled;
-          return free && hasBrain && canEx;
+          // Build-language Send may auto-execute; treat done/clarify/error as ready.
+          const alreadyRan = free && (stage === 'done' || stage === 'clarify'
+            || stage === 'error');
+          return alreadyRan || (free && hasBrain && canEx);
         }""",
         timeout=timeout_ms,
     )

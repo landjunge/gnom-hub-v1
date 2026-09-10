@@ -62,3 +62,10 @@ def test_snapshot_exposes_deliverable_ok():
     assert snap["pipeline"]["stage"] == "done"
     assert snap["pipeline"]["deliverable_ok"] is False
     assert snap["pipeline"]["validation"]["ok"] is False
+    rev = snap.get("flex_review") or {}
+    ids = [b.get("id") for b in (rev.get("buttons") or [])]
+    assert rev.get("active") is True
+    assert rev.get("deliverable_ok") is False
+    assert "good" not in ids
+    assert "rebuild" in ids
+    assert "Wie war" not in (rev.get("question") or "")

@@ -38,6 +38,7 @@
     {"id": "api_workspace_write_strips_traversal", "ok": true, "detail": "../../tmp/pwn.txt → data/workspace/temp/pwn.txt"},
     {"id": "e2e_s1_landing_round1", "ok": false, "detail": "tollgate package not installed; RESULT.html missing; 308 char FEHLER txt"},
     {"id": "e2e_s1_landing_round2", "ok": false, "detail": "Tollgate wired; worker budget FEHLER; Playwright wait_for_function 180s timeout"},
+    {"id": "e2e_s1_landing_legacy_deepseek", "ok": true, "detail": "GNOM_TOLLGATE_LLM=0; RESULT.html 24830 chars; iframes=5; DoD 7/7; 50.2s"},
     {"id": "e2e_s2_topic_switch", "ok": true, "detail": "round1 headed"},
     {"id": "e2e_s3_clarify", "ok": true, "detail": "round1 and round2 headed"},
     {"id": "e2e_s4_clean_then_task", "ok": true, "detail": "round1 headed"},
@@ -158,12 +159,23 @@
       "title": "start.sh warns if GNOM_TOLLGATE_LLM=1 but tollgate is not importable",
       "files": ["scripts/start.sh"],
       "notes": "Prevents silent worker FEHLER on a fresh desk"
+    },
+    {
+      "id": "R4",
+      "title": "Flex review after FEHLER does not ask Wie war's or Gut so",
+      "files": ["src/gnom_hub/flex_ops.py", "tests/test_deliverable_ok.py", "tests/test_flex_review.py"],
+      "notes": "Rebuild/rebrainstorm only when deliverable_ok is false"
+    },
+    {
+      "id": "R5",
+      "title": "S1 e2e: skip second Execute after auto-exec; pass on RESULT.html not Box 2 prose",
+      "files": ["scripts/user_scenarios_e2e.py", "scripts/e2e_lib.py", "src/gnom_hub/ui/static/parts/04-boxes.js"],
+      "notes": "Tiny ```html fences no longer hide a later full document in Box 2"
     }
   ],
   "remaining_risks": [
     "Send auto-execute on HTML/build language is unchanged (product tests + AGENTS.md still disagree)",
-    "S1 landing HTML not produced in this isolated run (Tollgate package then budget)",
-    "Flex review still asks Wie war's after FEHLER",
+    "Default Tollgate path can still starve workers (shared consumer budget); S1 PASS used GNOM_TOLLGATE_LLM=0",
     "Cooperative cancel; in-flight tools not rolled back",
     "Localhost API has no auth (trusted-desk model)",
     "Per-worker TOOL_CALL loop still unwired"

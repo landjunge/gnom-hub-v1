@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from gnom_hub.snapshot_ops import _deliverable_ok
+
 
 class FlexOpsMixin:
     """Mixin: expects Hub pipeline, warm, flex agent, snapshot."""
@@ -19,6 +21,7 @@ class FlexOpsMixin:
         outs = list(st.worker_outputs or [])
         chars = sum(len(str(o.get("result") or "")) for o in outs)
         active = stage == "done" and (chars > 80 or bool(st.worker_results))
+        ok_deliv = _deliverable_ok(st)
 
         if not active:
             return {
@@ -27,6 +30,36 @@ class FlexOpsMixin:
                 "question": "Nach einem Ergebnis fragt Flex hier nach Feedback.",
                 "buttons": [],
                 "hint": "Box 1 = Flex lernt & steuert",
+                "deliverable_ok": False,
+            }
+
+        if not ok_deliv:
+            return {
+                "active": True,
+                "title": "Flex · kein Deliverable",
+                "question": (
+                    "Kein gültiges Ergebnis. Worker hat FEHLER gemeldet — "
+                    "nicht bewerten. Key, Tollgate oder Budget prüfen, dann neu bauen."
+                ),
+                "buttons": [
+                    {
+                        "id": "rebrainstorm",
+                        "label": "Nochmal Brainstorm",
+                        "action": "brainstorm",
+                        "prompt": (
+                            "Bitte nochmal brainstormen: wie wird das Ergebnis besser? "
+                            "Kurz, max 6 Zeilen. Danach frage, ob ich neu bauen soll."
+                        ),
+                    },
+                    {
+                        "id": "rebuild",
+                        "label": "Nochmal bauen",
+                        "action": "execute",
+                    },
+                ],
+                "hint": "Erst Ursache (Key/Tollgate/Budget), dann nochmal bauen",
+                "stats": {"workers": len(outs), "chars": chars},
+                "deliverable_ok": False,
             }
 
         qnotes = (st.quality_notes or "").strip()
@@ -121,6 +154,7 @@ class FlexOpsMixin:
             "buttons": buttons[:10],
             "hint": "Klick = lernen und/oder nächster Schritt",
             "stats": {"workers": len(outs), "chars": chars},
+            "deliverable_ok": True,
         }
 
     def apply_flex_feedback(
