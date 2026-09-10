@@ -1,0 +1,93 @@
+{
+  "ok": true,
+  "checks": {
+    "opened_8090": true,
+    "cache_v": "156",
+    "cache_ok": true,
+    "assets": {
+      "css": [
+        "http://127.0.0.1:8090/static/app.css?v=156"
+      ],
+      "js": [
+        "https://cdn.tailwindcss.com/",
+        "http://127.0.0.1:8090/static/app.js?v=156"
+      ]
+    },
+    "reused_open_start_work": true,
+    "typed_and_sent": [
+      "Noch ein Gedanke: weniger Lärm, mehr Platz am Rand.",
+      "Dritter Gedanke: nur nachdenken, nichts starten."
+    ],
+    "stage_api": "brainstorm",
+    "stage_brainstorm": true,
+    "overflow": {
+      "overflowY": "scroll",
+      "clientHeight": 145,
+      "scrollHeight": 323,
+      "natural": true,
+      "canExceed": true
+    },
+    "overflow_ok": true,
+    "copy_keep_ok": true,
+    "compact_ok": true,
+    "flex_ask_card": true,
+    "card_padding": {
+      "top": "6px",
+      "right": "7px",
+      "bottom": "6px",
+      "left": "7px",
+      "gap": "4px"
+    },
+    "card_font": "12px",
+    "card_box": {
+      "w": 494,
+      "h": 71
+    },
+    "box1_text": "Rückfragen und Entscheidungen\n\nDer Plan ist bereit. Möchtest du die Arbeit jetzt starten?\n\nflex · plan\n\nJa, Arbeit starten\nSpäter",
+    "buttons": [
+      "Ja, Arbeit starten",
+      "Später"
+    ],
+    "ja_visible_not_clicked": true,
+    "start_work_open": true,
+    "start_work": {
+      "question_id": "q-eaf36a1ebe",
+      "job_id": "0bace5a0c251",
+      "task_id": "plan",
+      "agent_id": "flex",
+      "component": "start_work",
+      "text": "Der Plan ist bereit. Möchtest du die Arbeit jetzt starten?",
+      "options": [
+        "Ja, Arbeit starten",
+        "Später"
+      ],
+      "status": "open",
+      "answer": null
+    },
+    "worker_n": 0,
+    "no_worker_results": true,
+    "jobs_busy": {},
+    "fail_reason": "",
+    "shots": [
+      "chat-copy-keep.png",
+      "flex-ask-compact.png"
+    ],
+    "measured": {
+      "overflowY": "scroll",
+      "clientHeight": 145,
+      "scrollHeight": 323,
+      "chatLines": 10,
+      "hasCopy": true,
+      "hasKeep": true,
+      "copyKeepSameLine": true,
+      "flexAskHidden": false
+    }
+  },
+  "api_posts": [
+    "POST http://127.0.0.1:8090/api/agents/enable-all",
+    "POST http://127.0.0.1:8090/api/agents/enable-all",
+    "POST http://127.0.0.1:8090/api/chat",
+    "POST http://127.0.0.1:8090/api/chat"
+  ],
+  "did_not_click_ja": true
+}
