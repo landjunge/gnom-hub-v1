@@ -100,7 +100,7 @@ Full inventory: see agent report in session notes. Status key: works / partial /
 3. **With Tollgate wired:** S1 still produced no HTML (budget / Protect classified as `GNOM_MAX_BUDGET_USD`). E2E waited 180s.
 4. **`stage=done` is not “fertig mit Ergebnis”.** `_finish` clears `error`. Box 3 DoD can be score 0 / FEHLER while the badge says `done`.
 5. Worker 3/4 are **on** by default; several docs say off.
-6. Per-worker `TOOL_CALL` loop is **not wired** on Hub boot (`WorkerAgent` built with `tools=None`).
+6. Per-worker `TOOL_CALL` loop was not wired on Hub boot (`tools=None` overwrite). **Fixed** on this branch.
 7. Localhost API has **no auth**. `POST /api/god-mode`, `/api/tools/call`, `/api/chat?full=1` bypass the buttons (trusted local desk model).
 8. Plugins are unsandboxed. Playwright / `file_read` / `install_tool` skip God-Mode. `workspace/write` **is** jailed (`Path(name).name`).
 9. God-Mode is process-global; does not persist across restart (safe). Chat cannot enable it.

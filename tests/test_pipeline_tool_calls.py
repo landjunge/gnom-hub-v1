@@ -59,6 +59,15 @@ def test_snapshot_exposes_tool_calls_for_ui():
     h.pipeline.tools = tools
     if hasattr(h, "tools"):
         h.tools = tools
+    # Wired TOOL_CALL loop would hit a live LLM; prefetch must still record.
+    for w in h.pipeline._workers.values():
+        w.llm = None
+    if getattr(h.pipeline, "coordinator", None) is not None:
+        h.pipeline.coordinator.llm = None
+    if getattr(h.pipeline, "brainstorm", None) is not None:
+        h.pipeline.brainstorm.llm = None
+    if getattr(h.pipeline, "flex", None) is not None:
+        h.pipeline.flex.llm = None
     h.pipeline.brainstorm_turn("Need https://example.org/x for the page")
     st = h.pipeline.execute()
     assert any(c.get("name") == "web_fetch" for c in (st.tool_calls or [])), st.tool_calls
@@ -67,3 +76,25 @@ def test_snapshot_exposes_tool_calls_for_ui():
     calls = pipe.get("tool_calls") or []
     assert any(c.get("name") == "web_fetch" for c in calls), calls
     assert all("ok" in c for c in calls)
+
+
+def test_hub_wires_tools_into_worker_agents():
+    """Hub boot must pass ToolRegistry into WorkerAgent, not leave tools=None."""
+    h = Hub()
+    assert h.tools is not None
+    assert h.pipeline.tools is h.tools
+    for wid in ("worker1", "worker2", "worker3", "worker4"):
+        w = h.pipeline._workers[wid]
+        assert w.tools is h.tools, f"{wid}.tools is {w.tools!r}"
+
+
+def test_late_tools_assignment_updates_workers():
+    """pipe.tools = registry must reach workers (prefetch-only assignment was a bug)."""
+    bus = EventBus()
+    pipe = Pipeline(bus)
+    assert pipe.worker1.tools is None
+    tools = _mock_web_fetch_registry()
+    pipe.tools = tools
+    assert pipe.tools is tools
+    assert pipe.worker1.tools is tools
+    assert pipe.worker4.tools is tools

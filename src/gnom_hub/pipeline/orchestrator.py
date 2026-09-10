@@ -42,15 +42,24 @@ class Orchestrator:
         self.llm = llm_manager
         self.agents = agent_manager or AgentManager(bus)
         self.memory_store = memory
-        self.tools = tools  # ToolRegistry — agents call tools via agent_bridge
+        self._tools = tools  # ToolRegistry — workers + prefetch/short-circuits
         self._state = PipelineState()
         self._clarified_once = False
         self.cancel_check: Callable[[], bool] | None = None
         self.plan_mode: str = "default"
-        self.tools: Any | None = None  # ToolRegistry from Hub (optional)
         self._stage_t0: float | None = None
         self._stage_name: str | None = None
         self._build_roles()
+
+    @property
+    def tools(self) -> Any | None:
+        return self._tools
+
+    @tools.setter
+    def tools(self, value: Any | None) -> None:
+        self._tools = value
+        for w in getattr(self, "_workers", {}).values():
+            w.tools = value
 
     def _check_cancel(self) -> None:
         fn = self.cancel_check

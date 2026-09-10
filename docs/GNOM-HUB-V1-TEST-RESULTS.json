@@ -105,7 +105,7 @@
       "id": "CODE-01",
       "title": "Per-worker TOOL_CALL loop not wired on Hub boot",
       "severity": "medium",
-      "evidence": "Orchestrator sets tools=None before _build_roles; hub.py sets pipe.tools later",
+      "evidence": "Was: Orchestrator set tools=None before _build_roles. Fixed: tools property syncs WorkerAgent; tests/test_pipeline_tool_calls.py",
       "live_test_needed": false
     },
     {
@@ -171,6 +171,12 @@
       "title": "S1 e2e: skip second Execute after auto-exec; pass on RESULT.html not Box 2 prose",
       "files": ["scripts/user_scenarios_e2e.py", "scripts/e2e_lib.py", "src/gnom_hub/ui/static/parts/04-boxes.js"],
       "notes": "Tiny ```html fences no longer hide a later full document in Box 2"
+    },
+    {
+      "id": "R6",
+      "title": "Wire ToolRegistry into WorkerAgent on Hub boot and late pipe.tools assignment",
+      "files": ["src/gnom_hub/pipeline/orchestrator.py", "tests/test_pipeline_tool_calls.py"],
+      "notes": "Removed self.tools=None overwrite; property setter updates worker1–4"
     }
   ],
   "remaining_risks": [
@@ -178,6 +184,6 @@
     "Default Tollgate path can still starve workers (shared consumer budget); S1 PASS used GNOM_TOLLGATE_LLM=0",
     "Cooperative cancel; in-flight tools not rolled back",
     "Localhost API has no auth (trusted-desk model)",
-    "Per-worker TOOL_CALL loop still unwired"
+    "Worker TOOL_CALL loop can add LLM rounds; prefetch remains the auto path"
   ]
 }

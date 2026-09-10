@@ -70,5 +70,5 @@ Default **off**. Only `POST /api/god-mode` or `GNOM_GOD_MODE_AUTO=1`. Agents can
 
 1. AGENTS.md / CODE_ANALYSIS: no auto-execute on HTML after brainstorm. Code: `_wants_auto_execute` does.
 2. CODE_ANALYSIS: Worker 3/4 default off. Code: all four on (`manager.py`, `enable_all`).
-3. HUB_ARCHITECTURE: workers call tools with `TOOL_CALL`. Hub builds `WorkerAgent` with `tools=None`, then sets `pipeline.tools` later — prefetch/short-circuits work; the per-worker TOOL_CALL loop is not wired on boot.
+3. HUB_ARCHITECTURE: workers call tools with `TOOL_CALL`. Fixed on this branch: Orchestrator no longer zeroes `tools` after `__init__`; assigning `pipe.tools` also updates WorkerAgent. Prefetch remains the auto path.
 4. Flex preset dropdown is disabled leftover chrome.
