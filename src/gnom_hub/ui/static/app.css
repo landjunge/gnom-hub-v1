@@ -1692,6 +1692,11 @@ body.worker-fs-open {
   padding: 4px 8px;
   cursor: pointer;
 }
+.flex-ask-btn.is-on {
+  outline: 2px solid var(--text, #d8dbe0);
+  outline-offset: 1px;
+  background: var(--bg-card, #1e1f24);
+}
 .flex-ask-free { display: flex; gap: 6px; }
 .flex-ask-free input {
   flex: 1;

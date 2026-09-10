@@ -50,6 +50,23 @@ def test_flex_answer_start_work_polls_job_like_execute():
         assert "flexShowsCoordinator" in src
 
 
+def test_flex_box1_text_multi_select_later_are_answerable():
+    """text/free_text: field+submit; multi_select: pick then send; later without options."""
+    part = Path("src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
+    app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
+    for src in (part, app):
+        body = src.split("function renderFlexBox1", 1)[1].split("function applySnapshot", 1)[0]
+        assert 'comp === "free_text" || comp === "text"' in body
+        assert 'className = "flex-ask-free"' in body
+        assert 'inp.type = "text"' in body
+        assert 'comp === "multi_select"' in body
+        assert "picked.slice()" in body
+        assert "picked.indexOf" in body
+        assert 'comp === "later"' in body
+        assert '"Später"' in body
+        assert "addLaterIfMissing" in body
+
+
 def test_tool_drill_s6_plugins_forced():
     h = Hub()
     r = run_forced_tool_scenario(h.tools, "Tool drill S6 plugins", bus=h.bus)

@@ -159,7 +159,23 @@
       meta.className = "flex-ask-meta muted";
       meta.textContent = String(q.agent_id || "") + " · " + String(q.task_id || "");
       card.appendChild(meta);
-      if (q.component === "free_text") {
+      const comp = String(q.component || "text").toLowerCase();
+      const opts = Array.isArray(q.options) ? q.options.slice() : [];
+      function optionIsLater(opt) {
+        const low = String(opt || "").trim().toLowerCase();
+        return (
+          low === "later" ||
+          low === "später" ||
+          low === "spaeter" ||
+          low.indexOf("später") === 0 ||
+          low.indexOf("later") === 0
+        );
+      }
+      function addLaterIfMissing(list) {
+        if (!list.some(optionIsLater)) list.push("Später");
+        return list;
+      }
+      if (comp === "free_text" || comp === "text") {
         const row = document.createElement("div");
         row.className = "flex-ask-free";
         const inp = document.createElement("input");
@@ -169,14 +185,55 @@
         const send = document.createElement("button");
         send.type = "button";
         send.textContent = "Senden";
-        send.addEventListener("click", function () {
-          answerFlexQuestion(q, inp.value);
+        function sendText() {
+          const val = String(inp.value || "").trim();
+          if (!val) return;
+          answerFlexQuestion(q, val);
+        }
+        send.addEventListener("click", sendText);
+        inp.addEventListener("keydown", function (ev) {
+          if (ev.key === "Enter") {
+            ev.preventDefault();
+            sendText();
+          }
         });
         row.appendChild(inp);
         row.appendChild(send);
         card.appendChild(row);
+      } else if (comp === "multi_select") {
+        const picked = [];
+        const btns = document.createElement("div");
+        btns.className = "flex-ask-btns";
+        opts.forEach(function (opt) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "flex-ask-btn";
+          btn.textContent = String(opt);
+          btn.addEventListener("click", function () {
+            const label = String(opt);
+            const i = picked.indexOf(label);
+            if (i >= 0) {
+              picked.splice(i, 1);
+              btn.classList.remove("is-on");
+            } else {
+              picked.push(label);
+              btn.classList.add("is-on");
+            }
+          });
+          btns.appendChild(btn);
+        });
+        const send = document.createElement("button");
+        send.type = "button";
+        send.className = "flex-ask-btn";
+        send.textContent = "Senden";
+        send.addEventListener("click", function () {
+          if (!picked.length) return;
+          answerFlexQuestion(q, picked.slice());
+        });
+        btns.appendChild(send);
+        card.appendChild(btns);
       } else {
-        const opts = Array.isArray(q.options) ? q.options : [];
+        if (comp === "later" || !opts.length) addLaterIfMissing(opts);
         const btns = document.createElement("div");
         btns.className = "flex-ask-btns";
         opts.forEach(function (opt) {
