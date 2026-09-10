@@ -760,10 +760,43 @@ html, body {
   /* nur Quadrat-Rahmen, kein Name */
   border: 1px solid var(--box-agent-color, var(--border));
   border-radius: 0;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   overflow: hidden;
   transition: border-color 0.2s ease;
+}
+
+.box-region-title {
+  grid-row: 1;
+  grid-column: 1;
+  z-index: 8;
+  margin: 0;
+  padding: 8px 10px 6px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text);
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.region-empty {
+  margin: 10px 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.box > .agent-layer-stack,
+.box > .box1-overlay,
+.box > .box2-page-stage,
+.box > .box3-result-stage,
+.box > .dual-layers,
+.box > .tune-layer,
+.box > .region-empty {
+  grid-row: 2;
+  grid-column: 1;
+  min-height: 0;
 }
 
 /* Pro Agent ein Layer in Box 1/2/3 — Klick zeigt Layer N */
