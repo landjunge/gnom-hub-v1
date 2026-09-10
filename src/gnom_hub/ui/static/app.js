@@ -5714,10 +5714,9 @@
       if (stage === "brainstorm") {
         appendChat(
           "system",
-          "Brainstorm — bei klarer Bau-Anweisung startet die Pipeline von selbst; "
-            + "sonst fragt Brainstorm (z.B. „Soll ich umsetzen?“). Antwort: ja / ok / plan erstellen."
+          "Brainstorm — Send bleibt Dialog. Umsetzen: Arbeit starten oder Ja in Box 1."
         );
-        toast("Brainstorm · ja/ok = umsetzen, oder harter Bau-Befehl = sofort", "ok");
+        toast("Send = sprechen · Arbeit starten / Ja in Box 1 = Arbeit", "ok");
       } else if (stage === "done") {
         const okDeliverable = snap.pipeline && snap.pipeline.deliverable_ok;
         if (okDeliverable) {

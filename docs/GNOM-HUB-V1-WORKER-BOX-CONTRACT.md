@@ -46,7 +46,7 @@ Chat (`#chat-mod`) is **not** a box. Per-agent chat layers live under the three 
 
 Allowed short-circuits in `AGENTS.md`: tool drill, live browser nav, go-only (`mach das` / `ja` / `execute` after a prior task).
 
-**Code is broader:** `_wants_auto_execute` also fires on HTML/build language (`baue`, `landing page`, `todo app`, …). Flex `maybe_request_execute` can fire from Send. Desk toast documents this.
+**Code is broader:** `_wants_auto_execute` also fires on HTML/build language (`baue`, `landing page`, `todo app`, …). Flex `maybe_request_execute` can fire from Send. Desk toast does not claim Send auto-executes.
 
 `POST /api/chat?full=1`, `/api/reexecute`, `/api/workers/{id}/rerun`, `/api/tools/call`, `/api/mcp`, Telegram `/do` bypass the Execute button.
 

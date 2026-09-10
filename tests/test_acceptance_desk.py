@@ -19,6 +19,20 @@ def test_ui_hosts_include_dod_checklist():
     assert 'id="box3-tool-strip"' in html
 
 
+def test_send_toast_does_not_claim_build_auto_executes():
+    """Send = talk; Arbeit starten / Ja in Box 1 = work."""
+    part = Path("src/gnom_hub/ui/static/parts/03-chat-jobs-ops.js").read_text(encoding="utf-8")
+    app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
+    stale = "harter Bau-Befehl = sofort"
+    assert stale not in part
+    assert stale not in app
+    assert "Pipeline von selbst" not in part
+    assert "Pipeline von selbst" not in app
+    toast = "Send = sprechen · Arbeit starten / Ja in Box 1 = Arbeit"
+    assert toast in part
+    assert toast in app
+
+
 def test_tool_drill_s6_plugins_forced():
     h = Hub()
     r = run_forced_tool_scenario(h.tools, "Tool drill S6 plugins", bus=h.bus)
