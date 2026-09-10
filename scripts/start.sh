@@ -28,6 +28,22 @@ if not st.key_has_deepseek:
     print("  note: no DeepSeek key yet — edit personal WS User/Key.txt")
 PY
 
+python - <<'PY'
+import os
+from gnom_hub.stack import via_tollgate
+
+if via_tollgate():
+    try:
+        import tollgate  # noqa: F401
+    except ImportError:
+        print("WARNING: GNOM_TOLLGATE_LLM=1 but the tollgate package is not installed.")
+        print("  Workers will return FEHLER (kein Deliverable).")
+        print("  Fix: pip install -e ../tollgate   or   GNOM_TOLLGATE_LLM=0")
+    url = (os.getenv("TOLLGATE_URL") or "").strip()
+    if url:
+        print(f"  Tollgate HTTP: {url}")
+PY
+
 echo "Gnom-Hub v1 → http://${HOST}:${PORT}/"
 echo "  work=hub · Key/DB/selected HTML=WS-gnom-hub-v1"
 exec python -m gnom_hub.main --host "$HOST" --port "$PORT"
