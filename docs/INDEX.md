@@ -90,6 +90,8 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 | Doc | Keywords |
 |-----|----------|
 | [BUG_HUNT_TEAM.md](BUG_HUNT_TEAM.md) | orchestrator, cancel, team, bug, hunt, can, god, jobs, mode, telegram |
+| [GNOM-HUB-V1-HUMAN-UI-AUDIT.md](GNOM-HUB-V1-HUMAN-UI-AUDIT.md) | nicht, execute, funktioniert, send, box, api, main, nur, worker, auf |
+| [GNOM-HUB-V1-WORKER-BOX-CONTRACT.md](GNOM-HUB-V1-WORKER-BOX-CONTRACT.md) | worker, box, nicht, flex, schreiben, agent, chat, darf, kein, nur |
 | [GSC_CHECKLIST.md](GSC_CHECKLIST.md) | github, https, landjunge, tollgate, html, gnom, hub, checklist, gsc, sitemap |
 | [MEMORY_FRESHNESS.md](MEMORY_FRESHNESS.md) | freshness, memory, sync, vector, warm, hot, write, fact, hit, index |
 | [PIPELINE_RELIABILITY.md](PIPELINE_RELIABILITY.md) | pipeline, reliability, clarify, timeout, cancel, later, busy, prefetch, tests, tool |
@@ -124,6 +126,8 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 - [ESLINT_OVERRIDE_STRATEGIES.md](ESLINT_OVERRIDE_STRATEGIES.md) — Flat Config — Override Strategies
 - [ESLINT_PLUGIN_INTEGRATION.md](ESLINT_PLUGIN_INTEGRATION.md) — Flat Config — Plugin Integration
 - [GITHUB_HOLDER_3.10.md](GITHUB_HOLDER_3.10.md) — GitHub holder summary — Gnom-Hub 3.10.x
+- [GNOM-HUB-V1-HUMAN-UI-AUDIT.md](GNOM-HUB-V1-HUMAN-UI-AUDIT.md) — Gnom-Hub-V1 Human-UI-Audit
+- [GNOM-HUB-V1-WORKER-BOX-CONTRACT.md](GNOM-HUB-V1-WORKER-BOX-CONTRACT.md) — Gnom-Hub-V1 Worker-Box-Vertrag
 - [GSC_CHECKLIST.md](GSC_CHECKLIST.md) — Google Search Console — Indexing checklist (Tollgate + Gnom-Hub)
 - [HUB_ARCHITECTURE.md](HUB_ARCHITECTURE.md) — Gnom-Hub — exact architecture overview
 - [INSTALL_SIMPLE.md](INSTALL_SIMPLE.md) — Install — keep it simple
