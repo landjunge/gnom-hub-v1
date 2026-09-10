@@ -174,13 +174,9 @@ def scenario_s1_landing(page, run_dir: Path, log: StepLog) -> dict:
     page.keyboard.press("Enter")
     wait_brainstorm_ready(page)
     log.add("s1_brainstorm", status="ok", shot=shot(page, run_dir, "s1_02_brain"))
-    # Build language may auto-execute on Send. A second Execute burns budget
-    # and can hang if the first job already finished as FEHLER/done.
-    if stage_text(page) not in ("done", "clarify", "error"):
-        page.locator("#btn-execute").click()
-        wait_execute_done(page)
-    else:
-        wait_execute_done(page)
+    # Send never Execute. User must click Arbeit starten / Execute.
+    page.locator("#btn-execute").click()
+    wait_execute_done(page)
     log.add(
         "s1_execute", status="ok", stage=stage_text(page), shot=shot(page, run_dir, "s1_03_done")
     )

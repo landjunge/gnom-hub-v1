@@ -594,22 +594,15 @@ def test_coordinator_html_plan_prefers_full_page():
 
 
 def test_flex_execute_on_explicit_command():
-    """User says 'execute' after a real task → Flex triggers full run."""
+    """User says 'execute' after a real task → Flex asks in Box 1, no workers yet."""
     bus = EventBus()
-    events: list[tuple[str, object]] = []
-    bus.on("pipeline.flex_execute", lambda d: events.append(("flex_execute", d)))
-    bus.on("pipeline.auto_execute", lambda d: events.append(("auto_execute", d)))
     pipe = Pipeline(bus)
-    # Pure ideation — must NOT auto-execute on first turn
     pipe.brainstorm_turn("Ideen zu einer Checklisten-App, nur Brainstorm bitte")
     assert pipe.state.stage == PipelineStage.brainstorm
     st = pipe.brainstorm_turn("execute")
-    # Product: bare "execute" after a real task is go_only auto_execute (may skip flex_execute event)
-    assert any(n == "auto_execute" for n, _ in events) or any(
-        n == "flex_execute" for n, _ in events
-    )
-    assert st.stage in (PipelineStage.done, PipelineStage.clarify, PipelineStage.work)
-    # Flex may already have spoken on prior turn; go_only path does not require a new flex line
+    assert st.stage == PipelineStage.brainstorm
+    assert not st.worker_results
+    assert any(q.component == "start_work" for q in pipe.flex_desk.open_questions())
 
 
 def test_flex_execute_refuses_bare_execute_without_task():
@@ -623,12 +616,11 @@ def test_flex_execute_refuses_bare_execute_without_task():
 
 def test_flex_execute_on_hard_build_order():
     bus = EventBus()
-    seen: list = []
-    bus.on("pipeline.flex_execute", lambda d: seen.append(d))
     pipe = Pipeline(bus)
     st = pipe.brainstorm_turn("Build a landing page for Bean Shop. Full HTML with hero and footer.")
-    assert st.stage == PipelineStage.done or st.worker_results
-    assert seen or st.mode == "execute" or st.stage == PipelineStage.done
+    assert st.stage == PipelineStage.brainstorm
+    assert not st.worker_results
+    assert any(q.component == "start_work" for q in pipe.flex_desk.open_questions())
 
 
 def test_flex_contributes_each_brainstorm_turn():
@@ -652,9 +644,8 @@ def test_flex_execute_line_not_double_with_contribute():
     pipe.brainstorm_turn("Ideen zu einer Checklisten-App, nur Brainstorm bitte")
     st = pipe.brainstorm_turn("execute")
     flex_turns = [t for t in st.brainstorm_turns if t.get("role") == "flex"]
-    # Last flex line should be Execute message, not contribute
     assert flex_turns
-    assert any("Execute" in str(t.get("text") or "") for t in flex_turns)
+    assert any("Arbeit jetzt starten" in str(t.get("text") or "") for t in flex_turns)
 
 
 def test_flex_pipeline_injects_wishes_into_requirements():

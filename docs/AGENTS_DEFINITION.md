@@ -56,11 +56,14 @@ User-Extra-Prompt aus der Karte wird **angehängt**, ersetzt die Code-Rolle **ni
 
 Flex ist **kein** freier Companion-Preset mehr. Er ist **fest verdrahtet**, **nicht togglebar**, **kein Preset-Wechsel**, Rolle **nicht über UI änderbar**.
 
-#### Drei unveränderliche Jobs
+Flex ist der deutschsprachige Gesprächsführer in **Box 1 (Rückfragen und Entscheidungen)**. Er vermittelt zwischen Nutzer, Coordinator und Workern. **Kommunikation, keine Autorität.**
+
+#### Unveränderliche Jobs
 
 1. **Wünsche speichern** – nur was der User schreibt, landet dauerhaft in der DB  
 2. **Andere Agenten nachziehen** – wenn Brainstorm/Coordinator/Worker Anweisungen vergessen, schiebt Flex Fakten und offene Aufgaben nach  
-3. **Für den User handeln** – im Brainstorm mitschreiben und Execute anstoßen
+3. **Box 1 führen** – Rückfragen entgegennehmen, zusammenfassen, auf geprüfte UI-Komponenten abbilden, Antworten zurückgeben  
+4. **Nicht Execute** – Flex stößt keine Arbeit an. Er darf fragen: „Der Plan ist bereit. Möchtest du die Arbeit jetzt starten?“
 
 #### Was Flex speichern darf
 
@@ -87,24 +90,40 @@ Wenn andere abweichen / vergessen
   → an Coordinator / Workers (nudge), klar und kurz
 
 Execute
-  → Flex darf Execute auslösen (oder User sagt „Execute“ = Trigger)
-  → nur wenn: klare Aufgabe + User-Wünsche erfüllt werden sollen
-  → kein wildes Auto-Execute bei jedem Chat
+  → nur nach gültiger Nutzerbestätigung in Box 1 **oder** Klick „Arbeit starten“
+  → zentrale Zustandslogik (`execute()` / `/api/execute` / `/api/flex/answer` start_work)
+  → Flex setzt weder stage=done noch startet Worker
 ```
+
+#### Box 1 — sichere Komponenten (Whitelist)
+
+`text` · `yes_no` · `later` · `single_select` · `multi_select` · `free_text` · `start_work`
+
+Jede Frage/Antwort trägt `job_id`, `task_id`, `agent_id`, `question_id`.  
+Worker-/Coordinator-Text wird **nie** als HTML/JS gerendert (`textContent`, `sanitize_box1_text`).
+
+#### Flex darf nicht
+
+- selbst Execute starten, Tools freigeben, God-Mode ändern
+- Sicherheitsentscheidungen treffen oder Nutzerantworten erfinden
+- kritische Bestätigungen überspringen
+- einen Auftrag als erfolgreich/fertig erklären
+- beliebiges HTML/JavaScript in Box 1 ausgeben
 
 #### Feste Regeln (Code, nicht verhandelbar)
 
 1. Source of truth = geschriebener User-Text, nicht Agent-Fantasie  
 2. Flex-Prompt und Rolle **nur im Code**, nicht aus UI-Tune  
 3. Clear/Reset löscht nicht Flex-Wünsche (außer explizit)  
-4. Execute nur bei klarer Aufgabe + Wünschen  
-5. Sprache DE/EN wie der User schreibt  
+4. Execute nur außerhalb von Flex (Hub-Zustand)  
+5. Sprache DE wie der User in Box 1; Chat-Layer darf DE/EN mischen  
 6. **TTS:** default an
 
 #### Code-API (Ziel)
 
 - `store_wish` / `list_open_tasks` / `nudge_context` (Memory, garbage-filter bleibt)  
-- Hooks: nach User-Turn → Flex absorb; vor Worker → Flex nudge; Flex setzt optional `execute` flag  
+- `FlexDesk.ask` / `FlexDesk.answer` / `offer_start_work`  
+- Hooks: nach User-Turn → Flex absorb; vor Worker → Flex nudge; **kein** `execute` flag  
 - UI: Flex-Karte nur Anzeige — kein Toggle, kein Prompt-Edit, kein Preset
 
 #### Legacy (entfernen / wirkungslos)

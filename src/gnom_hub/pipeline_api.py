@@ -29,7 +29,7 @@ class PipelineApiMixin:
                 self.pipeline.plan_mode = getattr(self, "plan_mode", "default") or "default"
                 self.pipeline.start(text)
             else:
-                # May auto-execute when user intent is clearly “build/do it”
+                # Send = brainstorm + Flex Box 1. Execute only via execute() / start_work yes.
                 self.pipeline.plan_mode = getattr(self, "plan_mode", "default") or "default"
                 self.pipeline.brainstorm_turn(text)
             if self.pipeline.state.error:
@@ -75,6 +75,65 @@ class PipelineApiMixin:
             if self.pipeline.state.error:
                 self.last_error = self.pipeline.state.error
             return self.snapshot()
+
+    def flex_ask(
+        self,
+        *,
+        agent_id: str,
+        text: str,
+        job_id: str = "",
+        task_id: str = "",
+        component: str = "yes_no",
+        options: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Coordinator/Worker structured ask → Flex Box 1. Never Execute."""
+        desk = getattr(self.pipeline, "flex_desk", None)
+        if desk is None:
+            raise TypeError("flex desk missing")
+        if not desk.job_id:
+            desk.bind_job(job_id or getattr(self.pipeline.state, "flex_job_id", "") or "desk")
+        out = desk.ask(
+            agent_id=agent_id,
+            text=text,
+            job_id=job_id or desk.job_id,
+            task_id=task_id,
+            component=component,
+            options=options,
+        )
+        sync = getattr(self.pipeline, "_sync_flex_state", None)
+        if callable(sync):
+            sync()
+        snap = self.snapshot()
+        snap["flex_ask"] = out
+        return snap
+
+    def flex_answer(
+        self,
+        question_id: str,
+        value: object,
+        *,
+        job_id: str = "",
+        sync: bool = True,
+    ) -> dict[str, Any]:
+        """User answer in Box 1. Start-work yes → central execute(), not Flex."""
+        desk = getattr(self.pipeline, "flex_desk", None)
+        if desk is None:
+            raise TypeError("flex desk missing")
+        out = desk.answer(question_id, value, job_id=job_id)
+        sync_st = getattr(self.pipeline, "_sync_flex_state", None)
+        if callable(sync_st):
+            sync_st()
+        if out.get("ok") and out.get("wants_start_work"):
+            if sync:
+                snap = self.execute_sync()
+            else:
+                snap = self.execute_async()
+            if isinstance(snap, dict):
+                snap["flex_answer"] = out
+            return snap
+        snap = self.snapshot()
+        snap["flex_answer"] = out
+        return snap
 
     def resume_deferred_clarify(self, index: int = -1) -> dict[str, Any]:
         """Re-open a Later-parked clarify (sync, no workers until answered)."""

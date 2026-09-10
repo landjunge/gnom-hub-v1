@@ -781,6 +781,88 @@
     renderCards();
   }
 
+  async function answerFlexQuestion(q, value) {
+    if (!q || !q.question_id) return;
+    try {
+      const snap = await api("POST", "/api/flex/answer", {
+        question_id: q.question_id,
+        job_id: q.job_id || "",
+        value: value,
+      });
+      applySnapshot(snap);
+      if (snap.flex_answer && snap.flex_answer.wants_start_work) {
+        toast("Arbeit starten", "ok");
+      }
+    } catch (err) {
+      toast("Antwort nicht übernommen", "error");
+    }
+  }
+
+  function renderFlexBox1(box) {
+    const host = document.getElementById("flex-ask");
+    const list = document.getElementById("flex-ask-list");
+    if (!host || !list) return;
+    const qs = (box && Array.isArray(box.questions) ? box.questions : []).filter(
+      function (q) {
+        return q && q.question_id && q.text;
+      }
+    );
+    if (!qs.length) {
+      host.hidden = true;
+      list.textContent = "";
+      return;
+    }
+    host.hidden = false;
+    const title = document.getElementById("flex-ask-title");
+    if (title) title.textContent = (box && box.title) || "Rückfragen und Entscheidungen";
+    list.textContent = "";
+    qs.forEach(function (q) {
+      const card = document.createElement("div");
+      card.className = "flex-ask-card";
+      const p = document.createElement("p");
+      p.className = "flex-ask-text";
+      p.textContent = String(q.text || "");
+      card.appendChild(p);
+      const meta = document.createElement("p");
+      meta.className = "flex-ask-meta muted";
+      meta.textContent = String(q.agent_id || "") + " · " + String(q.task_id || "");
+      card.appendChild(meta);
+      if (q.component === "free_text") {
+        const row = document.createElement("div");
+        row.className = "flex-ask-free";
+        const inp = document.createElement("input");
+        inp.type = "text";
+        inp.maxLength = 200;
+        inp.placeholder = "Antwort…";
+        const send = document.createElement("button");
+        send.type = "button";
+        send.textContent = "Senden";
+        send.addEventListener("click", function () {
+          answerFlexQuestion(q, inp.value);
+        });
+        row.appendChild(inp);
+        row.appendChild(send);
+        card.appendChild(row);
+      } else {
+        const opts = Array.isArray(q.options) ? q.options : [];
+        const btns = document.createElement("div");
+        btns.className = "flex-ask-btns";
+        opts.forEach(function (opt) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "flex-ask-btn";
+          btn.textContent = String(opt);
+          btn.addEventListener("click", function () {
+            answerFlexQuestion(q, opt);
+          });
+          btns.appendChild(btn);
+        });
+        card.appendChild(btns);
+      }
+      list.appendChild(card);
+    });
+  }
+
   function applySnapshot(snap) {
     lastSnapshot = snap || null;
     if (!snap) return;
@@ -1113,6 +1195,10 @@
     }
 
     renderBox3Workers(p);
+
+    if (typeof renderFlexBox1 === "function") {
+      renderFlexBox1(snap.flex_box1 || { questions: p.flex_questions || [] });
+    }
 
     if (p.pending_question && p.pending_question.text) {
       const qOpts =

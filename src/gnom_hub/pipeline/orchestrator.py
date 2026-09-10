@@ -9,6 +9,7 @@ start() still runs full pipeline (tests / Telegram /do).
 from __future__ import annotations
 
 import time
+import uuid
 from collections.abc import Callable
 from typing import Any
 
@@ -22,6 +23,7 @@ from gnom_hub.agents.roles import (
     WorkerAgent,
 )
 from gnom_hub.core.event_bus import EventBus
+from gnom_hub.flex_desk import FlexDesk
 from gnom_hub.pipeline.models import PipelineStage, PipelineState
 
 
@@ -49,7 +51,38 @@ class Orchestrator:
         self.plan_mode: str = "default"
         self._stage_t0: float | None = None
         self._stage_name: str | None = None
+        self.flex_desk = FlexDesk()
         self._build_roles()
+
+    def _ensure_flex_job(self) -> str:
+        jid = (self._state.flex_job_id or self.flex_desk.job_id or "").strip()
+        if not jid:
+            jid = uuid.uuid4().hex[:12]
+        self.flex_desk.bind_job(jid)
+        self._state.flex_job_id = jid
+        return jid
+
+    def _sync_flex_state(self) -> None:
+        self._state.flex_job_id = self.flex_desk.job_id
+        self._state.flex_questions = self.flex_desk.to_list()
+
+    def _offer_start_work(self, *, reason: str) -> None:
+        """Ask in Box 1. Never starts Execute — Hub/API execute is the authority."""
+        self._ensure_flex_job()
+        asked = self.flex_desk.offer_start_work(task_id="plan")
+        self._sync_flex_state()
+        self.bus.emit(
+            "pipeline.flex_ask",
+            {
+                "reason": reason,
+                "question_id": asked.get("question_id"),
+                "component": "start_work",
+            },
+        )
+        line = "Flex: Der Plan ist bereit. Möchtest du die Arbeit jetzt starten?"
+        if not any(str(t.get("text") or "") == line for t in (self._state.brainstorm_turns or [])):
+            self._state.brainstorm_turns.append({"role": "flex", "text": line})
+            self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
 
     @property
     def tools(self) -> Any | None:
@@ -239,7 +272,10 @@ class Orchestrator:
                 prev_turns = list(self._state.brainstorm_turns or [])
                 prev_notes = self._state.brainstorm_notes or ""
                 prev_task = (self._state.user_text or "").strip()
+                prev_flex_job = self._state.flex_job_id
                 self._state = PipelineState(user_text=text, mode="brainstorm")
+                self._state.flex_job_id = prev_flex_job
+                self._sync_flex_state()
                 if _exec_only and prev_turns:
                     # Resolve last real task (browser/HTML/long), not the go-phrase
                     resolved = _pick_execute_task(prev_turns, fallback=prev_task)
@@ -260,7 +296,7 @@ class Orchestrator:
 
             self._clarified_once = False
 
-            # Go-only with a real prior task → execute immediately (no brainstorm LLM)
+            # Go-only with a real prior task → Flex asks in Box 1, does not Execute
             if _exec_only and (self._state.brainstorm_notes or "").strip():
                 task = _pick_execute_task(
                     list(self._state.brainstorm_turns or []),
@@ -272,15 +308,20 @@ class Orchestrator:
                     self._state.brainstorm_turns.append(
                         {
                             "role": "brainstorm",
-                            "text": f"OK — setze um: {task[:200]}",
+                            "text": f"Plan liegt vor: {task[:200]}",
                         }
                     )
                     self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
+                    self._offer_start_work(reason="go_only")
+                    self._set_stage(PipelineStage.brainstorm)
                     self.bus.emit(
-                        "pipeline.auto_execute",
-                        {"reason": "go_only", "text": task[:120]},
+                        "pipeline.brainstorm_ready",
+                        {
+                            "can_execute": True,
+                            "turns": len(self._state.brainstorm_turns),
+                        },
                     )
-                    return self.execute()
+                    return self._state
 
             self._check_cancel()
             self.bus.emit("pipeline.stage", {"stage": "memory"})
@@ -303,7 +344,6 @@ class Orchestrator:
             self._state.brainstorm_turns.append({"role": "brainstorm", "text": notes})
             self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
 
-            flex_exec: dict | None = None
             if self.flex.enabled:
                 absorbed: list[str] = []
                 try:
@@ -313,35 +353,20 @@ class Orchestrator:
                         "pipeline.warning",
                         {"stage": "flex_absorb", "error": str(exc)},
                     )
+                flex_line: str | None = None
                 try:
-                    flex_exec = self.flex.maybe_request_execute(
+                    flex_line = self.flex.brainstorm_contribute(
                         text,
-                        self._state.brainstorm_turns,
+                        notes,
                         mem,
+                        absorbed=absorbed,
                     )
                 except Exception as exc:  # noqa: BLE001
                     self.bus.emit(
                         "pipeline.warning",
-                        {"stage": "flex_execute", "error": str(exc)},
+                        {"stage": "flex_chat", "error": str(exc)},
                     )
-                    flex_exec = None
-                flex_line: str | None = None
-                if flex_exec and flex_exec.get("message"):
-                    flex_line = str(flex_exec["message"])
-                else:
-                    try:
-                        flex_line = self.flex.brainstorm_contribute(
-                            text,
-                            notes,
-                            mem,
-                            absorbed=absorbed,
-                        )
-                    except Exception as exc:  # noqa: BLE001
-                        self.bus.emit(
-                            "pipeline.warning",
-                            {"stage": "flex_chat", "error": str(exc)},
-                        )
-                        flex_line = None
+                    flex_line = None
                 if flex_line:
                     self._state.brainstorm_turns.append({"role": "flex", "text": flex_line})
                     self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
@@ -364,23 +389,9 @@ class Orchestrator:
                     "turns": len(self._state.brainstorm_turns),
                 },
             )
-            should_exec = False
-            exec_reason = "context"
-            if self.flex.enabled and flex_exec and flex_exec.get("execute"):
-                should_exec = True
-                exec_reason = f"flex:{flex_exec.get('reason') or 'request'}"
-            # Always honor hard auto-execute (browser nav, clear build orders)
-            # even when Flex is on but did not request execute.
-            if not should_exec and _wants_auto_execute(text, self._state.brainstorm_turns):
-                should_exec = True
-                exec_reason = "context"
-            if should_exec and self._state.brainstorm_notes.strip():
-                self._check_cancel()
-                self.bus.emit(
-                    "pipeline.auto_execute",
-                    {"reason": exec_reason, "text": text[:120]},
-                )
-                return self.execute()
+            if _wants_auto_execute(text, self._state.brainstorm_turns):
+                self._offer_start_work(reason="plan_ready")
+                self._sync_flex_state()
         except PipelineCancelled:
             return self._state
         except Exception as exc:  # noqa: BLE001

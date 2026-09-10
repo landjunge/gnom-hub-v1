@@ -66,3 +66,6 @@ class PipelineState:
     # Compact tool calls for desk (live + after done)
     # [{tool, ok, mode, agent?, scenario?}, ...]
     tool_log: list[dict] = field(default_factory=list)
+    # Flex Box 1 question bus (job-bound; Flex has no execute authority)
+    flex_job_id: str = ""
+    flex_questions: list[dict] = field(default_factory=list)

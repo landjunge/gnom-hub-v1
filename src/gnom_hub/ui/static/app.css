@@ -1668,6 +1668,41 @@ body.worker-fs-open {
   max-width: none;
 }
 
+/* Flex Box 1 questions — textContent only, no worker HTML */
+.flex-ask {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  margin: 8px 0;
+  border: 1px solid color-mix(in srgb, var(--flex, #a78bfa) 35%, var(--border, #333));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-panel, #14161a) 92%, #a78bfa);
+}
+.flex-ask-list { display: flex; flex-direction: column; gap: 10px; }
+.flex-ask-card { display: flex; flex-direction: column; gap: 6px; }
+.flex-ask-text { margin: 0; color: var(--text, #d8dbe0); }
+.flex-ask-meta { margin: 0; font-size: 11px; }
+.flex-ask-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.flex-ask-btn {
+  border: 1px solid var(--border, #333);
+  background: var(--bg-elev, #222);
+  color: var(--text, #d8dbe0);
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.flex-ask-free { display: flex; gap: 6px; }
+.flex-ask-free input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg, #121316);
+  color: var(--text, #d8dbe0);
+  border: 1px solid var(--border, #333);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
 /* Flex feedback panel — in Box 1 under placeholder */
 .flex-review {
   display: flex;

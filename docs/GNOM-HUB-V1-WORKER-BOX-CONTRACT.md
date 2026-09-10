@@ -40,7 +40,7 @@ Chat (`#chat-mod`) is **not** a box. Per-agent chat layers live under the three 
 
 | Action | API | Agents | Workers? |
 |--------|-----|--------|----------|
-| **Send** | `POST /api/chat` (`full` omitted) | Memory recall, Brainstorm, Flex absorb/chat | **Default no.** Yes if a short-circuit fires |
+| **Send** | `POST /api/chat` (`full` omitted) | Memory recall, Brainstorm, Flex absorb/chat + Box 1 start_work ask | **No** (except tool-drill / live-browser short-circuits, not Flex) |
 | **Execute** | `POST /api/execute` | Distill → [clarify halt] → Flex → Coordinator plan → workers sequential | Yes, after distill (and after clarify unless Later) |
 | **Send+Exec** | Send then Execute | Both | Yes |
 

@@ -110,6 +110,21 @@ class FlexFeedbackBody(BaseModel):
     note: str = ""
 
 
+class FlexAskBody(BaseModel):
+    agent_id: str = Field(min_length=1)
+    text: str = Field(min_length=1)
+    job_id: str = ""
+    task_id: str = ""
+    component: str = "yes_no"
+    options: list[str] | None = None
+
+
+class FlexAnswerBody(BaseModel):
+    question_id: str = Field(min_length=1)
+    value: Any = ""
+    job_id: str = ""
+
+
 class GodModeBody(BaseModel):
     enabled: bool
     reason: str = "api"
@@ -312,6 +327,32 @@ def create_app() -> FastAPI:
             )
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
+
+    @app.post("/api/flex/ask")
+    def flex_ask(body: FlexAskBody) -> dict[str, Any]:
+        """Worker/Coordinator structured question → Flex Box 1."""
+        return get_hub().flex_ask(
+            agent_id=body.agent_id,
+            text=body.text,
+            job_id=body.job_id,
+            task_id=body.task_id,
+            component=body.component,
+            options=body.options,
+        )
+
+    @app.post("/api/flex/answer")
+    def flex_answer(body: FlexAnswerBody, sync: bool = Query(False)) -> dict[str, Any]:
+        """User answer in Box 1. Start-work confirmation may run central execute()."""
+        out = get_hub().flex_answer(
+            body.question_id,
+            body.value,
+            job_id=body.job_id,
+            sync=sync,
+        )
+        ans = out.get("flex_answer") if isinstance(out, dict) else None
+        if isinstance(ans, dict) and ans.get("ok") is False:
+            raise HTTPException(status_code=400, detail=ans.get("error") or "flex answer failed")
+        return out
 
     @app.get("/api/system")
     def system_get() -> dict[str, Any]:

@@ -379,7 +379,7 @@ class JobsMixin:
             if full:
                 self.pipeline.start(text)
             else:
-                # brainstorm_turn may auto-execute from context
+                # brainstorm_turn: Flex may ask start_work; does not Execute
                 self.pipeline.brainstorm_turn(text)
 
         return self._start_job("brainstorm" if not full else "pipeline", _runner)

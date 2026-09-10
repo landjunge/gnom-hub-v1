@@ -148,6 +148,8 @@ class SnapshotOpsMixin:
             "plan_html_score": getattr(st, "plan_html_score", None),
             "validation": _worst_validation(list(st.worker_outputs or [])),
             "deliverable_ok": _deliverable_ok(st),
+            "flex_job_id": getattr(st, "flex_job_id", "") or "",
+            "flex_questions": list(getattr(st, "flex_questions", None) or []),
         }
 
     def memory_dict(self) -> dict[str, Any]:
@@ -241,6 +243,11 @@ class SnapshotOpsMixin:
                 self.flex_review_panel()
                 if hasattr(self, "flex_review_panel")
                 else {"active": False, "buttons": []}
+            ),
+            "flex_box1": (
+                self.pipeline.flex_desk.snapshot()
+                if getattr(self.pipeline, "flex_desk", None) is not None
+                else {"title": "Rückfragen und Entscheidungen", "questions": []}
             ),
             "trace": list(self.trace[-40:]),
             "ui_lang": self.ui_lang,

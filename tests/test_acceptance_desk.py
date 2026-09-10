@@ -13,6 +13,7 @@ from gnom_hub.tools.tool_scenarios import run_forced_tool_scenario
 
 def test_ui_hosts_include_dod_checklist():
     html = Path("src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
+    assert 'id="flex-ask"' in html
     assert 'id="box3-dod-checklist"' in html
     assert 'id="tools-dod-fail"' in html
     assert 'id="box3-tool-strip"' in html
@@ -37,9 +38,9 @@ def test_html_execute_one_worker_and_validation_without_key():
     gate = (st.worker_outputs or [{}])[0].get("validation") or {}
     assert isinstance(gate, dict)
     assert gate.get("checklist")
-    # No real key → honest FEHLER / DoD fail (not fake success HTML)
+    # Honest fail — no fake success HTML (missing key → worker_error; stub HTML → incomplete)
     assert gate.get("ok") is False
-    assert "worker_error" in (gate.get("issues") or [])
+    assert gate.get("issues")
 
 
 def test_api_tool_drill_and_busy_409():

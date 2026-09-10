@@ -103,6 +103,15 @@
         <div id="box1-content" class="box1-overlay box-body box1-info">
           <div class="info-layer is-active" data-info-layer="live" id="box1-layer-live">
             <p class="box1-placeholder">Agent-Klick → Info hier (Box 1). Rahmenfarbe = Modul.</p>
+            <aside
+              id="flex-ask"
+              class="flex-ask box1-flex-ask"
+              hidden
+              aria-label="Rückfragen und Entscheidungen"
+            >
+              <h2 class="tip-title" id="flex-ask-title">Rückfragen und Entscheidungen</h2>
+              <div id="flex-ask-list" class="flex-ask-list"></div>
+            </aside>
             <!-- Flex feedback lives in Box 1 (not right of chat) -->
             <aside
               id="flex-review"
@@ -356,9 +365,9 @@
             type="button"
             id="btn-execute"
             class="btn-execute h-8 shrink-0 rounded-md border border-gnom-ok/40 bg-gnom-elev px-3 text-xs font-semibold text-gnom-text transition hover:border-gnom-ok hover:text-gnom-ok disabled:cursor-not-allowed disabled:opacity-40"
-            title="Run distill + workers from brainstorm (Ctrl+Enter)"
+            title="Arbeit starten — distill + workers (Ctrl+Enter)"
             disabled
-          >Execute</button>
+          >Arbeit starten</button>
           <button
             type="button"
             id="btn-send-exec"
