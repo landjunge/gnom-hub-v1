@@ -3213,3 +3213,10 @@ a:focus-visible {
 #box1-layer-live .box1-placeholder {
   flex: 0 0 auto;
 }
+#box1-layer-live .box1-placeholder[hidden] {
+  display: none !important;
+}
+#box1-layer-live .box1-flex-ask:not([hidden]) {
+  flex: 1 1 auto;
+  min-height: 0;
+}

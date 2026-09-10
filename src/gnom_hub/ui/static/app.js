@@ -845,12 +845,15 @@
         return q && q.question_id && q.text;
       }
     );
+    const placeholder = document.querySelector("#box1-layer-live .box1-placeholder");
     if (!qs.length) {
       host.hidden = true;
       list.textContent = "";
+      if (placeholder) placeholder.hidden = false;
       return;
     }
     host.hidden = false;
+    if (placeholder) placeholder.hidden = true;
     const title = document.getElementById("flex-ask-title");
     if (title) title.textContent = (box && box.title) || "Rückfragen und Entscheidungen";
     list.textContent = "";
@@ -6051,10 +6054,12 @@
     if (text) {
       await sendChat();
     }
-    // After brainstorm, run execute if possible
-    if (!chatBusy) {
-      await runExecute();
-    }
+    toast(
+      uiLang === "de"
+        ? "Send fertig. Arbeit starten oder Ja in Box 1."
+        : "Send done. Press Arbeit starten or Yes in Box 1.",
+      "ok"
+    );
   }
 
   function appendChat(who, text) {

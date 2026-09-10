@@ -73,6 +73,28 @@ def test_flex_answer_start_work_polls_job_like_execute():
         assert "flexShowsCoordinator" in src
 
 
+def test_send_plus_exec_does_not_auto_run_execute():
+    part = Path("src/gnom_hub/ui/static/parts/03-chat-jobs-ops.js").read_text(encoding="utf-8")
+    app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
+    html = Path("src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
+    for src in (part, app):
+        body = src.split("async function sendAndExecute()", 1)[1].split("function appendChat", 1)[0]
+        assert "await sendChat()" in body
+        assert "await runExecute()" not in body
+        assert "Arbeit starten oder Ja in Box 1" in body
+    assert 'id="btn-send-exec"' in html
+    assert "hidden" in html.split('id="btn-send-exec"', 1)[1][:400]
+
+
+def test_flex_ask_hides_box1_placeholder():
+    part = Path("src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
+    app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
+    for src in (part, app):
+        body = src.split("function renderFlexBox1", 1)[1].split("function applySnapshot", 1)[0]
+        assert "placeholder.hidden = true" in body
+        assert "placeholder.hidden = false" in body
+
+
 def test_tts_one_voice_per_agent():
     part = Path("src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
     app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")

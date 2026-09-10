@@ -2149,10 +2149,12 @@
     if (text) {
       await sendChat();
     }
-    // After brainstorm, run execute if possible
-    if (!chatBusy) {
-      await runExecute();
-    }
+    toast(
+      uiLang === "de"
+        ? "Send fertig. Arbeit starten oder Ja in Box 1."
+        : "Send done. Press Arbeit starten or Yes in Box 1.",
+      "ok"
+    );
   }
 
   function appendChat(who, text) {
