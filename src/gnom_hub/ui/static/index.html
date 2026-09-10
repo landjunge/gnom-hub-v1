@@ -50,6 +50,7 @@
           <span id="skills-badge" class="tools-badge" role="button" tabindex="0" title="Playbook skills — click">Skills: —</span>
           <span id="tools-badge" class="tools-badge" role="button" tabindex="0" title="Tool calls this run — click for history">Tools: 0</span>
           <span id="stage-badge" class="stage-badge" title="Pipeline stage">idle</span>
+          <span id="job-timer" class="job-timer" hidden title="Job duration">0.0s</span>
         </div>
       </div>
       <!-- All header buttons: one module, horizontal, centered under head -->
@@ -86,6 +87,19 @@
         </button>
       </div>
     </header>
+
+    <div
+      id="pipeline-busy-banner"
+      class="pipeline-busy-banner"
+      hidden
+      role="status"
+      aria-live="polite"
+    >
+      <span id="pipeline-busy-text" class="pipeline-busy-text">Pipeline busy</span>
+      <button type="button" id="btn-cancel-busy" class="btn-cancel-busy" title="Cancel running job">
+        Cancel
+      </button>
+    </div>
 
     <!-- 8 agent cards: equal width, full row = boxes -->
     <section id="agent-cards" class="agent-cards" aria-label="Agents"></section>

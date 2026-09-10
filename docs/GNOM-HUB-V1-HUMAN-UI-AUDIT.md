@@ -154,7 +154,7 @@ Code- und API-Lage. Headed Maus/Tastatur **nicht** ausgeführt (kein CDP).
 
 1. **Send startet Worker.** Bau-Heuristik, Tool-Drill, Live-Browser, Go-only, Flex-Flag, `POST /api/chat?full=1`. Tests verlangen das. Widerspricht der Audit-Soll-Regel und `docs/CODE_ANALYSIS_FOR_AI.md` („No auto-execute“). `AGENTS.md` erlaubt drei Short-Circuits; die Heuristik ist breiter (`baue`, `landing`, `website`).
 2. **Kein Arounder.** Box 1 ist Hilfe/Clarify/Flex, nicht das benannte Modul.
-3. **Busy-Banner und Job-Timer tot.** CSS+JS vorhanden, HTML-IDs fehlen. Live-HTML bestätigt.
+3. **Busy-Banner und Job-Timer tot.** CSS+JS vorhanden, HTML-IDs fehlten. **Repariert** in dieser Branch: Test `test_ui_hosts_pipeline_busy_banner_and_job_timer` war rot, IDs in `index.html`, Test grün. Der laufende Hub auf `:8080` serviert noch den alten Stand, bis er neu geladen wird.
 4. **History/Diff/Reexec/Copy-all tot.** Handler ohne DOM.
 5. **`_action_to_dict` verlor `dry_run`.** Dry-Run-Shell wurde als live gelabelt (`tools_ops.py`). **Repariert** in dieser Branch: Test `tests/test_action_to_dict.py` war rot, dann `dry_run`/`detail`/`blocked` kopiert, Test grün.
 6. **`POST /api/god-mode` ohne Auth.** Lokal by design; Agent-TOOL_CALL kann God nicht setzen, Plugin und localhost-HTTP können.

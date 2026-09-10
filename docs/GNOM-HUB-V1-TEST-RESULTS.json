@@ -130,8 +130,8 @@
     {"id": "box1", "status": "works", "note": "help/clarify/flex; no arounder"},
     {"id": "box2", "status": "works"},
     {"id": "box3", "status": "works"},
-    {"id": "pipeline-busy-banner", "status": "unreachable"},
-    {"id": "job-timer", "status": "unreachable"},
+    {"id": "pipeline-busy-banner", "status": "works", "note": "HTML restored; needs hub reload to show on :8080"},
+    {"id": "job-timer", "status": "works", "note": "HTML restored; needs hub reload to show on :8080"},
     {"id": "flex-preset-select", "status": "placeholder"},
     {"id": "box3-dual", "status": "unreachable"},
     {"id": "result-history", "status": "unreachable"},
@@ -207,6 +207,13 @@
       "commit_intent": "fix: keep dry_run on computer tool results",
       "test": "tests/test_action_to_dict.py",
       "files": ["src/gnom_hub/tools_ops.py"]
+    },
+    {
+      "id": "R2",
+      "finding": "F3",
+      "commit_intent": "fix: restore pipeline busy banner and job timer in HTML",
+      "test": "tests/test_acceptance_desk.py::test_ui_hosts_pipeline_busy_banner_and_job_timer",
+      "files": ["src/gnom_hub/ui/static/index.html"]
     }
   ],
   "remaining_risks": [
