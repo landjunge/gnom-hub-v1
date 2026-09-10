@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from gnom_hub.agents.roles_workers import task_wants_html, worker_system_prompt
+from gnom_hub.agents.models import AgentId, AgentState
+from gnom_hub.agents.roles_workers import WorkerAgent, task_wants_html, worker_system_prompt
 from gnom_hub.core.event_bus import EventBus
+from gnom_hub.llm.types import LLMResult
 from gnom_hub.plugins.registry import ToolRegistry, ToolSpec
 from gnom_hub.tools.worker_prefetch import (
     prefetch_for_workers,
@@ -94,3 +96,69 @@ def test_prefetch_design_tools_via_registry():
     assert "color_palette" in names
     assert "html_scaffold" in names
     assert "contrast_check" in names
+
+
+def _worker_state() -> AgentState:
+    return AgentState(
+        id=AgentId.WORKER1,
+        name="Worker 1",
+        role="worker",
+        color="cyan",
+        enabled=True,
+        toggleable=True,
+    )
+
+
+class _RecordingLLM:
+    """Captures system prompts actually sent to chat()."""
+
+    def __init__(self, reply: str = "ok") -> None:
+        self.reply = reply
+        self.system_prompts: list[str] = []
+
+    def has_provider(self, name: str = "deepseek") -> bool:
+        return True
+
+    def chat(self, messages, **kwargs):
+        for m in messages:
+            if getattr(m, "role", "") == "system":
+                self.system_prompts.append(str(getattr(m, "content", "") or ""))
+        return LLMResult(content=self.reply, model="fake")
+
+
+def test_worker_run_sends_flex_ask_in_system_prompt():
+    """L1 FLEX_ASK is not just a constant — it reaches BaseAgent.ask as system."""
+    bus = EventBus()
+    llm = _RecordingLLM(reply="checklist draft")
+    w = WorkerAgent(_worker_state(), bus, llm=llm)
+    out = w.run(
+        "Write a short onboarding checklist",
+        "I need an onboarding checklist",
+        ["clear steps"],
+    )
+    assert out == "checklist draft"
+    assert llm.system_prompts
+    joined = "\n".join(llm.system_prompts)
+    assert "FLEX_ASK" in joined
+    assert "do not guess" in joined.lower()
+
+
+def test_worker_tool_loop_keeps_flex_ask_in_system():
+    """run_tool_loop must forward the worker system prompt, not drop L1."""
+    bus = EventBus()
+    llm = _RecordingLLM(reply="done")
+    tools = ToolRegistry()
+    tools.register(
+        ToolSpec(name="web_fetch", description="fetch a URL", handler=lambda **_k: {"ok": True})
+    )
+    w = WorkerAgent(_worker_state(), bus, llm=llm, tools=tools)
+    out = w.run(
+        "Write a short onboarding checklist",
+        "I need an onboarding checklist",
+        ["clear steps"],
+    )
+    assert out == "done"
+    assert llm.system_prompts
+    joined = "\n".join(llm.system_prompts)
+    assert "FLEX_ASK" in joined
+    assert "do not guess" in joined.lower()
