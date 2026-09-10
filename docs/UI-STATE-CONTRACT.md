@@ -1,56 +1,64 @@
-# UI state contract — Box 1 Flex desk
+# UI-State-Vertrag — Box 1 Flex-Desk
 
-Gnom-Hub-V1. Source of truth: `src/gnom_hub/flex_desk.py` + Hub `execute()`.
+Gnom-Hub-V1. Quelle: `src/gnom_hub/flex_desk.py`, Hub `execute()`, `flex_answer()`.
 
 ## Owners
 
-| Surface | Owner | Authority |
-|---------|--------|-----------|
-| Box 1 Rückfragen | **Flex** (`FlexDesk`) | none — communication only |
-| Execute / Arbeit starten | **Hub** `execute()` / `#btn-execute` | starts workers |
-| Box 2 | Brainstorm (+ Flex chat lines) | dialogue |
-| Box 3 | Workers | deliverables |
-| God-Mode / tools | User + API, not Flex | elevation |
+| Fläche | Owner | Autorität |
+|--------|--------|-----------|
+| Box 1 Rückfragen | **Flex** (`FlexDesk`) | keine — nur Kommunikation |
+| Execute / Arbeit starten | **Hub** `execute()` / `#btn-execute` | startet Worker |
+| Box 2 | Brainstorm (+ Flex-Chatzeilen) | Dialog |
+| Box 3 | Workers | Deliverables |
+| God-Mode / Tools | User + API, nicht Flex | Elevation |
 
-## Identifiers
+## IDs
 
-Every Box 1 question and answer binds:
+Jede Box-1-Frage und -Antwort bindet:
 
-- `job_id` — session/pipeline Flex job (not a per-Send jobs.py id unless Hub binds it)
-- `task_id` — worker/coordinator task
+- `job_id` — Flex-Job der Sitzung/Pipeline
+- `task_id` — Worker-/Coordinator-Task
 - `agent_id` — `coordinator` \| `flex` \| `worker1`–`worker4`
-- `question_id` — unique; answered or unknown ids are **stale** and rejected
+- `question_id` — eindeutig; beantwortet oder unbekannt = **stale**, abgelehnt
 
-## Allowed Box 1 components
+## Erlaubte Box-1-Komponenten
 
 `text` · `yes_no` · `later` · `single_select` · `multi_select` · `free_text` · `start_work`
 
-Unknown component → stored as `text`. Markup/JS stripped (`sanitize_box1_text`). UI uses `textContent` only.
+Unbekannt → `text`. Markup/JS weg (`sanitize_box1_text`). UI nur `textContent`.
 
 ## Send vs Arbeit starten
 
-- **Send** (`POST /api/chat`) = brainstorm + Flex may **ask** start_work. Never starts workers (except documented tool-drill / live-browser short-circuits in the orchestrator, which are not Flex).
-- **Arbeit starten** (`#btn-execute` → `POST /api/execute`) = user confirmation. Central gate.
-- Answering start_work with Ja → Hub calls `execute()`, not `FlexDesk.start_execute()` (that method raises).
+- **Send** (`POST /api/chat`) = Brainstorm. Flex darf `start_work` **fragen**. Startet keine Worker (Ausnahme: Tool-Drill / Live-Browser im Orchestrator, nicht Flex).
+- Desk-Toast nach Brainstorm: `Send = sprechen · Arbeit starten / Ja in Box 1 = Arbeit`. Kein Auto-Execute-Claim.
+- **Arbeit starten** (`#btn-execute` → `POST /api/execute`) = Nutzerbestätigung. Zentrale Gate.
+- `execute()` setzt offene Box-1-`start_work`-Fragen auf `stale`. Ein späteres Ja darf Execute nicht erneut feuern (`stale_question`).
+- Ja auf `start_work` → Hub `execute()`, nicht `FlexDesk.start_execute()` (wirft).
 
-Start-work copy (fixed):
+Start-work-Text (fest):
 
 > Der Plan ist bereit. Möchtest du die Arbeit jetzt starten?
 
-## Coordinator and workers → Flex
+## Flex-Review nach `done`
 
-- Coordinator clarify is posted to FlexDesk (`agent_id=coordinator`, `single_select`) **and** kept as `pending_question`.
-- Workers may return a `FLEX_ASK` block (`FLEX_ASK yes_no task=hero\\nFrage…`). Flex shows it in Box 1; Box 3 does not get the ask body. Pipeline pauses (`flex_wait_agent`).
-- Answering injects `User→{agent} ({task}, {question_id}): {value}` only for that agent, plus Flex-Erinnerung of standing wishes. Flex does not guess missing facts.
-- Remaining workers after a pause are stored in `flex_wait_remaining` and continue after the answer.
-- Forgotten requirements become a Box 1 `nachbesserung` yes/no ask. Ja may re-run that worker; Flex still does not Execute the whole job.
-- Checkpoint save/load restores `flex_questions` via `restore_flex_from_state()`.
-- Session-pack export/import carries `flex_job_id`, `flex_questions`, `flex_wait_*` and calls `restore_flex_from_state()` on import.
+Rebuild / HTML reparieren / mehr Interaktion: `action=start_work`. `apply_flex_feedback` ruft `offer_start_work`, **nicht** `execute()`. Gate bleibt `#btn-execute` oder Box-1-Ja.
+
+## Coordinator und Worker → Flex
+
+- Coordinator-Clarify landet in FlexDesk (`agent_id=coordinator`, `task_id=clarify`, `single_select`) **und** intern als `pending_question`.
+- Snapshot (`pipeline.pending_question`): `null`, wenn Flex Box 1 die Coordinator-Clarify schon offen zeigt. Pipeline-State behält die Frage für `/api/clarify`. Worker-Ask allein blendet sie nicht aus.
+- Worker dürfen `FLEX_ASK` zurückgeben. `parse_flex_ask` nimmt den **ersten** Block, auch nach Preamble, Markdown-Fence oder `TOOL_CALL` (case-insensitive). Box 1 zeigt die Frage; Box 3 bekommt den Ask-Body nicht. Pipeline pausiert (`flex_wait_agent`, Stage `clarify`, nicht `done`).
+- Worker-Prompt: fehlende User-Entscheidung / `FLEX_ASK` **vor** Always-Finish. Finish-the-file nur, wenn die Task spezifiziert genug ist. Nicht raten.
+- Pause speichert den **fragenden Worker plus Original-Plan-Task vorne** in `flex_wait_remaining`, Rest dahinter.
+- `Hub.flex_answer` nach Worker-Ask: `continue_after_flex_ask` — Asker mit Plan-Task, dann Rest. Kein `rerun_worker` und kein `_finish` vor dem Rest. Neue `FLEX_ASK` pausiert erneut (Stage bleibt `clarify`).
+- Antwort injiziert nur `User→{agent} ({task}, {question_id}): {value}` plus Flex-Erinnerung stehender Wünsche. Flex erfindet keine Fakten.
+- Vergessene Requirements → Box-1-`nachbesserung` Ja/Nein. Ja darf den einen Worker neu laufen; Flex Execute nicht den ganzen Job.
+- Checkpoint-Load und Session-Pack tragen `flex_job_id`, `flex_questions`, `flex_wait_*` und rufen `restore_flex_from_state()`.
 
 ## Reload
 
-`GET /api/state` → `flex_box1.questions` + `pipeline.flex_questions`. Open questions keep `job_id`. A new FlexDesk can be restored with `FlexDesk.from_list`.
+`GET /api/state` → `flex_box1.questions` + `pipeline.flex_questions`. Offene Fragen behalten `job_id`. Restore: `FlexDesk.from_list`.
 
-## Forbidden for Flex
+## Verboten für Flex
 
-No Execute, no tool grant, no God-Mode, no invented answers, no skipping confirmations, no `stage=done`, no raw HTML/JS in Box 1.
+Kein Execute, kein Tool-Grant, kein God-Mode, keine erfundenen Antworten, keine übersprungenen Bestätigungen, kein `stage=done`, kein Roh-HTML/JS in Box 1.
