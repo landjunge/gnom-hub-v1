@@ -15,9 +15,10 @@ from gnom_hub.tools.agent_bridge import (
 
 
 def test_is_live_browser_positive():
-    assert is_live_browser_task("kleinanzeigen")
     assert is_live_browser_task("https://example.com")
     assert is_live_browser_task("öffne https://x.ai im browser")
+    assert is_live_browser_task("öffne kleinanzeigen")
+    assert is_live_browser_task("navigiere zu https://www.kleinanzeigen.de")
 
 
 def test_is_live_browser_negative_content_for_page():
@@ -26,6 +27,14 @@ def test_is_live_browser_negative_content_for_page():
         "Fetch https://example.com/docs and summarize for a landing page."
     )
     assert not is_live_browser_task("Landingpage Gnom-Hub v1 mit HTML")
+
+
+def test_is_live_browser_negative_bare_site_or_domain():
+    """Bare site names / domain guesses must not auto-open a browser."""
+    assert not is_live_browser_task("kleinanzeigen")
+    assert not is_live_browser_task("github.com")
+    assert not is_live_browser_task("kleinanzeigen.de")
+    assert not is_live_browser_task("www.google.com")
 
 
 def test_resolve_browser_url_known_site():

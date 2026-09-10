@@ -99,41 +99,11 @@ def is_live_browser_task(text: str) -> bool:
             return False
         if any(k in low for k in ("baue", "build", "erstelle", "create", "implement")):
             return False
-    # known sites / short URL-only messages (desk UX: no magic verb required)
+    # URL-only line (desk UX: no extra verb). Domain guesses need a nav verb.
     if re.fullmatch(r"https?://\S+", t.strip(), re.IGNORECASE):
         return True
-    if re.fullmatch(
-        r"(?:www\.)?(?:kleinanzeigen\.de|grok\.com|x\.ai|github\.com|google\.com)(?:/\S*)?",
-        low.strip(),
-    ):
-        return True
-    if "kleinanzeigen" in low and not any(
-        k in low for k in ("baue", "landing", "html", "seite bauen")
-    ):
-        # "kleinanzeigen", "öffne kleinanzeigen", "geh auf kleinanzeigen"
-        return True
     if not any(v in low for v in _NAV_VERBS):
-        # bare domain with browser word, or short domain-only line
-        if "browser" in low and extract_urls(t):
-            return True
-        return bool(
-            len(t) < 48
-            and extract_urls(t)
-            and not any(
-                k in low
-                for k in (
-                    "bau",
-                    "html",
-                    "landing",
-                    "schreib",
-                    "code",
-                    "page",
-                    "seite",
-                    "summar",
-                    "fetch",
-                )
-            )
-        )
+        return False
     return bool(extract_urls(t) or _guess_domain(t))
 
 

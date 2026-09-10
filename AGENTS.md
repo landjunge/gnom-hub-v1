@@ -21,7 +21,7 @@ Default remains: **Brainstorm freely. Execute only when you press Execute.**
 
 Allowed short-circuits (no extra Execute click):
 1. **Tool drill** — forced real tools (S1–S7 / clear tool-test language). Never HTML team.
-2. **Live browser nav** — explicit open/navigate (or bare known site / URL-only). Not "fetch for a page".
+2. **Live browser nav** — explicit open/navigate, URL-only, or known site with a nav verb. Not "fetch for a page". Not a bare site name.
 3. **Go-only** — "mach das / execute / was ich gesagt habe" re-runs the last concrete user task.
 
 HTML landings and general builds still need clear build language / Execute.

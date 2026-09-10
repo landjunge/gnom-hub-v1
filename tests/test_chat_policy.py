@@ -12,7 +12,7 @@ def test_task_kind_tool_drill():
 
 def test_task_kind_browser_nav():
     assert task_kind("navigiere zu https://www.kleinanzeigen.de") == "browser_nav"
-    assert task_kind("kleinanzeigen") == "browser_nav"
+    assert task_kind("kleinanzeigen") != "browser_nav"
     assert task_kind("https://example.com") == "browser_nav"
 
 

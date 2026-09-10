@@ -78,9 +78,16 @@ def test_install_tool_accepts_name_alias():
 
 def test_drill_markers_force_tool_path():
     assert is_tool_drill_task("Tool drill S6 plugins")
-    assert is_tool_drill_task("install_tool dry_run playwright")
+    assert is_tool_drill_task("Tool drill S1 browser")
+    assert is_tool_drill_task("S2 shell tool")
     assert is_tool_drill_task("Agents müssen computer use tools nutzen")
+    assert is_tool_drill_task("tools testen")
     assert not is_tool_drill_task("Landingpage Gnom-Hub v1 bauen")
+    assert not is_tool_drill_task("playwright")
+    assert not is_tool_drill_task("web fetch")
+    assert not is_tool_drill_task("liste dateien")
+    assert not is_tool_drill_task("echte tools")
+    assert not is_tool_drill_task("install_tool dry_run playwright")
 
 
 def test_scenario_ids():
@@ -236,10 +243,11 @@ def test_s7_killer_writes_probe_file():
     assert "<!DOCTYPE html>" not in (out.get("summary") or "")
 
 
-def test_bare_kleinanzeigen_is_browser_nav():
+def test_bare_kleinanzeigen_is_not_browser_nav():
     from gnom_hub.tools.agent_bridge import is_live_browser_task, resolve_browser_url
 
-    assert is_live_browser_task("kleinanzeigen")
+    assert not is_live_browser_task("kleinanzeigen")
+    assert is_live_browser_task("öffne kleinanzeigen")
     assert "kleinanzeigen" in resolve_browser_url("kleinanzeigen")
     assert detect_scenario_id("kleinanzeigen screenshot speichern") == "S7_killer"
 
