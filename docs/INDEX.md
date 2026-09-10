@@ -95,6 +95,8 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 | [PIPELINE_RELIABILITY.md](PIPELINE_RELIABILITY.md) | pipeline, reliability, clarify, timeout, cancel, later, busy, prefetch, tests, tool |
 | [THREADDESK.md](THREADDESK.md) | threaddesk, gnom, chat, json, tollgate, api, drückst, execute, keine, liest |
 | [TOLLGATE.md](TOLLGATE.md) | tollgate, gnom, export, hub, bash, default, desk, gnom_tollgate_llm, client, n8n |
+| [UI-REBUILD-PLAN.md](UI-REBUILD-PLAN.md) | layer, box, modal, parts, agent, chat, gnom, gnom_hub, nicht, src |
+| [UI-STATE-CONTRACT.md](UI-STATE-CONTRACT.md) | running, hub, job, nur, send, sichtbar, arbeit, auftrag, cancelled, done |
 
 ### Root meta
 | Doc | Keywords |
@@ -150,6 +152,8 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 - [THREADDESK.md](THREADDESK.md) — Gnom-Hub v1 ← ThreadDesk
 - [TOLLGATE.md](TOLLGATE.md) — Stack: ThreadDesk · Gnom · Tollgate
 - [TOOLS_PORTFOLIO.md](TOOLS_PORTFOLIO.md) — Tools portfolio (Computer-Use + hub)
+- [UI-REBUILD-PLAN.md](UI-REBUILD-PLAN.md) — UI-Rebuild-Plan — Gnom-Hub-V1
+- [UI-STATE-CONTRACT.md](UI-STATE-CONTRACT.md) — UI-Zustandsvertrag — Gnom-Hub-V1
 - [UI_ERROR_LAYER.md](UI_ERROR_LAYER.md) — UI layer — error logic
 - [UI_QUALITY.md](UI_QUALITY.md) — UI quality · colors · stability · speed
 - [V1_SCOPE.md](V1_SCOPE.md) — Gnom-Hub – V1 Scope (final, 1.0.0)
