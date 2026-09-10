@@ -1097,7 +1097,7 @@
       btn.className =
         "flex-review-btn rounded-md border border-gnom-border bg-gnom-card px-2.5 py-1.5 " +
         "text-xs leading-tight text-gnom-text transition hover:border-gnom-flex hover:text-gnom-flex " +
-        (String(b.action || "") === "execute"
+        (String(b.action || "") === "start_work"
           ? "border-gnom-ok/50 hover:border-gnom-ok hover:text-gnom-ok "
           : String(b.action || "") === "brainstorm"
             ? "border-gnom-accent/50 hover:border-gnom-accent hover:text-gnom-accent "
@@ -1146,27 +1146,17 @@
         toast("Gelernt: " + String(res.learn_text).slice(0, 80), "ok");
       } else if (res.action === "learn") {
         toast(res.message || "Flex Feedback", "ok");
+      } else if (res.action === "start_work") {
+        toast(res.message || "Flex fragt in Box 1 — erst Ja, dann bauen", "ok");
       }
       if (res.snapshot) {
         applySnapshot(res.snapshot);
       } else if (res.flex_review) {
         applyFlexReview(res.flex_review, null);
       }
-      // Rebuild started as job
-      if (res.job && res.job.job_id && typeof pollJob === "function") {
-        setChatBusy(true);
-        try {
-          const job = await pollJob(res.job.job_id, 360000);
-          const snap = job.snapshot || (await api("GET", "/api/state"));
-          applySnapshot(snap);
-          if (typeof focusBox3 === "function") focusBox3();
-        } finally {
-          setChatBusy(false);
-        }
-      }
       if (res.action === "brainstorm" && typeof focusBox3 === "function") {
-        // Box 2 has new notes; user may hit Execute next via Flex rebuild
-        toast("Brainstorm aktualisiert — bei Bedarf „Nochmal bauen“", "ok");
+        // Box 2 has new notes; „Nochmal bauen“ asks Box 1, does not Execute
+        toast("Brainstorm aktualisiert — bei Bedarf „Nochmal bauen“ (Box 1)", "ok");
       }
     } catch (err) {
       toast("Flex Feedback: " + (err.message || err), "error");

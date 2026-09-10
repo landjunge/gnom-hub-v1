@@ -530,7 +530,7 @@
         "<h1 style=\"font-size:1.35rem;margin:0 0 .75rem;\">Vorschau — Seite unvollständig</h1>" +
         "<p style=\"line-height:1.45;margin:0 0 .75rem;color:#b8bcc4;\">" +
         "Der Worker hat die HTML-Datei abgeschnitten (oft mitten im CSS, ohne sichtbaren Inhalt). " +
-        "Unten siehst du den Quelltext. Bitte im Flex-Panel „Nochmal bauen“ oder „HTML reparieren“." +
+        "Unten siehst du den Quelltext. Bitte im Flex-Panel „Nochmal bauen“ oder „HTML reparieren“, dann in Box 1 mit Ja bestätigen." +
         "</p>" +
         "<p style=\"margin:0;font-size:.9rem;color:#8b909a;\">" +
         "Zeichen geliefert: " +

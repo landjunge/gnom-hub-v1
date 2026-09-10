@@ -318,7 +318,7 @@ def create_app() -> FastAPI:
 
     @app.post("/api/flex/feedback")
     def flex_feedback(body: FlexFeedbackBody) -> dict[str, Any]:
-        """Learn from user click and optionally re-brainstorm / re-build."""
+        """Learn from user click; rebuild asks Box 1 (Flex has no execute authority)."""
         try:
             return get_hub().apply_flex_feedback(
                 body.button_id or "",

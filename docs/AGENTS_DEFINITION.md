@@ -197,7 +197,7 @@ TTS-Checkbox für Flex/Brainstorm: default **on** (User kann stummschalten, Roll
 - [ ] User-Wunsch nach Clear HOT noch da
 - [ ] Worker ignoriert Regel → Flex schiebt nach
 - [ ] Flex schreibt im Brainstorm mit
-- [ ] Flex löst Execute aus (Flag oder „Execute“-Befehl)
+- [ ] Flex löst Execute nicht aus — nur Box 1 start_work Ja oder #btn-execute
 - [ ] TTS default on für Flex + Brainstorm
 
 ---
