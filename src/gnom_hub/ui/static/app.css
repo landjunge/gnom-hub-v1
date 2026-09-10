@@ -760,38 +760,45 @@ html, body {
   /* nur Quadrat-Rahmen, kein Name */
   border: 1px solid var(--box-agent-color, var(--border));
   border-radius: 0;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   overflow: hidden;
   transition: border-color 0.2s ease;
 }
 
-/* Each box owns its agent context; tabs stay visible while content changes. */
+/* Each box owns its agent context; tabs wrap — no scrollbar covering content. */
 .box-agent-nav {
   position: relative;
   z-index: 60;
-  flex: 0 0 38px;
+  grid-row: 1;
+  grid-column: 1;
   min-width: 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
-  padding: 5px 7px;
-  overflow-x: auto;
-  overflow-y: hidden;
+  gap: 3px;
+  padding: 4px 6px;
+  overflow: hidden;
   border-bottom: 1px solid var(--border);
   background: #15171b;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+}
+
+.box-agent-nav::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .box-agent-nav-title {
-  position: sticky;
-  left: 0;
+  position: static;
   z-index: 2;
   flex: 0 0 auto;
-  padding-right: 6px;
+  padding-right: 4px;
   color: var(--text);
   background: #15171b;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -799,8 +806,8 @@ html, body {
 .box-agent-tab {
   --tab-color: var(--accent-hi);
   flex: 0 0 auto;
-  height: 26px;
-  padding: 0 9px;
+  height: 22px;
+  padding: 0 7px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--bg-card);
@@ -836,16 +843,25 @@ html, body {
 .box > .box2-page-stage,
 .box > .box3-result-stage,
 .box > .dual-layers,
-.box > .tune-layer {
-  top: 38px;
+.box > .tune-layer,
+#box2 > .chat-in-box2 {
+  grid-row: 2;
+  grid-column: 1;
+  position: relative;
+  inset: auto;
+  top: auto;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 #box2 > .chat-in-box2 {
-  position: absolute;
-  inset: 38px 0 0;
   z-index: 20;
-  width: auto;
-  height: auto !important;
+  height: 100% !important;
   min-height: 0 !important;
   flex: none !important;
   border: 0;
@@ -857,18 +873,19 @@ html, body {
 }
 
 .box1-agent-answers {
-  flex: 1 1 auto;
-  min-height: 90px;
-  overflow: hidden;
+  flex: 0 0 auto;
+  min-height: 0;
+  overflow: visible;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: #14161a;
 }
 
 .box1-answer-pane {
-  height: 100%;
+  height: auto;
+  max-height: none;
   padding: 8px;
-  overflow-y: auto;
+  overflow: visible;
 }
 
 .box1-answer-entry {
@@ -941,31 +958,32 @@ html, body {
 
 /* Box1: Info-Platz (Agent-Klick füllt den Raum) */
 .box1-overlay {
-  position: absolute;
-  inset: 0;
   z-index: 4;
   background: var(--bg-panel);
   pointer-events: auto;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
   display: flex;
   flex-direction: column;
   padding: 10px 12px;
 }
 
 .box1-overlay .info-layer {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .box1-overlay .box1-tooltip {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  overflow: visible;
 }
 
 .box1-overlay .tip-title {
@@ -1260,19 +1278,21 @@ html, body {
   font-weight: 600;
 }
 
-/* Box 1 Info-Display: Live / Gnom layers — no scroll */
+/* Box 1 Info-Display: one outer scroller, layers stack instead of covering */
 .box1-info {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0;
-  overflow: hidden;
+  gap: 8px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .box1-info .info-layer {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .box1-info .info-layer[hidden] {
@@ -1810,7 +1830,7 @@ body.worker-fs-open {
   justify-content: flex-start;
   gap: 8px;
   padding: 10px;
-  overflow: auto;
+  overflow: visible;
   min-height: 0;
   background: color-mix(in srgb, var(--bg-panel, #14161a) 92%, #a78bfa);
   border: 1px solid color-mix(in srgb, var(--flex, #a78bfa) 35%, var(--border, #333));
@@ -1819,7 +1839,8 @@ body.worker-fs-open {
 }
 
 .flex-review.box1-flex-review {
-  max-height: min(48vh, 360px);
+  max-height: none;
+  overflow: visible;
 }
 
 .flex-review.is-active {
@@ -2611,13 +2632,14 @@ body.worker-fs-open {
 /* —— Toasts —— */
 .toast-host {
   position: fixed;
-  right: 16px;
-  bottom: 16px;
+  right: 12px;
+  top: 10px;
+  bottom: auto;
   z-index: 1000;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-width: 360px;
+  max-width: 280px;
   pointer-events: none;
 }
 
