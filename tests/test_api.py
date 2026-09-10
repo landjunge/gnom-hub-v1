@@ -292,15 +292,15 @@ def test_chat_brainstorm_then_execute(client: TestClient):
     assert data["pipeline"]["brainstorm_notes"]
     assert data["pipeline"].get("can_execute") is True
 
-    # Clear build intent → auto-execute from context (no extra Execute click)
+    # Build language on Send stays brainstorm (Send is never Execute)
     r2 = client.post(
         "/api/chat?sync=1",
         json={"text": "Build a simple landing page as one HTML file"},
     )
     assert r2.status_code == 200
     data2 = r2.json()
-    assert data2["pipeline"]["stage"] == "done"
-    assert data2["pipeline"]["worker_results"]
+    assert data2["pipeline"]["stage"] == "brainstorm"
+    assert not (data2["pipeline"].get("worker_results") or [])
 
 
 def test_manual_execute_still_works(client: TestClient):
@@ -320,13 +320,17 @@ def test_chat_full_pipeline_compat(client: TestClient):
     )
     assert r.status_code == 200
     data = r.json()
-    assert data["pipeline"]["stage"] == "done"
-    assert data["pipeline"]["worker_results"]
+    assert data["pipeline"]["stage"] == "brainstorm"
+    assert not (data["pipeline"].get("worker_results") or [])
+    r2 = client.post("/api/execute?sync=1")
+    assert r2.status_code == 200
+    assert r2.json()["pipeline"]["stage"] in ("done", "clarify", "error")
 
 
 def test_chat_clarify_then_continue(client: TestClient):
-    # full path so clarify is reached
-    r = client.post("/api/chat?sync=1&full=1", json={"text": "maybe dark mode?"})
+    r = client.post("/api/chat?sync=1", json={"text": "maybe dark mode?"})
+    assert r.status_code == 200
+    r = client.post("/api/execute?sync=1")
     assert r.status_code == 200
     assert r.json()["pipeline"]["stage"] == "clarify"
     assert r.json()["pipeline"]["pending_question"]

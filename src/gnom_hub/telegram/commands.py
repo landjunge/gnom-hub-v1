@@ -89,7 +89,10 @@ class TelegramCommandMixin:
         if cmd == "do":
             if not arg.strip():
                 return "Usage: /do <task text> (one-shot full pipeline)"
-            snap = self.chat(arg.strip(), full=True)
+            with self._pipeline_lock_obj():
+                self.pipeline.plan_mode = getattr(self, "plan_mode", "default") or "default"
+                self.pipeline.start(arg.strip())
+            snap = self.snapshot()
             p = snap["pipeline"]
             if p["stage"] == "clarify" and p.get("pending_question"):
                 q = p["pending_question"]["text"]

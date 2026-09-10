@@ -19,12 +19,13 @@
 
 Default remains: **Brainstorm freely. Execute only when you press Execute.**
 
-Allowed short-circuits (no extra Execute click):
-1. **Tool drill** — forced real tools (S1–S7 / clear tool-test language). Never HTML team.
-2. **Live browser nav** — explicit open/navigate (or bare known site / URL-only). Not "fetch for a page".
-3. **Go-only** — "mach das / execute / was ich gesagt habe" re-runs the last concrete user task.
+**Send is never Execute.** Chat / `POST /api/chat` must not start workers, tools,
+browser, or installs. Work starts only via **Arbeit starten** (`POST /api/execute`)
+or a still-open Box-1 `confirm_execute` bound to the same `job_id`.
 
-HTML landings and general builds still need clear build language / Execute.
+Former short-circuits (tool drill, live browser, go-only, build language, `?full=1`)
+are removed from the Send path. Telegram `/do` and the `pipeline_do` tool still run
+the full pipeline as explicit execute surfaces, not as desk Send.
 
 ## Coding rules (mandatory)
 

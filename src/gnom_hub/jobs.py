@@ -169,7 +169,6 @@ class JobsMixin:
             else:
                 job["status"] = "done"
                 job["stage"] = sv
-                # brainstorm jobs may auto-execute from context → stage done
                 if name in ("execute", "pipeline", "worker_rerun", "brainstorm") and sv == "done":
                     self._capture_workspace_outputs()
                     if name in ("execute", "pipeline", "brainstorm"):
@@ -371,18 +370,15 @@ class JobsMixin:
         }
 
     def chat_async(self, text: str, *, full: bool = False) -> dict[str, Any]:
-        """Async: brainstorm turn by default; full=True runs entire pipeline."""
+        """Async Send: always a brainstorm turn. ``full`` does not execute."""
         self.memory.set_query_hint(text)
+        _ = full
 
         def _runner() -> None:
             self.pipeline.plan_mode = getattr(self, "plan_mode", "default") or "default"
-            if full:
-                self.pipeline.start(text)
-            else:
-                # brainstorm_turn may auto-execute from context
-                self.pipeline.brainstorm_turn(text)
+            self.pipeline.brainstorm_turn(text)
 
-        return self._start_job("brainstorm" if not full else "pipeline", _runner)
+        return self._start_job("brainstorm", _runner)
 
     def execute_async(self) -> dict[str, Any]:
         """Async execute after brainstorm."""

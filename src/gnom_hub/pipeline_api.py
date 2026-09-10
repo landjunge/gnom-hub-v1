@@ -11,8 +11,8 @@ class PipelineApiMixin:
     """Mixin extracted from Hub — pure move."""
 
     def chat(self, text: str, *, full: bool = False) -> dict[str, Any]:
-        """Synchronous chat. Default: brainstorm turn. full=True: whole pipeline."""
-        return self.chat_sync(text, full=full)
+        """Synchronous chat. Send is always a brainstorm turn. ``full`` is ignored."""
+        return self.chat_sync(text, full=False)
 
     def _pipeline_lock_obj(self) -> Any:
         import threading
@@ -25,20 +25,12 @@ class PipelineApiMixin:
         self.last_error = None
         self.memory.set_query_hint(text)
         with self._pipeline_lock_obj():
-            if full:
-                self.pipeline.plan_mode = getattr(self, "plan_mode", "default") or "default"
-                self.pipeline.start(text)
-            else:
-                # May auto-execute when user intent is clearly “build/do it”
-                self.pipeline.plan_mode = getattr(self, "plan_mode", "default") or "default"
-                self.pipeline.brainstorm_turn(text)
+            # Desk Send never runs the pipeline. ``full`` is a no-op.
+            _ = full
+            self.pipeline.plan_mode = getattr(self, "plan_mode", "default") or "default"
+            self.pipeline.brainstorm_turn(text)
             if self.pipeline.state.error:
                 self.last_error = self.pipeline.state.error
-            elif self.pipeline.state.stage.value == "done":
-                self._capture_workspace_outputs()
-                self._remember_execute_export()
-                if full:
-                    self.maybe_auto_pack()
             return self.snapshot()
 
     def execute_sync(self) -> dict[str, Any]:

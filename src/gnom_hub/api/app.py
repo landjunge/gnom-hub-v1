@@ -575,7 +575,7 @@ def create_app() -> FastAPI:
         sync: bool = Query(False),
         full: bool = Query(False),
     ) -> dict[str, Any]:
-        """Default: brainstorm turn only. full=1 runs whole pipeline (tests/Telegram)."""
+        """Desk Send: brainstorm only. ``full`` is ignored (never Execute)."""
         text = body.text.strip()
         if sync:
             # Sync path also blocks on lock — refuse if another job holds it

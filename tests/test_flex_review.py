@@ -31,7 +31,9 @@ def test_flex_review_active_after_done(tmp_path: Path, monkeypatch):
     app = create_app()
     with TestClient(app) as c:
         # Full stub pipeline
-        r = c.post("/api/chat?sync=1&full=1", json={"text": "Build a tiny landing page HTML"})
+        r = c.post("/api/chat?sync=1", json={"text": "Build a tiny landing page HTML"})
+        assert r.status_code == 200
+        r = c.post("/api/execute?sync=1")
         assert r.status_code == 200
         rev = c.get("/api/flex/review").json()
         # May be done with workers

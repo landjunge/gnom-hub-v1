@@ -103,10 +103,13 @@ class ToolsOpsMixin:
             ToolSpec(
                 name="pipeline_do",
                 description="Run full pipeline (brainstorm+execute) with a task",
-                handler=lambda text: {
-                    "stage": self.chat(str(text), full=True)["pipeline"]["stage"],
-                    "results": list(self.pipeline.state.worker_results[:3]),
-                },
+                handler=lambda text: (
+                    self.pipeline.start(str(text)),
+                    {
+                        "stage": self.pipeline.state.stage.value,
+                        "results": list(self.pipeline.state.worker_results[:3]),
+                    },
+                )[1],
                 input_schema={
                     "type": "object",
                     "properties": {"text": {"type": "string"}},

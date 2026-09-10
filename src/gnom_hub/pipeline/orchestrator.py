@@ -190,34 +190,7 @@ class Orchestrator:
                 self._fail("Empty user text")
                 return self._state
 
-            # Tool drill first (S7 etc. may mention kleinanzeigen without pure-nav intent)
-            from gnom_hub.tools.agent_bridge import is_live_browser_task
-            from gnom_hub.tools.tool_scenarios import is_tool_drill_task
-
-            if (
-                is_tool_drill_task(text)
-                and self.tools is not None
-                and self._try_tool_drill_short_circuit(text)
-            ):
-                return self._state
-
-            # Live browser nav: skip brainstorm LLM chatter — open the URL now
-            if is_live_browser_task(text) and self.tools is not None:
-                self._state = PipelineState(user_text=text, mode="execute")
-                self._state.brainstorm_turns = [
-                    {"role": "user", "text": text},
-                    {
-                        "role": "brainstorm",
-                        "text": "Live-Browser-Auftrag erkannt — öffne die URL mit Tools.",
-                    },
-                ]
-                self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
-                self.bus.emit(
-                    "pipeline.auto_execute",
-                    {"reason": "browser_nav", "text": text[:120]},
-                )
-                return self.execute()
-
+            # Send never starts tools, browser, or workers. Execute is a separate call.
             continuing = (
                 self._state.mode == "brainstorm"
                 and self._state.stage == PipelineStage.brainstorm
@@ -250,28 +223,6 @@ class Orchestrator:
                     self._state.user_text = text
 
             self._clarified_once = False
-
-            # Go-only with a real prior task → execute immediately (no brainstorm LLM)
-            if _exec_only and (self._state.brainstorm_notes or "").strip():
-                task = _pick_execute_task(
-                    list(self._state.brainstorm_turns or []),
-                    fallback=(self._state.user_text or "").strip(),
-                )
-                if task and not _is_go_only(task):
-                    self._state.user_text = task
-                    self._state.brainstorm_turns.append({"role": "user", "text": text})
-                    self._state.brainstorm_turns.append(
-                        {
-                            "role": "brainstorm",
-                            "text": f"OK — setze um: {task[:200]}",
-                        }
-                    )
-                    self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
-                    self.bus.emit(
-                        "pipeline.auto_execute",
-                        {"reason": "go_only", "text": task[:120]},
-                    )
-                    return self.execute()
 
             self._check_cancel()
             self.bus.emit("pipeline.stage", {"stage": "memory"})
@@ -355,23 +306,8 @@ class Orchestrator:
                     "turns": len(self._state.brainstorm_turns),
                 },
             )
-            should_exec = False
-            exec_reason = "context"
-            if self.flex.enabled and flex_exec and flex_exec.get("execute"):
-                should_exec = True
-                exec_reason = f"flex:{flex_exec.get('reason') or 'request'}"
-            # Always honor hard auto-execute (browser nav, clear build orders)
-            # even when Flex is on but did not request execute.
-            if not should_exec and _wants_auto_execute(text, self._state.brainstorm_turns):
-                should_exec = True
-                exec_reason = "context"
-            if should_exec and self._state.brainstorm_notes.strip():
-                self._check_cancel()
-                self.bus.emit(
-                    "pipeline.auto_execute",
-                    {"reason": exec_reason, "text": text[:120]},
-                )
-                return self.execute()
+            # Flex may still *ask* in notes; Send never calls execute().
+            _ = flex_exec
         except PipelineCancelled:
             return self._state
         except Exception as exc:  # noqa: BLE001

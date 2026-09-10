@@ -288,6 +288,8 @@ def test_full_flex_chat_to_done_smoke():
         bus.on(name, lambda d, n=name: events.append(n))
     pipe = Pipeline(bus)
     st = pipe.brainstorm_turn("Build a landing page for Bean Shop. Full HTML with hero and footer.")
+    assert st.stage == PipelineStage.brainstorm
+    st = pipe.execute()
     assert st.stage in (PipelineStage.done, PipelineStage.clarify, PipelineStage.work)
     if st.stage == PipelineStage.clarify:
         st = pipe.answer_clarify("Schnell und einfach")

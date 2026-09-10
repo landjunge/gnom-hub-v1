@@ -91,7 +91,7 @@ class SystemOpsMixin:
             "how_to": (
                 "1) Send / Enter = brainstorm turn. "
                 "2) Execute / Ctrl+Enter = distill + workers. "
-                "3) Send+Execute = one shot after typing. "
+                "3) Nachricht senden = Gespräch. Arbeit starten = Worker. "
                 "4) Ctrl/⌘+S = save HOT + agents. "
                 "5) Esc = close fullscreen or cancel job. "
                 "6) Box 3: Copy/DL/Tab/WS/↑perm/fullscreen; toolbar Copy all + Diff + History. "
