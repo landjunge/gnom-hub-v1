@@ -818,6 +818,40 @@ class Orchestrator:
         self._state.distilled_requirements = reqs
         self._sync_flex_state()
 
+    def _pause_worker_flex_ask(
+        self,
+        wid: str,
+        plan_task: str,
+        asked: dict[str, str],
+        remaining: list[dict],
+    ) -> None:
+        """Pause execute: keep asking worker + original plan task in flex_wait_*."""
+        self._ensure_flex_job()
+        self.flex_desk.ask(
+            agent_id=wid,
+            job_id=self.flex_desk.job_id,
+            task_id=asked["task_id"],
+            text=asked["text"],
+            component=asked["component"],
+        )
+        queued = [d for d in remaining if isinstance(d, dict)]
+        if not queued or str(queued[0].get("worker") or "") != wid:
+            queued = [{"worker": wid, "task": plan_task}, *queued]
+        else:
+            queued[0] = {**queued[0], "worker": wid, "task": plan_task}
+        self._state.flex_wait_agent = wid
+        self._state.flex_wait_task = plan_task
+        self._state.flex_wait_remaining = queued
+        self._sync_flex_state()
+        self._set_stage(PipelineStage.clarify)
+
+    def _open_worker_askers(self) -> set[str]:
+        return {
+            str(q.agent_id)
+            for q in self.flex_desk.open_questions()
+            if str(q.agent_id).startswith("worker")
+        }
+
     def continue_after_flex_ask(self) -> PipelineState:
         """Run workers queued after a Box 1 pause, then quality + finish."""
         remaining = list(getattr(self._state, "flex_wait_remaining", None) or [])
@@ -827,6 +861,7 @@ class Orchestrator:
         dod = _definition_of_done(text, self._state.distilled_requirements)
         outputs = list(self._state.worker_outputs or [])
         results = list(self._state.worker_results or [])
+        open_askers = self._open_worker_askers()
         self._set_stage(PipelineStage.work)
         for idx, item in enumerate(remaining):
             if not isinstance(item, dict):
@@ -835,6 +870,9 @@ class Orchestrator:
             task = str(item.get("task") or "")
             worker = self._workers.get(wid)
             if worker is None or not worker.enabled:
+                continue
+            if wid in open_askers:
+                # Unanswered Box 1 ask — leave this worker; run later queue.
                 continue
             task_full = f"{task}\n\n{dod}".strip()
             result = worker.run(
@@ -845,19 +883,7 @@ class Orchestrator:
             )
             asked = parse_flex_ask(result)
             if asked:
-                self._ensure_flex_job()
-                self.flex_desk.ask(
-                    agent_id=wid,
-                    job_id=self.flex_desk.job_id,
-                    task_id=asked["task_id"],
-                    text=asked["text"],
-                    component=asked["component"],
-                )
-                self._state.flex_wait_agent = wid
-                self._state.flex_wait_task = asked["task_id"]
-                self._state.flex_wait_remaining = remaining[idx + 1 :]
-                self._sync_flex_state()
-                self._set_stage(PipelineStage.clarify)
+                self._pause_worker_flex_ask(wid, task, asked, remaining[idx:])
                 return self._state
             gate = _validate_worker_draft(
                 result,
@@ -1007,6 +1033,8 @@ class Orchestrator:
                 {"notes": self._state.quality_notes, "workers": len(outputs)},
             )
             self._check_cancel()
+            if getattr(self._state, "flex_wait_remaining", None):
+                return self._state
             self._finish()
         except PipelineCancelled:
             return self._state
@@ -1152,19 +1180,8 @@ class Orchestrator:
             )
             asked = parse_flex_ask(result)
             if asked:
-                self._ensure_flex_job()
-                self.flex_desk.ask(
-                    agent_id=wid,
-                    job_id=self.flex_desk.job_id,
-                    task_id=asked["task_id"],
-                    text=asked["text"],
-                    component=asked["component"],
-                )
-                self._state.flex_wait_agent = wid
-                self._state.flex_wait_task = asked["task_id"]
-                self._state.flex_wait_remaining = [{"worker": w, "task": t} for w, t in tasks[i:]]
-                self._sync_flex_state()
-                self._set_stage(PipelineStage.clarify)
+                rest = [{"worker": w, "task": t} for w, t in tasks[i - 1 :]]
+                self._pause_worker_flex_ask(wid, task, asked, rest)
                 self.bus.emit(
                     "pipeline.flex_ask",
                     {"agent_id": wid, "task_id": asked["task_id"]},

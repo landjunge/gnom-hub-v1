@@ -165,7 +165,6 @@ class PipelineApiMixin:
         }
         if wait and wait == agent:
             self.pipeline.state.flex_wait_agent = ""
-            self.pipeline.rerun_worker(wait)
             cont = getattr(self.pipeline, "continue_after_flex_ask", None)
             if callable(cont):
                 cont()
