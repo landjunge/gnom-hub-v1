@@ -66,6 +66,13 @@ class Orchestrator:
         self._state.flex_job_id = self.flex_desk.job_id
         self._state.flex_questions = self.flex_desk.to_list()
 
+    def restore_flex_from_state(self) -> None:
+        """Rebuild FlexDesk after checkpoint / snapshot reload."""
+        self.flex_desk = FlexDesk.from_list(
+            list(getattr(self._state, "flex_questions", None) or []),
+            job_id=str(getattr(self._state, "flex_job_id", "") or ""),
+        )
+
     def _post_coordinator_clarify(self, question: Any) -> None:
         self._state.pending_question = question
         self._ensure_flex_job()
@@ -811,6 +818,100 @@ class Orchestrator:
         self._state.distilled_requirements = reqs
         self._sync_flex_state()
 
+    def continue_after_flex_ask(self) -> PipelineState:
+        """Run workers queued after a Box 1 pause, then quality + finish."""
+        remaining = list(getattr(self._state, "flex_wait_remaining", None) or [])
+        self._state.flex_wait_remaining = []
+        text = (self._state.user_text or "").strip()
+        mem = self._state.memory_context or ""
+        dod = _definition_of_done(text, self._state.distilled_requirements)
+        outputs = list(self._state.worker_outputs or [])
+        results = list(self._state.worker_results or [])
+        self._set_stage(PipelineStage.work)
+        for idx, item in enumerate(remaining):
+            if not isinstance(item, dict):
+                continue
+            wid = str(item.get("worker") or "").strip()
+            task = str(item.get("task") or "")
+            worker = self._workers.get(wid)
+            if worker is None or not worker.enabled:
+                continue
+            task_full = f"{task}\n\n{dod}".strip()
+            result = worker.run(
+                task_full,
+                text,
+                self._state.distilled_requirements,
+                mem,
+            )
+            asked = parse_flex_ask(result)
+            if asked:
+                self._ensure_flex_job()
+                self.flex_desk.ask(
+                    agent_id=wid,
+                    job_id=self.flex_desk.job_id,
+                    task_id=asked["task_id"],
+                    text=asked["text"],
+                    component=asked["component"],
+                )
+                self._state.flex_wait_agent = wid
+                self._state.flex_wait_task = asked["task_id"]
+                self._state.flex_wait_remaining = remaining[idx + 1 :]
+                self._sync_flex_state()
+                self._set_stage(PipelineStage.clarify)
+                return self._state
+            gate = _validate_worker_draft(
+                result,
+                user_text=text,
+                task=task,
+                requirements=self._state.distilled_requirements,
+                tool_calls=self._state.tool_calls,
+            )
+            results.append(result)
+            outputs.append(
+                {
+                    "worker": wid,
+                    "name": worker.state.name,
+                    "index": len(outputs) + 1,
+                    "task": task_full,
+                    "result": result,
+                    "validation": gate,
+                }
+            )
+            self._state.worker_results = list(results)
+            self._state.worker_outputs = list(outputs)
+        self._state.quality_notes = _quality_check(
+            self._state.user_text,
+            self._state.distilled_requirements,
+            outputs,
+        )
+        self._append_prefetch_why_notes()
+        self._flex_nudge_and_fix(text, mem, dod)
+        self._offer_nudge_questions()
+        self._finish()
+        return self._state
+
+    def _offer_nudge_questions(self) -> None:
+        """Forgotten requirements → Box 1 Nachbesserung ask. Flex does not Execute."""
+        nudges = list(getattr(self._state, "agent_nudges", None) or [])
+        if not nudges:
+            return
+        self._ensure_flex_job()
+        for n in nudges[:3]:
+            if not isinstance(n, dict):
+                continue
+            aid = str(n.get("agent") or "flex").strip().lower()
+            msg = str(n.get("message") or "").strip()
+            if not msg:
+                continue
+            self.flex_desk.ask(
+                agent_id=aid if aid in ("worker1", "worker2", "worker3", "worker4") else "flex",
+                job_id=self.flex_desk.job_id,
+                task_id="nachbesserung",
+                text=f"Etwas fehlt: {msg}. Soll ich nachbessern lassen?",
+                component="yes_no",
+            )
+        self._sync_flex_state()
+
     def rerun_worker(self, worker_id: str) -> PipelineState:
         wid = (worker_id or "").strip().lower()
         if wid not in self._workers:
@@ -1061,6 +1162,7 @@ class Orchestrator:
                 )
                 self._state.flex_wait_agent = wid
                 self._state.flex_wait_task = asked["task_id"]
+                self._state.flex_wait_remaining = [{"worker": w, "task": t} for w, t in tasks[i:]]
                 self._sync_flex_state()
                 self._set_stage(PipelineStage.clarify)
                 self.bus.emit(
@@ -1192,6 +1294,7 @@ class Orchestrator:
         self._check_cancel()
         self._flex_nudge_and_fix(text, mem, dod)
         self._check_cancel()
+        self._offer_nudge_questions()
         self._finish()
 
     def _flex_nudge_and_fix(self, text: str, mem: str, dod: str) -> None:

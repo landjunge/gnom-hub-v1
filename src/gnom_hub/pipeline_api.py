@@ -157,9 +157,22 @@ class PipelineApiMixin:
                 snap["flex_answer"] = out
             return snap
         wait = getattr(self.pipeline.state, "flex_wait_agent", "") or ""
+        yes = str(out.get("value") or "").lower().strip(" !.。") in {
+            "ja",
+            "yes",
+            "y",
+            "ok",
+        }
         if wait and wait == agent:
             self.pipeline.state.flex_wait_agent = ""
             self.pipeline.rerun_worker(wait)
+            cont = getattr(self.pipeline, "continue_after_flex_ask", None)
+            if callable(cont):
+                cont()
+        elif (
+            yes and str(out.get("task_id") or "") == "nachbesserung" and agent.startswith("worker")
+        ):
+            self.pipeline.rerun_worker(agent)
         snap = self.snapshot()
         snap["flex_answer"] = out
         return snap

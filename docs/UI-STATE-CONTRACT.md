@@ -42,6 +42,9 @@ Start-work copy (fixed):
 - Coordinator clarify is posted to FlexDesk (`agent_id=coordinator`, `single_select`) **and** kept as `pending_question`.
 - Workers may return a `FLEX_ASK` block (`FLEX_ASK yes_no task=hero\\nFrage…`). Flex shows it in Box 1; Box 3 does not get the ask body. Pipeline pauses (`flex_wait_agent`).
 - Answering injects `User→{agent} ({task}, {question_id}): {value}` only for that agent, plus Flex-Erinnerung of standing wishes. Flex does not guess missing facts.
+- Remaining workers after a pause are stored in `flex_wait_remaining` and continue after the answer.
+- Forgotten requirements become a Box 1 `nachbesserung` yes/no ask. Ja may re-run that worker; Flex still does not Execute the whole job.
+- Checkpoint save/load restores `flex_questions` via `restore_flex_from_state()`.
 
 ## Reload
 

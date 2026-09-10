@@ -202,3 +202,67 @@ def test_worker_flex_ask_pauses_and_routes_answer():
     assert "worker2" not in joined.split("User→")[-1] if "User→" in joined else True
     assert "Flex-Erinnerung für worker1" in joined
     assert "dark theme" in joined.lower() or "dunkles" in joined.lower()
+
+
+def test_restore_flex_from_pipeline_state():
+    bus = EventBus()
+    pipe = Pipeline(bus)
+    pipe.flex_desk.bind_job("job-reload")
+    q = pipe.flex_desk.ask(
+        agent_id="worker2",
+        job_id="job-reload",
+        task_id="nav",
+        text="Menü links lassen?",
+    )
+    pipe._sync_flex_state()
+    other = Pipeline(EventBus())
+    other._state.flex_job_id = pipe.state.flex_job_id
+    other._state.flex_questions = list(pipe.state.flex_questions)
+    other.restore_flex_from_state()
+    got = other.flex_desk.open_questions()
+    assert len(got) == 1
+    assert got[0].question_id == q["question_id"]
+    assert got[0].job_id == "job-reload"
+    assert got[0].agent_id == "worker2"
+
+
+def test_remaining_workers_continue_after_flex_ask():
+    bus = EventBus()
+    pipe = Pipeline(bus)
+    pipe.brainstorm_turn("Ideen zu einer Checklisten-App, nur Brainstorm bitte")
+    pipe._clarified_once = True
+    pipe.coordinator.plan = lambda *_a, **_k: [  # type: ignore[method-assign]
+        ("worker1", "alpha"),
+        ("worker2", "beta"),
+    ]
+    pipe.worker1.run = (  # type: ignore[method-assign]
+        lambda *_a, **_k: "FLEX_ASK yes_no task=hero\nSoll der Kopfbereich kürzer sein?"
+    )
+    seen: list[str] = []
+
+    def w2(*_a: object, **_k: object) -> str:
+        seen.append("w2")
+        return "Worker2 Ergebnis " + ("ok " * 20)
+
+    pipe.worker2.run = w2  # type: ignore[method-assign]
+    st = pipe.execute()
+    assert st.stage == PipelineStage.clarify
+    assert not any(o.get("worker") == "worker2" for o in (st.worker_outputs or []))
+    assert st.flex_wait_remaining
+    pipe.continue_after_flex_ask()
+    assert "w2" in seen
+    assert any(o.get("worker") == "worker2" for o in (pipe.state.worker_outputs or []))
+
+
+def test_nudge_posts_box1_nachbesserung():
+    bus = EventBus()
+    pipe = Pipeline(bus)
+    pipe.brainstorm_turn("Ideen zu einer Checklisten-App, nur Brainstorm bitte")
+    pipe._clarified_once = True
+    pipe.flex.nudge_gaps = lambda *_a, **_k: [  # type: ignore[method-assign]
+        {"agent": "worker1", "message": "dunkles Erscheinungsbild fehlt", "reason": "flex_gap"}
+    ]
+    pipe.execute()
+    qs = [q for q in pipe.flex_desk.open_questions() if q.task_id == "nachbesserung"]
+    assert qs
+    assert "fehlt" in qs[0].text.lower()

@@ -42,6 +42,11 @@ class SessionOpsMixin:
                     else None
                 ),
                 "deferred_clarifies": list(getattr(st, "deferred_clarifies", None) or [])[-12:],
+                "flex_job_id": getattr(st, "flex_job_id", "") or "",
+                "flex_questions": list(getattr(st, "flex_questions", None) or []),
+                "flex_wait_agent": getattr(st, "flex_wait_agent", "") or "",
+                "flex_wait_task": getattr(st, "flex_wait_task", "") or "",
+                "flex_wait_remaining": list(getattr(st, "flex_wait_remaining", None) or []),
             }
             self._checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
             atomic_write_text(
@@ -94,7 +99,17 @@ class SessionOpsMixin:
                 quality_notes=str(data.get("quality_notes") or ""),
                 warnings=list(data.get("warnings") or []),
                 error=data.get("error"),
+                flex_job_id=str(data.get("flex_job_id") or ""),
+                flex_questions=list(data.get("flex_questions") or []),
+                flex_wait_agent=str(data.get("flex_wait_agent") or ""),
+                flex_wait_task=str(data.get("flex_wait_task") or ""),
+                flex_wait_remaining=[
+                    d for d in (data.get("flex_wait_remaining") or []) if isinstance(d, dict)
+                ],
             )
+            restore = getattr(self.pipeline, "restore_flex_from_state", None)
+            if callable(restore):
+                restore()
             self._append_trace("checkpoint.load", {"stage": stage.value})
             return self.snapshot()
 
