@@ -32,6 +32,8 @@ def test_html_execute_one_worker_and_validation_without_key():
     h = Hub()
     h.pipeline.brainstorm_turn("Baue eine komplette Landingpage HTML mit dark theme und Hero")
     st = h.pipeline.execute()
+    if st.stage.value == "clarify":
+        st = h.pipeline.answer_clarify("Schnell und einfach")
     assert st.stage.value == "done"
     assert st.resolved_plan_mode == "full_page_html"
     assert len(st.worker_outputs or []) == 1

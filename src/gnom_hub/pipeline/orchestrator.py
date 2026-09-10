@@ -23,7 +23,7 @@ from gnom_hub.agents.roles import (
     WorkerAgent,
 )
 from gnom_hub.core.event_bus import EventBus
-from gnom_hub.flex_desk import FlexDesk
+from gnom_hub.flex_desk import FlexDesk, parse_flex_ask
 from gnom_hub.pipeline.models import PipelineStage, PipelineState
 
 
@@ -65,6 +65,28 @@ class Orchestrator:
     def _sync_flex_state(self) -> None:
         self._state.flex_job_id = self.flex_desk.job_id
         self._state.flex_questions = self.flex_desk.to_list()
+
+    def _post_coordinator_clarify(self, question: Any) -> None:
+        self._state.pending_question = question
+        self._ensure_flex_job()
+        self.flex_desk.ask(
+            agent_id="coordinator",
+            job_id=self.flex_desk.job_id,
+            task_id="clarify",
+            text=question.text,
+            component="single_select",
+            options=list(question.options),
+        )
+        self._sync_flex_state()
+        self._set_stage(PipelineStage.clarify)
+        self.bus.emit(
+            "pipeline.question",
+            {
+                "id": question.id,
+                "text": question.text,
+                "options": list(question.options),
+            },
+        )
 
     def _offer_start_work(self, *, reason: str) -> None:
         """Ask in Box 1. Never starts Execute — Hub/API execute is the authority."""
@@ -205,16 +227,7 @@ class Orchestrator:
 
             self._check_cancel()
             if question is not None and not self._clarified_once:
-                self._state.pending_question = question
-                self._set_stage(PipelineStage.clarify)
-                self.bus.emit(
-                    "pipeline.question",
-                    {
-                        "id": question.id,
-                        "text": question.text,
-                        "options": list(question.options),
-                    },
-                )
+                self._post_coordinator_clarify(question)
                 return self._state
 
             self._check_cancel()
@@ -454,16 +467,7 @@ class Orchestrator:
 
             self._check_cancel()
             if question is not None and not self._clarified_once:
-                self._state.pending_question = question
-                self._set_stage(PipelineStage.clarify)
-                self.bus.emit(
-                    "pipeline.question",
-                    {
-                        "id": question.id,
-                        "text": question.text,
-                        "options": list(question.options),
-                    },
-                )
+                self._post_coordinator_clarify(question)
                 return self._state
 
             self._run_flex_coord_workers()
@@ -751,6 +755,10 @@ class Orchestrator:
         q = self._state.pending_question
         if self._is_defer_clarify_option(answer):
             return self._defer_clarify(answer, q)
+        for fq in list(self.flex_desk.open_questions()):
+            if fq.agent_id == "coordinator" and fq.status == "open":
+                self.flex_desk.answer(fq.question_id, answer, job_id=fq.job_id)
+        self._sync_flex_state()
         clarify_line = f"User clarified ({q.id}): {answer}"
         if clarify_line not in self._state.distilled_requirements:
             self._state.distilled_requirements.append(clarify_line)
@@ -779,6 +787,29 @@ class Orchestrator:
             # Cancel restored brainstorm / mid-stage abort — keep question
             self._state.pending_question = q
         return self._state
+
+    def apply_flex_answer(self, payload: dict) -> None:
+        """Inject a Box 1 answer only for the asking agent. Flex does not Execute."""
+        agent = str(payload.get("agent_id") or "").strip()
+        tid = str(payload.get("task_id") or "task")
+        qid = str(payload.get("question_id") or "")
+        value = payload.get("value")
+        line = f"User→{agent} ({tid}, {qid}): {value}"
+        reqs = list(self._state.distilled_requirements)
+        if line not in reqs:
+            reqs.append(line)
+        if self.flex.enabled:
+            wishes = []
+            try:
+                wishes = list(self.flex.binding_wishes(self._state.memory_context or "") or [])
+            except Exception:  # noqa: BLE001
+                wishes = []
+            for w in wishes[:4]:
+                rem = f"Flex-Erinnerung für {agent}: {w}"
+                if rem not in reqs:
+                    reqs.append(rem)
+        self._state.distilled_requirements = reqs
+        self._sync_flex_state()
 
     def rerun_worker(self, worker_id: str) -> PipelineState:
         wid = (worker_id or "").strip().lower()
@@ -1018,6 +1049,25 @@ class Orchestrator:
                 self._state.distilled_requirements,
                 mem,
             )
+            asked = parse_flex_ask(result)
+            if asked:
+                self._ensure_flex_job()
+                self.flex_desk.ask(
+                    agent_id=wid,
+                    job_id=self.flex_desk.job_id,
+                    task_id=asked["task_id"],
+                    text=asked["text"],
+                    component=asked["component"],
+                )
+                self._state.flex_wait_agent = wid
+                self._state.flex_wait_task = asked["task_id"]
+                self._sync_flex_state()
+                self._set_stage(PipelineStage.clarify)
+                self.bus.emit(
+                    "pipeline.flex_ask",
+                    {"agent_id": wid, "task_id": asked["task_id"]},
+                )
+                return
             retries = 0
             max_retries = 2
             from gnom_hub.pipeline.dod_gate import format_retry_hint, should_retry

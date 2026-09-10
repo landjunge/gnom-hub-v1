@@ -123,7 +123,11 @@ class PipelineApiMixin:
         sync_st = getattr(self.pipeline, "_sync_flex_state", None)
         if callable(sync_st):
             sync_st()
-        if out.get("ok") and out.get("wants_start_work"):
+        if not out.get("ok"):
+            snap = self.snapshot()
+            snap["flex_answer"] = out
+            return snap
+        if out.get("wants_start_work"):
             if sync:
                 snap = self.execute_sync()
             else:
@@ -131,6 +135,31 @@ class PipelineApiMixin:
             if isinstance(snap, dict):
                 snap["flex_answer"] = out
             return snap
+        agent = str(out.get("agent_id") or "")
+        apply_fn = getattr(self.pipeline, "apply_flex_answer", None)
+        if callable(apply_fn) and agent:
+            apply_fn(out)
+        if agent == "coordinator":
+            val = str(out.get("value") or "")
+            if self.pipeline.state.pending_question is None:
+                from gnom_hub.pipeline.models import DistillQuestion, PipelineStage
+
+                self.pipeline.state.pending_question = DistillQuestion(
+                    id=str(out.get("question_id") or "q1"),
+                    text="Wie soll ich vorgehen?",
+                    options=["Schnell und einfach", "Gründlich und robust", val],
+                )
+                self.pipeline.state.stage = PipelineStage.clarify
+            if sync:
+                return self.clarify(val)
+            snap = self.clarify(val)
+            if isinstance(snap, dict):
+                snap["flex_answer"] = out
+            return snap
+        wait = getattr(self.pipeline.state, "flex_wait_agent", "") or ""
+        if wait and wait == agent:
+            self.pipeline.state.flex_wait_agent = ""
+            self.pipeline.rerun_worker(wait)
         snap = self.snapshot()
         snap["flex_answer"] = out
         return snap

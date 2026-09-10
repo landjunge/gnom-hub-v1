@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from gnom_hub.core.event_bus import EventBus
-from gnom_hub.flex_desk import FlexDesk, sanitize_box1_text
+from gnom_hub.flex_desk import FlexDesk, parse_flex_ask, plain_german, sanitize_box1_text
 from gnom_hub.pipeline import Pipeline, PipelineStage
 
 
@@ -28,7 +28,7 @@ def test_worker_question_appears_in_box1_snapshot():
     assert q["task_id"] == "html-hero"
     assert q["job_id"] == "job-a"
     assert q["question_id"] == out["question_id"]
-    assert "Hero" in q["text"]
+    assert "Kopfbereich" in q["text"]
 
 
 def test_answer_routes_only_to_asking_worker():
@@ -143,3 +143,62 @@ def test_reload_keeps_question_bound_to_job():
     bad = restored.answer(q["question_id"], "Ja", job_id="job-OTHER")
     assert bad["ok"] is False
     assert bad["error"] == "job_mismatch"
+
+
+def test_plain_german_maps_hero_not_html():
+    out = plain_german("Soll der Hero mit CTA bleiben?")
+    assert "Kopfbereich" in out
+    assert "Button zum Handeln" in out
+    assert "<" not in out
+
+
+def test_parse_flex_ask_block():
+    parsed = parse_flex_ask("FLEX_ASK yes_no task=hero\nSoll der Kopfbereich kürzer sein?")
+    assert parsed is not None
+    assert parsed["component"] == "yes_no"
+    assert parsed["task_id"] == "hero"
+    assert "Kopfbereich" in parsed["text"]
+    assert parse_flex_ask("<html>page</html>") is None
+
+
+def test_coordinator_clarify_appears_in_flex_desk():
+    bus = EventBus()
+    pipe = Pipeline(bus)
+    pipe.brainstorm_turn("Maybe build something cool with dark mode, not sure yet")
+    st = pipe.execute()
+    assert st.stage == PipelineStage.clarify
+    qs = [q for q in pipe.flex_desk.open_questions() if q.agent_id == "coordinator"]
+    assert qs
+    assert qs[0].component == "single_select"
+    assert qs[0].options
+
+
+def test_worker_flex_ask_pauses_and_routes_answer():
+    bus = EventBus()
+    pipe = Pipeline(bus)
+    pipe.brainstorm_turn("Ideen zu einer Checklisten-App, nur Brainstorm bitte")
+    pipe._clarified_once = True
+    pipe.worker1.run = (  # type: ignore[method-assign]
+        lambda *a, **k: "FLEX_ASK yes_no task=hero\nSoll der Hero kürzer sein?"
+    )
+    st = pipe.execute()
+    assert st.stage == PipelineStage.clarify
+    qs = [q for q in pipe.flex_desk.open_questions() if q.agent_id == "worker1"]
+    assert len(qs) == 1
+    assert "Kopfbereich" in qs[0].text
+    assert not any("FLEX_ASK" in str(r) for r in (st.worker_results or []))
+    pipe.state.memory_context = "User: always enable dark theme\n"
+    r = pipe.apply_flex_answer(
+        {
+            "agent_id": "worker1",
+            "task_id": "hero",
+            "question_id": qs[0].question_id,
+            "value": "Ja",
+        }
+    )
+    assert r is None
+    joined = "\n".join(pipe.state.distilled_requirements)
+    assert "User→worker1" in joined
+    assert "worker2" not in joined.split("User→")[-1] if "User→" in joined else True
+    assert "Flex-Erinnerung für worker1" in joined
+    assert "dark theme" in joined.lower() or "dunkles" in joined.lower()

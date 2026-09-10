@@ -36,6 +36,51 @@ _SCRIPT_RE = re.compile(r"(?is)<script[^>]*>.*?</script>")
 _JS_RE = re.compile(r"(?i)javascript:|onerror\s*=|onload\s*=|onclick\s*=")
 
 
+_GERMAN_TERMS = (
+    (re.compile(r"\bhero\b", re.IGNORECASE), "Kopfbereich"),
+    (re.compile(r"\bcta\b", re.IGNORECASE), "Button zum Handeln"),
+    (re.compile(r"\bfooter\b", re.IGNORECASE), "Fußzeile"),
+    (re.compile(r"\bnavigation\b", re.IGNORECASE), "Menü"),
+    (re.compile(r"\bnav\b", re.IGNORECASE), "Menü"),
+    (re.compile(r"\bpayload\b", re.IGNORECASE), "Inhalt"),
+    (re.compile(r"\bexecute\b", re.IGNORECASE), "Arbeit starten"),
+    (re.compile(r"\bdark\s*mode\b", re.IGNORECASE), "dunkles Erscheinungsbild"),
+)
+
+
+def plain_german(raw: str) -> str:
+    """Map a few technical tokens to simple German. Never invent an answer."""
+    s = sanitize_box1_text(raw)
+    for pat, de in _GERMAN_TERMS:
+        s = pat.sub(de, s)
+    return s.strip()
+
+
+def parse_flex_ask(raw: str) -> dict[str, str] | None:
+    """Parse worker/coordinator FLEX_ASK block. None if not an ask."""
+    s = str(raw or "").strip()
+    if not s.upper().startswith("FLEX_ASK"):
+        return None
+    lines = s.splitlines()
+    head = lines[0][8:].strip() if lines else ""
+    component = "yes_no"
+    task_id = "task"
+    leftover: list[str] = []
+    for tok in head.split():
+        low = tok.lower()
+        if low.startswith("task="):
+            task_id = tok.split("=", 1)[1].strip() or "task"
+        elif low in ALLOWED_COMPONENTS:
+            component = low
+        else:
+            leftover.append(tok)
+    body = "\n".join(lines[1:]).strip()
+    text = body or " ".join(leftover)
+    if not text:
+        return None
+    return {"component": component, "task_id": task_id, "text": text}
+
+
 def sanitize_box1_text(raw: str, *, limit: int = 400) -> str:
     """Plain German-ready text. Never keep markup or event handlers."""
     s = str(raw or "")
@@ -106,7 +151,7 @@ class FlexDesk:
         comp = str(component or "text").strip().lower()
         if comp not in ALLOWED_COMPONENTS:
             comp = "text"
-        clean = sanitize_box1_text(text)
+        clean = plain_german(text)
         if not clean:
             return {"ok": False, "error": "empty_text"}
         opts = [sanitize_box1_text(o, limit=80) for o in (options or []) if str(o).strip()]

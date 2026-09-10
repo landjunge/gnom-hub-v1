@@ -69,3 +69,5 @@ class PipelineState:
     # Flex Box 1 question bus (job-bound; Flex has no execute authority)
     flex_job_id: str = ""
     flex_questions: list[dict] = field(default_factory=list)
+    flex_wait_agent: str = ""
+    flex_wait_task: str = ""

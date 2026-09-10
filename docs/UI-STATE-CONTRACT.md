@@ -37,6 +37,12 @@ Start-work copy (fixed):
 
 > Der Plan ist bereit. Möchtest du die Arbeit jetzt starten?
 
+## Coordinator and workers → Flex
+
+- Coordinator clarify is posted to FlexDesk (`agent_id=coordinator`, `single_select`) **and** kept as `pending_question`.
+- Workers may return a `FLEX_ASK` block (`FLEX_ASK yes_no task=hero\\nFrage…`). Flex shows it in Box 1; Box 3 does not get the ask body. Pipeline pauses (`flex_wait_agent`).
+- Answering injects `User→{agent} ({task}, {question_id}): {value}` only for that agent, plus Flex-Erinnerung of standing wishes. Flex does not guess missing facts.
+
 ## Reload
 
 `GET /api/state` → `flex_box1.questions` + `pipeline.flex_questions`. Open questions keep `job_id`. A new FlexDesk can be restored with `FlexDesk.from_list`.
