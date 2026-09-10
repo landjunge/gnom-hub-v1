@@ -46,8 +46,8 @@ def _rgb_to_hsl(r: int, g: int, b: int) -> tuple[float, float, float]:
     return colorsys.rgb_to_hls(r / 255.0, g / 255.0, b / 255.0)
 
 
-def _hsl_to_rgb(h: float, l: float, s: float) -> tuple[int, int, int]:
-    r, g, b = colorsys.hls_to_rgb(h, l, s)
+def _hsl_to_rgb(h: float, lightness: float, s: float) -> tuple[int, int, int]:
+    r, g, b = colorsys.hls_to_rgb(h, lightness, s)
     return round(r * 255), round(g * 255), round(b * 255)
 
 
@@ -69,7 +69,7 @@ def _contrast(fg: tuple[int, int, int], bg: tuple[int, int, int]) -> float:
 def color_palette(seed: str = "dark", count: int = 5) -> dict[str, Any]:
     n = max(1, min(int(count or 5), 8))
     r, g, b = _parse_hex(seed)
-    h, l, s = _rgb_to_hsl(r, g, b)
+    h, lightness, s = _rgb_to_hsl(r, g, b)
     shades: list[str] = []
     # Generate around seed lightness
     for i in range(n):
@@ -77,10 +77,10 @@ def color_palette(seed: str = "dark", count: int = 5) -> dict[str, Any]:
         li = 0.18 + (0.64 * i / max(n - 1, 1))
         shades.append(_to_hex(*_hsl_to_rgb(h, li, max(0.25, min(0.75, s)))))
     primary = _to_hex(r, g, b)
-    accent = _to_hex(*_hsl_to_rgb((h + 0.12) % 1.0, min(0.55, l + 0.05), min(0.7, s + 0.1)))
-    surface = _to_hex(*_hsl_to_rgb(h, 0.08 if l > 0.45 else 0.94, 0.15))
-    surface2 = _to_hex(*_hsl_to_rgb(h, 0.12 if l > 0.45 else 0.90, 0.12))
-    text = "#e6edf3" if l > 0.45 or _rel_luminance(r, g, b) < 0.35 else "#0f172a"
+    accent = _to_hex(*_hsl_to_rgb((h + 0.12) % 1.0, min(0.55, lightness + 0.05), min(0.7, s + 0.1)))
+    surface = _to_hex(*_hsl_to_rgb(h, 0.08 if lightness > 0.45 else 0.94, 0.15))
+    surface2 = _to_hex(*_hsl_to_rgb(h, 0.12 if lightness > 0.45 else 0.90, 0.12))
+    text = "#e6edf3" if lightness > 0.45 or _rel_luminance(r, g, b) < 0.35 else "#0f172a"
     muted = "#94a3b8" if text.startswith("#e") else "#64748b"
     border = _to_hex(*_hsl_to_rgb(h, 0.22 if text.startswith("#e") else 0.85, 0.12))
     css = (
