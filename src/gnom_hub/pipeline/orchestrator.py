@@ -431,6 +431,11 @@ class Orchestrator:
 
     def execute(self) -> PipelineState:
         try:
+            # #btn-execute consumes Box 1 start_work so a later Ja cannot Execute again.
+            for q in self.flex_desk.open_questions():
+                if q.component == "start_work":
+                    q.status = "stale"
+            self._sync_flex_state()
             text = (self._state.user_text or "").strip()
             if self._state.brainstorm_turns:
                 text = _pick_execute_task(self._state.brainstorm_turns, fallback=text)
