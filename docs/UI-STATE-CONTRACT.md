@@ -45,6 +45,7 @@ Start-work copy (fixed):
 - Remaining workers after a pause are stored in `flex_wait_remaining` and continue after the answer.
 - Forgotten requirements become a Box 1 `nachbesserung` yes/no ask. Ja may re-run that worker; Flex still does not Execute the whole job.
 - Checkpoint save/load restores `flex_questions` via `restore_flex_from_state()`.
+- Session-pack export/import carries `flex_job_id`, `flex_questions`, `flex_wait_*` and calls `restore_flex_from_state()` on import.
 
 ## Reload
 

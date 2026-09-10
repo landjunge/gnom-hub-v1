@@ -23,11 +23,16 @@ def test_worker_system_prompt_layers():
     assert "TOOL PROTOCOL" in base
     assert "ABSOLUTE ORDERS" in base
     assert "ONE complete file" not in base  # HTML domain layer off
+    assert "FLEX_ASK" in base
+    assert "do not guess" in base.lower()
+    assert "yes_no" in base
+    assert "FEHLER" in base
 
     html = worker_system_prompt(wants_html=True)
     assert "ONE complete file" in html
     assert "Do NOT invent a second palette" in html
     assert "html_scaffold" in html
+    assert "FLEX_ASK" in html
 
 
 def test_tool_calls_needed_design():

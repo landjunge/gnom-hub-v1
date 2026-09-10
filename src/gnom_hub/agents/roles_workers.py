@@ -26,7 +26,12 @@ _WORKER_L1_ROLE = (
     "Deliver a concrete useful result for the assigned task "
     "(plan, structure, checklist, draft, or full HTML when the task is a page/UI).\n"
     "Work on the USER task only. Match user language.\n"
-    "If you cannot complete the task honestly (missing data, impossible constraint), "
+    "If a user decision or fact is missing, do not guess. Reply with ONLY:\n"
+    "  FLEX_ASK <component> task=<id>\n"
+    "  <plain question>\n"
+    "component is one of: yes_no, later, single_select, multi_select, free_text.\n"
+    "The question must be simple German. No HTML, no JS, no invented answer.\n"
+    "If you cannot complete the task honestly (impossible constraint, no data at all), "
     "start the body with FEHLER and explain — never invent a fake success stub."
 )
 

@@ -142,6 +142,8 @@ Worker-/Coordinator-Text wird **nie** als HTML/JS gerendert (`textContent`, `san
 - Konkretes Ergebnis: Plan, Checkliste, Draft oder volles HTML
 - Priorität: Struktur → Interaktion → Empty/Error → CSS zuletzt (~30 %)
 - HTML: ein File `<!DOCTYPE` … `</html>`, mind. eine echte Interaction
+- Fehlende User-Entscheidung: **nicht raten**. Antwort nur `FLEX_ASK <component> task=<id>` + deutsche Frage an Box 1
+- Unmöglich / kein Provider: `FEHLER - kein Deliverable`
 - max_tokens **3200** HTML / **1800** sonst, temp **0.45**
 
 ### Memory (`MemoryAgent`)
@@ -158,7 +160,7 @@ Worker-/Coordinator-Text wird **nie** als HTML/JS gerendert (`textContent`, `san
 ```
 Send    → Brainstorm (+ Flex absorb wishes / optional chat write)
 Execute → Coordinator distill → Flex nudge/review → Coordinator plan → Workers → Memory/Flex nudge
-Flex    → may request execute when task + wishes are clear
+Flex    → Box 1 only (asks start_work; never starts Execute)
 ```
 
 Enabled Workers = `enabled_workers()` (bis 4).

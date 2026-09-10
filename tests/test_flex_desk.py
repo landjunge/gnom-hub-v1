@@ -80,6 +80,34 @@ def test_send_does_not_execute_via_flex_or_build_language():
     assert "Arbeit jetzt starten" in start.text
 
 
+def test_start_work_yes_calls_hub_execute_not_flex(tmp_path, monkeypatch):
+    import gnom_hub.hub as hub_mod
+    from gnom_hub.config import paths
+    from gnom_hub.hub import Hub
+
+    monkeypatch.setattr(paths, "project_root", lambda: tmp_path)
+    monkeypatch.setattr(hub_mod, "project_root", lambda: tmp_path)
+    hub_mod._HUB = None
+    hub = Hub()
+    try:
+        hub.pipeline.brainstorm_turn(
+            "Build a landing page for Bean Shop. Full HTML with hero and footer."
+        )
+        start = next(
+            q for q in hub.pipeline.flex_desk.open_questions() if q.component == "start_work"
+        )
+        called: list[str] = []
+        hub.execute_sync = lambda: called.append("sync") or {"ok": True}  # type: ignore[method-assign]
+        hub.execute_async = lambda: called.append("async") or {"ok": True}  # type: ignore[method-assign]
+        out = hub.flex_answer(start.question_id, "Ja", job_id=start.job_id, sync=True)
+        assert called == ["sync"]
+        assert out["flex_answer"]["wants_start_work"] is True
+        with pytest.raises(PermissionError):
+            hub.pipeline.flex_desk.start_execute()
+    finally:
+        hub_mod._HUB = None
+
+
 def test_flex_cannot_mark_success_or_start_execute():
     desk = FlexDesk(job_id="job-a")
     with pytest.raises(PermissionError):
@@ -252,6 +280,50 @@ def test_remaining_workers_continue_after_flex_ask():
     pipe.continue_after_flex_ask()
     assert "w2" in seen
     assert any(o.get("worker") == "worker2" for o in (pipe.state.worker_outputs or []))
+
+
+def test_session_pack_flex_questions_roundtrip(tmp_path, monkeypatch):
+    import gnom_hub.hub as hub_mod
+    from gnom_hub.config import paths
+    from gnom_hub.hub import Hub
+
+    monkeypatch.setattr(paths, "project_root", lambda: tmp_path)
+    monkeypatch.setattr(hub_mod, "project_root", lambda: tmp_path)
+    hub_mod._HUB = None
+    hub = Hub()
+    try:
+        hub.pipeline.flex_desk.bind_job("job-pack")
+        asked = hub.pipeline.flex_desk.ask(
+            agent_id="worker1",
+            job_id="job-pack",
+            task_id="hero",
+            text="Soll der Kopfbereich kürzer sein?",
+        )
+        hub.pipeline._sync_flex_state()
+        hub.pipeline._state.flex_wait_agent = "worker1"
+        hub.pipeline._state.flex_wait_task = "hero"
+        hub.pipeline._state.flex_wait_remaining = [{"worker": "worker2", "task": "beta"}]
+        pack = hub.export_session_pack(label="flex-pack")
+        body = pack.get("pack") if isinstance(pack.get("pack"), dict) else pack
+        pipe = body["pipeline"]
+        assert pipe["flex_job_id"] == "job-pack"
+        assert pipe["flex_wait_agent"] == "worker1"
+        assert pipe["flex_wait_task"] == "hero"
+        assert pipe["flex_wait_remaining"][0]["worker"] == "worker2"
+        assert pipe["flex_questions"][0]["question_id"] == asked["question_id"]
+        hub.pipeline.flex_desk = FlexDesk()
+        hub.pipeline._state.flex_questions = []
+        hub.pipeline._state.flex_wait_agent = ""
+        hub.import_session_pack(body)
+        assert hub.pipeline.state.flex_job_id == "job-pack"
+        assert hub.pipeline.state.flex_wait_agent == "worker1"
+        qs = hub.pipeline.flex_desk.open_questions()
+        assert len(qs) == 1
+        assert qs[0].question_id == asked["question_id"]
+        assert qs[0].agent_id == "worker1"
+        assert "Kopfbereich" in qs[0].text
+    finally:
+        hub_mod._HUB = None
 
 
 def test_nudge_posts_box1_nachbesserung():
