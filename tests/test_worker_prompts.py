@@ -37,6 +37,20 @@ def test_worker_system_prompt_layers():
     assert "FLEX_ASK" in html
 
 
+def test_worker_system_prompt_flex_ask_outranks_finish_file():
+    """Assembled L1–L5: missing user fact / FLEX_ASK beats finishing the file."""
+    for wants_html in (False, True):
+        prompt = worker_system_prompt(wants_html=wants_html)
+        low = prompt.lower()
+        assert "FLEX_ASK" in prompt
+        assert "outrank" in low
+        assert "specified enough to deliver" in low
+        assert "do not guess" in low
+        assert "do not invent" in low
+        if wants_html:
+            assert "ONE complete file" in prompt
+
+
 def test_tool_calls_needed_design():
     need = tool_calls_needed("Build HTML landing page dark theme")
     assert "color_palette" in need
@@ -162,3 +176,27 @@ def test_worker_tool_loop_keeps_flex_ask_in_system():
     joined = "\n".join(llm.system_prompts)
     assert "FLEX_ASK" in joined
     assert "do not guess" in joined.lower()
+
+
+def test_worker_run_always_finish_does_not_invent_missing_decisions():
+    """ALWAYS-finish suffix must not tell the model to invent missing decisions."""
+    bus = EventBus()
+    llm = _RecordingLLM(reply="draft")
+    w = WorkerAgent(_worker_state(), bus, llm=llm)
+    out = w.run(
+        "Build a landing page",
+        "HTML Seite dunkles Theme",
+        ["ein Formular"],
+    )
+    assert out == "draft"
+    assert llm.system_prompts
+    joined = "\n".join(llm.system_prompts)
+    assert "ALWAYS finish" in joined
+    assert "FLEX_ASK" in joined
+    low = joined.lower()
+    assert "outrank" in low
+    assert "specified enough to deliver" in low
+    assert "do not invent" in low
+    assert "missing" in low and "decision" in low
+    # Finish-the-file is not a license to guess a missing user fact.
+    assert "do not guess" in low

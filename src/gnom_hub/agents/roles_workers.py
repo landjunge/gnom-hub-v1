@@ -31,13 +31,20 @@ _WORKER_L1_ROLE = (
     "  <plain question>\n"
     "component is one of: yes_no, later, single_select, multi_select, free_text.\n"
     "The question must be simple German. No HTML, no JS, no invented answer.\n"
+    "FLEX_ASK / missing user fact outranks finishing the file: "
+    "do not invent missing decisions. "
+    "If a user decision is missing, emit only FLEX_ASK. "
+    "Finish-the-file applies only when the task is specified enough to deliver.\n"
     "If you cannot complete the task honestly (impossible constraint, no data at all), "
     "start the body with FEHLER and explain — never invent a fake success stub."
 )
 
 _WORKER_L2_PRIORITY = (
     "PRIORITY ORDER (mandatory — do not reverse):\n"
-    "  1) Complete structure / skeleton (always finish the file)\n"
+    "  Ask first: if a user decision is missing, emit only FLEX_ASK "
+    "(outranks finishing the file; do not invent missing decisions).\n"
+    "  Finish-the-file applies only when the task is specified enough to deliver.\n"
+    "  1) Complete structure / skeleton (finish the file; never cut mid-file)\n"
     "  2) Core interactive behavior (JS/handlers, DOM updates)\n"
     "  3) Error/empty states for those core flows\n"
     "  4) CSS/styling LAST (max ~30% of effort; minimal layout first)\n"
@@ -46,7 +53,8 @@ _WORKER_L2_PRIORITY = (
 )
 
 _WORKER_L3_HTML = (
-    "If HTML/landing/page/UI:\n"
+    "If HTML/landing/page/UI and the task is specified enough to deliver "
+    "(else emit only FLEX_ASK — do not invent a page):\n"
     "  - ONE complete file: <!DOCTYPE html> ... </html>\n"
     "  - At least one real interaction "
     "(onclick= or addEventListener or form submit handler)\n"
@@ -217,11 +225,15 @@ class WorkerAgent(BaseAgent):
                     )
                     system = (
                         system
-                        + "\nALWAYS finish — never cut mid-file. No max token excuses.\n"
+                        + "\nALWAYS finish — never cut mid-file. No max token excuses. "
+                        + "Applies only when the task is specified enough to deliver; "
+                        + "if a user decision is missing, emit only FLEX_ASK — "
+                        + "do not invent missing decisions.\n"
                         + "ROUTING (from desk chat policy):\n"
                         + "  tool_drill → ONLY real tools, report TOOL_RESULT lines, NO HTML.\n"
                         + "  browser_nav → browser_open or browser_goto, report URL/title, NO HTML.\n"
-                        + "  html_page → complete single-file HTML (layered rules above).\n"
+                        + "  html_page → complete single-file HTML when specified enough "
+                        + "(else only FLEX_ASK; layered rules above).\n"
                         + "  research brief → markdown checklist for implementer, not full HTML.\n"
                         + 'If a tool is missing: TOOL_CALL tool_ensure={"which":"browser"} '
                         + "or tool_ensure_package — never invent install output.\n"
