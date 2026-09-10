@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -15,6 +16,20 @@ from gnom_hub.tools.tool_scenarios import run_forced_tool_scenario
 def _isolate(tmp_path, monkeypatch) -> None:
     # Do not patch config.paths.project_root: tmp would count as the real hub and leak GNOM_WS keys.
     monkeypatch.delenv("GNOM_WS", raising=False)
+    monkeypatch.setenv("GNOM_TOLLGATE_LLM", "0")
+    for key in list(os.environ):
+        if key.endswith("_API_KEY") or key in ("DEEPSEEK_API_KEY", "WORKER_API_KEY"):
+            monkeypatch.delenv(key, raising=False)
+    try:
+        import tollgate as tg
+
+        monkeypatch.setattr(
+            tg,
+            "get_keys_service",
+            lambda: type("_Tg", (), {"auto_update": lambda *_a, **_k: None})(),
+        )
+    except ImportError:
+        pass
     monkeypatch.setattr(hub_mod, "project_root", lambda: tmp_path)
     hub_mod._HUB = None
 

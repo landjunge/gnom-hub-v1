@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -9,13 +11,31 @@ from gnom_hub import hub as hub_mod
 from gnom_hub.api.app import create_app
 
 
+def _stub_llm_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Prior Hub() tests can leak GNOM_WS keys into os.environ; keep this module on stubs."""
+    monkeypatch.delenv("GNOM_WS", raising=False)
+    monkeypatch.setenv("GNOM_TOLLGATE_LLM", "0")
+    for key in list(os.environ):
+        if key.endswith("_API_KEY") or key in ("DEEPSEEK_API_KEY", "WORKER_API_KEY"):
+            monkeypatch.delenv(key, raising=False)
+    try:
+        import tollgate as tg
+
+        monkeypatch.setattr(
+            tg,
+            "get_keys_service",
+            lambda: type("_Tg", (), {"auto_update": lambda *_a, **_k: None})(),
+        )
+    except ImportError:
+        pass
+
+
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     # Isolate HOT memory under tmp
-    monkeypatch.delenv("GNOM_WS", raising=False)
+    _stub_llm_env(monkeypatch)
     monkeypatch.setattr(hub_mod, "project_root", lambda: tmp_path)
     monkeypatch.setattr(hub_mod, "_HUB", None)
-    # Avoid real keys from user env affecting free_only etc. — OK if present
     app = create_app()
     with TestClient(app) as c:
         yield c

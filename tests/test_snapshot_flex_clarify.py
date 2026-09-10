@@ -100,6 +100,7 @@ def test_snapshot_keeps_pending_question_after_flex_clarify_answered():
 
 def test_get_api_state_omits_pending_question_when_flex_box1_open(tmp_path, monkeypatch):
     monkeypatch.delenv("GNOM_WS", raising=False)
+    monkeypatch.setenv("GNOM_TOLLGATE_LLM", "0")
     monkeypatch.setattr(hub_mod, "project_root", lambda: tmp_path)
     monkeypatch.setattr(hub_mod, "_HUB", None)
     app = create_app()
