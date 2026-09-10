@@ -25,7 +25,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 ### Architecture & agents
 | Doc | Keywords |
 |-----|----------|
-| [AGENTS_DEFINITION.md](AGENTS_DEFINITION.md) | flex, agents, worker, brainstorm, kein, user, definition, nicht, code, coordinator |
+| [AGENTS_DEFINITION.md](AGENTS_DEFINITION.md) | flex, agents, worker, brainstorm, kein, definition, nicht, user, coordinator, code |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | stroke, architecture, orch, rest, tools, agents, core, classdef, color, fill |
 | [CODE_ANALYSIS_FOR_AI.md](CODE_ANALYSIS_FOR_AI.md) | hub, analysis, code, ai, product, worker, agents, app, execute, gnom |
 | [GITHUB_HOLDER_3.10.md](GITHUB_HOLDER_3.10.md) | skills, github, holder, skill, 3.10, inject, mobile, neural, embeddings, install |
@@ -44,7 +44,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 | [SKILLS.md](SKILLS.md) | skills, api, body, post, skill, path, coordinator, enabled, execute, html |
 | [TOOLS_PORTFOLIO.md](TOOLS_PORTFOLIO.md) | tools, portfolio, computer, playwright, skip, use, install, mouse, ocr, browser |
 | [WORKER_PREFETCH.md](WORKER_PREFETCH.md) | prefetch, worker, budget, category, contrast_check, css_tokens, design, else, execute, ran |
-| [WORKER_PROMPTS.md](WORKER_PROMPTS.md) | worker, html, prompts, flex, tools, prefetch, design, fehler, memory, page |
+| [WORKER_PROMPTS.md](WORKER_PROMPTS.md) | worker, html, prompts, tools, user, flex, prefetch, design, fehler, memory |
 
 ### Memory & vectors
 | Doc | Keywords |
@@ -90,11 +90,14 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 | Doc | Keywords |
 |-----|----------|
 | [BUG_HUNT_TEAM.md](BUG_HUNT_TEAM.md) | orchestrator, cancel, team, bug, hunt, can, god, jobs, mode, telegram |
+| [GNOM-HUB-V1-HUMAN-UI-AUDIT.md](GNOM-HUB-V1-HUMAN-UI-AUDIT.md) | audit, execute, pass, human, send, box, assets, png, tollgate, brainstorm |
+| [GNOM-HUB-V1-WORKER-BOX-CONTRACT.md](GNOM-HUB-V1-WORKER-BOX-CONTRACT.md) | box, flex, worker, api, workers, execute, job, after, chat, brainstorm |
 | [GSC_CHECKLIST.md](GSC_CHECKLIST.md) | github, https, landjunge, tollgate, html, gnom, hub, checklist, gsc, sitemap |
 | [MEMORY_FRESHNESS.md](MEMORY_FRESHNESS.md) | freshness, memory, sync, vector, warm, hot, write, fact, hit, index |
 | [PIPELINE_RELIABILITY.md](PIPELINE_RELIABILITY.md) | pipeline, reliability, clarify, timeout, cancel, later, busy, prefetch, tests, tool |
 | [THREADDESK.md](THREADDESK.md) | threaddesk, gnom, chat, json, tollgate, api, drückst, execute, keine, liest |
 | [TOLLGATE.md](TOLLGATE.md) | tollgate, gnom, export, hub, bash, default, desk, gnom_tollgate_llm, client, n8n |
+| [UI-STATE-CONTRACT.md](UI-STATE-CONTRACT.md) | box, execute, flex, nicht, worker, kein, hub, api, arbeit, clarify |
 
 ### Root meta
 | Doc | Keywords |
@@ -124,6 +127,8 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 - [ESLINT_OVERRIDE_STRATEGIES.md](ESLINT_OVERRIDE_STRATEGIES.md) — Flat Config — Override Strategies
 - [ESLINT_PLUGIN_INTEGRATION.md](ESLINT_PLUGIN_INTEGRATION.md) — Flat Config — Plugin Integration
 - [GITHUB_HOLDER_3.10.md](GITHUB_HOLDER_3.10.md) — GitHub holder summary — Gnom-Hub 3.10.x
+- [GNOM-HUB-V1-HUMAN-UI-AUDIT.md](GNOM-HUB-V1-HUMAN-UI-AUDIT.md) — Gnom-Hub-V1 — Human UI audit
+- [GNOM-HUB-V1-WORKER-BOX-CONTRACT.md](GNOM-HUB-V1-WORKER-BOX-CONTRACT.md) — Gnom-Hub-V1 — Worker / Box contract
 - [GSC_CHECKLIST.md](GSC_CHECKLIST.md) — Google Search Console — Indexing checklist (Tollgate + Gnom-Hub)
 - [HUB_ARCHITECTURE.md](HUB_ARCHITECTURE.md) — Gnom-Hub — exact architecture overview
 - [INSTALL_SIMPLE.md](INSTALL_SIMPLE.md) — Install — keep it simple
@@ -150,6 +155,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 - [THREADDESK.md](THREADDESK.md) — Gnom-Hub v1 ← ThreadDesk
 - [TOLLGATE.md](TOLLGATE.md) — Stack: ThreadDesk · Gnom · Tollgate
 - [TOOLS_PORTFOLIO.md](TOOLS_PORTFOLIO.md) — Tools portfolio (Computer-Use + hub)
+- [UI-STATE-CONTRACT.md](UI-STATE-CONTRACT.md) — UI-State-Vertrag — Box 1 Flex-Desk
 - [UI_ERROR_LAYER.md](UI_ERROR_LAYER.md) — UI layer — error logic
 - [UI_QUALITY.md](UI_QUALITY.md) — UI quality · colors · stability · speed
 - [V1_SCOPE.md](V1_SCOPE.md) — Gnom-Hub – V1 Scope (final, 1.0.0)

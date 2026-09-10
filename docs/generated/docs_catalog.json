@@ -1,6 +1,6 @@
 {
   "version": "3.10.1",
-  "count": 51,
+  "count": 54,
   "docs": [
     {
       "file": "AGENTS_DEFINITION.md",
@@ -13,18 +13,18 @@
         "worker",
         "brainstorm",
         "kein",
-        "user",
         "definition",
         "nicht",
-        "code",
+        "user",
         "coordinator",
+        "code",
         "default",
         "hub",
-        "memory",
-        "nur"
+        "keine",
+        "memory"
       ],
-      "chars": 7164,
-      "lines": 185
+      "chars": 8441,
+      "lines": 206
     },
     {
       "file": "ARCHITECTURE.md",
@@ -409,6 +409,54 @@
       ],
       "chars": 2359,
       "lines": 67
+    },
+    {
+      "file": "GNOM-HUB-V1-HUMAN-UI-AUDIT.md",
+      "path": "docs/GNOM-HUB-V1-HUMAN-UI-AUDIT.md",
+      "title": "Gnom-Hub-V1 \u2014 Human UI audit",
+      "topic": "Other",
+      "keywords": [
+        "audit",
+        "execute",
+        "pass",
+        "human",
+        "send",
+        "box",
+        "assets",
+        "png",
+        "tollgate",
+        "brainstorm",
+        "done",
+        "start",
+        "workers",
+        "clarify"
+      ],
+      "chars": 7508,
+      "lines": 133
+    },
+    {
+      "file": "GNOM-HUB-V1-WORKER-BOX-CONTRACT.md",
+      "path": "docs/GNOM-HUB-V1-WORKER-BOX-CONTRACT.md",
+      "title": "Gnom-Hub-V1 \u2014 Worker / Box contract",
+      "topic": "Other",
+      "keywords": [
+        "box",
+        "flex",
+        "worker",
+        "api",
+        "workers",
+        "execute",
+        "job",
+        "after",
+        "chat",
+        "brainstorm",
+        "done",
+        "send",
+        "browser",
+        "code"
+      ],
+      "chars": 4972,
+      "lines": 75
     },
     {
       "file": "GSC_CHECKLIST.md",
@@ -1035,6 +1083,30 @@
       "lines": 73
     },
     {
+      "file": "UI-STATE-CONTRACT.md",
+      "path": "docs/UI-STATE-CONTRACT.md",
+      "title": "UI-State-Vertrag \u2014 Box 1 Flex-Desk",
+      "topic": "Other",
+      "keywords": [
+        "box",
+        "execute",
+        "flex",
+        "nicht",
+        "worker",
+        "kein",
+        "hub",
+        "api",
+        "arbeit",
+        "clarify",
+        "coordinator",
+        "start_work",
+        "keine",
+        "pipeline"
+      ],
+      "chars": 4023,
+      "lines": 67
+    },
+    {
       "file": "UI_ERROR_LAYER.md",
       "path": "docs/UI_ERROR_LAYER.md",
       "title": "UI layer \u2014 error logic",
@@ -1187,20 +1259,20 @@
         "worker",
         "html",
         "prompts",
-        "flex",
         "tools",
+        "user",
+        "flex",
         "prefetch",
         "design",
         "fehler",
         "memory",
         "page",
         "same",
-        "user",
-        "deliverable",
-        "keywords"
+        "task",
+        "deliverable"
       ],
-      "chars": 4096,
-      "lines": 104
+      "chars": 4257,
+      "lines": 105
     },
     {
       "file": "WORKFLOWS_AND_PRESETS.md",
