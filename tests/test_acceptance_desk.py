@@ -73,6 +73,21 @@ def test_flex_answer_start_work_polls_job_like_execute():
         assert "flexShowsCoordinator" in src
 
 
+def test_chat_lives_under_box2_half_height():
+    html = Path("src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
+    css = Path("src/gnom_hub/ui/static/app.css").read_text(encoding="utf-8")
+    box2 = html.find('id="box2"')
+    chat = html.find('id="chat-mod"')
+    box3 = html.find('id="box3"')
+    stack = html.find('id="box2-stack"')
+    assert 0 < stack < box2 < chat < box3
+    assert html.count('id="chat-mod"') == 1
+    assert "chat-mod-platz" not in html
+    assert ".box2-stack > #box2.box" in css
+    assert "flex: 0 0 50%" in css
+    assert ".box2-stack > #chat-mod" in css
+
+
 def test_send_plus_exec_does_not_auto_run_execute():
     part = Path("src/gnom_hub/ui/static/parts/03-chat-jobs-ops.js").read_text(encoding="utf-8")
     app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
