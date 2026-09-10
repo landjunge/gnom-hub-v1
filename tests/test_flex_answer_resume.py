@@ -22,6 +22,7 @@ def _hub(tmp_path, monkeypatch):
     from gnom_hub.config import paths
     from gnom_hub.hub import Hub
 
+    monkeypatch.delenv("GNOM_WS", raising=False)
     monkeypatch.setattr(paths, "project_root", lambda: tmp_path)
     monkeypatch.setattr(hub_mod, "project_root", lambda: tmp_path)
     hub_mod._HUB = None

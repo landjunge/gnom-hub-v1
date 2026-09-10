@@ -85,6 +85,7 @@ def test_start_work_yes_calls_hub_execute_not_flex(tmp_path, monkeypatch):
     from gnom_hub.config import paths
     from gnom_hub.hub import Hub
 
+    monkeypatch.delenv("GNOM_WS", raising=False)
     monkeypatch.setattr(paths, "project_root", lambda: tmp_path)
     monkeypatch.setattr(hub_mod, "project_root", lambda: tmp_path)
     hub_mod._HUB = None
@@ -207,6 +208,7 @@ def test_coordinator_clarify_answer_routes_only_to_coordinator(tmp_path, monkeyp
     from gnom_hub.config import paths
     from gnom_hub.hub import Hub
 
+    monkeypatch.delenv("GNOM_WS", raising=False)
     monkeypatch.setattr(paths, "project_root", lambda: tmp_path)
     monkeypatch.setattr(hub_mod, "project_root", lambda: tmp_path)
     hub_mod._HUB = None
@@ -355,6 +357,7 @@ def test_session_pack_flex_questions_roundtrip(tmp_path, monkeypatch):
     from gnom_hub.config import paths
     from gnom_hub.hub import Hub
 
+    monkeypatch.delenv("GNOM_WS", raising=False)
     monkeypatch.setattr(paths, "project_root", lambda: tmp_path)
     monkeypatch.setattr(hub_mod, "project_root", lambda: tmp_path)
     hub_mod._HUB = None

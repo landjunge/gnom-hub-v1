@@ -12,6 +12,7 @@ from gnom_hub.api.app import create_app
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     # Isolate HOT memory under tmp
+    monkeypatch.delenv("GNOM_WS", raising=False)
     monkeypatch.setattr(hub_mod, "project_root", lambda: tmp_path)
     monkeypatch.setattr(hub_mod, "_HUB", None)
     # Avoid real keys from user env affecting free_only etc. — OK if present
