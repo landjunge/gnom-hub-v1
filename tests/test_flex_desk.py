@@ -201,6 +201,74 @@ def test_coordinator_clarify_appears_in_flex_desk():
     assert qs[0].options
 
 
+def test_coordinator_clarify_answer_routes_only_to_coordinator(tmp_path, monkeypatch):
+    """DistillQuestion is Box 1; Flex answer goes to coordinator, not workers."""
+    import gnom_hub.hub as hub_mod
+    from gnom_hub.config import paths
+    from gnom_hub.hub import Hub
+
+    monkeypatch.setattr(paths, "project_root", lambda: tmp_path)
+    monkeypatch.setattr(hub_mod, "project_root", lambda: tmp_path)
+    hub_mod._HUB = None
+    hub = Hub()
+    try:
+        hub.pipeline.brainstorm_turn("Maybe build something cool with dark mode, not sure yet")
+        st = hub.pipeline.execute()
+        assert st.stage == PipelineStage.clarify
+        assert st.pending_question is not None
+        qs = [q for q in hub.pipeline.flex_desk.open_questions() if q.agent_id == "coordinator"]
+        assert len(qs) == 1
+        coord = qs[0]
+        assert coord.task_id == "clarify"
+        assert coord.component == "single_select"
+        assert coord.options
+
+        hub.pipeline.flex_desk.ask(
+            agent_id="worker1",
+            job_id=coord.job_id,
+            task_id="hero",
+            text="Soll der Kopfbereich kürzer sein?",
+        )
+        hub.pipeline._sync_flex_state()
+
+        reruns: list[str] = []
+        continued: list[str] = []
+        executes: list[str] = []
+        clarified: list[str] = []
+        hub.pipeline.rerun_worker = (  # type: ignore[method-assign]
+            lambda wid, *_a, **_k: reruns.append(str(wid))
+        )
+        hub.pipeline.continue_after_flex_ask = (  # type: ignore[method-assign]
+            lambda: continued.append("cont")
+        )
+        hub.execute_sync = (  # type: ignore[method-assign]
+            lambda: executes.append("sync") or {"ok": True}
+        )
+        hub.execute_async = (  # type: ignore[method-assign]
+            lambda: executes.append("async") or {"ok": True}
+        )
+
+        def _clarify(option: str):
+            clarified.append(option)
+            return hub.pipeline.state
+
+        hub.pipeline.answer_clarify = _clarify  # type: ignore[method-assign]
+
+        hub.flex_answer(coord.question_id, "Schnell und einfach", job_id=coord.job_id, sync=True)
+        assert clarified == ["Schnell und einfach"]
+        assert reruns == []
+        assert continued == []
+        assert executes == []
+        open_agents = {q.agent_id for q in hub.pipeline.flex_desk.open_questions()}
+        assert "coordinator" not in open_agents
+        assert "worker1" in open_agents
+        joined = "\n".join(hub.pipeline.state.distilled_requirements)
+        assert "User→coordinator" in joined
+        assert "User→worker1" not in joined
+    finally:
+        hub_mod._HUB = None
+
+
 def test_worker_flex_ask_pauses_and_routes_answer():
     bus = EventBus()
     pipe = Pipeline(bus)
