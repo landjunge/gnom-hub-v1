@@ -33,6 +33,23 @@ def test_send_toast_does_not_claim_build_auto_executes():
     assert toast in app
 
 
+def test_flex_answer_start_work_polls_job_like_execute():
+    """start_work POST returns a job envelope; UI must poll, not wipe Box 1."""
+    part = Path("src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
+    app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
+    for src in (part, app):
+        body = src.split("async function answerFlexQuestion", 1)[1].split(
+            "function renderFlexBox1", 1
+        )[0]
+        assert "pollJob(start.job_id" in body
+        assert "wants_start_work" in body
+        assert "applySnapshot(start)" not in body
+        assert body.index("pollJob") < body.index("applySnapshot(snap)")
+        apply = src.split("function applySnapshot(snap)", 1)[1][:900]
+        assert "snap.job_id && !snap.pipeline && !snap.flex_box1" in apply
+        assert "flexShowsCoordinator" in src
+
+
 def test_tool_drill_s6_plugins_forced():
     h = Hub()
     r = run_forced_tool_scenario(h.tools, "Tool drill S6 plugins", bus=h.bus)

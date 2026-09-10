@@ -78,17 +78,55 @@
   async function answerFlexQuestion(q, value) {
     if (!q || !q.question_id) return;
     try {
-      const snap = await api("POST", "/api/flex/answer", {
+      const start = await api("POST", "/api/flex/answer", {
         question_id: q.question_id,
         job_id: q.job_id || "",
         value: value,
       });
-      applySnapshot(snap);
-      if (snap.flex_answer && snap.flex_answer.wants_start_work) {
+      const wantsStart = !!(
+        start.flex_answer && start.flex_answer.wants_start_work
+      );
+      if (wantsStart) {
         toast("Arbeit starten", "ok");
+        if (typeof appendChat === "function") {
+          appendChat("system", "Execute started (distill → flex → workers)…");
+        }
       }
+      let snap = start;
+      // execute_async envelope is {job_id, stage:queued} without flex_box1.
+      // Applying it as a snapshot wipes Box 1 — poll like #btn-execute.
+      if (start.job_id && typeof pollJob === "function") {
+        if (typeof setChatBusy === "function") setChatBusy(true);
+        try {
+          const job = await pollJob(start.job_id, 300000);
+          snap = job.snapshot || (await api("GET", "/api/state"));
+          if (job.status === "error") {
+            if (typeof appendChat === "function") {
+              appendChat("system", "Execute error: " + (job.error || "?"));
+            }
+            toast(job.error || "Execute error", "error");
+            applySnapshot(snap);
+            return;
+          }
+          if (job.status === "cancelled") {
+            if (typeof appendChat === "function") {
+              appendChat("system", "Execute cancelled.");
+            }
+            toast("Cancelled", "info");
+            applySnapshot(snap);
+            return;
+          }
+        } finally {
+          if (typeof setChatBusy === "function") setChatBusy(false);
+          currentJobId = null;
+        }
+      }
+      applySnapshot(snap);
     } catch (err) {
-      toast("Antwort nicht übernommen", "error");
+      toast(
+        (err && err.message) || "Antwort nicht übernommen",
+        "error"
+      );
     }
   }
 
@@ -158,8 +196,15 @@
   }
 
   function applySnapshot(snap) {
-    lastSnapshot = snap || null;
-    if (!snap) return;
+    if (!snap) {
+      lastSnapshot = null;
+      return;
+    }
+    // Job start envelopes ({job_id, stage:queued}) are not state snapshots.
+    if (snap.job_id && !snap.pipeline && !snap.flex_box1) {
+      return;
+    }
+    lastSnapshot = snap;
     applyUiPackExtras(snap);
     if (snap.agents) applyAgentsFromServer(snap.agents);
     const p = snap.pipeline || {};
@@ -490,17 +535,32 @@
 
     renderBox3Workers(p);
 
+    const flexBox = snap.flex_box1 || { questions: p.flex_questions || [] };
     if (typeof renderFlexBox1 === "function") {
-      renderFlexBox1(snap.flex_box1 || { questions: p.flex_questions || [] });
+      renderFlexBox1(flexBox);
     }
+    const flexQs = Array.isArray(flexBox.questions) ? flexBox.questions : [];
+    const flexShowsCoordinator = flexQs.some(function (q) {
+      return (
+        q &&
+        q.text &&
+        (q.agent_id === "coordinator" || q.task_id === "clarify")
+      );
+    });
 
-    if (p.pending_question && p.pending_question.text) {
+    if (
+      p.pending_question &&
+      p.pending_question.text &&
+      !flexShowsCoordinator
+    ) {
       const qOpts =
         Array.isArray(p.pending_question.options) &&
         p.pending_question.options.length
           ? p.pending_question.options
           : null;
       showClarify(p.pending_question.text, qOpts);
+    } else if (flexShowsCoordinator) {
+      hideClarify();
     } else if (p.stage !== "clarify") {
       hideClarify();
       // Brainstorm / Flex options → Box1 pick cards
