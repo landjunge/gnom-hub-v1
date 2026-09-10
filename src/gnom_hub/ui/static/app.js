@@ -5633,11 +5633,20 @@
         );
         toast("Brainstorm · ja/ok = umsetzen, oder harter Bau-Befehl = sofort", "ok");
       } else if (stage === "done") {
-        appendChat(
-          "system",
-          "Umsetzung aus Kontext (Befehl oder dein Ja nach Nachfrage) — siehe Box 3."
-        );
-        toast("Umgesetzt · Box 3", "ok");
+        const okDeliverable = snap.pipeline && snap.pipeline.deliverable_ok;
+        if (okDeliverable) {
+          appendChat(
+            "system",
+            "Umsetzung aus Kontext (Befehl oder dein Ja nach Nachfrage) — siehe Box 3."
+          );
+          toast("Umgesetzt · Box 3", "ok");
+        } else {
+          appendChat(
+            "system",
+            "Pipeline fertig, aber kein gültiges Deliverable — siehe Box 3."
+          );
+          toast("Kein Deliverable · Box 3", "error");
+        }
         focusBox3();
       } else if (stage === "clarify") {
         appendChat("system", "Need a clarify answer in Box 1.");
@@ -5699,11 +5708,22 @@
         const dur =
           lastJobElapsedSec ||
           (jobTimerStart ? (Date.now() - jobTimerStart) / 1000 : 0);
-        appendChat(
-          "system",
-          "Execute done in " + formatDuration(dur) + " — see Box 3."
-        );
-        toast("Execute done · " + formatDuration(dur), "ok");
+        const okDeliverable = snap.pipeline && snap.pipeline.deliverable_ok;
+        if (okDeliverable) {
+          appendChat(
+            "system",
+            "Execute done in " + formatDuration(dur) + " — see Box 3."
+          );
+          toast("Execute done · " + formatDuration(dur), "ok");
+        } else {
+          appendChat(
+            "system",
+            "Execute finished in "
+              + formatDuration(dur)
+              + " without a valid deliverable — see Box 3."
+          );
+          toast("Kein Deliverable · " + formatDuration(dur), "error");
+        }
         focusBox3();
         try {
           pushResultHistory(snap.pipeline || {}, {

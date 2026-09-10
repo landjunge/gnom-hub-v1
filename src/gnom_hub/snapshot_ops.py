@@ -39,6 +39,30 @@ def _worst_validation(worker_outputs: list | None) -> dict[str, Any] | None:
     return worst
 
 
+def _deliverable_ok(st: Any) -> bool:
+    """True when at least one worker body is a real deliverable, not FEHLER/stub.
+
+    Stage ``done`` is not enough. Soft DoD issues (palette, wishes) still leave
+    a page in Box 3 — only missing/error bodies are treated as not-ok.
+    """
+    bodies: list[str] = []
+    for o in getattr(st, "worker_outputs", None) or []:
+        if isinstance(o, dict):
+            bodies.append(str(o.get("result") or o.get("body") or ""))
+    if not bodies:
+        bodies = [str(x) for x in (getattr(st, "worker_results", None) or [])]
+    for body in bodies:
+        b = (body or "").strip()
+        if len(b) < 400:
+            continue
+        if "FEHLER" in b and "Deliverable" in b:
+            continue
+        if b.startswith("Stub") or "Stub —" in b:
+            continue
+        return True
+    return False
+
+
 class SnapshotOpsMixin:
     """Mixin extracted from Hub — pure move."""
 
@@ -123,6 +147,7 @@ class SnapshotOpsMixin:
             "resolved_plan_mode": getattr(st, "resolved_plan_mode", "") or "",
             "plan_html_score": getattr(st, "plan_html_score", None),
             "validation": _worst_validation(list(st.worker_outputs or [])),
+            "deliverable_ok": _deliverable_ok(st),
         }
 
     def memory_dict(self) -> dict[str, Any]:
