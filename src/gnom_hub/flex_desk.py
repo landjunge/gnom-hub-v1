@@ -34,11 +34,6 @@ _START_YES = frozenset(
 _TAG_RE = re.compile(r"<[^>]+>")
 _SCRIPT_RE = re.compile(r"(?is)<script[^>]*>.*?</script>")
 _JS_RE = re.compile(r"(?i)javascript:|onerror\s*=|onload\s*=|onclick\s*=")
-# Line start, optional markdown fence (` ``` ` / ` ```text `), then FLEX_ASK.
-_FLEX_ASK_LINE = re.compile(
-    r"^(?:`{3,}\w*[ \t]*)?FLEX_ASK\b(.*)$",
-    re.IGNORECASE,
-)
 
 
 _GERMAN_TERMS = (
@@ -62,23 +57,12 @@ def plain_german(raw: str) -> str:
 
 
 def parse_flex_ask(raw: str) -> dict[str, str] | None:
-    """Parse the first FLEX_ASK block in worker text. None if not an ask."""
-    lines = str(raw or "").splitlines()
-    start: int | None = None
-    head = ""
-    for i, line in enumerate(lines):
-        m = _FLEX_ASK_LINE.match(line.strip())
-        if m:
-            start = i
-            head = m.group(1).strip()
-            break
-    if start is None:
+    """Parse worker/coordinator FLEX_ASK block. None if not an ask."""
+    s = str(raw or "").strip()
+    if not s.upper().startswith("FLEX_ASK"):
         return None
-    body_lines: list[str] = []
-    for line in lines[start + 1 :]:
-        if line.strip().startswith("```"):
-            break
-        body_lines.append(line)
+    lines = s.splitlines()
+    head = lines[0][8:].strip() if lines else ""
     component = "yes_no"
     task_id = "task"
     leftover: list[str] = []
@@ -90,8 +74,8 @@ def parse_flex_ask(raw: str) -> dict[str, str] | None:
             component = low
         else:
             leftover.append(tok)
-    body = "\n".join(body_lines).strip()
-    text = plain_german(body or " ".join(leftover))
+    body = "\n".join(lines[1:]).strip()
+    text = body or " ".join(leftover)
     if not text:
         return None
     return {"component": component, "task_id": task_id, "text": text}
