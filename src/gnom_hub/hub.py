@@ -171,6 +171,8 @@ class Hub(
         self._wire_trace()
         self._wire_thoughts()
         self.agents.on_start()
+        # Resume Flex Box 1 if checkpoint.json exists (same as POST /api/checkpoint/load)
+        self._load_checkpoint_on_boot()
         # Auto-start telegram poll if GNOM_TELEGRAM_POLL=1
         if os.getenv("GNOM_TELEGRAM_POLL", "").strip() in ("1", "true", "yes"):
             self.telegram_start()

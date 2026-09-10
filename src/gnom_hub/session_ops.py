@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
 from gnom_hub.agents.manager import AgentManager
@@ -112,6 +113,23 @@ class SessionOpsMixin:
                 restore()
             self._append_trace("checkpoint.load", {"stage": stage.value})
             return self.snapshot()
+
+    def _load_checkpoint_on_boot(self) -> None:
+        """Restore pipeline + Flex Box 1 from checkpoint.json. Fail closed."""
+        path = getattr(self, "_checkpoint_path", None)
+        if path is None or not path.is_file():
+            return
+        try:
+            self.load_checkpoint()
+        except Exception as exc:  # noqa: BLE001
+            logging.getLogger(__name__).warning(
+                "checkpoint load failed on boot — continuing without it: %s",
+                exc,
+            )
+            try:
+                self._append_trace("checkpoint.boot_fail", {"error": str(exc)[:200]})
+            except Exception:  # noqa: BLE001
+                pass
 
     def save(self) -> dict[str, Any]:
         self.hot.save()
