@@ -34,6 +34,7 @@ Unbekannt → `text`. Markup/JS weg (`sanitize_box1_text`). UI nur `textContent`
 - **Arbeit starten** (`#btn-execute` → `POST /api/execute`) = Nutzerbestätigung. Zentrale Gate.
 - `execute()` setzt offene Box-1-`start_work`-Fragen auf `stale`. Ein späteres Ja darf Execute nicht erneut feuern (`stale_question`).
 - Ja auf `start_work` → Hub `execute()`, nicht `FlexDesk.start_execute()` (wirft).
+- UI pollt den `start_work`-Job wie Execute (`pollJob`). Die Envelope `{job_id}` ohne `flex_box1` darf Box 1 nicht leeren.
 
 Start-work-Text (fest):
 
@@ -58,6 +59,7 @@ Rebuild / HTML reparieren / mehr Interaktion: `action=start_work`. `apply_flex_f
 ## Reload
 
 `GET /api/state` → `flex_box1.questions` + `pipeline.flex_questions`. Offene Fragen behalten `job_id`. Restore: `FlexDesk.from_list`.
+Hub-Boot (`Hub.__init__` → `_load_checkpoint_on_boot`) lädt `checkpoint.json` wie `POST /api/checkpoint/load` und stellt Box-1-Fragen wieder her.
 
 ## Verboten für Flex
 
