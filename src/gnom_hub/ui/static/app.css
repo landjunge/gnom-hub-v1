@@ -3088,6 +3088,15 @@ a:focus-visible {
   align-items: center;
   flex: 0 0 auto;
 }
+.box3-history-select {
+  max-width: 11rem;
+  height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg-card);
+  color: var(--text);
+  font-size: 11px;
+}
 .box3-result-label {
   flex: 1 1 auto;
   min-width: 80px;

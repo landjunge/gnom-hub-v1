@@ -16,7 +16,18 @@ def _action_to_dict(result: Any) -> dict[str, Any]:
     if isinstance(result, dict):
         return result
     out: dict[str, Any] = {}
-    for k in ("ok", "error", "message", "stdout", "stderr", "path", "data"):
+    for k in (
+        "ok",
+        "error",
+        "message",
+        "stdout",
+        "stderr",
+        "path",
+        "data",
+        "dry_run",
+        "detail",
+        "blocked",
+    ):
         if hasattr(result, k):
             out[k] = getattr(result, k)
     if "ok" not in out:

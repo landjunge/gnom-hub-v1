@@ -1,0 +1,238 @@
+{
+  "commit": "56fc27b45e17af99617ab926e617a16b64e5da5a",
+  "origin_main": "06cfcc592e9c0f2c2ddb760185c10b41cf29bdf4",
+  "audit_branch": "docs/human-ui-three-box-audit",
+  "inspected_at": "2026-09-10",
+  "environment": {
+    "os": "macOS 15.7.4",
+    "python_venv": "3.12.13",
+    "python_system_unused": "3.8.0",
+    "node": "v25.9.0",
+    "npm": "11.12.1",
+    "ruff": "0.16.1",
+    "pytest": "8.3.5",
+    "cwd": "/Users/landjunge/gnom-hub-v1",
+    "branch": "docs/shared-desk-tokens",
+    "hub_8080": {
+      "listening": true,
+      "version": "3.10.1",
+      "god_mode": false,
+      "stage": "idle"
+    },
+    "cdp_9222": false,
+    "notes": "Unrelated 4AllPass untracked files in working tree were ignored. PR #56 is mutation-nightly infra only."
+  },
+  "tests": [
+    {
+      "id": "ruff_check",
+      "command": "ruff check .",
+      "exit": 0,
+      "duration_s": 0.44,
+      "result": "pass",
+      "deviation": "used .venv/bin/ruff"
+    },
+    {
+      "id": "ruff_format_check",
+      "command": "ruff format --check .",
+      "exit": 0,
+      "duration_s": 0.42,
+      "result": "pass",
+      "deviation": null
+    },
+    {
+      "id": "mermaid_check",
+      "command": "python scripts/mermaid_check.py",
+      "exit": 0,
+      "duration_s": 0.94,
+      "result": "pass",
+      "note": "syntax inventory locally green on 56fc27b; GitHub CI on origin/main previously failed mermaid/inventory drift"
+    },
+    {
+      "id": "lint_js",
+      "command": "npm run lint:js",
+      "exit": 0,
+      "duration_s": 4.21,
+      "result": "pass",
+      "deviation": null
+    },
+    {
+      "id": "mutation_check",
+      "command": "python scripts/mutation_check.py",
+      "exit": 0,
+      "duration_s": 2.91,
+      "result": "pass",
+      "note": "33/33 in-scope mutants killed. Not PR #56 nightly mutmut."
+    },
+    {
+      "id": "vector_rank_eval",
+      "command": "python scripts/vector_rank_eval.py",
+      "exit": 0,
+      "duration_s": 1.2,
+      "result": "pass"
+    },
+    {
+      "id": "smoke",
+      "command": "python -m gnom_hub.main --smoke",
+      "exit": 0,
+      "duration_s": 80.9,
+      "result": "pass",
+      "note": "Smoke ran brainstorm then execute; workers=3. Used already-configured local keys; values not logged here."
+    },
+    {
+      "id": "prepush_gate",
+      "command": "./scripts/prepush_gate.sh",
+      "exit": 0,
+      "duration_s": 6.13,
+      "result": "pass"
+    },
+    {
+      "id": "pytest",
+      "command": "pytest tests/ -q --tb=short",
+      "exit": 1,
+      "duration_s": 804.99,
+      "result": "fail",
+      "passed": 539,
+      "failed": 7,
+      "failures": [
+        "tests/test_acceptance_desk.py::test_html_execute_one_worker_and_validation_without_key",
+        "tests/test_api.py::test_reexecute_after_error_job_done",
+        "tests/test_api.py::test_chat_brainstorm_then_execute",
+        "tests/test_api.py::test_manual_execute_still_works",
+        "tests/test_api.py::test_telegram_brainstorm_exec_pack",
+        "tests/test_llm_manager.py::test_missing_key",
+        "tests/test_pipeline_tool_calls.py::test_snapshot_exposes_tool_calls_for_ui"
+      ],
+      "note": "Ran on checkout 56fc27b. Several API tests ended in stage=clarify instead of done. test_missing_key did not raise — likely because a real key is present in the live environment."
+    },
+    {
+      "id": "basic_tests",
+      "command": "python scripts/basic_tests.py",
+      "exit": null,
+      "result": "blocked",
+      "reason": "GNOM_E2E_CDP default http://127.0.0.1:9222 not listening; AGENTS.md forbids opening a random browser"
+    },
+    {
+      "id": "user_scenarios_e2e",
+      "command": "python scripts/user_scenarios_e2e.py",
+      "exit": null,
+      "result": "blocked",
+      "reason": "same CDP/headed Chrome constraint"
+    }
+  ],
+  "ui_controls": [
+    {"id": "btn-send", "status": "works", "note": "can auto-execute workers"},
+    {"id": "btn-execute", "status": "works"},
+    {"id": "btn-send-exec", "status": "partial", "note": "may double-execute after auto-execute"},
+    {"id": "btn-cancel", "status": "partial", "note": "cooperative cancel only"},
+    {"id": "btn-td", "status": "works", "note": "fill only, no send"},
+    {"id": "btn-mic", "status": "works"},
+    {"id": "chat-mod-slot-btn", "status": "placeholder"},
+    {"id": "box1", "status": "works", "note": "help/clarify/flex; no arounder"},
+    {"id": "box2", "status": "works"},
+    {"id": "box3", "status": "works"},
+    {"id": "pipeline-busy-banner", "status": "works", "note": "HTML restored; needs hub reload to show on :8080"},
+    {"id": "job-timer", "status": "works", "note": "HTML restored; needs hub reload to show on :8080"},
+    {"id": "flex-preset-select", "status": "placeholder"},
+    {"id": "box3-dual", "status": "unreachable"},
+    {"id": "result-history", "status": "works", "note": "HTML restored in Box 3 toolbar"},
+    {"id": "btn-copy-all", "status": "works"},
+    {"id": "btn-diff", "status": "works"},
+    {"id": "btn-reexec", "status": "works"},
+    {"id": "btn-hist-export", "status": "works"},
+    {"id": "god-badge", "status": "works", "note": "UI confirm; API has no auth"}
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "high",
+      "title": "Send is not Execute is false in code",
+      "confirmed": true,
+      "sha_applies_to": ["56fc27b", "06cfcc59"]
+    },
+    {
+      "id": "F2",
+      "severity": "medium",
+      "title": "No Arounder agent; Box 1 is help/clarify/flex",
+      "confirmed": true
+    },
+    {
+      "id": "F3",
+      "severity": "medium",
+      "title": "Busy banner and job timer IDs missing from index.html",
+      "confirmed": true
+    },
+    {
+      "id": "F4",
+      "severity": "medium",
+      "title": "_action_to_dict drops dry_run so dry-run shell can be labelled live",
+      "confirmed": true
+    },
+    {
+      "id": "F5",
+      "severity": "high",
+      "title": "Unauthenticated POST /api/god-mode",
+      "confirmed": true
+    },
+    {
+      "id": "F6",
+      "severity": "high",
+      "title": "Plugins run as hub user and can enable god-mode",
+      "confirmed": true
+    },
+    {
+      "id": "F7",
+      "severity": "medium",
+      "title": "file_read jail includes repo root",
+      "confirmed": true
+    },
+    {
+      "id": "F8",
+      "severity": "medium",
+      "title": "browser_open and file_write are not god-gated",
+      "confirmed": true
+    },
+    {
+      "id": "F9",
+      "severity": "low",
+      "title": "Dead UI: history/diff/reexec/copy-all/gnom info layer",
+      "confirmed": true
+    },
+    {
+      "id": "F10",
+      "severity": "medium",
+      "title": "Cancel is cooperative; in-flight worker can still write files",
+      "confirmed": true
+    }
+  ],
+  "repairs": [
+    {
+      "id": "R1",
+      "finding": "F4",
+      "commit_intent": "fix: keep dry_run on computer tool results",
+      "test": "tests/test_action_to_dict.py",
+      "files": ["src/gnom_hub/tools_ops.py"]
+    },
+    {
+      "id": "R2",
+      "finding": "F3",
+      "commit_intent": "fix: restore pipeline busy banner and job timer in HTML",
+      "test": "tests/test_acceptance_desk.py::test_ui_hosts_pipeline_busy_banner_and_job_timer",
+      "files": ["src/gnom_hub/ui/static/index.html"]
+    },
+    {
+      "id": "R3",
+      "finding": "F9",
+      "commit_intent": "fix: restore Box 3 history, diff, reexec, copy-all",
+      "test": "tests/test_acceptance_desk.py::test_ui_hosts_box3_history_diff_reexec",
+      "files": ["src/gnom_hub/ui/static/index.html", "src/gnom_hub/ui/static/app.css"]
+    }
+  ],
+  "remaining_risks": [
+    "Live headed UI not executed (no CDP).",
+    "Pytest 7 failed / 539 passed on 56fc27b (clarify instead of done; missing-key test sees a real key).",
+    "Product tests encode auto-execute; changing Send without updating tests would fail CI.",
+    "GitHub CI mermaid/inventory drift on origin/main (separate from local mermaid_check).",
+    "Mutation Nightly on main still failing (PR #56 infra).",
+    "Connecting Agent Authority Lab while Send can start workers is unsafe."
+  ]
+}
