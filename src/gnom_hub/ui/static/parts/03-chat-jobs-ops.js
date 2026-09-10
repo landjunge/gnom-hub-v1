@@ -1446,6 +1446,49 @@
     body.textContent = text;
     bubble.appendChild(document.createTextNode(" "));
     bubble.appendChild(body);
+    const acts = document.createElement("span");
+    acts.className = "chat-line-actions";
+    const copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.className = "chat-act-copy";
+    copyBtn.title = "Kopieren";
+    copyBtn.setAttribute("aria-label", "Kopieren");
+    copyBtn.textContent = "⧉";
+    copyBtn.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const payload = String(text || "");
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(payload);
+      }
+      toast(uiLang === "de" ? "Kopiert" : "Copied", "ok");
+    });
+    const keepBtn = document.createElement("button");
+    keepBtn.type = "button";
+    keepBtn.className = "chat-act-keep";
+    keepBtn.title = "Merken";
+    keepBtn.setAttribute("aria-label", "Merken");
+    keepBtn.textContent = "★";
+    keepBtn.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const payload = String(text || "").trim();
+      if (!payload) return;
+      api("POST", "/api/memory/warm", { text: payload })
+        .then(function () {
+          toast(uiLang === "de" ? "Gemerkt" : "Remembered", "ok");
+        })
+        .catch(function (err) {
+          toast(
+            (uiLang === "de" ? "Merken fehlgeschlagen: " : "Remember failed: ") +
+              (err && err.message ? err.message : ""),
+            "error"
+          );
+        });
+    });
+    acts.appendChild(copyBtn);
+    acts.appendChild(keepBtn);
+    bubble.appendChild(acts);
     line.appendChild(bubble);
     els.chatLog.appendChild(line);
     return line;

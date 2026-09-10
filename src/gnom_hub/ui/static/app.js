@@ -928,9 +928,13 @@
           });
           btns.appendChild(btn);
         });
+        const hint = document.createElement("p");
+        hint.className = "flex-ask-hint muted";
+        hint.textContent = "Mehrfachauswahl — antippen, dann Senden";
+        card.appendChild(hint);
         const send = document.createElement("button");
         send.type = "button";
-        send.className = "flex-ask-btn";
+        send.className = "flex-ask-btn flex-ask-send";
         send.textContent = "Senden";
         send.addEventListener("click", function () {
           if (!picked.length) return;
@@ -1520,13 +1524,59 @@
     return match || voices[0];
   }
 
+  const AGENT_TTS_ORDER = [
+    "brainstorm",
+    "flex",
+    "coordinator",
+    "memory",
+    "worker1",
+    "worker2",
+    "worker3",
+    "worker4",
+  ];
+
+  function agentTtsIndex(agentId) {
+    const i = AGENT_TTS_ORDER.indexOf(String(agentId || ""));
+    return i >= 0 ? i : 0;
+  }
+
+  function voicesForLang(lang) {
+    const voices = window.speechSynthesis.getVoices() || [];
+    const want = (lang || "de-DE").slice(0, 2).toLowerCase();
+    const matched = voices.filter(function (v) {
+      return (v.lang || "").toLowerCase().indexOf(want) === 0;
+    });
+    if (matched.length) return matched;
+    if (uiLang !== "en") {
+      return voices.filter(function (v) {
+        return (v.lang || "").toLowerCase().indexOf("de") === 0;
+      });
+    }
+    return voices;
+  }
+
+  function pickVoiceForAgent(agentId, lang) {
+    const list = voicesForLang(lang);
+    if (!list.length) return pickGermanVoice(lang);
+    return list[agentTtsIndex(agentId) % list.length];
+  }
+
+  function pitchForAgent(agentId) {
+    return 0.88 + (agentTtsIndex(agentId) % 6) * 0.05;
+  }
+
+  function queueItemText(item) {
+    if (typeof item === "string") return item;
+    return String((item && item.text) || "");
+  }
+
   function alreadyQueuedOrSpoken(text) {
     const fp = speechFp(text);
     if (!fp) return true;
     if (ttsSpokenFp[fp]) return true;
     if (
       ttsQueue.some(function (q) {
-        return speechFp(q) === fp;
+        return speechFp(queueItemText(q)) === fp;
       })
     ) {
       return true;
@@ -1556,7 +1606,9 @@
    * Speak exactly one queue item. Never cancels a previous utterance mid-stream
    * unless stopSpeech() was called. Next item starts only on onend.
    */
-  function speakChunkNow(clean) {
+  function speakChunkNow(item) {
+    const clean = queueItemText(item);
+    const agentId = item && typeof item === "object" ? item.agentId : "";
     if (!window.speechSynthesis || !clean) {
       ttsPumping = false;
       pumpTtsQueue();
@@ -1576,7 +1628,8 @@
       const u = new SpeechSynthesisUtterance(say);
       u.lang = pickTtsLang(say);
       u.rate = 1.0;
-      const match = pickGermanVoice(u.lang);
+      u.pitch = pitchForAgent(agentId);
+      const match = pickVoiceForAgent(agentId, u.lang);
       if (match) u.voice = match;
       markSpoken(say);
       u.onstart = function () {
@@ -1652,7 +1705,7 @@
    * Enqueue already-prepared text (must be German when desk is DE).
    * Single queue only — never _pendingSpeech + queue (double speak bug).
    */
-  function speakOrQueuePrepared(text) {
+  function speakOrQueuePrepared(text, agentId) {
     let cleaned = stripForSpeech(text);
     if (!cleaned) return;
     if (uiLang !== "en") {
@@ -1665,7 +1718,7 @@
     if (!pieces.length) return;
     pieces.forEach(function (p) {
       if (alreadyQueuedOrSpoken(p)) return;
-      ttsQueue.push(p);
+      ttsQueue.push({ text: p, agentId: String(agentId || "") });
     });
     if (ttsUnlocked) {
       pumpTtsQueue();
@@ -1685,16 +1738,16 @@
    * DE desk: only German leaves the speaker.
    * Hub often already translated thoughts — skip prepare if already DE (no EN then DE).
    */
-  function speakOrQueue(text) {
+  function speakOrQueue(text, agentId) {
     const raw = String(text || "").trim();
     if (!raw) return;
     if (uiLang === "en") {
-      speakOrQueuePrepared(raw);
+      speakOrQueuePrepared(raw, agentId);
       return;
     }
     /* Already German (hub translated) → speak once, no second prepare pass */
     if (looksMostlyGermanClient(raw) && !looksMostlyEnglishClient(raw)) {
-      speakOrQueuePrepared(raw);
+      speakOrQueuePrepared(raw, agentId);
       return;
     }
     const fp = speechFp(raw);
@@ -1705,15 +1758,15 @@
         delete ttsPrepareInflight[fp];
         const de = stripForSpeech((r && r.text) || "");
         if (de && !looksMostlyEnglishClient(de)) {
-          speakOrQueuePrepared(de);
+          speakOrQueuePrepared(de, agentId);
         } else {
-          speakOrQueuePrepared(germanizeThoughtForSpeech(raw, "Agent"));
+          speakOrQueuePrepared(germanizeThoughtForSpeech(raw, "Agent"), agentId);
         }
       })
       .catch(function () {
         delete ttsPrepareInflight[fp];
         /* Never speak English raw on DE desk */
-        speakOrQueuePrepared(germanizeThoughtForSpeech(raw, "Agent"));
+        speakOrQueuePrepared(germanizeThoughtForSpeech(raw, "Agent"), agentId);
       });
   }
 
@@ -1804,7 +1857,7 @@
       const label = labels[agentId] || a.label || agentId;
       const body = stripForSpeech(String(t));
       if (!body) return;
-      speakOrQueue(label + ". " + body);
+      speakOrQueue(label + ". " + body, agentId);
     });
     if (any) lastSpokenKey = key;
   }
@@ -1852,7 +1905,7 @@
       spoken +=
         " Wenn du magst: sag mir kurz, ob das Ergebnis für dich passt.";
     }
-    speakOrQueue(spoken);
+    speakOrQueue(spoken, "flex");
   }
 
   /**
@@ -5295,6 +5348,49 @@
     body.textContent = text;
     bubble.appendChild(document.createTextNode(" "));
     bubble.appendChild(body);
+    const acts = document.createElement("span");
+    acts.className = "chat-line-actions";
+    const copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.className = "chat-act-copy";
+    copyBtn.title = "Kopieren";
+    copyBtn.setAttribute("aria-label", "Kopieren");
+    copyBtn.textContent = "⧉";
+    copyBtn.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const payload = String(text || "");
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(payload);
+      }
+      toast(uiLang === "de" ? "Kopiert" : "Copied", "ok");
+    });
+    const keepBtn = document.createElement("button");
+    keepBtn.type = "button";
+    keepBtn.className = "chat-act-keep";
+    keepBtn.title = "Merken";
+    keepBtn.setAttribute("aria-label", "Merken");
+    keepBtn.textContent = "★";
+    keepBtn.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const payload = String(text || "").trim();
+      if (!payload) return;
+      api("POST", "/api/memory/warm", { text: payload })
+        .then(function () {
+          toast(uiLang === "de" ? "Gemerkt" : "Remembered", "ok");
+        })
+        .catch(function (err) {
+          toast(
+            (uiLang === "de" ? "Merken fehlgeschlagen: " : "Remember failed: ") +
+              (err && err.message ? err.message : ""),
+            "error"
+          );
+        });
+    });
+    acts.appendChild(copyBtn);
+    acts.appendChild(keepBtn);
+    bubble.appendChild(acts);
     line.appendChild(bubble);
     els.chatLog.appendChild(line);
     return line;

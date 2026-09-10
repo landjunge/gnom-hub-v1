@@ -6,9 +6,17 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from gnom_hub import hub as hub_mod
 from gnom_hub.api.app import create_app
 from gnom_hub.hub import Hub
 from gnom_hub.tools.tool_scenarios import run_forced_tool_scenario
+
+
+def _isolate(tmp_path, monkeypatch) -> None:
+    # Do not patch config.paths.project_root: tmp would count as the real hub and leak GNOM_WS keys.
+    monkeypatch.delenv("GNOM_WS", raising=False)
+    monkeypatch.setattr(hub_mod, "project_root", lambda: tmp_path)
+    hub_mod._HUB = None
 
 
 def test_ui_hosts_include_dod_checklist():
@@ -50,6 +58,34 @@ def test_flex_answer_start_work_polls_job_like_execute():
         assert "flexShowsCoordinator" in src
 
 
+def test_tts_one_voice_per_agent():
+    part = Path("src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
+    app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
+    for src in (part, app):
+        assert "function pickVoiceForAgent" in src
+        assert "function pitchForAgent" in src
+        assert 'ttsQueue.push({ text: p, agentId: String(agentId || "") })' in src
+        assert 'speakOrQueue(label + ". " + body, agentId)' in src
+        assert 'speakOrQueue(spoken, "flex")' in src
+
+
+def test_chat_copy_and_remember_buttons():
+    part = Path("src/gnom_hub/ui/static/parts/03-chat-jobs-ops.js").read_text(encoding="utf-8")
+    app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
+    css = Path("src/gnom_hub/ui/static/app.css").read_text(encoding="utf-8")
+    for src in (part, app):
+        assert 'className = "chat-act-copy"' in src
+        assert 'className = "chat-act-keep"' in src
+        assert '"/api/memory/warm"' in src
+        assert "navigator.clipboard.writeText" in src
+    assert "overflow-y: scroll" in css
+    assert "#box2 .agent-layer-body" in css
+    assert ".flex-ask-card" in css
+    flex = Path("src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
+    assert "Mehrfachauswahl — antippen, dann Senden" in flex
+    assert "Mehrfachauswahl — antippen, dann Senden" in app
+
+
 def test_flex_box1_text_multi_select_later_are_answerable():
     """text/free_text: field+submit; multi_select: pick then send; later without options."""
     part = Path("src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
@@ -67,33 +103,42 @@ def test_flex_box1_text_multi_select_later_are_answerable():
         assert "addLaterIfMissing" in body
 
 
-def test_tool_drill_s6_plugins_forced():
+def test_tool_drill_s6_plugins_forced(tmp_path, monkeypatch):
+    _isolate(tmp_path, monkeypatch)
     h = Hub()
-    r = run_forced_tool_scenario(h.tools, "Tool drill S6 plugins", bus=h.bus)
-    assert r.get("ok") is True
-    assert int(r.get("tool_calls") or 0) >= 1
-    summary = str(r.get("summary") or "")
-    assert "S6" in summary or "file_list" in summary or "plugin" in summary.lower()
+    try:
+        r = run_forced_tool_scenario(h.tools, "Tool drill S6 plugins", bus=h.bus)
+        assert r.get("ok") is True
+        assert int(r.get("tool_calls") or 0) >= 1
+        summary = str(r.get("summary") or "")
+        assert "S6" in summary or "file_list" in summary or "plugin" in summary.lower()
+    finally:
+        hub_mod._HUB = None
 
 
-def test_html_execute_one_worker_and_validation_without_key():
+def test_html_execute_one_worker_and_validation_without_key(tmp_path, monkeypatch):
+    _isolate(tmp_path, monkeypatch)
     h = Hub()
-    h.pipeline.brainstorm_turn("Baue eine komplette Landingpage HTML mit dark theme und Hero")
-    st = h.pipeline.execute()
-    if st.stage.value == "clarify":
-        st = h.pipeline.answer_clarify("Schnell und einfach")
-    assert st.stage.value == "done"
-    assert st.resolved_plan_mode == "full_page_html"
-    assert len(st.worker_outputs or []) == 1
-    gate = (st.worker_outputs or [{}])[0].get("validation") or {}
-    assert isinstance(gate, dict)
-    assert gate.get("checklist")
-    # Honest fail — no fake success HTML (missing key → worker_error; stub HTML → incomplete)
-    assert gate.get("ok") is False
-    assert gate.get("issues")
+    try:
+        h.pipeline.brainstorm_turn("Baue eine komplette Landingpage HTML mit dark theme und Hero")
+        st = h.pipeline.execute()
+        if st.stage.value == "clarify":
+            st = h.pipeline.answer_clarify("Schnell und einfach")
+        assert st.stage.value == "done"
+        assert st.resolved_plan_mode == "full_page_html"
+        assert len(st.worker_outputs or []) == 1
+        gate = (st.worker_outputs or [{}])[0].get("validation") or {}
+        assert isinstance(gate, dict)
+        assert gate.get("checklist")
+        # Honest fail — no fake success HTML (missing key → worker_error; stub HTML → incomplete)
+        assert gate.get("ok") is False
+        assert gate.get("issues")
+    finally:
+        hub_mod._HUB = None
 
 
-def test_api_tool_drill_and_busy_409():
+def test_api_tool_drill_and_busy_409(tmp_path, monkeypatch):
+    _isolate(tmp_path, monkeypatch)
     app = create_app()
     with TestClient(app) as c:
         r = c.post("/api/chat?sync=1", json={"text": "Tool drill S6 plugins"})
@@ -113,3 +158,4 @@ def test_api_tool_drill_and_busy_409():
                 r2 = c.post("/api/chat", json={"text": "x"})
                 assert r2.status_code == 409
         c.post("/api/jobs/cancel-busy")
+    hub_mod._HUB = None

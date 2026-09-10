@@ -99,11 +99,24 @@ def test_snapshot_keeps_pending_question_after_flex_clarify_answered():
 
 
 def test_get_api_state_omits_pending_question_when_flex_box1_open(tmp_path, monkeypatch):
+    monkeypatch.delenv("GNOM_WS", raising=False)
     monkeypatch.setattr(hub_mod, "project_root", lambda: tmp_path)
     monkeypatch.setattr(hub_mod, "_HUB", None)
     app = create_app()
     with TestClient(app) as client:
         hub = hub_mod.get_hub()
+        # Clarify continues into Flex+workers; stub so Box 1 cannot FLEX_ASK or hit Tollgate.
+        stub = "Worker1 Ergebnis " + ("ok " * 20)
+        hub.pipeline.flex.run = lambda *_a, **_k: "flex notes"  # type: ignore[method-assign]
+        hub.pipeline.flex.nudge_gaps = lambda *_a, **_k: []  # type: ignore[method-assign]
+        hub.pipeline.coordinator.plan = (  # type: ignore[method-assign]
+            lambda *_a, **_k: [("worker1", "hero")]
+        )
+        hub.pipeline.worker1.run = lambda *_a, **_k: stub  # type: ignore[method-assign]
+        for wid in ("worker2", "worker3", "worker4"):
+            w = getattr(hub.pipeline, wid, None)
+            if w is not None:
+                w.run = lambda *_a, **_k: stub  # type: ignore[method-assign]
         q = _clarify_question()
         hub.pipeline._post_coordinator_clarify(q)
         assert hub.pipeline.state.pending_question is not None
