@@ -155,7 +155,7 @@ Code- und API-Lage. Headed Maus/Tastatur **nicht** ausgeführt (kein CDP).
 1. **Send startet Worker.** Bau-Heuristik, Tool-Drill, Live-Browser, Go-only, Flex-Flag, `POST /api/chat?full=1`. Tests verlangen das. Widerspricht der Audit-Soll-Regel und `docs/CODE_ANALYSIS_FOR_AI.md` („No auto-execute“). `AGENTS.md` erlaubt drei Short-Circuits; die Heuristik ist breiter (`baue`, `landing`, `website`).
 2. **Kein Arounder.** Box 1 ist Hilfe/Clarify/Flex, nicht das benannte Modul.
 3. **Busy-Banner und Job-Timer tot.** CSS+JS vorhanden, HTML-IDs fehlten. **Repariert** in dieser Branch: Test `test_ui_hosts_pipeline_busy_banner_and_job_timer` war rot, IDs in `index.html`, Test grün. Der laufende Hub auf `:8080` serviert noch den alten Stand, bis er neu geladen wird.
-4. **History/Diff/Reexec/Copy-all tot.** Handler ohne DOM.
+4. **History/Diff/Reexec/Copy-all tot.** Handler ohne DOM. **Repariert** in dieser Branch: Test `test_ui_hosts_box3_history_diff_reexec` war rot, IDs in der Box-3-Leiste, Test grün.
 5. **`_action_to_dict` verlor `dry_run`.** Dry-Run-Shell wurde als live gelabelt (`tools_ops.py`). **Repariert** in dieser Branch: Test `tests/test_action_to_dict.py` war rot, dann `dry_run`/`detail`/`blocked` kopiert, Test grün.
 6. **`POST /api/god-mode` ohne Auth.** Lokal by design; Agent-TOOL_CALL kann God nicht setzen, Plugin und localhost-HTTP können.
 7. **Dry-Run deckt Browser/Dateien/Prefetch nicht.** `browser_open` auf macOS ohne God.
@@ -204,6 +204,6 @@ Lokal, Default `127.0.0.1`. Keine fremden Systeme angegriffen. Keine Schlüssel 
 
 Die drei Boxen **existieren** und werden im Snapshot grob richtig befüllt: Gespräch in Box 2, Ergebnisse in Box 3, Rückfragen/Hilfe in Box 1. Die Agenten-Slots stimmen (8 Karten). Execute startet Worker. God-Mode ist nach Start aus.
 
-Gnom-Hub-V1 ist **kein** System, in dem Send nur redet. Worker und Werkzeuge können ohne Execute-Klick laufen. Dry-Run ist kein allgemeines „nichts passiert“. Mehrere sichtbare Bedienelemente sind tot (Busy-Banner, History, Flex-Preset, Arounder-Name).
+Gnom-Hub-V1 ist **kein** System, in dem Send nur redet. Worker und Werkzeuge können ohne Execute-Klick laufen. Dry-Run ist kein allgemeines „nichts passiert“. Busy-Banner, Job-Timer und Box-3-History/Diff/Reexec sind in dieser Branch wieder im HTML. Flex-Preset bleibt Platzhalter. Arounder gibt es nicht.
 
 **Nicht bereit** für eine Verbindung mit dem Agent Authority Lab, solange Send/Execute, Abbruch und God-Mode nicht vertraglich und im Code dieselbe Regel haben und die Live-UI nicht headed geprüft ist.

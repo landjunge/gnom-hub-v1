@@ -134,7 +134,11 @@
     {"id": "job-timer", "status": "works", "note": "HTML restored; needs hub reload to show on :8080"},
     {"id": "flex-preset-select", "status": "placeholder"},
     {"id": "box3-dual", "status": "unreachable"},
-    {"id": "result-history", "status": "unreachable"},
+    {"id": "result-history", "status": "works", "note": "HTML restored in Box 3 toolbar"},
+    {"id": "btn-copy-all", "status": "works"},
+    {"id": "btn-diff", "status": "works"},
+    {"id": "btn-reexec", "status": "works"},
+    {"id": "btn-hist-export", "status": "works"},
     {"id": "god-badge", "status": "works", "note": "UI confirm; API has no auth"}
   ],
   "findings": [
@@ -214,6 +218,13 @@
       "commit_intent": "fix: restore pipeline busy banner and job timer in HTML",
       "test": "tests/test_acceptance_desk.py::test_ui_hosts_pipeline_busy_banner_and_job_timer",
       "files": ["src/gnom_hub/ui/static/index.html"]
+    },
+    {
+      "id": "R3",
+      "finding": "F9",
+      "commit_intent": "fix: restore Box 3 history, diff, reexec, copy-all",
+      "test": "tests/test_acceptance_desk.py::test_ui_hosts_box3_history_diff_reexec",
+      "files": ["src/gnom_hub/ui/static/index.html", "src/gnom_hub/ui/static/app.css"]
     }
   ],
   "remaining_risks": [

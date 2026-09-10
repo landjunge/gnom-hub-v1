@@ -26,6 +26,15 @@ def test_ui_hosts_pipeline_busy_banner_and_job_timer():
     assert 'id="job-timer"' in html
 
 
+def test_ui_hosts_box3_history_diff_reexec():
+    html = Path("src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
+    assert 'id="btn-copy-all"' in html
+    assert 'id="btn-diff"' in html
+    assert 'id="result-history"' in html
+    assert 'id="btn-reexec"' in html
+    assert 'id="btn-hist-export"' in html
+
+
 def test_tool_drill_s6_plugins_forced():
     h = Hub()
     r = run_forced_tool_scenario(h.tools, "Tool drill S6 plugins", bus=h.bus)
