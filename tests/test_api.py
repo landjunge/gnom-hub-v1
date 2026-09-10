@@ -292,15 +292,21 @@ def test_chat_brainstorm_then_execute(client: TestClient):
     assert data["pipeline"]["brainstorm_notes"]
     assert data["pipeline"].get("can_execute") is True
 
-    # Clear build intent → auto-execute from context (no extra Execute click)
+    # Clear build intent → Box 1 start_work, no workers until Execute
     r2 = client.post(
         "/api/chat?sync=1",
         json={"text": "Build a simple landing page as one HTML file"},
     )
     assert r2.status_code == 200
     data2 = r2.json()
-    assert data2["pipeline"]["stage"] == "done"
-    assert data2["pipeline"]["worker_results"]
+    assert data2["pipeline"]["stage"] == "brainstorm"
+    assert not data2["pipeline"]["worker_results"]
+    qs = (
+        (data2.get("flex_box1") or {}).get("questions")
+        or data2["pipeline"].get("flex_questions")
+        or []
+    )
+    assert any(q.get("component") == "start_work" for q in qs)
 
 
 def test_manual_execute_still_works(client: TestClient):
