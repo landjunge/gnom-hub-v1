@@ -1,0 +1,189 @@
+{
+  "commit": "06cfcc592e9c0f2c2ddb760185c10b41cf29bdf4",
+  "branch": "test/human-ui-audit",
+  "project": "Gnom-Hub-V1",
+  "environment": {
+    "os": "macOS 15.7.4",
+    "python": "3.12.13",
+    "node": "v25.9.0",
+    "worktree": "/Users/landjunge/gnom-hub-v1-ui-audit",
+    "gnom_ws": "/Users/landjunge/gnom-hub-v1-ui-audit-ws",
+    "ui": "http://127.0.0.1:8090/",
+    "live_desk_untouched": "http://127.0.0.1:8080/",
+    "tollgate_url": "http://127.0.0.1:8787",
+    "god_mode": false,
+    "open_prs_untouched": [56, 49]
+  },
+  "tests": [
+    {"id": "ruff_check", "ok": true, "detail": "All checks passed"},
+    {"id": "ruff_format", "ok": true, "detail": "197 files already formatted"},
+    {"id": "pytest", "ok": true, "detail": "546 passed before repairs; plus test_deliverable_ok.py"},
+    {"id": "mermaid_check", "ok": true, "detail": "55 files · 32 blocks"},
+    {"id": "lint_js", "ok": true, "detail": "eslint app.js --max-warnings 0"},
+    {"id": "mutation_check", "ok": true, "detail": "33 killed, 0 survived"},
+    {"id": "vector_rank_eval", "ok": true, "detail": "P@1=100% MRR=1.000"},
+    {"id": "smoke", "ok": true, "detail": "python -m gnom_hub.main --smoke; workers=4"},
+    {"id": "prepush_gate", "ok": true, "detail": "ruff + mermaid + lint:js"},
+    {"id": "api_send_ideation_no_workers", "ok": true, "detail": "stage=brainstorm workers=0"},
+    {"id": "api_send_followup_brainstorm", "ok": true, "detail": "stage=brainstorm workers=0"},
+    {"id": "api_send_empty_422", "ok": true, "detail": "HTTP 422"},
+    {"id": "api_double_send_409", "ok": true, "detail": "second chat HTTP 409 busy"},
+    {"id": "api_execute_starts_workers", "ok": true, "detail": "stage=done workers=4"},
+    {"id": "api_god_off_after_execute", "ok": true, "detail": "enabled=false"},
+    {"id": "api_send_build_language_auto_executes", "ok": true, "detail": "PRODUCT: stage=done workers=1. Audit Send≠Execute FAILS"},
+    {"id": "api_immediate_cancel_execute", "ok": true, "detail": "status=cancelled"},
+    {"id": "api_cu_shell_dry_run", "ok": true, "detail": "dry_run=true without God"},
+    {"id": "api_cu_inspect_blocked", "ok": true, "detail": "blocked=true requires God-Mode"},
+    {"id": "api_chat_cannot_enable_god", "ok": true, "detail": "god.enabled=false after prompt"},
+    {"id": "api_workspace_write_strips_traversal", "ok": true, "detail": "../../tmp/pwn.txt → data/workspace/temp/pwn.txt"},
+    {"id": "e2e_s1_landing_round1", "ok": false, "detail": "tollgate package not installed; RESULT.html missing; 308 char FEHLER txt"},
+    {"id": "e2e_s1_landing_round2", "ok": false, "detail": "Tollgate wired; worker budget FEHLER; Playwright wait_for_function 180s timeout"},
+    {"id": "e2e_s1_landing_legacy_deepseek", "ok": true, "detail": "GNOM_TOLLGATE_LLM=0; RESULT.html 24830 chars; iframes=5; DoD 7/7; 50.2s"},
+    {"id": "e2e_s2_topic_switch", "ok": true, "detail": "round1 headed"},
+    {"id": "e2e_s3_clarify", "ok": true, "detail": "round1 and round2 headed"},
+    {"id": "e2e_s4_clean_then_task", "ok": true, "detail": "round1 headed"},
+    {"id": "e2e_s5_tools", "ok": true, "detail": "round1 and round2 headed"}
+  ],
+  "ui_controls": [
+    {"id": "btn-send", "status": "works", "notes": "may auto-execute on build language"},
+    {"id": "btn-execute", "status": "works", "notes": "disabled until can_execute"},
+    {"id": "btn-send-exec", "status": "works", "notes": ""},
+    {"id": "btn-cancel", "status": "works", "notes": "Esc; hidden until busy"},
+    {"id": "btn-clarify", "status": "works", "notes": "Yes/No/Whatever/Later"},
+    {"id": "god-badge", "status": "works", "notes": "stays off; confirm to enable"},
+    {"id": "flex-preset-select", "status": "placeholder", "notes": "disabled"},
+    {"id": "chat-mod-slot-btn", "status": "placeholder", "notes": "three disabled dots"},
+    {"id": "box1-layer-gnom", "status": "dead", "notes": "never shown"},
+    {"id": "box3-dual", "status": "dead", "notes": "hidden leftover"},
+    {"id": "btn-diff", "status": "not_reachable", "notes": "JS without HTML"},
+    {"id": "pipeline-busy-banner", "status": "not_reachable", "notes": "JS without HTML"}
+  ],
+  "findings": [
+    {
+      "id": "SEC-01",
+      "title": "Send auto-executes workers on HTML/build language and go-only",
+      "severity": "high",
+      "evidence": "orchestrator.py brainstorm_turn + _wants_auto_execute; live POST /api/chat landing → workers=1 stage=done",
+      "live_test_needed": false
+    },
+    {
+      "id": "SEC-02",
+      "title": "Workers/tools start without Execute button (full chat, rerun, MCP, tools/call)",
+      "severity": "high",
+      "evidence": "app.py chat?full=1, workers/rerun, tools/call, mcp",
+      "live_test_needed": false
+    },
+    {
+      "id": "UI-01",
+      "title": "stage=done and success toasts when worker returns FEHLER",
+      "severity": "high",
+      "evidence": "orchestrator._finish clears error; headed S1 screenshots; toast Umgesetzt",
+      "live_test_needed": false
+    },
+    {
+      "id": "UI-02",
+      "title": "Official install.sh does not install Tollgate; default LLM path needs it",
+      "severity": "high",
+      "evidence": "worker1: tollgate package not installed; docs/TOLLGATE.md vs scripts/install.sh",
+      "live_test_needed": false
+    },
+    {
+      "id": "UI-03",
+      "title": "S1 landing has no RESULT.html in isolated headed runs",
+      "severity": "high",
+      "evidence": "user_scenarios_e2e S1 round1 FEHLER txt 308 chars; round2 180s timeout after budget FEHLER",
+      "live_test_needed": false
+    },
+    {
+      "id": "DOC-01",
+      "title": "Worker 3/4 documented off, code enables all four",
+      "severity": "low",
+      "evidence": "CODE_ANALYSIS_FOR_AI.md vs agents/manager.py",
+      "live_test_needed": false
+    },
+    {
+      "id": "CODE-01",
+      "title": "Per-worker TOOL_CALL loop not wired on Hub boot",
+      "severity": "medium",
+      "evidence": "Was: Orchestrator set tools=None before _build_roles. Fixed: tools property syncs WorkerAgent; tests/test_pipeline_tool_calls.py",
+      "live_test_needed": false
+    },
+    {
+      "id": "SEC-06",
+      "title": "Unauthenticated POST /api/god-mode; LLM cannot enable God-Mode",
+      "severity": "medium",
+      "evidence": "app.py god-mode; live chat prompt left god.enabled=false",
+      "live_test_needed": false
+    },
+    {
+      "id": "SEC-07",
+      "title": "Plugins unsandboxed; Playwright/file_read/install_tool skip God-Mode",
+      "severity": "high",
+      "evidence": "docs/PLUGIN_SECURITY.md vs plugins/*",
+      "live_test_needed": false
+    },
+    {
+      "id": "SEC-09",
+      "title": "workspace/write is jailed; file_read/pw_screenshot/shell_safe are not equivalent",
+      "severity": "high",
+      "evidence": "workspace.py Path(name).name live test; playwright_tools.py; file_ops",
+      "live_test_needed": false
+    },
+    {
+      "id": "SEC-12",
+      "title": "God-Mode does not persist across restart",
+      "severity": "info",
+      "evidence": "god_mode_from_env; live GET after chat still false",
+      "live_test_needed": false
+    }
+  ],
+  "repairs": [
+    {
+      "id": "R1",
+      "title": "pipeline.deliverable_ok + honest UI toasts",
+      "files": [
+        "src/gnom_hub/snapshot_ops.py",
+        "src/gnom_hub/ui/static/parts/03-chat-jobs-ops.js",
+        "tests/test_deliverable_ok.py"
+      ],
+      "notes": "Do not toast Umgesetzt/Execute done when every worker is FEHLER/stub"
+    },
+    {
+      "id": "R2",
+      "title": "install.sh installs sibling ../tollgate when present",
+      "files": ["scripts/install.sh"],
+      "notes": "Official install was missing the default LLM owner package"
+    },
+    {
+      "id": "R3",
+      "title": "start.sh warns if GNOM_TOLLGATE_LLM=1 but tollgate is not importable",
+      "files": ["scripts/start.sh"],
+      "notes": "Prevents silent worker FEHLER on a fresh desk"
+    },
+    {
+      "id": "R4",
+      "title": "Flex review after FEHLER does not ask Wie war's or Gut so",
+      "files": ["src/gnom_hub/flex_ops.py", "tests/test_deliverable_ok.py", "tests/test_flex_review.py"],
+      "notes": "Rebuild/rebrainstorm only when deliverable_ok is false"
+    },
+    {
+      "id": "R5",
+      "title": "S1 e2e: skip second Execute after auto-exec; pass on RESULT.html not Box 2 prose",
+      "files": ["scripts/user_scenarios_e2e.py", "scripts/e2e_lib.py", "src/gnom_hub/ui/static/parts/04-boxes.js"],
+      "notes": "Tiny ```html fences no longer hide a later full document in Box 2"
+    },
+    {
+      "id": "R6",
+      "title": "Wire ToolRegistry into WorkerAgent on Hub boot and late pipe.tools assignment",
+      "files": ["src/gnom_hub/pipeline/orchestrator.py", "tests/test_pipeline_tool_calls.py"],
+      "notes": "Removed self.tools=None overwrite; property setter updates worker1–4"
+    }
+  ],
+  "remaining_risks": [
+    "Send auto-execute on HTML/build language is unchanged (product tests + AGENTS.md still disagree)",
+    "Default Tollgate path can still starve workers (shared consumer budget); S1 PASS used GNOM_TOLLGATE_LLM=0",
+    "Cooperative cancel; in-flight tools not rolled back",
+    "Localhost API has no auth (trusted-desk model)",
+    "Worker TOOL_CALL loop can add LLM rounds; prefetch remains the auto path"
+  ]
+}

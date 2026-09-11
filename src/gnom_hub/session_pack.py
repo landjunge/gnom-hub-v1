@@ -197,6 +197,9 @@ class SessionPackMixin:
                     for a in self.agents.list_agents()
                 ]
             }
+        sync = getattr(self.pipeline, "_sync_flex_state", None)
+        if callable(sync):
+            sync()
         st = self.pipeline.state
         from copy import deepcopy
 
@@ -209,6 +212,11 @@ class SessionPackMixin:
             "brainstorm_turns": deepcopy(list(st.brainstorm_turns or [])),
             "distilled_requirements": deepcopy(list(st.distilled_requirements)),
             "flex_notes": st.flex_notes,
+            "flex_job_id": getattr(st, "flex_job_id", "") or "",
+            "flex_questions": deepcopy(list(getattr(st, "flex_questions", None) or [])),
+            "flex_wait_agent": getattr(st, "flex_wait_agent", "") or "",
+            "flex_wait_task": getattr(st, "flex_wait_task", "") or "",
+            "flex_wait_remaining": deepcopy(list(getattr(st, "flex_wait_remaining", None) or [])),
             "worker_results": deepcopy(list(st.worker_results)),
             "worker_outputs": deepcopy(list(st.worker_outputs or [])),
             "quality_notes": getattr(st, "quality_notes", "") or "",
@@ -558,6 +566,15 @@ class SessionPackMixin:
                 mode=str(data.get("mode") or "brainstorm"),
                 distilled_requirements=list(data.get("distilled_requirements") or []),
                 flex_notes=str(data.get("flex_notes") or ""),
+                flex_job_id=str(data.get("flex_job_id") or ""),
+                flex_questions=[
+                    d for d in (data.get("flex_questions") or []) if isinstance(d, dict)
+                ],
+                flex_wait_agent=str(data.get("flex_wait_agent") or ""),
+                flex_wait_task=str(data.get("flex_wait_task") or ""),
+                flex_wait_remaining=[
+                    d for d in (data.get("flex_wait_remaining") or []) if isinstance(d, dict)
+                ],
                 pending_question=q,
                 deferred_clarifies=[
                     d
@@ -578,6 +595,9 @@ class SessionPackMixin:
                     else None
                 ),
             )
+            restore = getattr(self.pipeline, "restore_flex_from_state", None)
+            if callable(restore):
+                restore()
             self.last_error = None
             self._append_trace(
                 "session.pack.import",

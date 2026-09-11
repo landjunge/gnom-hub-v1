@@ -29,6 +29,19 @@
     worker4: "#ff8a3d",
   };
 
+  function ownerColorFor(agentId) {
+    const k = String(agentId || "").toLowerCase();
+    return (typeof COLOR_HEX !== "undefined" && COLOR_HEX[k]) || "";
+  }
+
+  function markOwner(el, agentId) {
+    if (!el) return;
+    const aid = String(agentId || "").toLowerCase();
+    if (aid) el.dataset.agent = aid;
+    const hex = ownerColorFor(aid);
+    if (hex) el.style.setProperty("--owner-color", hex);
+  }
+
   const SLIDER_TIPS = {
     temperature:
       "Temperature: higher = more creative/random; lower = more focused and deterministic.",
@@ -46,7 +59,7 @@
   // Never treat these as the real system prompt unless the user edits Extra tuning.
   const DEFAULT_PROMPTS = {
     brainstorm:
-      "(code default) Dialogue partner — build on history, concrete angles, optional “Soll ich umsetzen?”, no full code dump.",
+      "(code default) Dialogue partner in Box 2 — riff, ask where it pulls, no code, no Execute.",
     memory:
       "(code default) Extract durable personal/project facts only — no HTML garbage.",
     flex:
@@ -781,9 +794,206 @@
     renderCards();
   }
 
+  async function answerFlexQuestion(q, value) {
+    if (!q || !q.question_id) return;
+    try {
+      const start = await api("POST", "/api/flex/answer", {
+        question_id: q.question_id,
+        job_id: q.job_id || "",
+        value: value,
+      });
+      const wantsStart = !!(
+        start.flex_answer && start.flex_answer.wants_start_work
+      );
+      if (wantsStart) {
+        toast("Arbeit starten", "ok");
+        if (typeof appendChat === "function") {
+          appendChat("system", "Execute started (distill → flex → workers)…");
+        }
+      }
+      let snap = start;
+      // execute_async envelope is {job_id, stage:queued} without flex_box1.
+      // Applying it as a snapshot wipes Box 1 — poll like #btn-execute.
+      if (start.job_id && typeof pollJob === "function") {
+        if (typeof setChatBusy === "function") setChatBusy(true);
+        try {
+          const job = await pollJob(start.job_id, 300000);
+          snap = job.snapshot || (await api("GET", "/api/state"));
+          if (job.status === "error") {
+            if (typeof appendChat === "function") {
+              appendChat("system", "Execute error: " + (job.error || "?"));
+            }
+            toast(job.error || "Execute error", "error");
+            applySnapshot(snap);
+            return;
+          }
+          if (job.status === "cancelled") {
+            if (typeof appendChat === "function") {
+              appendChat("system", "Execute cancelled.");
+            }
+            toast("Cancelled", "info");
+            applySnapshot(snap);
+            return;
+          }
+        } finally {
+          if (typeof setChatBusy === "function") setChatBusy(false);
+          currentJobId = null;
+        }
+      }
+      applySnapshot(snap);
+    } catch (err) {
+      toast(
+        (err && err.message) || "Antwort nicht übernommen",
+        "error"
+      );
+    }
+  }
+
+  function renderFlexBox1(box) {
+    const host = document.getElementById("flex-ask");
+    const list = document.getElementById("flex-ask-list");
+    if (!host || !list) return;
+    let qs = (box && Array.isArray(box.questions) ? box.questions : []).filter(
+      function (q) {
+        return q && q.question_id && q.text;
+      }
+    );
+    const placeholder = document.querySelector("#box1-layer-live .box1-placeholder");
+    if (!qs.length) {
+      host.hidden = true;
+      list.textContent = "";
+      if (placeholder) placeholder.hidden = false;
+      return;
+    }
+    host.hidden = false;
+    if (placeholder) placeholder.hidden = true;
+    qs = qs.slice(0, 1);
+    if (typeof markOwner === "function") markOwner(host, "flex");
+    else host.dataset.agent = "flex";
+    const title = document.getElementById("flex-ask-title");
+    if (title) title.textContent = (box && box.title) || "Rückfragen und Entscheidungen";
+    list.textContent = "";
+    qs.forEach(function (q) {
+      const card = document.createElement("div");
+      card.className = "flex-ask-card";
+      if (typeof markOwner === "function") {
+        markOwner(card, q.agent_id || "flex");
+      }
+      const p = document.createElement("p");
+      p.className = "flex-ask-text";
+      p.textContent = String(q.text || "");
+      card.appendChild(p);
+      const meta = document.createElement("p");
+      meta.className = "flex-ask-meta muted";
+      meta.textContent = String(q.agent_id || "") + " · " + String(q.task_id || "");
+      card.appendChild(meta);
+      const comp = String(q.component || "text").toLowerCase();
+      const opts = Array.isArray(q.options) ? q.options.slice() : [];
+      function optionIsLater(opt) {
+        const low = String(opt || "").trim().toLowerCase();
+        return (
+          low === "later" ||
+          low === "später" ||
+          low === "spaeter" ||
+          low.indexOf("später") === 0 ||
+          low.indexOf("later") === 0
+        );
+      }
+      function addLaterIfMissing(list) {
+        if (!list.some(optionIsLater)) list.push("Später");
+        return list;
+      }
+      if (comp === "free_text" || comp === "text") {
+        const row = document.createElement("div");
+        row.className = "flex-ask-free";
+        const inp = document.createElement("input");
+        inp.type = "text";
+        inp.maxLength = 200;
+        inp.placeholder = "Antwort…";
+        const send = document.createElement("button");
+        send.type = "button";
+        send.textContent = "Senden";
+        function sendText() {
+          const val = String(inp.value || "").trim();
+          if (!val) return;
+          answerFlexQuestion(q, val);
+        }
+        send.addEventListener("click", sendText);
+        inp.addEventListener("keydown", function (ev) {
+          if (ev.key === "Enter") {
+            ev.preventDefault();
+            sendText();
+          }
+        });
+        row.appendChild(inp);
+        row.appendChild(send);
+        card.appendChild(row);
+      } else if (comp === "multi_select") {
+        const picked = [];
+        const btns = document.createElement("div");
+        btns.className = "flex-ask-btns";
+        opts.forEach(function (opt) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "flex-ask-btn";
+          btn.textContent = String(opt);
+          btn.addEventListener("click", function () {
+            const label = String(opt);
+            const i = picked.indexOf(label);
+            if (i >= 0) {
+              picked.splice(i, 1);
+              btn.classList.remove("is-on");
+            } else {
+              picked.push(label);
+              btn.classList.add("is-on");
+            }
+          });
+          btns.appendChild(btn);
+        });
+        const hint = document.createElement("p");
+        hint.className = "flex-ask-hint muted";
+        hint.textContent = "Mehrfachauswahl — antippen, dann Senden";
+        card.appendChild(hint);
+        const send = document.createElement("button");
+        send.type = "button";
+        send.className = "flex-ask-btn flex-ask-send";
+        send.textContent = "Senden";
+        send.addEventListener("click", function () {
+          if (!picked.length) return;
+          answerFlexQuestion(q, picked.slice());
+        });
+        btns.appendChild(send);
+        card.appendChild(btns);
+      } else {
+        if (comp === "later" || !opts.length) addLaterIfMissing(opts);
+        const btns = document.createElement("div");
+        btns.className = "flex-ask-btns";
+        opts.forEach(function (opt) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "flex-ask-btn";
+          btn.textContent = String(opt);
+          btn.addEventListener("click", function () {
+            answerFlexQuestion(q, opt);
+          });
+          btns.appendChild(btn);
+        });
+        card.appendChild(btns);
+      }
+      list.appendChild(card);
+    });
+  }
+
   function applySnapshot(snap) {
-    lastSnapshot = snap || null;
-    if (!snap) return;
+    if (!snap) {
+      lastSnapshot = null;
+      return;
+    }
+    // Job start envelopes ({job_id, stage:queued}) are not state snapshots.
+    if (snap.job_id && !snap.pipeline && !snap.flex_box1) {
+      return;
+    }
+    lastSnapshot = snap;
     applyUiPackExtras(snap);
     if (snap.agents) applyAgentsFromServer(snap.agents);
     const p = snap.pipeline || {};
@@ -1114,13 +1324,32 @@
 
     renderBox3Workers(p);
 
-    if (p.pending_question && p.pending_question.text) {
+    const flexBox = snap.flex_box1 || { questions: p.flex_questions || [] };
+    if (typeof renderFlexBox1 === "function") {
+      renderFlexBox1(flexBox);
+    }
+    const flexQs = Array.isArray(flexBox.questions) ? flexBox.questions : [];
+    const flexShowsCoordinator = flexQs.some(function (q) {
+      return (
+        q &&
+        q.text &&
+        (q.agent_id === "coordinator" || q.task_id === "clarify")
+      );
+    });
+
+    if (
+      p.pending_question &&
+      p.pending_question.text &&
+      !flexShowsCoordinator
+    ) {
       const qOpts =
         Array.isArray(p.pending_question.options) &&
         p.pending_question.options.length
           ? p.pending_question.options
           : null;
       showClarify(p.pending_question.text, qOpts);
+    } else if (flexShowsCoordinator) {
+      hideClarify();
     } else if (p.stage !== "clarify") {
       hideClarify();
       // Brainstorm / Flex options → Box1 pick cards
@@ -1132,6 +1361,7 @@
           p.stage === "done" ||
           !p.stage)
       ) {
+        let owner = "brainstorm";
         let picks = parseChoiceList(p.brainstorm_notes || "");
         if (!picks.length && Array.isArray(p.brainstorm_turns)) {
           for (let ti = p.brainstorm_turns.length - 1; ti >= 0; ti--) {
@@ -1144,9 +1374,15 @@
         }
         if (!picks.length && p.flex_notes) {
           picks = parseChoiceList(p.flex_notes);
+          owner = "flex";
         }
         if (picks.length) {
-          renderChoiceCards(picks, "suggest", "Agent-Vorschläge — antippen");
+          renderChoiceCards(
+            picks,
+            "suggest",
+            owner === "flex" ? "Flex — antippen" : "Brainstorm — antippen",
+            owner
+          );
           if (typeof bindChoiceCardChrome === "function") bindChoiceCardChrome();
         } else if (typeof hideChoiceCards === "function") {
           const grid = document.getElementById("box1-choice-grid");
@@ -1317,13 +1553,59 @@
     return match || voices[0];
   }
 
+  const AGENT_TTS_ORDER = [
+    "brainstorm",
+    "flex",
+    "coordinator",
+    "memory",
+    "worker1",
+    "worker2",
+    "worker3",
+    "worker4",
+  ];
+
+  function agentTtsIndex(agentId) {
+    const i = AGENT_TTS_ORDER.indexOf(String(agentId || ""));
+    return i >= 0 ? i : 0;
+  }
+
+  function voicesForLang(lang) {
+    const voices = window.speechSynthesis.getVoices() || [];
+    const want = (lang || "de-DE").slice(0, 2).toLowerCase();
+    const matched = voices.filter(function (v) {
+      return (v.lang || "").toLowerCase().indexOf(want) === 0;
+    });
+    if (matched.length) return matched;
+    if (uiLang !== "en") {
+      return voices.filter(function (v) {
+        return (v.lang || "").toLowerCase().indexOf("de") === 0;
+      });
+    }
+    return voices;
+  }
+
+  function pickVoiceForAgent(agentId, lang) {
+    const list = voicesForLang(lang);
+    if (!list.length) return pickGermanVoice(lang);
+    return list[agentTtsIndex(agentId) % list.length];
+  }
+
+  function pitchForAgent(agentId) {
+    return 0.88 + (agentTtsIndex(agentId) % 6) * 0.05;
+  }
+
+  function queueItemText(item) {
+    if (typeof item === "string") return item;
+    return String((item && item.text) || "");
+  }
+
   function alreadyQueuedOrSpoken(text) {
     const fp = speechFp(text);
     if (!fp) return true;
     if (ttsSpokenFp[fp]) return true;
     if (
       ttsQueue.some(function (q) {
-        return speechFp(q) === fp;
+        return speechFp(queueItemText(q)) === fp;
       })
     ) {
       return true;
@@ -1353,7 +1635,9 @@
    * Speak exactly one queue item. Never cancels a previous utterance mid-stream
    * unless stopSpeech() was called. Next item starts only on onend.
    */
-  function speakChunkNow(clean) {
+  function speakChunkNow(item) {
+    const clean = queueItemText(item);
+    const agentId = item && typeof item === "object" ? item.agentId : "";
     if (!window.speechSynthesis || !clean) {
       ttsPumping = false;
       pumpTtsQueue();
@@ -1373,7 +1657,8 @@
       const u = new SpeechSynthesisUtterance(say);
       u.lang = pickTtsLang(say);
       u.rate = 1.0;
-      const match = pickGermanVoice(u.lang);
+      u.pitch = pitchForAgent(agentId);
+      const match = pickVoiceForAgent(agentId, u.lang);
       if (match) u.voice = match;
       markSpoken(say);
       u.onstart = function () {
@@ -1449,7 +1734,7 @@
    * Enqueue already-prepared text (must be German when desk is DE).
    * Single queue only — never _pendingSpeech + queue (double speak bug).
    */
-  function speakOrQueuePrepared(text) {
+  function speakOrQueuePrepared(text, agentId) {
     let cleaned = stripForSpeech(text);
     if (!cleaned) return;
     if (uiLang !== "en") {
@@ -1462,7 +1747,7 @@
     if (!pieces.length) return;
     pieces.forEach(function (p) {
       if (alreadyQueuedOrSpoken(p)) return;
-      ttsQueue.push(p);
+      ttsQueue.push({ text: p, agentId: String(agentId || "") });
     });
     if (ttsUnlocked) {
       pumpTtsQueue();
@@ -1482,16 +1767,16 @@
    * DE desk: only German leaves the speaker.
    * Hub often already translated thoughts — skip prepare if already DE (no EN then DE).
    */
-  function speakOrQueue(text) {
+  function speakOrQueue(text, agentId) {
     const raw = String(text || "").trim();
     if (!raw) return;
     if (uiLang === "en") {
-      speakOrQueuePrepared(raw);
+      speakOrQueuePrepared(raw, agentId);
       return;
     }
     /* Already German (hub translated) → speak once, no second prepare pass */
     if (looksMostlyGermanClient(raw) && !looksMostlyEnglishClient(raw)) {
-      speakOrQueuePrepared(raw);
+      speakOrQueuePrepared(raw, agentId);
       return;
     }
     const fp = speechFp(raw);
@@ -1502,15 +1787,15 @@
         delete ttsPrepareInflight[fp];
         const de = stripForSpeech((r && r.text) || "");
         if (de && !looksMostlyEnglishClient(de)) {
-          speakOrQueuePrepared(de);
+          speakOrQueuePrepared(de, agentId);
         } else {
-          speakOrQueuePrepared(germanizeThoughtForSpeech(raw, "Agent"));
+          speakOrQueuePrepared(germanizeThoughtForSpeech(raw, "Agent"), agentId);
         }
       })
       .catch(function () {
         delete ttsPrepareInflight[fp];
         /* Never speak English raw on DE desk */
-        speakOrQueuePrepared(germanizeThoughtForSpeech(raw, "Agent"));
+        speakOrQueuePrepared(germanizeThoughtForSpeech(raw, "Agent"), agentId);
       });
   }
 
@@ -1601,7 +1886,7 @@
       const label = labels[agentId] || a.label || agentId;
       const body = stripForSpeech(String(t));
       if (!body) return;
-      speakOrQueue(label + ". " + body);
+      speakOrQueue(label + ". " + body, agentId);
     });
     if (any) lastSpokenKey = key;
   }
@@ -1649,7 +1934,7 @@
       spoken +=
         " Wenn du magst: sag mir kurz, ob das Ergebnis für dich passt.";
     }
-    speakOrQueue(spoken);
+    speakOrQueue(spoken, "flex");
   }
 
   /**
@@ -1669,6 +1954,9 @@
 
     const p = panel || {};
     const active = !!p.active;
+    root.hidden = !active;
+    if (typeof markOwner === "function") markOwner(root, "flex");
+    else root.dataset.agent = "flex";
     root.classList.toggle("is-active", active);
     root.classList.toggle("ring-1", active);
     root.classList.toggle("ring-gnom-flex/40", active);
@@ -1717,7 +2005,7 @@
       btn.className =
         "flex-review-btn rounded-md border border-gnom-border bg-gnom-card px-2.5 py-1.5 " +
         "text-xs leading-tight text-gnom-text transition hover:border-gnom-flex hover:text-gnom-flex " +
-        (String(b.action || "") === "execute"
+        (String(b.action || "") === "start_work"
           ? "border-gnom-ok/50 hover:border-gnom-ok hover:text-gnom-ok "
           : String(b.action || "") === "brainstorm"
             ? "border-gnom-accent/50 hover:border-gnom-accent hover:text-gnom-accent "
@@ -1766,27 +2054,17 @@
         toast("Gelernt: " + String(res.learn_text).slice(0, 80), "ok");
       } else if (res.action === "learn") {
         toast(res.message || "Flex Feedback", "ok");
+      } else if (res.action === "start_work") {
+        toast(res.message || "Flex fragt in Box 1 — erst Ja, dann bauen", "ok");
       }
       if (res.snapshot) {
         applySnapshot(res.snapshot);
       } else if (res.flex_review) {
         applyFlexReview(res.flex_review, null);
       }
-      // Rebuild started as job
-      if (res.job && res.job.job_id && typeof pollJob === "function") {
-        setChatBusy(true);
-        try {
-          const job = await pollJob(res.job.job_id, 360000);
-          const snap = job.snapshot || (await api("GET", "/api/state"));
-          applySnapshot(snap);
-          if (typeof focusBox3 === "function") focusBox3();
-        } finally {
-          setChatBusy(false);
-        }
-      }
       if (res.action === "brainstorm" && typeof focusBox3 === "function") {
-        // Box 2 has new notes; user may hit Execute next via Flex rebuild
-        toast("Brainstorm aktualisiert — bei Bedarf „Nochmal bauen“", "ok");
+        // Box 2 has new notes; „Nochmal bauen“ asks Box 1, does not Execute
+        toast("Brainstorm aktualisiert — bei Bedarf „Nochmal bauen“ (Box 1)", "ok");
       }
     } catch (err) {
       toast("Flex Feedback: " + (err.message || err), "error");
@@ -3696,6 +3974,7 @@
       }
       if (els.chatInput && text) {
         els.chatInput.value = (els.chatInput.value + " " + text).trim();
+        if (typeof fitChatInput === "function") fitChatInput();
       }
     };
     try {
@@ -3821,8 +4100,9 @@
   /**
    * Render interactive pick cards in Box 1.
    * mode: "clarify" → onClarify; "suggest" → fill chat input.
+   * agentId colors the cards (brainstorm red / flex yellow / coordinator green).
    */
-  function renderChoiceCards(cards, mode, title) {
+  function renderChoiceCards(cards, mode, title, agentId) {
     const host = document.getElementById("box1-choice-cards");
     const grid = document.getElementById("box1-choice-grid");
     const titleEl = document.getElementById("box1-choice-title");
@@ -3833,6 +4113,10 @@
       return;
     }
     const m = mode === "clarify" ? "clarify" : "suggest";
+    const owner =
+      String(agentId || (m === "clarify" ? "coordinator" : "brainstorm")).toLowerCase();
+    if (typeof markOwner === "function") markOwner(host, owner);
+    else host.dataset.agent = owner;
     if (titleEl) {
       titleEl.textContent =
         title ||
@@ -3860,6 +4144,7 @@
       btn.setAttribute("role", "option");
       btn.dataset.value = value;
       btn.dataset.mode = m;
+      if (typeof markOwner === "function") markOwner(btn, owner);
       const lab = document.createElement("span");
       lab.className = "choice-label";
       lab.textContent = label;
@@ -3961,7 +4246,8 @@
         };
       }),
       "clarify",
-      "Clarify — eine Option wählen"
+      "Coordinator — eine Option",
+      "coordinator"
     );
     bindChoiceCardChrome();
   }
@@ -5092,9 +5378,15 @@
       bubble.appendChild(tsel);
     }
     const label = document.createElement("span");
+    const whoKey = w.toLowerCase();
+    const whoHex =
+      !isYou && !isSys && typeof ownerColorFor === "function"
+        ? ownerColorFor(whoKey)
+        : "";
     label.className =
       "chat-who-label mr-1 text-2xs font-semibold uppercase tracking-wide " +
-      (isYou ? "text-gnom-accent" : isSys ? "text-gnom-muted" : "text-gnom-flex");
+      (isYou ? "text-gnom-accent" : isSys ? "text-gnom-muted" : "");
+    if (whoHex) label.style.color = whoHex;
     label.textContent = who;
     bubble.appendChild(label);
     const body = document.createElement("span");
@@ -5102,6 +5394,49 @@
     body.textContent = text;
     bubble.appendChild(document.createTextNode(" "));
     bubble.appendChild(body);
+    const acts = document.createElement("span");
+    acts.className = "chat-line-actions";
+    const copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.className = "chat-act-copy";
+    copyBtn.title = "Kopieren";
+    copyBtn.setAttribute("aria-label", "Kopieren");
+    copyBtn.textContent = "⧉";
+    copyBtn.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const payload = String(text || "");
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(payload);
+      }
+      toast(uiLang === "de" ? "Kopiert" : "Copied", "ok");
+    });
+    const keepBtn = document.createElement("button");
+    keepBtn.type = "button";
+    keepBtn.className = "chat-act-keep";
+    keepBtn.title = "Merken";
+    keepBtn.setAttribute("aria-label", "Merken");
+    keepBtn.textContent = "★";
+    keepBtn.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const payload = String(text || "").trim();
+      if (!payload) return;
+      api("POST", "/api/memory/warm", { text: payload })
+        .then(function () {
+          toast(uiLang === "de" ? "Gemerkt" : "Remembered", "ok");
+        })
+        .catch(function (err) {
+          toast(
+            (uiLang === "de" ? "Merken fehlgeschlagen: " : "Remember failed: ") +
+              (err && err.message ? err.message : ""),
+            "error"
+          );
+        });
+    });
+    acts.appendChild(copyBtn);
+    acts.appendChild(keepBtn);
+    bubble.appendChild(acts);
     line.appendChild(bubble);
     els.chatLog.appendChild(line);
     return line;
@@ -5451,11 +5786,13 @@
       if (chatHistIdx >= chatHist.length) {
         chatHistIdx = -1;
         els.chatInput.value = chatDraft;
+        if (typeof fitChatInput === "function") fitChatInput();
         return;
       }
     }
     const line = chatHist[chatHistIdx] || "";
     els.chatInput.value = line;
+    if (typeof fitChatInput === "function") fitChatInput();
     try {
       els.chatInput.setSelectionRange(line.length, line.length);
     } catch (_e) {
@@ -5568,11 +5905,20 @@
         return;
       }
       els.chatInput.value = pack.text;
+      if (typeof fitChatInput === "function") fitChatInput();
       els.chatInput.focus();
       toast("ThreadDesk geladen — Send nicht gedrückt", "info");
     } catch (_e) {
       toast("ThreadDesk nicht lesbar", "error");
     }
+  }
+
+  function fitChatInput() {
+    const el = (els && els.chatInput) || document.getElementById("chat-input");
+    if (!el) return;
+    el.style.height = "32px";
+    const next = Math.min(Math.max(el.scrollHeight, 32), 72);
+    el.style.height = next + "px";
   }
 
   async function sendChat() {
@@ -5583,6 +5929,7 @@
     appendChat("you", text);
     pushChatHist(raw);
     els.chatInput.value = "";
+    if (typeof fitChatInput === "function") fitChatInput();
     chatHistIdx = -1;
     chatDraft = "";
     const cb = w.GnomHub.onSend;
@@ -5628,16 +5975,24 @@
       if (stage === "brainstorm") {
         appendChat(
           "system",
-          "Brainstorm — bei klarer Bau-Anweisung startet die Pipeline von selbst; "
-            + "sonst fragt Brainstorm (z.B. „Soll ich umsetzen?“). Antwort: ja / ok / plan erstellen."
+          "Brainstorm — Send bleibt Dialog. Umsetzen: Arbeit starten oder Ja in Box 1."
         );
-        toast("Brainstorm · ja/ok = umsetzen, oder harter Bau-Befehl = sofort", "ok");
+        toast("Send = sprechen · Arbeit starten / Ja in Box 1 = Arbeit", "ok");
       } else if (stage === "done") {
-        appendChat(
-          "system",
-          "Umsetzung aus Kontext (Befehl oder dein Ja nach Nachfrage) — siehe Box 3."
-        );
-        toast("Umgesetzt · Box 3", "ok");
+        const okDeliverable = snap.pipeline && snap.pipeline.deliverable_ok;
+        if (okDeliverable) {
+          appendChat(
+            "system",
+            "Umsetzung aus Kontext (Befehl oder dein Ja nach Nachfrage) — siehe Box 3."
+          );
+          toast("Umgesetzt · Box 3", "ok");
+        } else {
+          appendChat(
+            "system",
+            "Pipeline fertig, aber kein gültiges Deliverable — siehe Box 3."
+          );
+          toast("Kein Deliverable · Box 3", "error");
+        }
         focusBox3();
       } else if (stage === "clarify") {
         appendChat("system", "Need a clarify answer in Box 1.");
@@ -5699,11 +6054,22 @@
         const dur =
           lastJobElapsedSec ||
           (jobTimerStart ? (Date.now() - jobTimerStart) / 1000 : 0);
-        appendChat(
-          "system",
-          "Execute done in " + formatDuration(dur) + " — see Box 3."
-        );
-        toast("Execute done · " + formatDuration(dur), "ok");
+        const okDeliverable = snap.pipeline && snap.pipeline.deliverable_ok;
+        if (okDeliverable) {
+          appendChat(
+            "system",
+            "Execute done in " + formatDuration(dur) + " — see Box 3."
+          );
+          toast("Execute done · " + formatDuration(dur), "ok");
+        } else {
+          appendChat(
+            "system",
+            "Execute finished in "
+              + formatDuration(dur)
+              + " without a valid deliverable — see Box 3."
+          );
+          toast("Kein Deliverable · " + formatDuration(dur), "error");
+        }
         focusBox3();
         try {
           pushResultHistory(snap.pipeline || {}, {
@@ -5743,10 +6109,12 @@
     if (text) {
       await sendChat();
     }
-    // After brainstorm, run execute if possible
-    if (!chatBusy) {
-      await runExecute();
-    }
+    toast(
+      uiLang === "de"
+        ? "Send fertig. Arbeit starten oder Ja in Box 1."
+        : "Send done. Press Arbeit starten or Yes in Box 1.",
+      "ok"
+    );
   }
 
   function appendChat(who, text) {
@@ -6598,8 +6966,15 @@
     const fenceHtml = s.match(/```html\s*([\s\S]*?)```/i);
     if (fenceHtml && fenceHtml[1]) {
       const body = fenceHtml[1].trim();
-      if (/<!DOCTYPE\s+html|<html[\s>]/i.test(body)) return body;
-      if (body.startsWith("<") && (body.match(/<\w+/g) || []).length >= 4) return body;
+      // Tiny fences (e.g. "ends") must not beat a later full <!DOCTYPE> document.
+      if (body.length >= 80 && /<!DOCTYPE\s+html|<html[\s>]/i.test(body)) return body;
+      if (
+        body.length >= 80 &&
+        body.startsWith("<") &&
+        (body.match(/<\w+/g) || []).length >= 4
+      ) {
+        return body;
+      }
     }
     // Open fence (worker cut off before closing ```) — common failure mode
     const fenceOpen = s.match(/```html\s*([\s\S]+)$/i);
@@ -6684,7 +7059,7 @@
         "<h1 style=\"font-size:1.35rem;margin:0 0 .75rem;\">Vorschau — Seite unvollständig</h1>" +
         "<p style=\"line-height:1.45;margin:0 0 .75rem;color:#b8bcc4;\">" +
         "Der Worker hat die HTML-Datei abgeschnitten (oft mitten im CSS, ohne sichtbaren Inhalt). " +
-        "Unten siehst du den Quelltext. Bitte im Flex-Panel „Nochmal bauen“ oder „HTML reparieren“." +
+        "Unten siehst du den Quelltext. Bitte im Flex-Panel „Nochmal bauen“ oder „HTML reparieren“, dann in Box 1 mit Ja bestätigen." +
         "</p>" +
         "<p style=\"margin:0;font-size:.9rem;color:#8b909a;\">" +
         "Zeichen geliefert: " +
@@ -7886,16 +8261,29 @@
     if (teamDel) teamDel.addEventListener("click", deleteSelectedTeam);
     if (planMode) planMode.addEventListener("change", setPlanModeFromUi);
     loadChatHist();
+    if (els.chatInput && typeof fitChatInput === "function") {
+      els.chatInput.addEventListener("input", fitChatInput);
+      fitChatInput();
+    }
     els.chatInput.addEventListener("keydown", function (ev) {
-      // Terminal-style history: ↑ older · ↓ newer
+      // Terminal-style history: ↑ older · ↓ newer (only at start of textarea)
       if (ev.key === "ArrowUp") {
-        ev.preventDefault();
-        chatHistNav(-1);
+        const atStart = !els.chatInput.selectionStart;
+        if (atStart) {
+          ev.preventDefault();
+          chatHistNav(-1);
+          fitChatInput();
+        }
         return;
       }
       if (ev.key === "ArrowDown") {
-        ev.preventDefault();
-        chatHistNav(1);
+        const v = els.chatInput.value || "";
+        const atEnd = els.chatInput.selectionStart >= v.length;
+        if (atEnd) {
+          ev.preventDefault();
+          chatHistNav(1);
+          fitChatInput();
+        }
         return;
       }
       // Typing resets history cursor to "live draft"
@@ -7905,13 +8293,13 @@
           chatDraft = "";
         }
       }
-      // Ctrl/Cmd+Enter = Execute; plain Enter = Send
+      // Ctrl/Cmd+Enter = Execute; Shift+Enter = newline; plain Enter = Send
       if (ev.key === "Enter" && (ev.ctrlKey || ev.metaKey)) {
         ev.preventDefault();
         runExecute();
         return;
       }
-      if (ev.key === "Enter") {
+      if (ev.key === "Enter" && !ev.shiftKey) {
         ev.preventDefault();
         sendChat();
       }

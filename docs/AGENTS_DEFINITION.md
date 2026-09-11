@@ -1,22 +1,25 @@
 # Konkrete Agenten-Definition (Gnom-Hub v1)
 
 **Source of truth = Python.** UI-Karten sind Spiegel + Tuning.  
-Dateien: `agents/models.py`, `agents/manager.py`, `agents/roles.py`, `agents/roles_ext.py`, `agents/base.py`
+Vollständige Prompt-Texte und Rechte: [AGENTS_PROMPTS.md](AGENTS_PROMPTS.md).  
+Desk-Zellen (L / M1 / M2 / R): [DESK_UI_MAP.md](DESK_UI_MAP.md).
+
+Dateien: `agents/models.py`, `agents/manager.py`, `agents/roles.py`, `agents/roles_ext.py`, `agents/roles_workers.py`, `agents/base.py`
 
 ---
 
 ## 1. Registry (8 feste slots)
 
-| # | id | Name | role | Farbe (CSS/UI) | Enabled default | Toggleable | Preset |
-|---|-----|------|------|----------------|-----------------|------------|--------|
-| 1 | brainstorm | Brainstorm | brainstorm | red / `#ff0000` | an | ja | — |
-| 2 | memory | Memory | memory | blue / `#0066ff` | an | nein (locked on) | — |
-| 3 | flex | Flex | flex | yellow / `#ffff00` | an | **nein (locked on, fixed role)** | — (kein Preset) |
-| 4 | coordinator | Coordinator | coordinator | green / `#00cc44` | an | ja | — |
-| 5 | worker1 | Worker 1 | worker | cyan / `#00d4ff` | an | ja | — |
-| 6 | worker2 | Worker 2 | worker | violet / `#7c3aed` | an | ja | — |
-| 7 | worker3 | Worker 3 | worker | magenta / `#ff2d95` | an | ja | — |
-| 8 | worker4 | Worker 4 | worker | orange / `#ff6600` | an | ja | — |
+| # | id | Name | role | Farbe (CSS `--c-*`) | Enabled default | Toggleable | Preset |
+|---|-----|------|------|---------------------|-----------------|------------|--------|
+| 1 | brainstorm | Brainstorm | brainstorm | `#ef5350` | an | ja | — |
+| 2 | memory | Memory | memory | `#42a5f5` | an | nein (locked on) | — |
+| 3 | flex | Flex | flex | `#f0c000` (gelb, nicht Lila) | an | **nein (locked on, fixed role)** | — (kein Preset) |
+| 4 | coordinator | Coordinator | coordinator | `#26c281` | an | ja | — |
+| 5 | worker1 | Worker 1 | worker | `#29b6f6` | an | ja | — |
+| 6 | worker2 | Worker 2 | worker | `#8b6cf6` | an | ja | — |
+| 7 | worker3 | Worker 3 | worker | `#ec5f9b` | an | ja | — |
+| 8 | worker4 | Worker 4 | worker | `#ff8a3d` | an | ja | — |
 
 Gebaut in `AgentManager._build_agents()`.
 
@@ -43,24 +46,25 @@ User-Extra-Prompt aus der Karte wird **angehängt**, ersetzt die Code-Rolle **ni
 
 ### Brainstorm (`BrainstormAgent.run`)
 
-- Scharfer Denkpartner, kein „5–8 Bullets“-Bot
-- Workers erst nach klarem Bau-Auftrag / ja-ok
-- Sprache DE/EN, History nutzen, Thread vorantreiben
-- Kreativ: 3–6 Winkel mit WHY, kein fertiger Code
-- Diagnose Hub: echte Failure-Modes, keine Fake-Todo-Apps
-- Bau-Angebot genau eine Zeile: „Soll ich das jetzt umsetzen?“
-- Defaults: temp **0.9** (Diagnose **0.35**), max_tokens **700** / **900**
+- Mitdenken in Box 2, kein Ticket, kein Mini-Execute
+- Unklare Wünsche aufmachen (was „geil“ sein könnte), nicht A/B/C-Formular
+- Prefetch-Funde als Funken, kein Code, kein „Soll ich umsetzen?“
+- Start der Arbeit = Flex in Box 1
+- Sprache wie der User, History weiterspinnen
 - **TTS:** default an
 
 ### Flex (`FlexAgent`) — **FIXED SYSTEM AGENT**
 
 Flex ist **kein** freier Companion-Preset mehr. Er ist **fest verdrahtet**, **nicht togglebar**, **kein Preset-Wechsel**, Rolle **nicht über UI änderbar**.
 
-#### Drei unveränderliche Jobs
+Flex ist der deutschsprachige Gesprächsführer in **Box 1 (Rückfragen und Entscheidungen)**. Er vermittelt zwischen Nutzer, Coordinator und Workern. **Kommunikation, keine Autorität.**
+
+#### Unveränderliche Jobs
 
 1. **Wünsche speichern** – nur was der User schreibt, landet dauerhaft in der DB  
 2. **Andere Agenten nachziehen** – wenn Brainstorm/Coordinator/Worker Anweisungen vergessen, schiebt Flex Fakten und offene Aufgaben nach  
-3. **Für den User handeln** – im Brainstorm mitschreiben und Execute anstoßen
+3. **Box 1 führen** – Rückfragen entgegennehmen, zusammenfassen, auf geprüfte UI-Komponenten abbilden, Antworten zurückgeben  
+4. **Nicht Execute** – Flex stößt keine Arbeit an. Er darf fragen: „Der Plan ist bereit. Möchtest du die Arbeit jetzt starten?“
 
 #### Was Flex speichern darf
 
@@ -87,24 +91,40 @@ Wenn andere abweichen / vergessen
   → an Coordinator / Workers (nudge), klar und kurz
 
 Execute
-  → Flex darf Execute auslösen (oder User sagt „Execute“ = Trigger)
-  → nur wenn: klare Aufgabe + User-Wünsche erfüllt werden sollen
-  → kein wildes Auto-Execute bei jedem Chat
+  → nur nach gültiger Nutzerbestätigung in Box 1 **oder** Klick „Arbeit starten“
+  → zentrale Zustandslogik (`execute()` / `/api/execute` / `/api/flex/answer` start_work)
+  → Flex setzt weder stage=done noch startet Worker
 ```
+
+#### Box 1 — sichere Komponenten (Whitelist)
+
+`text` · `yes_no` · `later` · `single_select` · `multi_select` · `free_text` · `start_work`
+
+Jede Frage/Antwort trägt `job_id`, `task_id`, `agent_id`, `question_id`.  
+Worker-/Coordinator-Text wird **nie** als HTML/JS gerendert (`textContent`, `sanitize_box1_text`).
+
+#### Flex darf nicht
+
+- selbst Execute starten, Tools freigeben, God-Mode ändern
+- Sicherheitsentscheidungen treffen oder Nutzerantworten erfinden
+- kritische Bestätigungen überspringen
+- einen Auftrag als erfolgreich/fertig erklären
+- beliebiges HTML/JavaScript in Box 1 ausgeben
 
 #### Feste Regeln (Code, nicht verhandelbar)
 
 1. Source of truth = geschriebener User-Text, nicht Agent-Fantasie  
 2. Flex-Prompt und Rolle **nur im Code**, nicht aus UI-Tune  
 3. Clear/Reset löscht nicht Flex-Wünsche (außer explizit)  
-4. Execute nur bei klarer Aufgabe + Wünschen  
-5. Sprache DE/EN wie der User schreibt  
+4. Execute nur außerhalb von Flex (Hub-Zustand)  
+5. Sprache DE wie der User in Box 1; Chat-Layer darf DE/EN mischen  
 6. **TTS:** default an
 
 #### Code-API (Ziel)
 
 - `store_wish` / `list_open_tasks` / `nudge_context` (Memory, garbage-filter bleibt)  
-- Hooks: nach User-Turn → Flex absorb; vor Worker → Flex nudge; Flex setzt optional `execute` flag  
+- `FlexDesk.ask` / `FlexDesk.answer` / `offer_start_work`  
+- Hooks: nach User-Turn → Flex absorb; vor Worker → Flex nudge; **kein** `execute` flag  
 - UI: Flex-Karte nur Anzeige — kein Toggle, kein Prompt-Edit, kein Preset
 
 #### Legacy (entfernen / wirkungslos)
@@ -123,6 +143,8 @@ Execute
 - Konkretes Ergebnis: Plan, Checkliste, Draft oder volles HTML
 - Priorität: Struktur → Interaktion → Empty/Error → CSS zuletzt (~30 %)
 - HTML: ein File `<!DOCTYPE` … `</html>`, mind. eine echte Interaction
+- Fehlende User-Entscheidung: **nicht raten**. Antwort nur `FLEX_ASK <component> task=<id>` + deutsche Frage an Box 1
+- Unmöglich / kein Provider: `FEHLER - kein Deliverable`
 - max_tokens **3200** HTML / **1800** sonst, temp **0.45**
 
 ### Memory (`MemoryAgent`)
@@ -139,7 +161,7 @@ Execute
 ```
 Send    → Brainstorm (+ Flex absorb wishes / optional chat write)
 Execute → Coordinator distill → Flex nudge/review → Coordinator plan → Workers → Memory/Flex nudge
-Flex    → may request execute when task + wishes are clear
+Flex    → Box 1 only (asks start_work; never starts Execute)
 ```
 
 Enabled Workers = `enabled_workers()` (bis 4).
@@ -163,7 +185,8 @@ TTS-Checkbox für Flex/Brainstorm: default **on** (User kann stummschalten, Roll
 | IDs, Farben, State | `agents/models.py` |
 | 8er-Registry, Toggle, Flex **locked** | `agents/manager.py` |
 | Brainstorm, Flex (fixed) | `agents/roles.py` |
-| Coordinator, Worker, Memory | `agents/roles_ext.py` |
+| Coordinator | `agents/roles_ext.py` |
+| Worker, Memory | `agents/roles_workers.py` |
 | HUB_IDENTITY, ask(), Tuning-Merge | `agents/base.py` |
 | Persist/Tune API | `agent_ops.py` |
 | Wishes / open tasks | Memory + ggf. `flex_wishes` |
@@ -175,10 +198,10 @@ TTS-Checkbox für Flex/Brainstorm: default **on** (User kann stummschalten, Roll
 - [ ] Flex-Toggle/Preset weg bzw. wirkungslos
 - [ ] User-Wunsch nach Clear HOT noch da
 - [ ] Worker ignoriert Regel → Flex schiebt nach
-- [ ] Flex schreibt im Brainstorm mit
-- [ ] Flex löst Execute aus (Flag oder „Execute“-Befehl)
+- [ ] Flex bleibt in Box 2 still, außer ein gespeicherter Wunsch muss gespiegelt werden
+- [ ] Flex löst Execute nicht aus — nur Box 1 start_work Ja oder #btn-execute
 - [ ] TTS default on für Flex + Brainstorm
 
 ---
 
-*Siehe auch: [LAYERS_FOR_AI.md](./LAYERS_FOR_AI.md)*
+*Siehe auch: [AGENTS_PROMPTS.md](AGENTS_PROMPTS.md) · [DESK_UI_MAP.md](DESK_UI_MAP.md) · [LAYERS_FOR_AI.md](LAYERS_FOR_AI.md)*

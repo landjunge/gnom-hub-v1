@@ -19,7 +19,7 @@ Execute
 | Layer | Source | Role |
 |-------|--------|------|
 | **L0 Identity** | `HUB_IDENTITY` in `base.py` | Kill product-hallucination loops |
-| **L1 Role** | `worker_system_prompt` | Concrete deliverable; FEHLER if impossible |
+| **L1 Role** | `worker_system_prompt` | Concrete deliverable; `FLEX_ASK` if a user fact is missing; FEHLER if impossible |
 | **L2 Priority** | same | Structure → interaction → empty states → CSS last |
 | **L3 Domain (HTML)** | only if `task_wants_html` | One complete file + design-tool rules |
 | **L4 Flex wishes** | same | Absolute orders from `User:` / Flex |
@@ -66,6 +66,7 @@ Scaffold kind: `dashboard` · `form` · `article` · else `landing`.
 
 | Condition | Output |
 |-----------|--------|
+| Missing user decision / unknown fact | `FLEX_ASK <component> task=<id>` + plain German question (Box 1). Do not guess. |
 | No usable LLM / placeholder key | `FEHLER - kein Deliverable` + reason |
 | Auth 401/403 | same, via `user_message_for_failure` |
 | Gate `_validate_worker_draft` sees FEHLER | Flex / quality path treats as `worker_error` |

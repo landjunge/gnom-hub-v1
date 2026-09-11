@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -9,12 +11,31 @@ from gnom_hub import hub as hub_mod
 from gnom_hub.api.app import create_app
 
 
+def _stub_llm_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Prior Hub() tests can leak GNOM_WS keys into os.environ; keep this module on stubs."""
+    monkeypatch.delenv("GNOM_WS", raising=False)
+    monkeypatch.setenv("GNOM_TOLLGATE_LLM", "0")
+    for key in list(os.environ):
+        if key.endswith("_API_KEY") or key in ("DEEPSEEK_API_KEY", "WORKER_API_KEY"):
+            monkeypatch.delenv(key, raising=False)
+    try:
+        import tollgate as tg
+
+        monkeypatch.setattr(
+            tg,
+            "get_keys_service",
+            lambda: type("_Tg", (), {"auto_update": lambda *_a, **_k: None})(),
+        )
+    except ImportError:
+        pass
+
+
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     # Isolate HOT memory under tmp
+    _stub_llm_env(monkeypatch)
     monkeypatch.setattr(hub_mod, "project_root", lambda: tmp_path)
     monkeypatch.setattr(hub_mod, "_HUB", None)
-    # Avoid real keys from user env affecting free_only etc. — OK if present
     app = create_app()
     with TestClient(app) as c:
         yield c
@@ -292,15 +313,21 @@ def test_chat_brainstorm_then_execute(client: TestClient):
     assert data["pipeline"]["brainstorm_notes"]
     assert data["pipeline"].get("can_execute") is True
 
-    # Clear build intent → auto-execute from context (no extra Execute click)
+    # Clear build intent → Box 1 start_work, no workers until Execute
     r2 = client.post(
         "/api/chat?sync=1",
         json={"text": "Build a simple landing page as one HTML file"},
     )
     assert r2.status_code == 200
     data2 = r2.json()
-    assert data2["pipeline"]["stage"] == "done"
-    assert data2["pipeline"]["worker_results"]
+    assert data2["pipeline"]["stage"] == "brainstorm"
+    assert not data2["pipeline"]["worker_results"]
+    qs = (
+        (data2.get("flex_box1") or {}).get("questions")
+        or data2["pipeline"].get("flex_questions")
+        or []
+    )
+    assert any(q.get("component") == "start_work" for q in qs)
 
 
 def test_manual_execute_still_works(client: TestClient):
@@ -328,8 +355,12 @@ def test_chat_clarify_then_continue(client: TestClient):
     # full path so clarify is reached
     r = client.post("/api/chat?sync=1&full=1", json={"text": "maybe dark mode?"})
     assert r.status_code == 200
-    assert r.json()["pipeline"]["stage"] == "clarify"
-    assert r.json()["pipeline"]["pending_question"]
+    data = r.json()
+    assert data["pipeline"]["stage"] == "clarify"
+    # Coordinator clarify lives on Flex Box 1; snapshot hides pending_question.
+    assert data["pipeline"]["pending_question"] is None
+    flex_qs = (data.get("flex_box1") or {}).get("questions") or []
+    assert any(fq.get("agent_id") == "coordinator" for fq in flex_qs)
 
     r2 = client.post("/api/clarify?sync=1", json={"option": "Schnell und einfach"})
     assert r2.status_code == 200

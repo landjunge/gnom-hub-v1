@@ -86,12 +86,12 @@ def _stub_brainstorm(user_text: str, history: list[dict]) -> str:
             "• Was weglassen?\n"
         )
         if hard:
-            return base + "→ Klare Bau-Anweisung — Umsetzung startet."
-        return base + "→ Soll ich das jetzt umsetzen?"
+            return base + "→ Wohin zieht's dich zuerst?"
+        return base + "→ Was wäre hier „geil“: optisch, Tempo, Frechheit, Ruhe?"
     return (
         f"Runde {n}: {topic}\n"
-        "• Eine Richtung priorisieren\n"
-        "→ ja / ok / mach das — dann Pipeline. Oder kurz nachschärfen."
+        "• Eine Richtung weiterspinnen\n"
+        "→ sag, welche Bild-Richtung sitzt — bauen tut Box 1 später."
     )
 
 

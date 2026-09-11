@@ -61,6 +61,16 @@ source .venv/bin/activate
 python -m pip install --upgrade pip -q
 pip install -e ".[dev]" -q
 
+# Cloud LLM owner is Tollgate (GNOM_TOLLGATE_LLM=1 default). Sibling repo if present.
+TG_SRC="$(cd "$ROOT/.." && pwd)/tollgate"
+if [ -f "$TG_SRC/pyproject.toml" ]; then
+  echo "Installing sibling tollgate from $TG_SRC"
+  pip install -e "$TG_SRC" -q
+else
+  echo "NOTE: ../tollgate not found. Default cloud LLM needs the tollgate package,"
+  echo "      or set GNOM_TOLLGATE_LLM=0 for legacy direct DeepSeek."
+fi
+
 # data dirs
 mkdir -p data/hot data/warm data/cold data/workspace/temp data/workspace/perm data/backups
 

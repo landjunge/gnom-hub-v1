@@ -1,6 +1,6 @@
 {
   "version": "3.10.1",
-  "count": 51,
+  "count": 56,
   "docs": [
     {
       "file": "AGENTS_DEFINITION.md",
@@ -10,21 +10,45 @@
       "keywords": [
         "flex",
         "agents",
-        "worker",
-        "brainstorm",
         "kein",
+        "worker",
+        "nicht",
+        "brainstorm",
         "user",
         "definition",
-        "nicht",
-        "code",
         "coordinator",
+        "code",
+        "w\u00fcnsche",
+        "box",
         "default",
-        "hub",
-        "memory",
-        "nur"
+        "memory"
       ],
-      "chars": 7164,
-      "lines": 185
+      "chars": 8615,
+      "lines": 208
+    },
+    {
+      "file": "AGENTS_PROMPTS.md",
+      "path": "docs/AGENTS_PROMPTS.md",
+      "title": "Agenten-Prompts und Rechte \u2014 Gnom-Hub-V1",
+      "topic": "Architecture & agents",
+      "keywords": [
+        "kein",
+        "box",
+        "agents",
+        "hub",
+        "tools",
+        "execute",
+        "prompts",
+        "arbeit",
+        "brainstorm",
+        "flex",
+        "gnom",
+        "html",
+        "nicht",
+        "user"
+      ],
+      "chars": 10377,
+      "lines": 271
     },
     {
       "file": "ARCHITECTURE.md",
@@ -169,6 +193,30 @@
       ],
       "chars": 22173,
       "lines": 555
+    },
+    {
+      "file": "DESK_UI_MAP.md",
+      "path": "docs/DESK_UI_MAP.md",
+      "title": "Desk-UI-Karte \u2014 Gnom-Hub-V1",
+      "topic": "Architecture & agents",
+      "keywords": [
+        "box",
+        "desk",
+        "boxes",
+        "volle",
+        "app",
+        "box2",
+        "breite",
+        "map",
+        "box1",
+        "chat",
+        "h\u00f6he",
+        "toolbar",
+        "top",
+        "ui"
+      ],
+      "chars": 11539,
+      "lines": 311
     },
     {
       "file": "DOD_GATE.md",
@@ -409,6 +457,54 @@
       ],
       "chars": 2359,
       "lines": 67
+    },
+    {
+      "file": "GNOM-HUB-V1-HUMAN-UI-AUDIT.md",
+      "path": "docs/GNOM-HUB-V1-HUMAN-UI-AUDIT.md",
+      "title": "Gnom-Hub-V1 \u2014 Human UI audit",
+      "topic": "Other",
+      "keywords": [
+        "audit",
+        "execute",
+        "pass",
+        "human",
+        "send",
+        "box",
+        "assets",
+        "png",
+        "tollgate",
+        "brainstorm",
+        "done",
+        "start",
+        "workers",
+        "clarify"
+      ],
+      "chars": 7508,
+      "lines": 133
+    },
+    {
+      "file": "GNOM-HUB-V1-WORKER-BOX-CONTRACT.md",
+      "path": "docs/GNOM-HUB-V1-WORKER-BOX-CONTRACT.md",
+      "title": "Gnom-Hub-V1 \u2014 Worker / Box contract",
+      "topic": "Other",
+      "keywords": [
+        "box",
+        "flex",
+        "worker",
+        "api",
+        "workers",
+        "execute",
+        "job",
+        "after",
+        "chat",
+        "brainstorm",
+        "done",
+        "send",
+        "browser",
+        "code"
+      ],
+      "chars": 4972,
+      "lines": 75
     },
     {
       "file": "GSC_CHECKLIST.md",
@@ -1035,6 +1131,30 @@
       "lines": 73
     },
     {
+      "file": "UI-STATE-CONTRACT.md",
+      "path": "docs/UI-STATE-CONTRACT.md",
+      "title": "UI-State-Vertrag \u2014 Box 1 Flex-Desk",
+      "topic": "Architecture & agents",
+      "keywords": [
+        "box",
+        "execute",
+        "flex",
+        "nicht",
+        "worker",
+        "kein",
+        "hub",
+        "api",
+        "arbeit",
+        "clarify",
+        "coordinator",
+        "start_work",
+        "keine",
+        "pipeline"
+      ],
+      "chars": 4023,
+      "lines": 67
+    },
+    {
       "file": "UI_ERROR_LAYER.md",
       "path": "docs/UI_ERROR_LAYER.md",
       "title": "UI layer \u2014 error logic",
@@ -1187,20 +1307,20 @@
         "worker",
         "html",
         "prompts",
-        "flex",
         "tools",
+        "user",
+        "flex",
         "prefetch",
         "design",
         "fehler",
         "memory",
         "page",
         "same",
-        "user",
-        "deliverable",
-        "keywords"
+        "task",
+        "deliverable"
       ],
-      "chars": 4096,
-      "lines": 104
+      "chars": 4257,
+      "lines": 105
     },
     {
       "file": "WORKFLOWS_AND_PRESETS.md",

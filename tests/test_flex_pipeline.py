@@ -24,60 +24,21 @@ def _flex(bus: EventBus | None = None) -> FlexAgent:
     return FlexAgent(AgentManager(b).get(AgentId.FLEX), b, llm=None)
 
 
-# ── maybe_request_execute ───────────────────────────────────────────
+# ── maybe_request_execute removed (Flex has no Execute authority) ───
 
 
-def test_maybe_request_execute_explicit_with_history():
+def test_maybe_request_execute_never_starts_work():
     flex = _flex()
     turns = [
         {"role": "user", "text": "Ideen zu einer Checklisten-App"},
         {"role": "brainstorm", "text": "…"},
         {"role": "user", "text": "execute"},
     ]
-    d = flex.maybe_request_execute("execute", turns, "")
-    assert d and d["execute"] is True
-    assert d["reason"] == "explicit_execute"
-    assert "Execute" in d["message"]
-
-
-def test_maybe_request_execute_bare_execute_without_task():
-    flex = _flex()
-    assert flex.maybe_request_execute("execute", [], "") is None
-    assert flex.maybe_request_execute("execute", [{"role": "user", "text": "execute"}], "") is None
-
-
-def test_maybe_request_execute_context_build_order():
-    flex = _flex()
+    assert flex.maybe_request_execute("execute", turns, "") is None
     text = "Build a landing page for Bean Shop full HTML with hero and footer."
-    d = flex.maybe_request_execute(text, [{"role": "user", "text": text}], "")
-    assert d and d["reason"] == "context_intent"
-
-
-def test_maybe_request_execute_standing_wish():
-    flex = _flex()
-    # Short follow-up that alone is weak; with standing wish + prior build in turns
-    # Use a clear build so context_intent may fire first — standing_wish needs
-    # no context_intent first. Craft text that is NOT auto-execute alone.
-    text = "Mach die Checkliste final"
-    turns = [
-        {"role": "user", "text": "Checklisten-App planen"},
-        {"role": "brainstorm", "text": "ok"},
-        {"role": "user", "text": text},
-    ]
-    # Without wish: may or may not fire; with wish + wants_auto if triggers match
-    mem = "User: always execute\nUser: immer ausführen"
-    # Force path: explicit-ish build verb
-    text2 = "Bau die Seite jetzt umsetzen"
-    d = flex.maybe_request_execute(text2, turns + [{"role": "user", "text": text2}], mem)
-    assert d is not None
-    assert d["execute"] is True
-    assert d["reason"] in ("context_intent", "standing_wish", "explicit_execute")
-
-
-def test_maybe_request_execute_diagnosis_no_fire():
-    flex = _flex()
-    text = "Warum hakt die TTS und was ist mit dem Memory?"
     assert flex.maybe_request_execute(text, [{"role": "user", "text": text}], "") is None
+    mem = "User: always execute\nUser: immer ausführen"
+    assert flex.maybe_request_execute("Bau die Seite jetzt umsetzen", turns, mem) is None
 
 
 # ── brainstorm_contribute ───────────────────────────────────────────
@@ -189,8 +150,9 @@ def test_brainstorm_turn_has_flex_role_and_notes():
     st = pipe.brainstorm_turn("Ideen zu einer Notiz-App, nur Brainstorm bitte")
     assert st.stage == PipelineStage.brainstorm
     roles = [t.get("role") for t in st.brainstorm_turns]
-    assert "user" in roles and "brainstorm" in roles and "flex" in roles
-    assert "Flex:" in (st.brainstorm_notes or "")
+    assert "user" in roles and "brainstorm" in roles
+    # Flex stays quiet in Box 2 unless a stored wish must be mirrored
+    assert "flex" not in roles
 
 
 def test_execute_injects_flex_wish_requirements(tmp_path: Path):
@@ -288,7 +250,8 @@ def test_full_flex_chat_to_done_smoke():
         bus.on(name, lambda d, n=name: events.append(n))
     pipe = Pipeline(bus)
     st = pipe.brainstorm_turn("Build a landing page for Bean Shop. Full HTML with hero and footer.")
-    assert st.stage in (PipelineStage.done, PipelineStage.clarify, PipelineStage.work)
+    assert st.stage == PipelineStage.brainstorm
+    st = pipe.execute()
     if st.stage == PipelineStage.clarify:
         st = pipe.answer_clarify("Schnell und einfach")
     assert st.stage == PipelineStage.done

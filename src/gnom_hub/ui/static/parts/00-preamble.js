@@ -29,6 +29,19 @@
     worker4: "#ff8a3d",
   };
 
+  function ownerColorFor(agentId) {
+    const k = String(agentId || "").toLowerCase();
+    return (typeof COLOR_HEX !== "undefined" && COLOR_HEX[k]) || "";
+  }
+
+  function markOwner(el, agentId) {
+    if (!el) return;
+    const aid = String(agentId || "").toLowerCase();
+    if (aid) el.dataset.agent = aid;
+    const hex = ownerColorFor(aid);
+    if (hex) el.style.setProperty("--owner-color", hex);
+  }
+
   const SLIDER_TIPS = {
     temperature:
       "Temperature: higher = more creative/random; lower = more focused and deterministic.",
@@ -46,7 +59,7 @@
   // Never treat these as the real system prompt unless the user edits Extra tuning.
   const DEFAULT_PROMPTS = {
     brainstorm:
-      "(code default) Dialogue partner — build on history, concrete angles, optional “Soll ich umsetzen?”, no full code dump.",
+      "(code default) Dialogue partner in Box 2 — riff, ask where it pulls, no code, no Execute.",
     memory:
       "(code default) Extract durable personal/project facts only — no HTML garbage.",
     flex:

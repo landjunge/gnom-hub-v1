@@ -40,6 +40,7 @@
       }
       if (els.chatInput && text) {
         els.chatInput.value = (els.chatInput.value + " " + text).trim();
+        if (typeof fitChatInput === "function") fitChatInput();
       }
     };
     try {
@@ -165,8 +166,9 @@
   /**
    * Render interactive pick cards in Box 1.
    * mode: "clarify" → onClarify; "suggest" → fill chat input.
+   * agentId colors the cards (brainstorm red / flex yellow / coordinator green).
    */
-  function renderChoiceCards(cards, mode, title) {
+  function renderChoiceCards(cards, mode, title, agentId) {
     const host = document.getElementById("box1-choice-cards");
     const grid = document.getElementById("box1-choice-grid");
     const titleEl = document.getElementById("box1-choice-title");
@@ -177,6 +179,10 @@
       return;
     }
     const m = mode === "clarify" ? "clarify" : "suggest";
+    const owner =
+      String(agentId || (m === "clarify" ? "coordinator" : "brainstorm")).toLowerCase();
+    if (typeof markOwner === "function") markOwner(host, owner);
+    else host.dataset.agent = owner;
     if (titleEl) {
       titleEl.textContent =
         title ||
@@ -204,6 +210,7 @@
       btn.setAttribute("role", "option");
       btn.dataset.value = value;
       btn.dataset.mode = m;
+      if (typeof markOwner === "function") markOwner(btn, owner);
       const lab = document.createElement("span");
       lab.className = "choice-label";
       lab.textContent = label;
@@ -305,7 +312,8 @@
         };
       }),
       "clarify",
-      "Clarify — eine Option wählen"
+      "Coordinator — eine Option",
+      "coordinator"
     );
     bindChoiceCardChrome();
   }
@@ -1436,9 +1444,15 @@
       bubble.appendChild(tsel);
     }
     const label = document.createElement("span");
+    const whoKey = w.toLowerCase();
+    const whoHex =
+      !isYou && !isSys && typeof ownerColorFor === "function"
+        ? ownerColorFor(whoKey)
+        : "";
     label.className =
       "chat-who-label mr-1 text-2xs font-semibold uppercase tracking-wide " +
-      (isYou ? "text-gnom-accent" : isSys ? "text-gnom-muted" : "text-gnom-flex");
+      (isYou ? "text-gnom-accent" : isSys ? "text-gnom-muted" : "");
+    if (whoHex) label.style.color = whoHex;
     label.textContent = who;
     bubble.appendChild(label);
     const body = document.createElement("span");
@@ -1446,6 +1460,49 @@
     body.textContent = text;
     bubble.appendChild(document.createTextNode(" "));
     bubble.appendChild(body);
+    const acts = document.createElement("span");
+    acts.className = "chat-line-actions";
+    const copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.className = "chat-act-copy";
+    copyBtn.title = "Kopieren";
+    copyBtn.setAttribute("aria-label", "Kopieren");
+    copyBtn.textContent = "⧉";
+    copyBtn.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const payload = String(text || "");
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(payload);
+      }
+      toast(uiLang === "de" ? "Kopiert" : "Copied", "ok");
+    });
+    const keepBtn = document.createElement("button");
+    keepBtn.type = "button";
+    keepBtn.className = "chat-act-keep";
+    keepBtn.title = "Merken";
+    keepBtn.setAttribute("aria-label", "Merken");
+    keepBtn.textContent = "★";
+    keepBtn.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const payload = String(text || "").trim();
+      if (!payload) return;
+      api("POST", "/api/memory/warm", { text: payload })
+        .then(function () {
+          toast(uiLang === "de" ? "Gemerkt" : "Remembered", "ok");
+        })
+        .catch(function (err) {
+          toast(
+            (uiLang === "de" ? "Merken fehlgeschlagen: " : "Remember failed: ") +
+              (err && err.message ? err.message : ""),
+            "error"
+          );
+        });
+    });
+    acts.appendChild(copyBtn);
+    acts.appendChild(keepBtn);
+    bubble.appendChild(acts);
     line.appendChild(bubble);
     els.chatLog.appendChild(line);
     return line;
@@ -1795,11 +1852,13 @@
       if (chatHistIdx >= chatHist.length) {
         chatHistIdx = -1;
         els.chatInput.value = chatDraft;
+        if (typeof fitChatInput === "function") fitChatInput();
         return;
       }
     }
     const line = chatHist[chatHistIdx] || "";
     els.chatInput.value = line;
+    if (typeof fitChatInput === "function") fitChatInput();
     try {
       els.chatInput.setSelectionRange(line.length, line.length);
     } catch (_e) {
@@ -1912,11 +1971,20 @@
         return;
       }
       els.chatInput.value = pack.text;
+      if (typeof fitChatInput === "function") fitChatInput();
       els.chatInput.focus();
       toast("ThreadDesk geladen — Send nicht gedrückt", "info");
     } catch (_e) {
       toast("ThreadDesk nicht lesbar", "error");
     }
+  }
+
+  function fitChatInput() {
+    const el = (els && els.chatInput) || document.getElementById("chat-input");
+    if (!el) return;
+    el.style.height = "32px";
+    const next = Math.min(Math.max(el.scrollHeight, 32), 72);
+    el.style.height = next + "px";
   }
 
   async function sendChat() {
@@ -1927,6 +1995,7 @@
     appendChat("you", text);
     pushChatHist(raw);
     els.chatInput.value = "";
+    if (typeof fitChatInput === "function") fitChatInput();
     chatHistIdx = -1;
     chatDraft = "";
     const cb = w.GnomHub.onSend;
@@ -1972,16 +2041,24 @@
       if (stage === "brainstorm") {
         appendChat(
           "system",
-          "Brainstorm — bei klarer Bau-Anweisung startet die Pipeline von selbst; "
-            + "sonst fragt Brainstorm (z.B. „Soll ich umsetzen?“). Antwort: ja / ok / plan erstellen."
+          "Brainstorm — Send bleibt Dialog. Umsetzen: Arbeit starten oder Ja in Box 1."
         );
-        toast("Brainstorm · ja/ok = umsetzen, oder harter Bau-Befehl = sofort", "ok");
+        toast("Send = sprechen · Arbeit starten / Ja in Box 1 = Arbeit", "ok");
       } else if (stage === "done") {
-        appendChat(
-          "system",
-          "Umsetzung aus Kontext (Befehl oder dein Ja nach Nachfrage) — siehe Box 3."
-        );
-        toast("Umgesetzt · Box 3", "ok");
+        const okDeliverable = snap.pipeline && snap.pipeline.deliverable_ok;
+        if (okDeliverable) {
+          appendChat(
+            "system",
+            "Umsetzung aus Kontext (Befehl oder dein Ja nach Nachfrage) — siehe Box 3."
+          );
+          toast("Umgesetzt · Box 3", "ok");
+        } else {
+          appendChat(
+            "system",
+            "Pipeline fertig, aber kein gültiges Deliverable — siehe Box 3."
+          );
+          toast("Kein Deliverable · Box 3", "error");
+        }
         focusBox3();
       } else if (stage === "clarify") {
         appendChat("system", "Need a clarify answer in Box 1.");
@@ -2043,11 +2120,22 @@
         const dur =
           lastJobElapsedSec ||
           (jobTimerStart ? (Date.now() - jobTimerStart) / 1000 : 0);
-        appendChat(
-          "system",
-          "Execute done in " + formatDuration(dur) + " — see Box 3."
-        );
-        toast("Execute done · " + formatDuration(dur), "ok");
+        const okDeliverable = snap.pipeline && snap.pipeline.deliverable_ok;
+        if (okDeliverable) {
+          appendChat(
+            "system",
+            "Execute done in " + formatDuration(dur) + " — see Box 3."
+          );
+          toast("Execute done · " + formatDuration(dur), "ok");
+        } else {
+          appendChat(
+            "system",
+            "Execute finished in "
+              + formatDuration(dur)
+              + " without a valid deliverable — see Box 3."
+          );
+          toast("Kein Deliverable · " + formatDuration(dur), "error");
+        }
         focusBox3();
         try {
           pushResultHistory(snap.pipeline || {}, {
@@ -2087,10 +2175,12 @@
     if (text) {
       await sendChat();
     }
-    // After brainstorm, run execute if possible
-    if (!chatBusy) {
-      await runExecute();
-    }
+    toast(
+      uiLang === "de"
+        ? "Send fertig. Arbeit starten oder Ja in Box 1."
+        : "Send done. Press Arbeit starten or Yes in Box 1.",
+      "ok"
+    );
   }
 
   function appendChat(who, text) {

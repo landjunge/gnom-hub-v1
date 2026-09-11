@@ -1,0 +1,42 @@
+{
+  "ok": true,
+  "verdict": "PASS",
+  "check": "flex-box1-start-work",
+  "base": "http://127.0.0.1:8090",
+  "headed": true,
+  "cdp": "down — launched real Google Chrome (Playwright channel=chrome), not Chrome for Testing",
+  "GNOM_TOLLGATE_LLM": "0",
+  "GNOM_WS": "/Users/landjunge/gnom-hub-v1-ui-audit-ws",
+  "did_not_click_ja": true,
+  "task_sent": "Landingpage Gnom-Hub v1",
+  "proof_job": {
+    "id": "30de9657dafd",
+    "name": "brainstorm",
+    "status": "done",
+    "stage": "brainstorm",
+    "started_at": "2026-09-10T19:31:30+00:00"
+  },
+  "checks": {
+    "opened_8090": true,
+    "typed_and_sent": true,
+    "stage_api": "brainstorm",
+    "stage_badge": "brainstorm",
+    "start_work_copy": "Der Plan ist bereit. Möchtest du die Arbeit jetzt starten?",
+    "start_work_open": true,
+    "buttons": ["Ja, Arbeit starten", "Später"],
+    "ja_visible_not_clicked": true,
+    "worker_outputs": 0,
+    "deliverable_ok": false,
+    "box3": "placeholder (Brainstorm dialogue) — no worker HTML"
+  },
+  "shots": [
+    "docs/assets/human-ui-audit/flex-box1-open.png",
+    "docs/assets/human-ui-audit/flex-box1-start-work.png",
+    "docs/assets/human-ui-audit/flex-box1-start-work-box1.png"
+  ],
+  "notes": [
+    "CDP http://127.0.0.1:9222 was not listening; did not instruct Chrome for Testing.",
+    "First Send (19:23) later got an answered start_work and a full execute (legacy DeepSeek HTML). Harness: gnom_chrome_tab fell back to `open -a Google Chrome`, creating a second 8090 tab. That run is not the proof.",
+    "Proof is the 19:31 brainstorm job: stage stayed brainstorm, start_work stayed open, workers=0, Ja not clicked."
+  ]
+}

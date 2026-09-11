@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from gnom_hub.snapshot_ops import _deliverable_ok
+
 
 class FlexOpsMixin:
     """Mixin: expects Hub pipeline, warm, flex agent, snapshot."""
@@ -19,6 +21,7 @@ class FlexOpsMixin:
         outs = list(st.worker_outputs or [])
         chars = sum(len(str(o.get("result") or "")) for o in outs)
         active = stage == "done" and (chars > 80 or bool(st.worker_results))
+        ok_deliv = _deliverable_ok(st)
 
         if not active:
             return {
@@ -27,6 +30,36 @@ class FlexOpsMixin:
                 "question": "Nach einem Ergebnis fragt Flex hier nach Feedback.",
                 "buttons": [],
                 "hint": "Box 1 = Flex lernt & steuert",
+                "deliverable_ok": False,
+            }
+
+        if not ok_deliv:
+            return {
+                "active": True,
+                "title": "Flex · kein Deliverable",
+                "question": (
+                    "Kein gültiges Ergebnis. Worker hat FEHLER gemeldet — "
+                    "nicht bewerten. Key, Tollgate oder Budget prüfen, dann neu bauen."
+                ),
+                "buttons": [
+                    {
+                        "id": "rebrainstorm",
+                        "label": "Nochmal Brainstorm",
+                        "action": "brainstorm",
+                        "prompt": (
+                            "Bitte nochmal brainstormen: wie wird das Ergebnis besser? "
+                            "Kurz, max 6 Zeilen. Danach frage, ob ich neu bauen soll."
+                        ),
+                    },
+                    {
+                        "id": "rebuild",
+                        "label": "Nochmal bauen",
+                        "action": "start_work",
+                    },
+                ],
+                "hint": "Erst Ursache (Key/Tollgate/Budget), dann Box 1 Ja",
+                "stats": {"workers": len(outs), "chars": chars},
+                "deliverable_ok": False,
             }
 
         qnotes = (st.quality_notes or "").strip()
@@ -65,7 +98,7 @@ class FlexOpsMixin:
             {
                 "id": "rebuild",
                 "label": "Nochmal bauen",
-                "action": "execute",
+                "action": "start_work",
             },
             {
                 "id": "more_dark",
@@ -95,7 +128,7 @@ class FlexOpsMixin:
                 {
                     "id": "fix_html",
                     "label": "HTML reparieren",
-                    "action": "execute",
+                    "action": "start_work",
                     "learn": "User: HTML war unvollständig — nächstes Mal vollständiges Dokument",
                 },
             )
@@ -105,7 +138,7 @@ class FlexOpsMixin:
                 {
                     "id": "add_js",
                     "label": "Mehr Interaktion bauen",
-                    "action": "execute",
+                    "action": "start_work",
                     "learn": "User: Interaktion fehlte — nächstes Mal klickbare UI",
                 },
             )
@@ -119,8 +152,9 @@ class FlexOpsMixin:
             "title": "Flex · Feedback",
             "question": question,
             "buttons": buttons[:10],
-            "hint": "Klick = lernen und/oder nächster Schritt",
+            "hint": "Klick = lernen · Bauen fragt in Box 1",
             "stats": {"workers": len(outs), "chars": chars},
+            "deliverable_ok": True,
         }
 
     def apply_flex_feedback(
@@ -136,7 +170,7 @@ class FlexOpsMixin:
         Actions:
           learn — store Flex wish in WARM
           brainstorm — start short improve brainstorm turn
-          execute — re-run workers from current brainstorm notes
+          start_work — ask Box 1 to confirm Execute (Flex has no execute authority)
         """
         panel = self.flex_review_panel()
         btn = None
@@ -166,7 +200,6 @@ class FlexOpsMixin:
                     source="flex_wish",
                 )
 
-        job: dict[str, Any] | None = None
         message = (btn or {}).get("label") or label or button_id
 
         if action == "brainstorm":
@@ -184,18 +217,27 @@ class FlexOpsMixin:
                 "snapshot": snap,
             }
 
-        if action == "execute":
-            # Optional learn before rebuild
+        if action in ("execute", "start_work"):
+            # Flex has no execute authority — Box 1 start_work / #btn-execute
             if not (self.pipeline.state.brainstorm_notes or "").strip():
                 raise ValueError("nichts zum erneuten Bauen — erst brainstormen")
-            job = self.execute_async()
+            desk = getattr(self.pipeline, "flex_desk", None)
+            if desk is None:
+                raise TypeError("flex desk missing")
+            ensure = getattr(self.pipeline, "_ensure_flex_job", None)
+            if callable(ensure):
+                ensure()
+            asked = desk.offer_start_work(task_id="plan")
+            sync = getattr(self.pipeline, "_sync_flex_state", None)
+            if callable(sync):
+                sync()
             return {
                 "ok": True,
-                "action": "execute",
+                "action": "start_work",
                 "learned": learned,
                 "learn_text": learn if learned else "",
-                "message": f"Flex: baue nochmal — {message}",
-                "job": job,
+                "message": f"Flex fragt in Box 1: Arbeit starten? — {message}",
+                "flex_ask": asked,
                 "snapshot": self.snapshot(),
             }
 

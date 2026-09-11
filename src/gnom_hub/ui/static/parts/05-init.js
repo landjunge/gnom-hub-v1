@@ -53,16 +53,29 @@
     if (teamDel) teamDel.addEventListener("click", deleteSelectedTeam);
     if (planMode) planMode.addEventListener("change", setPlanModeFromUi);
     loadChatHist();
+    if (els.chatInput && typeof fitChatInput === "function") {
+      els.chatInput.addEventListener("input", fitChatInput);
+      fitChatInput();
+    }
     els.chatInput.addEventListener("keydown", function (ev) {
-      // Terminal-style history: ↑ older · ↓ newer
+      // Terminal-style history: ↑ older · ↓ newer (only at start of textarea)
       if (ev.key === "ArrowUp") {
-        ev.preventDefault();
-        chatHistNav(-1);
+        const atStart = !els.chatInput.selectionStart;
+        if (atStart) {
+          ev.preventDefault();
+          chatHistNav(-1);
+          fitChatInput();
+        }
         return;
       }
       if (ev.key === "ArrowDown") {
-        ev.preventDefault();
-        chatHistNav(1);
+        const v = els.chatInput.value || "";
+        const atEnd = els.chatInput.selectionStart >= v.length;
+        if (atEnd) {
+          ev.preventDefault();
+          chatHistNav(1);
+          fitChatInput();
+        }
         return;
       }
       // Typing resets history cursor to "live draft"
@@ -72,13 +85,13 @@
           chatDraft = "";
         }
       }
-      // Ctrl/Cmd+Enter = Execute; plain Enter = Send
+      // Ctrl/Cmd+Enter = Execute; Shift+Enter = newline; plain Enter = Send
       if (ev.key === "Enter" && (ev.ctrlKey || ev.metaKey)) {
         ev.preventDefault();
         runExecute();
         return;
       }
-      if (ev.key === "Enter") {
+      if (ev.key === "Enter" && !ev.shiftKey) {
         ev.preventDefault();
         sendChat();
       }

@@ -39,6 +39,49 @@ def _worst_validation(worker_outputs: list | None) -> dict[str, Any] | None:
     return worst
 
 
+def _flex_has_open_clarify(pipeline: Any) -> bool:
+    """True when Flex Box 1 already shows an open coordinator/clarify question."""
+    desk = getattr(pipeline, "flex_desk", None)
+    if desk is None:
+        return False
+    open_fn = getattr(desk, "open_questions", None)
+    questions = open_fn() if callable(open_fn) else []
+    for q in questions or []:
+        if isinstance(q, dict):
+            agent = str(q.get("agent_id") or "").strip().lower()
+            task = str(q.get("task_id") or "").strip().lower()
+        else:
+            agent = str(getattr(q, "agent_id", "") or "").strip().lower()
+            task = str(getattr(q, "task_id", "") or "").strip().lower()
+        if agent == "coordinator" or task == "clarify":
+            return True
+    return False
+
+
+def _deliverable_ok(st: Any) -> bool:
+    """True when at least one worker body is a real deliverable, not FEHLER/stub.
+
+    Stage ``done`` is not enough. Soft DoD issues (palette, wishes) still leave
+    a page in Box 3 — only missing/error bodies are treated as not-ok.
+    """
+    bodies: list[str] = []
+    for o in getattr(st, "worker_outputs", None) or []:
+        if isinstance(o, dict):
+            bodies.append(str(o.get("result") or o.get("body") or ""))
+    if not bodies:
+        bodies = [str(x) for x in (getattr(st, "worker_results", None) or [])]
+    for body in bodies:
+        b = (body or "").strip()
+        if len(b) < 400:
+            continue
+        if "FEHLER" in b and "Deliverable" in b:
+            continue
+        if b.startswith("Stub") or "Stub —" in b:
+            continue
+        return True
+    return False
+
+
 class SnapshotOpsMixin:
     """Mixin extracted from Hub — pure move."""
 
@@ -86,7 +129,7 @@ class SnapshotOpsMixin:
     def pipeline_dict(self) -> dict[str, Any]:
         st = self.pipeline.state
         q = None
-        if st.pending_question is not None:
+        if st.pending_question is not None and not _flex_has_open_clarify(self.pipeline):
             q = {
                 "id": st.pending_question.id,
                 "text": st.pending_question.text,
@@ -123,6 +166,9 @@ class SnapshotOpsMixin:
             "resolved_plan_mode": getattr(st, "resolved_plan_mode", "") or "",
             "plan_html_score": getattr(st, "plan_html_score", None),
             "validation": _worst_validation(list(st.worker_outputs or [])),
+            "deliverable_ok": _deliverable_ok(st),
+            "flex_job_id": getattr(st, "flex_job_id", "") or "",
+            "flex_questions": list(getattr(st, "flex_questions", None) or []),
         }
 
     def memory_dict(self) -> dict[str, Any]:
@@ -216,6 +262,11 @@ class SnapshotOpsMixin:
                 self.flex_review_panel()
                 if hasattr(self, "flex_review_panel")
                 else {"active": False, "buttons": []}
+            ),
+            "flex_box1": (
+                self.pipeline.flex_desk.snapshot()
+                if getattr(self.pipeline, "flex_desk", None) is not None
+                else {"title": "Rückfragen und Entscheidungen", "questions": []}
             ),
             "trace": list(self.trace[-40:]),
             "ui_lang": self.ui_lang,

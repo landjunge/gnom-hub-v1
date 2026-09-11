@@ -134,28 +134,25 @@ def brainstorm_system_extra(kind: str) -> str:
             "# Intent: TOOL DRILL\n"
             "- User will force real tools (Playwright/Shell/GUI).\n"
             "- DO NOT propose HTML landing or code dump.\n"
-            "- 2–4 lines: which tools (browser_goto, computer_shell, inspect) and that Hub runs them now.\n"
-            "- No „Soll ich umsetzen?“ — pipeline auto-executes tool scenarios.\n"
+            "- 2–4 lines: which tools fit. Do not claim you started them.\n"
         )
     if kind == "browser_nav":
         return (
             "# Intent: LIVE BROWSER\n"
             "- User wants a real browser open/navigate — NOT a webpage artifact.\n"
-            "- Confirm URL in one short line; Hub calls browser_open/browser_goto.\n"
-            "- No HTML generation. No long plan.\n"
+            "- Confirm URL in one short line. No HTML generation.\n"
         )
     if kind == "go_only":
         return (
             "# Intent: GO-ONLY (mach das / was ich gesagt habe)\n"
             "- No new task invention. Prior concrete user task will be re-used.\n"
-            "- One line: bestätigen, dass der letzte klare Auftrag ausgeführt wird.\n"
+            "- One line: der letzte klare Auftrag liegt vor. Start bleibt Box 1.\n"
         )
     if kind == "html_page":
         return (
             "# Intent: HTML / LANDING\n"
-            "- ONE worker builds ONE complete single-file HTML (not multi half-pages).\n"
-            "- Mention modern effects once (glass/gradient/scroll-reveal) — no full code here.\n"
-            "- Clear build order → no soft question when intent is clear (Hub executes).\n"
+            "- Mitdenken: Stimmung, Referenzen, Richtung — kein Code, kein Execute.\n"
+            "- Prefetch-Funde als Funken. Start der Arbeit = Flex in Box 1.\n"
         )
     if kind == "diagnose":
         return (

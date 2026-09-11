@@ -437,8 +437,15 @@
     const fenceHtml = s.match(/```html\s*([\s\S]*?)```/i);
     if (fenceHtml && fenceHtml[1]) {
       const body = fenceHtml[1].trim();
-      if (/<!DOCTYPE\s+html|<html[\s>]/i.test(body)) return body;
-      if (body.startsWith("<") && (body.match(/<\w+/g) || []).length >= 4) return body;
+      // Tiny fences (e.g. "ends") must not beat a later full <!DOCTYPE> document.
+      if (body.length >= 80 && /<!DOCTYPE\s+html|<html[\s>]/i.test(body)) return body;
+      if (
+        body.length >= 80 &&
+        body.startsWith("<") &&
+        (body.match(/<\w+/g) || []).length >= 4
+      ) {
+        return body;
+      }
     }
     // Open fence (worker cut off before closing ```) — common failure mode
     const fenceOpen = s.match(/```html\s*([\s\S]+)$/i);
@@ -523,7 +530,7 @@
         "<h1 style=\"font-size:1.35rem;margin:0 0 .75rem;\">Vorschau — Seite unvollständig</h1>" +
         "<p style=\"line-height:1.45;margin:0 0 .75rem;color:#b8bcc4;\">" +
         "Der Worker hat die HTML-Datei abgeschnitten (oft mitten im CSS, ohne sichtbaren Inhalt). " +
-        "Unten siehst du den Quelltext. Bitte im Flex-Panel „Nochmal bauen“ oder „HTML reparieren“." +
+        "Unten siehst du den Quelltext. Bitte im Flex-Panel „Nochmal bauen“ oder „HTML reparieren“, dann in Box 1 mit Ja bestätigen." +
         "</p>" +
         "<p style=\"margin:0;font-size:.9rem;color:#8b909a;\">" +
         "Zeichen geliefert: " +

@@ -17,6 +17,7 @@ from typing import Any
 LIVE_SITE = "https://www.kleinanzeigen.de"
 LIVE_SITE_LABEL = "kleinanzeigen.de"
 
+# Explicit drill / computer-use language only — not bare tool names.
 _DRILL_MARKERS = (
     "tool drill",
     "tools drill",
@@ -33,8 +34,6 @@ _DRILL_MARKERS = (
     "tools einsetzen",
     "use tools",
     "using tools",
-    "playwright",
-    "playwright test",
     "computer use",
     "computer-use",
     "computer use test",
@@ -58,29 +57,13 @@ _DRILL_MARKERS = (
     "tools testen",
     "agenten tools",
     "agents brauchen tools",
-    "wirkliche tools",
-    "echte tools",
-    "andere tools",
-    "alle tools",
-    "web fetch",
-    "web_fetch",
-    "plugin tools",
     "plugins test",
-    "file_ops",
-    "git_ops",
-    "install_tool",
-    "shell_safe",
-    "pw_goto",
     "screenshot vom bildschirm",
-    "bildschirm lesen",
     "was ist auf dem screen",
     "was ist auf dem bildschirm",
     "maus klicken",
     "shell ausführen",
     "terminal befehl",
-    "installiere playwright",
-    "git status im hub",
-    "liste dateien",
 )
 
 

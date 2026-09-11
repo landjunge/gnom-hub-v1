@@ -23,6 +23,27 @@ from gnom_hub.agents.roles_helpers import (  # noqa: F401
 from gnom_hub.llm.types import BudgetExceededError
 
 
+def brainstorm_system_prompt(kind: str = "general") -> str:
+    """Dialogue partner in Box 2. No Execute. No form. No code dump."""
+    base = (
+        "Du bist der Brainstorm-Partner in Gnom-Hub — mitdenken in Box 2, "
+        "kein Ticket-Bot, kein Code-Dumper, kein Mini-Execute.\n"
+        "Nimm die Energie des Wunsches auf. Spiel mit, statt abzuhaken.\n"
+        "Unklare Wörter (geil, cool, krass): nicht A/B/C-Formular. "
+        "Zeig 2–4 Bilder, was das heißen *könnte* (optisch, Tempo, Frechheit, Ruhe), "
+        "dann eine offene Frage: wohin zieht's den User.\n"
+        "Spinn den vorigen Turn weiter. Erst verdichten, wenn eine Richtung gewählt ist.\n"
+        "Kein HTML, kein CSS, kein JS, kein Anbieten die Arbeit zu starten. "
+        "Arbeit starten ist Flex in Box 1, nicht du.\n"
+        "Tool prefetch (auto): echte Funde als Funken zitieren — keine erfundenen Awards.\n"
+        "Sprache wie der User. Direkt, ohne Floskeln.\n"
+    )
+    from gnom_hub.agents.chat_policy import brainstorm_system_extra
+
+    extra = brainstorm_system_extra(kind)
+    return base + (extra if extra else "")
+
+
 class BrainstormAgent(BaseAgent):
     """Free brainstorm partner — dialogue, not a one-shot idea dump."""
 
@@ -49,32 +70,10 @@ class BrainstormAgent(BaseAgent):
                         if isinstance(t, dict)
                         and str(t.get("text") or t.get("content") or "").strip()
                     ]
-                    from gnom_hub.agents.chat_policy import brainstorm_system_extra, task_kind
+                    from gnom_hub.agents.chat_policy import task_kind
 
                     kind = task_kind(user_text)
-                    system = (
-                        "Du bist der Brainstorm-Partner in Gnom-Hub — knapper Denkpartner, "
-                        "KEIN Essay-Bot und KEIN Code-Dumper.\n"
-                        "Workers bauen/handeln erst nach klarer Anweisung oder ja/ok/mach das.\n"
-                        "Antwort-Länge (hart):\n"
-                        "- Max. ~100 Wörter ODER 6–8 kurze Zeilen (Box 2 muss scannbar bleiben).\n"
-                        "- Max. 4 Aufzählungspunkte. Keine langen Absätze.\n"
-                        "Regeln:\n"
-                        "- Immer auf Deutsch antworten, wenn der User Deutsch schreibt "
-                        "(sonst Sprache des Users). Direkt, ohne Floskeln.\n"
-                        "- Vorherigen Dialog nutzen; nicht von null neu starten.\n"
-                        "- Auf DIESE Nachricht reagieren: schärfen, wählen, eine Richtung priorisieren.\n"
-                        "- Live-Browser / Tool-Drill / Go-only: KEINE HTML-Landing vorschlagen.\n"
-                        "- Kreative Tasks: 2–4 konkrete Richtungen mit je 1 Satz WARUM — kein fertiger Code.\n"
-                        "- Diagnose Gnom-Hub: max. 4 nummerierte Punkte "
-                        "(UI, Keys, Workers/RESULT, Tools/God-Mode).\n"
-                        "- Bau-Idee ohne harte Order → am Ende GENAU eine kurze Frage: "
-                        "„Soll ich das jetzt umsetzen?“\n"
-                        "- Harte Bau-Anweisung / Tool-Drill / Browser-Nav schon da → keine Frage "
-                        "(Hub startet Workers/Tools).\n"
-                        "- Keine volle HTML/CSS/JS-Implementierung hier.\n"
-                        f"{brainstorm_system_extra(kind)}"
-                    )
+                    system = brainstorm_system_prompt(kind)
                     try:
                         from gnom_hub.skills.match import skill_block_for
 
@@ -94,7 +93,7 @@ class BrainstormAgent(BaseAgent):
                         system=system,
                         user=_with_memory(f"USER MESSAGE:\n{user_text}", memory_ctx),
                         prior=prior if not is_diag else prior[-4:],
-                        max_tokens=280 if is_fast else (420 if is_diag else 320),
+                        max_tokens=280 if is_fast else (420 if is_diag else 700),
                         temperature=0.25 if is_fast or is_diag else 0.75,
                     )
                 except BudgetExceededError as exc:
@@ -119,8 +118,8 @@ class FlexAgent(BaseAgent):
     Not a product designer, not a worker, not the coordinator.
     Jobs (immutable):
       1) remember *the user* (wishes, habits, people, standing rules) → WARM source=flex
-      2) speak for the user in brainstorm (short co-pilot lines)
-      3) press Execute when the *user's* intent is clear
+      2) Box 1 questions only — compact, no Execute
+      3) stay quiet in Box 2 during brainstorm unless a stored wish must be mirrored
       4) on Execute: pass binding wishes so workers respect *them*; nudge if workers ignore *them*
     Preset/toggle/UI role edits are ignored (always personal, always on).
     """
@@ -150,106 +149,8 @@ class FlexAgent(BaseAgent):
         turns: list[dict] | None = None,
         memory_ctx: str = "",
     ) -> dict | None:
-        """
-        Decide whether Flex should trigger Execute for the user.
-
-        Returns {"execute": True, "reason": str, "message": str} or None.
-        Never auto-fires on pure chat/diagnosis — only clear task + intent.
-        """
-        if not self.enabled:
-            return None
-        text = (user_text or "").strip()
-        if not text:
-            return None
-
-        # Import shared heuristic (context / ja after offer / hard build order)
-        from gnom_hub.pipeline.orchestrator import _wants_auto_execute
-
-        low = text.lower().strip(" !.。")
-        reason = ""
-        # Explicit execute command (Flex presses the button for the user)
-        execute_cmds = {
-            "execute",
-            "ausführen",
-            "ausfuehren",
-            "run it",
-            "run execute",
-            "flex execute",
-            "jetzt ausführen",
-            "jetzt ausfuehren",
-            "pipeline starten",
-            "starte execute",
-            "start execute",
-        }
-        if low in execute_cmds or low.startswith(
-            ("execute ", "ausführen ", "ausfuehren ", "run it")
-        ):
-            reason = "explicit_execute"
-
-        if not reason and _wants_auto_execute(text, turns):
-            reason = "context_intent"
-
-        # Standing wish: always execute on clear build orders
-        if not reason and memory_ctx:
-            mlow = memory_ctx.lower()
-            wish_auto = any(
-                k in mlow
-                for k in (
-                    "always execute",
-                    "immer execute",
-                    "immer ausführen",
-                    "auto-execute",
-                    "auto execute",
-                    "automatisch ausführen",
-                )
-            )
-            if wish_auto and _wants_auto_execute(text, turns):
-                reason = "standing_wish"
-
-        if not reason:
-            return None
-
-        # Need something to execute (prior brainstorm or this turn is a task)
-        turns = turns or []
-        has_task = bool(text) and (
-            len(text) >= 12
-            or any(str(x.get("text") or "").strip() for x in turns if x.get("role") == "user")
-        )
-        if not has_task:
-            return None
-
-        # Pure execute word alone still OK if history has a real task
-        if reason == "explicit_execute":
-            users = [
-                str(x.get("text") or "").strip()
-                for x in turns
-                if x.get("role") == "user" and str(x.get("text") or "").strip()
-            ]
-            # If only "execute" and no prior user task → refuse
-            substantive = [u for u in users if u.lower().strip(" !.。") not in execute_cmds]
-            if not substantive and low in execute_cmds:
-                return None
-
-        from gnom_hub.agents.chat_policy import task_kind
-
-        kind = task_kind(text)
-        msg = {
-            "explicit_execute": "Flex: Execute — Auftrag wird ausgeführt.",
-            "context_intent": {
-                "tool_drill": "Flex: Tool-Drill — starte Execute (echte Tools).",
-                "browser_nav": "Flex: Live-Browser — starte Execute (URL öffnen).",
-                "html_page": "Flex: klarer Bau-Auftrag — starte Execute (Team/HTML).",
-                "go_only": "Flex: Go-only — starte Execute mit letztem klaren Auftrag.",
-            }.get(kind, "Flex: klarer Auftrag — starte Execute."),
-            "standing_wish": "Flex: stehender Wunsch Auto-Execute — starte Execute.",
-        }.get(reason, "Flex: Execute.")
-
-        decision = {"execute": True, "reason": reason, "message": msg, "task_kind": kind}
-        self.bus.emit(
-            "pipeline.flex_execute",
-            {"reason": reason, "message": msg, "user_text": text[:200]},
-        )
-        return decision
+        """Removed: Flex has no Execute authority. Always None."""
+        return None
 
     def brainstorm_contribute(
         self,
@@ -305,54 +206,9 @@ class FlexAgent(BaseAgent):
             w = wishes[0].replace("User: ", "").replace("Wish: ", "")[:120]
             parts.append("bleibend: " + w)
 
-        br = (brainstorm_reply or "").lower()
-        # Brainstorm offered to implement → Flex steers toward Execute
-        if any(
-            k in br
-            for k in (
-                "soll ich",
-                "umsetzen",
-                "plan erstellen",
-                "shall i",
-                "ready to",
-            )
-        ):
-            parts.append("wenn der Auftrag klar ist: Execute sagen / Button drücken.")
-
-        # User is pure diagnosis → Flex stays quiet-ish
-        diagnose = (
-            "warum",
-            "wo hakt",
-            "was ist mit",
-            "erklär",
-            "analys",
-            "only brainstorm",
-            "nur brainstorm",
-            "nur ideen",
-        )
-        if any(d in low for d in diagnose) and not parts:
-            parts.append("Brainstorm zuerst — Execute erst bei klarem Auftrag.")
-
-        from gnom_hub.agents.chat_policy import flex_line_for_kind, task_kind
-
-        kind_line = flex_line_for_kind(task_kind(text))
-        if kind_line:
-            # Intent-specific Flex line replaces fluff
-            msg = kind_line
-            if len(msg) > 280:
-                msg = msg[:279] + "…"
-            self.bus.emit(
-                "pipeline.flex_chat",
-                {"message": msg, "user_text": text[:200]},
-            )
-            return msg
-
+        # Stay quiet in Box 2 unless a stored wish must be mirrored.
         if not parts:
-            # Minimal presence so Flex is visible as co-pilot
-            if len(text) >= 12:
-                parts.append("dabei — speichere Wünsche und halte die Linie.")
-            else:
-                return None
+            return None
 
         msg = "Flex: " + " · ".join(parts)
         if len(msg) > 280:

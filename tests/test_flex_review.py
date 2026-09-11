@@ -36,14 +36,17 @@ def test_flex_review_active_after_done(tmp_path: Path, monkeypatch):
         rev = c.get("/api/flex/review").json()
         # May be done with workers
         if rev.get("active"):
-            assert rev.get("buttons")
-            assert any(b.get("id") == "good" for b in rev["buttons"])
-            # Learn button
-            fb = c.post(
-                "/api/flex/feedback",
-                json={"button_id": "good", "label": "Gut so"},
-            )
-            assert fb.status_code == 200
-            assert fb.json().get("ok") is True
-            assert fb.json().get("action") == "learn"
+            ids = [b.get("id") for b in (rev.get("buttons") or [])]
+            if rev.get("deliverable_ok") is False:
+                assert "rebuild" in ids
+                assert "good" not in ids
+            else:
+                assert "good" in ids
+                fb = c.post(
+                    "/api/flex/feedback",
+                    json={"button_id": "good", "label": "Gut so"},
+                )
+                assert fb.status_code == 200
+                assert fb.json().get("ok") is True
+                assert fb.json().get("action") == "learn"
     hub_mod._HUB = None

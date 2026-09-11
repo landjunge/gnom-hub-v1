@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from gnom_hub.agents.chat_policy import brainstorm_system_extra, task_kind
+from gnom_hub.agents.chat_policy import (
+    brainstorm_system_extra,
+    coordinator_distill_system,
+    task_kind,
+)
+from gnom_hub.agents.roles_ext import _html_full_page_plan
 
 
 def test_task_kind_tool_drill():
@@ -12,7 +17,7 @@ def test_task_kind_tool_drill():
 
 def test_task_kind_browser_nav():
     assert task_kind("navigiere zu https://www.kleinanzeigen.de") == "browser_nav"
-    assert task_kind("kleinanzeigen") == "browser_nav"
+    assert task_kind("kleinanzeigen") != "browser_nav"
     assert task_kind("https://example.com") == "browser_nav"
 
 
@@ -32,8 +37,21 @@ def test_task_kind_diagnose():
     assert task_kind("wo hakt es? bug debug") == "diagnose"
 
 
-def test_brainstorm_html_one_worker_not_multi():
+def test_brainstorm_html_is_dialogue_not_worker_plan():
+    """Brainstorm riffs in Box 2. One-worker HTML is Coordinator plan, not this extra."""
     extra = brainstorm_system_extra("html_page")
-    assert "ONE worker" in extra or "one worker" in extra.lower()
-    assert "multi half" in extra.lower() or "ONE complete" in extra
-    assert "multi-worker team" not in extra.lower()
+    low = extra.lower()
+    assert "mitdenken" in low
+    assert "kein code" in low or "kein execute" in low
+    assert "box 1" in low
+    assert "one worker" not in low
+    assert "multi-worker" not in low
+
+
+def test_html_full_page_plan_is_one_worker():
+    plan = _html_full_page_plan("Landingpage", ["worker1", "worker2"], ["DoD"])
+    assert len(plan) == 1
+    assert plan[0][0] == "worker1"
+    assert "ONE complete" in plan[0][1] or "</html>" in plan[0][1]
+    dist = coordinator_distill_system("html_page")
+    assert "</html>" in dist or "html" in dist.lower()

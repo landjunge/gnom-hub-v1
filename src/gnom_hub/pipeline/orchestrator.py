@@ -9,6 +9,7 @@ start() still runs full pipeline (tests / Telegram /do).
 from __future__ import annotations
 
 import time
+import uuid
 from collections.abc import Callable
 from typing import Any
 
@@ -22,6 +23,7 @@ from gnom_hub.agents.roles import (
     WorkerAgent,
 )
 from gnom_hub.core.event_bus import EventBus
+from gnom_hub.flex_desk import FlexDesk, parse_flex_ask
 from gnom_hub.pipeline.models import PipelineStage, PipelineState
 
 
@@ -42,15 +44,84 @@ class Orchestrator:
         self.llm = llm_manager
         self.agents = agent_manager or AgentManager(bus)
         self.memory_store = memory
-        self.tools = tools  # ToolRegistry — agents call tools via agent_bridge
+        self._tools = tools  # ToolRegistry — workers + prefetch/short-circuits
         self._state = PipelineState()
         self._clarified_once = False
         self.cancel_check: Callable[[], bool] | None = None
         self.plan_mode: str = "default"
-        self.tools: Any | None = None  # ToolRegistry from Hub (optional)
         self._stage_t0: float | None = None
         self._stage_name: str | None = None
+        self.flex_desk = FlexDesk()
         self._build_roles()
+
+    def _ensure_flex_job(self) -> str:
+        jid = (self._state.flex_job_id or self.flex_desk.job_id or "").strip()
+        if not jid:
+            jid = uuid.uuid4().hex[:12]
+        self.flex_desk.bind_job(jid)
+        self._state.flex_job_id = jid
+        return jid
+
+    def _sync_flex_state(self) -> None:
+        self._state.flex_job_id = self.flex_desk.job_id
+        self._state.flex_questions = self.flex_desk.to_list()
+
+    def restore_flex_from_state(self) -> None:
+        """Rebuild FlexDesk after checkpoint / snapshot reload."""
+        self.flex_desk = FlexDesk.from_list(
+            list(getattr(self._state, "flex_questions", None) or []),
+            job_id=str(getattr(self._state, "flex_job_id", "") or ""),
+        )
+
+    def _post_coordinator_clarify(self, question: Any) -> None:
+        self._state.pending_question = question
+        self._ensure_flex_job()
+        self.flex_desk.ask(
+            agent_id="coordinator",
+            job_id=self.flex_desk.job_id,
+            task_id="clarify",
+            text=question.text,
+            component="single_select",
+            options=list(question.options),
+        )
+        self._sync_flex_state()
+        self._set_stage(PipelineStage.clarify)
+        self.bus.emit(
+            "pipeline.question",
+            {
+                "id": question.id,
+                "text": question.text,
+                "options": list(question.options),
+            },
+        )
+
+    def _offer_start_work(self, *, reason: str) -> None:
+        """Ask in Box 1. Never starts Execute — Hub/API execute is the authority."""
+        self._ensure_flex_job()
+        asked = self.flex_desk.offer_start_work(task_id="plan")
+        self._sync_flex_state()
+        self.bus.emit(
+            "pipeline.flex_ask",
+            {
+                "reason": reason,
+                "question_id": asked.get("question_id"),
+                "component": "start_work",
+            },
+        )
+        line = "Flex: Der Plan ist bereit. Möchtest du die Arbeit jetzt starten?"
+        if not any(str(t.get("text") or "") == line for t in (self._state.brainstorm_turns or [])):
+            self._state.brainstorm_turns.append({"role": "flex", "text": line})
+            self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
+
+    @property
+    def tools(self) -> Any | None:
+        return self._tools
+
+    @tools.setter
+    def tools(self, value: Any | None) -> None:
+        self._tools = value
+        for w in getattr(self, "_workers", {}).values():
+            w.tools = value
 
     def _check_cancel(self) -> None:
         fn = self.cancel_check
@@ -163,16 +234,7 @@ class Orchestrator:
 
             self._check_cancel()
             if question is not None and not self._clarified_once:
-                self._state.pending_question = question
-                self._set_stage(PipelineStage.clarify)
-                self.bus.emit(
-                    "pipeline.question",
-                    {
-                        "id": question.id,
-                        "text": question.text,
-                        "options": list(question.options),
-                    },
-                )
+                self._post_coordinator_clarify(question)
                 return self._state
 
             self._check_cancel()
@@ -230,7 +292,10 @@ class Orchestrator:
                 prev_turns = list(self._state.brainstorm_turns or [])
                 prev_notes = self._state.brainstorm_notes or ""
                 prev_task = (self._state.user_text or "").strip()
+                prev_flex_job = self._state.flex_job_id
                 self._state = PipelineState(user_text=text, mode="brainstorm")
+                self._state.flex_job_id = prev_flex_job
+                self._sync_flex_state()
                 if _exec_only and prev_turns:
                     # Resolve last real task (browser/HTML/long), not the go-phrase
                     resolved = _pick_execute_task(prev_turns, fallback=prev_task)
@@ -251,7 +316,7 @@ class Orchestrator:
 
             self._clarified_once = False
 
-            # Go-only with a real prior task → execute immediately (no brainstorm LLM)
+            # Go-only with a real prior task → Flex asks in Box 1, does not Execute
             if _exec_only and (self._state.brainstorm_notes or "").strip():
                 task = _pick_execute_task(
                     list(self._state.brainstorm_turns or []),
@@ -263,15 +328,20 @@ class Orchestrator:
                     self._state.brainstorm_turns.append(
                         {
                             "role": "brainstorm",
-                            "text": f"OK — setze um: {task[:200]}",
+                            "text": f"Plan liegt vor: {task[:200]}",
                         }
                     )
                     self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
+                    self._offer_start_work(reason="go_only")
+                    self._set_stage(PipelineStage.brainstorm)
                     self.bus.emit(
-                        "pipeline.auto_execute",
-                        {"reason": "go_only", "text": task[:120]},
+                        "pipeline.brainstorm_ready",
+                        {
+                            "can_execute": True,
+                            "turns": len(self._state.brainstorm_turns),
+                        },
                     )
-                    return self.execute()
+                    return self._state
 
             self._check_cancel()
             self.bus.emit("pipeline.stage", {"stage": "memory"})
@@ -283,6 +353,23 @@ class Orchestrator:
 
             history = list(self._state.brainstorm_turns)
             self._state.brainstorm_turns.append({"role": "user", "text": text})
+            try:
+                from gnom_hub.tools.worker_prefetch import prefetch_for_brainstorm
+
+                spark = prefetch_for_brainstorm(
+                    text,
+                    bus=self.bus,
+                    tools=getattr(self, "tools", None),
+                    memory=self.memory_store,
+                )
+                if spark:
+                    mem = (mem or "").rstrip() + "\n\n" + spark
+                    self._state.memory_context = mem
+            except Exception as exc:  # noqa: BLE001
+                self.bus.emit(
+                    "pipeline.warning",
+                    {"stage": "brainstorm_prefetch", "error": str(exc)},
+                )
 
             self._check_cancel()
             if not self.brainstorm.enabled:
@@ -294,7 +381,6 @@ class Orchestrator:
             self._state.brainstorm_turns.append({"role": "brainstorm", "text": notes})
             self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
 
-            flex_exec: dict | None = None
             if self.flex.enabled:
                 absorbed: list[str] = []
                 try:
@@ -304,35 +390,20 @@ class Orchestrator:
                         "pipeline.warning",
                         {"stage": "flex_absorb", "error": str(exc)},
                     )
+                flex_line: str | None = None
                 try:
-                    flex_exec = self.flex.maybe_request_execute(
+                    flex_line = self.flex.brainstorm_contribute(
                         text,
-                        self._state.brainstorm_turns,
+                        notes,
                         mem,
+                        absorbed=absorbed,
                     )
                 except Exception as exc:  # noqa: BLE001
                     self.bus.emit(
                         "pipeline.warning",
-                        {"stage": "flex_execute", "error": str(exc)},
+                        {"stage": "flex_chat", "error": str(exc)},
                     )
-                    flex_exec = None
-                flex_line: str | None = None
-                if flex_exec and flex_exec.get("message"):
-                    flex_line = str(flex_exec["message"])
-                else:
-                    try:
-                        flex_line = self.flex.brainstorm_contribute(
-                            text,
-                            notes,
-                            mem,
-                            absorbed=absorbed,
-                        )
-                    except Exception as exc:  # noqa: BLE001
-                        self.bus.emit(
-                            "pipeline.warning",
-                            {"stage": "flex_chat", "error": str(exc)},
-                        )
-                        flex_line = None
+                    flex_line = None
                 if flex_line:
                     self._state.brainstorm_turns.append({"role": "flex", "text": flex_line})
                     self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
@@ -355,23 +426,9 @@ class Orchestrator:
                     "turns": len(self._state.brainstorm_turns),
                 },
             )
-            should_exec = False
-            exec_reason = "context"
-            if self.flex.enabled and flex_exec and flex_exec.get("execute"):
-                should_exec = True
-                exec_reason = f"flex:{flex_exec.get('reason') or 'request'}"
-            # Always honor hard auto-execute (browser nav, clear build orders)
-            # even when Flex is on but did not request execute.
-            if not should_exec and _wants_auto_execute(text, self._state.brainstorm_turns):
-                should_exec = True
-                exec_reason = "context"
-            if should_exec and self._state.brainstorm_notes.strip():
-                self._check_cancel()
-                self.bus.emit(
-                    "pipeline.auto_execute",
-                    {"reason": exec_reason, "text": text[:120]},
-                )
-                return self.execute()
+            if _wants_auto_execute(text, self._state.brainstorm_turns):
+                self._offer_start_work(reason="plan_ready")
+                self._sync_flex_state()
         except PipelineCancelled:
             return self._state
         except Exception as exc:  # noqa: BLE001
@@ -391,6 +448,11 @@ class Orchestrator:
 
     def execute(self) -> PipelineState:
         try:
+            # #btn-execute consumes Box 1 start_work so a later Ja cannot Execute again.
+            for q in self.flex_desk.open_questions():
+                if q.component == "start_work":
+                    q.status = "stale"
+            self._sync_flex_state()
             text = (self._state.user_text or "").strip()
             if self._state.brainstorm_turns:
                 text = _pick_execute_task(self._state.brainstorm_turns, fallback=text)
@@ -434,16 +496,7 @@ class Orchestrator:
 
             self._check_cancel()
             if question is not None and not self._clarified_once:
-                self._state.pending_question = question
-                self._set_stage(PipelineStage.clarify)
-                self.bus.emit(
-                    "pipeline.question",
-                    {
-                        "id": question.id,
-                        "text": question.text,
-                        "options": list(question.options),
-                    },
-                )
+                self._post_coordinator_clarify(question)
                 return self._state
 
             self._run_flex_coord_workers()
@@ -731,6 +784,10 @@ class Orchestrator:
         q = self._state.pending_question
         if self._is_defer_clarify_option(answer):
             return self._defer_clarify(answer, q)
+        for fq in list(self.flex_desk.open_questions()):
+            if fq.agent_id == "coordinator" and fq.status == "open":
+                self.flex_desk.answer(fq.question_id, answer, job_id=fq.job_id)
+        self._sync_flex_state()
         clarify_line = f"User clarified ({q.id}): {answer}"
         if clarify_line not in self._state.distilled_requirements:
             self._state.distilled_requirements.append(clarify_line)
@@ -759,6 +816,149 @@ class Orchestrator:
             # Cancel restored brainstorm / mid-stage abort — keep question
             self._state.pending_question = q
         return self._state
+
+    def apply_flex_answer(self, payload: dict) -> None:
+        """Inject a Box 1 answer only for the asking agent. Flex does not Execute."""
+        agent = str(payload.get("agent_id") or "").strip()
+        tid = str(payload.get("task_id") or "task")
+        qid = str(payload.get("question_id") or "")
+        value = payload.get("value")
+        line = f"User→{agent} ({tid}, {qid}): {value}"
+        reqs = list(self._state.distilled_requirements)
+        if line not in reqs:
+            reqs.append(line)
+        if self.flex.enabled:
+            wishes = []
+            try:
+                wishes = list(self.flex.binding_wishes(self._state.memory_context or "") or [])
+            except Exception:  # noqa: BLE001
+                wishes = []
+            for w in wishes[:4]:
+                rem = f"Flex-Erinnerung für {agent}: {w}"
+                if rem not in reqs:
+                    reqs.append(rem)
+        self._state.distilled_requirements = reqs
+        self._sync_flex_state()
+
+    def _pause_worker_flex_ask(
+        self,
+        wid: str,
+        plan_task: str,
+        asked: dict[str, str],
+        remaining: list[dict],
+    ) -> None:
+        """Pause execute: keep asking worker + original plan task in flex_wait_*."""
+        self._ensure_flex_job()
+        self.flex_desk.ask(
+            agent_id=wid,
+            job_id=self.flex_desk.job_id,
+            task_id=asked["task_id"],
+            text=asked["text"],
+            component=asked["component"],
+        )
+        queued = [d for d in remaining if isinstance(d, dict)]
+        if not queued or str(queued[0].get("worker") or "") != wid:
+            queued = [{"worker": wid, "task": plan_task}, *queued]
+        else:
+            queued[0] = {**queued[0], "worker": wid, "task": plan_task}
+        self._state.flex_wait_agent = wid
+        self._state.flex_wait_task = plan_task
+        self._state.flex_wait_remaining = queued
+        self._sync_flex_state()
+        self._set_stage(PipelineStage.clarify)
+
+    def _open_worker_askers(self) -> set[str]:
+        return {
+            str(q.agent_id)
+            for q in self.flex_desk.open_questions()
+            if str(q.agent_id).startswith("worker")
+        }
+
+    def continue_after_flex_ask(self) -> PipelineState:
+        """Run workers queued after a Box 1 pause, then quality + finish."""
+        remaining = list(getattr(self._state, "flex_wait_remaining", None) or [])
+        self._state.flex_wait_remaining = []
+        text = (self._state.user_text or "").strip()
+        mem = self._state.memory_context or ""
+        dod = _definition_of_done(text, self._state.distilled_requirements)
+        outputs = list(self._state.worker_outputs or [])
+        results = list(self._state.worker_results or [])
+        open_askers = self._open_worker_askers()
+        self._set_stage(PipelineStage.work)
+        for idx, item in enumerate(remaining):
+            if not isinstance(item, dict):
+                continue
+            wid = str(item.get("worker") or "").strip()
+            task = str(item.get("task") or "")
+            worker = self._workers.get(wid)
+            if worker is None or not worker.enabled:
+                continue
+            if wid in open_askers:
+                # Unanswered Box 1 ask — leave this worker; run later queue.
+                continue
+            task_full = f"{task}\n\n{dod}".strip()
+            result = worker.run(
+                task_full,
+                text,
+                self._state.distilled_requirements,
+                mem,
+            )
+            asked = parse_flex_ask(result)
+            if asked:
+                self._pause_worker_flex_ask(wid, task, asked, remaining[idx:])
+                return self._state
+            gate = _validate_worker_draft(
+                result,
+                user_text=text,
+                task=task,
+                requirements=self._state.distilled_requirements,
+                tool_calls=self._state.tool_calls,
+            )
+            results.append(result)
+            outputs.append(
+                {
+                    "worker": wid,
+                    "name": worker.state.name,
+                    "index": len(outputs) + 1,
+                    "task": task_full,
+                    "result": result,
+                    "validation": gate,
+                }
+            )
+            self._state.worker_results = list(results)
+            self._state.worker_outputs = list(outputs)
+        self._state.quality_notes = _quality_check(
+            self._state.user_text,
+            self._state.distilled_requirements,
+            outputs,
+        )
+        self._append_prefetch_why_notes()
+        self._flex_nudge_and_fix(text, mem, dod)
+        self._offer_nudge_questions()
+        self._finish()
+        return self._state
+
+    def _offer_nudge_questions(self) -> None:
+        """Forgotten requirements → Box 1 Nachbesserung ask. Flex does not Execute."""
+        nudges = list(getattr(self._state, "agent_nudges", None) or [])
+        if not nudges:
+            return
+        self._ensure_flex_job()
+        for n in nudges[:3]:
+            if not isinstance(n, dict):
+                continue
+            aid = str(n.get("agent") or "flex").strip().lower()
+            msg = str(n.get("message") or "").strip()
+            if not msg:
+                continue
+            self.flex_desk.ask(
+                agent_id=aid if aid in ("worker1", "worker2", "worker3", "worker4") else "flex",
+                job_id=self.flex_desk.job_id,
+                task_id="nachbesserung",
+                text=f"Etwas fehlt: {msg}. Soll ich nachbessern lassen?",
+                component="yes_no",
+            )
+        self._sync_flex_state()
 
     def rerun_worker(self, worker_id: str) -> PipelineState:
         wid = (worker_id or "").strip().lower()
@@ -855,6 +1055,8 @@ class Orchestrator:
                 {"notes": self._state.quality_notes, "workers": len(outputs)},
             )
             self._check_cancel()
+            if getattr(self._state, "flex_wait_remaining", None):
+                return self._state
             self._finish()
         except PipelineCancelled:
             return self._state
@@ -998,6 +1200,15 @@ class Orchestrator:
                 self._state.distilled_requirements,
                 mem,
             )
+            asked = parse_flex_ask(result)
+            if asked:
+                rest = [{"worker": w, "task": t} for w, t in tasks[i - 1 :]]
+                self._pause_worker_flex_ask(wid, task, asked, rest)
+                self.bus.emit(
+                    "pipeline.flex_ask",
+                    {"agent_id": wid, "task_id": asked["task_id"]},
+                )
+                return
             retries = 0
             max_retries = 2
             from gnom_hub.pipeline.dod_gate import format_retry_hint, should_retry
@@ -1122,6 +1333,7 @@ class Orchestrator:
         self._check_cancel()
         self._flex_nudge_and_fix(text, mem, dod)
         self._check_cancel()
+        self._offer_nudge_questions()
         self._finish()
 
     def _flex_nudge_and_fix(self, text: str, mem: str, dod: str) -> None:

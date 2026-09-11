@@ -2,47 +2,272 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from gnom_hub import hub as hub_mod
 from gnom_hub.api.app import create_app
 from gnom_hub.hub import Hub
 from gnom_hub.tools.tool_scenarios import run_forced_tool_scenario
 
 
+def _isolate(tmp_path, monkeypatch) -> None:
+    # Do not patch config.paths.project_root: tmp would count as the real hub and leak GNOM_WS keys.
+    monkeypatch.delenv("GNOM_WS", raising=False)
+    monkeypatch.setenv("GNOM_TOLLGATE_LLM", "0")
+    for key in list(os.environ):
+        if key.endswith("_API_KEY") or key in ("DEEPSEEK_API_KEY", "WORKER_API_KEY"):
+            monkeypatch.delenv(key, raising=False)
+    try:
+        import tollgate as tg
+
+        monkeypatch.setattr(
+            tg,
+            "get_keys_service",
+            lambda: type("_Tg", (), {"auto_update": lambda *_a, **_k: None})(),
+        )
+    except ImportError:
+        pass
+    monkeypatch.setattr(hub_mod, "project_root", lambda: tmp_path)
+    hub_mod._HUB = None
+
+
 def test_ui_hosts_include_dod_checklist():
     html = Path("src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
+    assert 'id="flex-ask"' in html
     assert 'id="box3-dod-checklist"' in html
     assert 'id="tools-dod-fail"' in html
     assert 'id="box3-tool-strip"' in html
 
 
-def test_tool_drill_s6_plugins_forced():
+def test_send_toast_does_not_claim_build_auto_executes():
+    """Send = talk; Arbeit starten / Ja in Box 1 = work."""
+    part = Path("src/gnom_hub/ui/static/parts/03-chat-jobs-ops.js").read_text(encoding="utf-8")
+    app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
+    stale = "harter Bau-Befehl = sofort"
+    assert stale not in part
+    assert stale not in app
+    assert "Pipeline von selbst" not in part
+    assert "Pipeline von selbst" not in app
+    toast = "Send = sprechen · Arbeit starten / Ja in Box 1 = Arbeit"
+    assert toast in part
+    assert toast in app
+
+
+def test_flex_answer_start_work_polls_job_like_execute():
+    """start_work POST returns a job envelope; UI must poll, not wipe Box 1."""
+    part = Path("src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
+    app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
+    for src in (part, app):
+        body = src.split("async function answerFlexQuestion", 1)[1].split(
+            "function renderFlexBox1", 1
+        )[0]
+        assert "pollJob(start.job_id" in body
+        assert "wants_start_work" in body
+        assert "applySnapshot(start)" not in body
+        assert body.index("pollJob") < body.index("applySnapshot(snap)")
+        apply = src.split("function applySnapshot(snap)", 1)[1][:900]
+        assert "snap.job_id && !snap.pipeline && !snap.flex_box1" in apply
+        assert "flexShowsCoordinator" in src
+
+
+def test_chat_lives_under_box2_half_height():
+    html = Path("src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
+    css = Path("src/gnom_hub/ui/static/app.css").read_text(encoding="utf-8")
+    box2 = html.find('id="box2"')
+    chat = html.find('id="chat-mod"')
+    box3 = html.find('id="box3"')
+    stack = html.find('id="box2-stack"')
+    assert 0 < stack < box2 < chat < box3
+    assert html.count('id="chat-mod"') == 1
+    assert "chat-mod-platz" not in html
+    assert ".box2-stack > #box2.box" in css
+    assert "flex: 0 0 50%" in css
+    assert ".box2-stack > #chat-mod" in css
+
+
+def test_send_plus_exec_does_not_auto_run_execute():
+    part = Path("src/gnom_hub/ui/static/parts/03-chat-jobs-ops.js").read_text(encoding="utf-8")
+    app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
+    html = Path("src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
+    for src in (part, app):
+        body = src.split("async function sendAndExecute()", 1)[1].split("function appendChat", 1)[0]
+        assert "await sendChat()" in body
+        assert "await runExecute()" not in body
+        assert "Arbeit starten oder Ja in Box 1" in body
+    assert 'id="btn-send-exec"' in html
+    assert "hidden" in html.split('id="btn-send-exec"', 1)[1][:400]
+
+
+def test_box1_flex_review_hidden_until_active():
+    html = Path("src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
+    css = Path("src/gnom_hub/ui/static/app.css").read_text(encoding="utf-8")
+    js = Path("src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
+    app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
+    chunk = html.split('id="flex-review"', 1)[1][:280]
+    assert "hidden" in chunk
+    assert "root.hidden = !active" in js
+    assert "root.hidden = !active" in app
+    live = css.split("#box1-layer-live {", 1)[1].split("}", 1)[0]
+    assert "overflow-y: auto" in live
+    assert "scrollbar-width: none" in live
+    assert "qs.slice(0, 1)" in js
+    assert "qs.slice(0, 1)" in app
+
+
+def test_flex_ask_hides_box1_placeholder():
+    part = Path("src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
+    app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
+    for src in (part, app):
+        body = src.split("function renderFlexBox1", 1)[1].split("function applySnapshot", 1)[0]
+        assert "placeholder.hidden = true" in body
+        assert "placeholder.hidden = false" in body
+
+
+def test_tts_one_voice_per_agent():
+    part = Path("src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
+    app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
+    for src in (part, app):
+        assert "function pickVoiceForAgent" in src
+        assert "function pitchForAgent" in src
+        assert 'ttsQueue.push({ text: p, agentId: String(agentId || "") })' in src
+        assert 'speakOrQueue(label + ". " + body, agentId)' in src
+        assert 'speakOrQueue(spoken, "flex")' in src
+
+
+def test_chat_copy_and_remember_buttons():
+    part = Path("src/gnom_hub/ui/static/parts/03-chat-jobs-ops.js").read_text(encoding="utf-8")
+    app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
+    css = Path("src/gnom_hub/ui/static/app.css").read_text(encoding="utf-8")
+    for src in (part, app):
+        assert 'className = "chat-act-copy"' in src
+        assert 'className = "chat-act-keep"' in src
+        assert '"/api/memory/warm"' in src
+        assert "navigator.clipboard.writeText" in src
+    assert "overflow-y: scroll" in css
+    assert "#box2 .agent-layer-body" in css
+    assert ".flex-ask-card" in css
+    flex = Path("src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
+    assert "Mehrfachauswahl — antippen, dann Senden" in flex
+    assert "Mehrfachauswahl — antippen, dann Senden" in app
+
+
+def test_flex_box1_text_multi_select_later_are_answerable():
+    """text/free_text: field+submit; multi_select: pick then send; later without options."""
+    part = Path("src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
+    app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
+    for src in (part, app):
+        body = src.split("function renderFlexBox1", 1)[1].split("function applySnapshot", 1)[0]
+        assert 'comp === "free_text" || comp === "text"' in body
+        assert 'className = "flex-ask-free"' in body
+        assert 'inp.type = "text"' in body
+        assert 'comp === "multi_select"' in body
+        assert "picked.slice()" in body
+        assert "picked.indexOf" in body
+        assert 'comp === "later"' in body
+        assert '"Später"' in body
+        assert "addLaterIfMissing" in body
+
+
+def test_box1_choice_cards_are_in_box1_with_owner_color():
+    """Pick cards live in Box 1; color mark names the owner (Brainstorm vs Flex)."""
+    html = Path("src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
+    css = Path("src/gnom_hub/ui/static/app.css").read_text(encoding="utf-8")
+    part = Path("src/gnom_hub/ui/static/parts/03-chat-jobs-ops.js").read_text(encoding="utf-8")
+    pre = Path("src/gnom_hub/ui/static/parts/00-preamble.js").read_text(encoding="utf-8")
+    snap = Path("src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
+    app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
+    box1 = html.split('id="box1"', 1)[1].split('id="box2"', 1)[0]
+    rest = html.split('id="box2"', 1)[1]
+    assert 'id="box1-choice-cards"' in box1
+    assert 'id="box1-choice-cards"' not in rest
+    assert 'id="flex-ask"' in box1
+    assert "function markOwner" in pre
+    assert "function markOwner" in app
+    for src in (part, app):
+        assert "markOwner(host" in src
+        assert 'btn.className = "box1-choice-card mode-" + m' in src
+        assert "markOwner(btn" in src
+    for src in (snap, app):
+        assert 'owner = "brainstorm"' in src
+        assert 'owner = "flex"' in src
+        chunk = src.split('owner = "brainstorm"', 1)[1][:900]
+        call = chunk.split("renderChoiceCards(", 1)[1]
+        assert '"suggest"' in call
+        assert "owner" in call[:240]
+    assert ".agent-mark" in css
+    assert '[data-agent="brainstorm"]' in css or 'data-agent="brainstorm"' in css
+    assert "var(--c-brainstorm)" in css
+    assert "var(--c-flex)" in css.split(".box1-choice-card", 1)[1][:1200] or (
+        "--owner-color" in css
+    )
+
+
+def test_flex_box1_uses_yellow_not_lilac():
+    """Flex agent token is yellow; Box 1 Flex chrome must not fall back to lilac."""
+    css = Path("src/gnom_hub/ui/static/app.css").read_text(encoding="utf-8")
+    html = Path("src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
+    assert "--c-flex: #f0c000" in css
+    assert "#a78bfa" not in css
+    assert 'flex: "#f0c000"' in html
+    assert 'flex: "#a78bfa"' not in html
+    flex_ask = css.split(".flex-ask {", 1)[1].split(".flex-ask-list", 1)[0]
+    assert "var(--c-flex)" in flex_ask
+    assert "#a78bfa" not in flex_ask
+
+
+def test_scrollbars_hidden_but_overflow_kept():
+    """Box 1, Box 2 chat log, chat input: scrollable, no visible bar."""
+    css = Path("src/gnom_hub/ui/static/app.css").read_text(encoding="utf-8")
+    html = Path("src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
+    assert "overflow-y: scroll" in css
+    assert "scrollbar-width: none" in css
+    assert "::-webkit-scrollbar" in css
+    chat = html.split('id="chat-input"', 1)[0][-80:] + html.split('id="chat-input"', 1)[1][:400]
+    assert "<textarea" in chat
+    assert 'id="chat-input"' in html
+    inp = css.split(".chat-input {", 1)[-1].split("}", 1)[0]
+    assert "overflow-y: auto" in inp or "overflow-y: auto" in css.split(".chat-input", 1)[1][:800]
+
+
+def test_tool_drill_s6_plugins_forced(tmp_path, monkeypatch):
+    _isolate(tmp_path, monkeypatch)
     h = Hub()
-    r = run_forced_tool_scenario(h.tools, "Tool drill S6 plugins", bus=h.bus)
-    assert r.get("ok") is True
-    assert int(r.get("tool_calls") or 0) >= 1
-    summary = str(r.get("summary") or "")
-    assert "S6" in summary or "file_list" in summary or "plugin" in summary.lower()
+    try:
+        r = run_forced_tool_scenario(h.tools, "Tool drill S6 plugins", bus=h.bus)
+        assert r.get("ok") is True
+        assert int(r.get("tool_calls") or 0) >= 1
+        summary = str(r.get("summary") or "")
+        assert "S6" in summary or "file_list" in summary or "plugin" in summary.lower()
+    finally:
+        hub_mod._HUB = None
 
 
-def test_html_execute_one_worker_and_validation_without_key():
+def test_html_execute_one_worker_and_validation_without_key(tmp_path, monkeypatch):
+    _isolate(tmp_path, monkeypatch)
     h = Hub()
-    h.pipeline.brainstorm_turn("Baue eine komplette Landingpage HTML mit dark theme und Hero")
-    st = h.pipeline.execute()
-    assert st.stage.value == "done"
-    assert st.resolved_plan_mode == "full_page_html"
-    assert len(st.worker_outputs or []) == 1
-    gate = (st.worker_outputs or [{}])[0].get("validation") or {}
-    assert isinstance(gate, dict)
-    assert gate.get("checklist")
-    # No real key → honest FEHLER / DoD fail (not fake success HTML)
-    assert gate.get("ok") is False
-    assert "worker_error" in (gate.get("issues") or [])
+    try:
+        h.pipeline.brainstorm_turn("Baue eine komplette Landingpage HTML mit dark theme und Hero")
+        st = h.pipeline.execute()
+        if st.stage.value == "clarify":
+            st = h.pipeline.answer_clarify("Schnell und einfach")
+        assert st.stage.value == "done"
+        assert st.resolved_plan_mode == "full_page_html"
+        assert len(st.worker_outputs or []) == 1
+        gate = (st.worker_outputs or [{}])[0].get("validation") or {}
+        assert isinstance(gate, dict)
+        assert gate.get("checklist")
+        # Honest fail — no fake success HTML (missing key → worker_error; stub HTML → incomplete)
+        assert gate.get("ok") is False
+        assert gate.get("issues")
+    finally:
+        hub_mod._HUB = None
 
 
-def test_api_tool_drill_and_busy_409():
+def test_api_tool_drill_and_busy_409(tmp_path, monkeypatch):
+    _isolate(tmp_path, monkeypatch)
     app = create_app()
     with TestClient(app) as c:
         r = c.post("/api/chat?sync=1", json={"text": "Tool drill S6 plugins"})
@@ -62,3 +287,4 @@ def test_api_tool_drill_and_busy_409():
                 r2 = c.post("/api/chat", json={"text": "x"})
                 assert r2.status_code == 409
         c.post("/api/jobs/cancel-busy")
+    hub_mod._HUB = None
