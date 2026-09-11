@@ -43,13 +43,11 @@ User-Extra-Prompt aus der Karte wird **angehängt**, ersetzt die Code-Rolle **ni
 
 ### Brainstorm (`BrainstormAgent.run`)
 
-- Scharfer Denkpartner, kein „5–8 Bullets“-Bot
-- Workers erst nach klarem Bau-Auftrag / ja-ok
-- Sprache DE/EN, History nutzen, Thread vorantreiben
-- Kreativ: 3–6 Winkel mit WHY, kein fertiger Code
-- Diagnose Hub: echte Failure-Modes, keine Fake-Todo-Apps
-- Bau-Angebot genau eine Zeile: „Soll ich das jetzt umsetzen?“
-- Defaults: temp **0.9** (Diagnose **0.35**), max_tokens **700** / **900**
+- Mitdenken in Box 2, kein Ticket, kein Mini-Execute
+- Unklare Wünsche aufmachen (was „geil“ sein könnte), nicht A/B/C-Formular
+- Prefetch-Funde als Funken, kein Code, kein „Soll ich umsetzen?“
+- Start der Arbeit = Flex in Box 1
+- Sprache wie der User, History weiterspinnen
 - **TTS:** default an
 
 ### Flex (`FlexAgent`) — **FIXED SYSTEM AGENT**

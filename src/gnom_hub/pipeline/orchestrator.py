@@ -353,6 +353,23 @@ class Orchestrator:
 
             history = list(self._state.brainstorm_turns)
             self._state.brainstorm_turns.append({"role": "user", "text": text})
+            try:
+                from gnom_hub.tools.worker_prefetch import prefetch_for_brainstorm
+
+                spark = prefetch_for_brainstorm(
+                    text,
+                    bus=self.bus,
+                    tools=getattr(self, "tools", None),
+                    memory=self.memory_store,
+                )
+                if spark:
+                    mem = (mem or "").rstrip() + "\n\n" + spark
+                    self._state.memory_context = mem
+            except Exception as exc:  # noqa: BLE001
+                self.bus.emit(
+                    "pipeline.warning",
+                    {"stage": "brainstorm_prefetch", "error": str(exc)},
+                )
 
             self._check_cancel()
             if not self.brainstorm.enabled:

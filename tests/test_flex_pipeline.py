@@ -150,8 +150,9 @@ def test_brainstorm_turn_has_flex_role_and_notes():
     st = pipe.brainstorm_turn("Ideen zu einer Notiz-App, nur Brainstorm bitte")
     assert st.stage == PipelineStage.brainstorm
     roles = [t.get("role") for t in st.brainstorm_turns]
-    assert "user" in roles and "brainstorm" in roles and "flex" in roles
-    assert "Flex:" in (st.brainstorm_notes or "")
+    assert "user" in roles and "brainstorm" in roles
+    # Flex stays quiet in Box 2 unless a stored wish must be mirrored
+    assert "flex" not in roles
 
 
 def test_execute_injects_flex_wish_requirements(tmp_path: Path):

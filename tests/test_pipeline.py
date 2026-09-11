@@ -631,11 +631,8 @@ def test_flex_contributes_each_brainstorm_turn():
     st = pipe.brainstorm_turn("Ideen zu einer Checklisten-App, nur Brainstorm bitte")
     assert st.stage == PipelineStage.brainstorm
     flex_turns = [t for t in st.brainstorm_turns if t.get("role") == "flex"]
-    assert flex_turns, "Flex should post a chat line each brainstorm turn"
-    assert "Flex:" in flex_turns[0]["text"] or flex_turns[0]["text"].startswith("Flex")
-    assert chat, "pipeline.flex_chat event expected"
-    # Notes should label Flex, not as Brainstorm dump only
-    assert "Flex:" in (st.brainstorm_notes or "")
+    assert not flex_turns
+    assert not chat
 
 
 def test_flex_execute_line_not_double_with_contribute():

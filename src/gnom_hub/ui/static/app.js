@@ -46,7 +46,7 @@
   // Never treat these as the real system prompt unless the user edits Extra tuning.
   const DEFAULT_PROMPTS = {
     brainstorm:
-      "(code default) Dialogue partner — build on history, concrete angles, optional “Soll ich umsetzen?”, no full code dump.",
+      "(code default) Dialogue partner in Box 2 — riff, ask where it pulls, no code, no Execute.",
     memory:
       "(code default) Extract durable personal/project facts only — no HTML garbage.",
     flex:
@@ -840,7 +840,7 @@
     const host = document.getElementById("flex-ask");
     const list = document.getElementById("flex-ask-list");
     if (!host || !list) return;
-    const qs = (box && Array.isArray(box.questions) ? box.questions : []).filter(
+    let qs = (box && Array.isArray(box.questions) ? box.questions : []).filter(
       function (q) {
         return q && q.question_id && q.text;
       }
@@ -854,6 +854,7 @@
     }
     host.hidden = false;
     if (placeholder) placeholder.hidden = true;
+    qs = qs.slice(0, 1);
     const title = document.getElementById("flex-ask-title");
     if (title) title.textContent = (box && box.title) || "Rückfragen und Entscheidungen";
     list.textContent = "";
@@ -1928,6 +1929,7 @@
 
     const p = panel || {};
     const active = !!p.active;
+    root.hidden = !active;
     root.classList.toggle("is-active", active);
     root.classList.toggle("ring-1", active);
     root.classList.toggle("ring-gnom-flex/40", active);

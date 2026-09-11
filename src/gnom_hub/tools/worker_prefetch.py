@@ -858,6 +858,100 @@ def tool_calls_needed(blob: str) -> list[str]:
     return out
 
 
+_BRAINSTORM_SPARK = (
+    "geil",
+    "cool",
+    "krass",
+    "wow",
+    "nice",
+    "schön",
+    "schoen",
+    "hammer",
+    "sick",
+    "dope",
+    "wild",
+    "frech",
+    "ruhig",
+    "modern",
+    "webseite",
+    "website",
+    "landing",
+    "seite",
+    "html",
+)
+
+
+def wants_brainstorm_sparks(blob: str) -> bool:
+    low = (blob or "").lower()
+    return wants_design_tools(blob) or any(w in low for w in _BRAINSTORM_SPARK)
+
+
+def prefetch_for_brainstorm(
+    blob: str,
+    *,
+    bus: Any = None,
+    tools: Any | None = None,
+    memory: Any | None = None,
+    record: list[dict[str, Any]] | None = None,
+) -> str:
+    """1–2 spark snippets for Brainstorm. Not a worker tool loop."""
+    text = (blob or "").strip()
+    if not text or not wants_brainstorm_sparks(text):
+        return ""
+    chunks: list[str] = []
+    calls = 0
+    if _registry_has(tools, "web_search") and calls < 2:
+        q = " ".join(text.split())[:120]
+        res = _call_tool(
+            tools,
+            "web_search",
+            {"query": q, "count": 3, "country": "DE", "search_lang": "de"},
+        )
+        _emit_tool_call(
+            bus,
+            "web_search",
+            {"query": q},
+            res,
+            record=record,
+            reason="brainstorm spark",
+        )
+        calls += 1
+        if isinstance(res, dict):
+            hits = res.get("hits") or res.get("results") or []
+            lines: list[str] = []
+            if isinstance(hits, list):
+                for h in hits[:3]:
+                    if isinstance(h, dict):
+                        title = str(h.get("title") or "")[:80]
+                        snip = str(h.get("snippet") or h.get("text") or "")[:160]
+                        url = str(h.get("url") or "")[:120]
+                        bit = " ".join(x for x in (title, snip, url) if x)
+                        if bit:
+                            lines.append("- " + bit)
+            if lines:
+                chunks.append("web_search:\n" + "\n".join(lines))
+            elif res.get("ok"):
+                chunks.append("web_search: " + str(res)[:400])
+    if memory is not None and calls < 2 and hasattr(memory, "search"):
+        try:
+            hits = memory.search(text, limit=2)
+        except Exception:  # noqa: BLE001
+            hits = []
+        if hits:
+            lines = []
+            for h in hits[:2]:
+                if isinstance(h, dict):
+                    lines.append("- " + str(h.get("text") or "")[:160])
+                else:
+                    lines.append("- " + str(h)[:160])
+            if lines:
+                chunks.append("memory_search:\n" + "\n".join(lines))
+                calls += 1
+    if not chunks:
+        return ""
+    return "Tool prefetch (auto):\n" + "\n---\n".join(chunks)
+
+
 def default_max_tool_calls(blob: str) -> int:
     """HTML/UI tasks get a slightly higher call budget."""
     return 8 if wants_design_tools(blob or "") else 6

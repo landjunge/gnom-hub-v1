@@ -1712,7 +1712,7 @@ body.worker-fs-open {
   padding: 6px 8px;
   margin: 4px 0;
   max-height: 100%;
-  overflow-y: auto;
+  overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--flex, #a78bfa) 35%, var(--border, #333));
   border-radius: 8px;
   background: color-mix(in srgb, var(--bg-panel, #14161a) 92%, #a78bfa);
@@ -1762,14 +1762,18 @@ body.worker-fs-open {
 }
 
 /* Flex feedback panel — in Box 1 under placeholder */
+.flex-review[hidden] {
+  display: none !important;
+}
+
 .flex-review {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  gap: 8px;
-  padding: 10px;
-  overflow: auto;
+  gap: 6px;
+  padding: 6px 8px;
+  overflow: hidden;
   min-height: 0;
   background: color-mix(in srgb, var(--bg-panel, #14161a) 92%, #a78bfa);
   border: 1px solid color-mix(in srgb, var(--flex, #a78bfa) 35%, var(--border, #333));
@@ -3248,7 +3252,7 @@ a:focus-visible {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
 }
 #box1-layer-live .box1-placeholder {
   flex: 0 0 auto;

@@ -46,7 +46,7 @@
   // Never treat these as the real system prompt unless the user edits Extra tuning.
   const DEFAULT_PROMPTS = {
     brainstorm:
-      "(code default) Dialogue partner — build on history, concrete angles, optional “Soll ich umsetzen?”, no full code dump.",
+      "(code default) Dialogue partner in Box 2 — riff, ask where it pulls, no code, no Execute.",
     memory:
       "(code default) Extract durable personal/project facts only — no HTML garbage.",
     flex:

@@ -101,6 +101,22 @@ def test_send_plus_exec_does_not_auto_run_execute():
     assert "hidden" in html.split('id="btn-send-exec"', 1)[1][:400]
 
 
+def test_box1_flex_review_hidden_until_active():
+    html = Path("src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
+    css = Path("src/gnom_hub/ui/static/app.css").read_text(encoding="utf-8")
+    js = Path("src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
+    app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
+    chunk = html.split('id="flex-review"', 1)[1][:280]
+    assert "hidden" in chunk
+    assert "root.hidden = !active" in js
+    assert "root.hidden = !active" in app
+    live = css.split("#box1-layer-live {", 1)[1].split("}", 1)[0]
+    assert "overflow: hidden" in live
+    assert "overflow-y: auto" not in live
+    assert "qs.slice(0, 1)" in js
+    assert "qs.slice(0, 1)" in app
+
+
 def test_flex_ask_hides_box1_placeholder():
     part = Path("src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
     app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
