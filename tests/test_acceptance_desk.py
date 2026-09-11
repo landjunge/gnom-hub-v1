@@ -111,8 +111,8 @@ def test_box1_flex_review_hidden_until_active():
     assert "root.hidden = !active" in js
     assert "root.hidden = !active" in app
     live = css.split("#box1-layer-live {", 1)[1].split("}", 1)[0]
-    assert "overflow: hidden" in live
-    assert "overflow-y: auto" not in live
+    assert "overflow-y: auto" in live
+    assert "scrollbar-width: none" in live
     assert "qs.slice(0, 1)" in js
     assert "qs.slice(0, 1)" in app
 
@@ -169,6 +169,67 @@ def test_flex_box1_text_multi_select_later_are_answerable():
         assert 'comp === "later"' in body
         assert '"Später"' in body
         assert "addLaterIfMissing" in body
+
+
+def test_box1_choice_cards_are_in_box1_with_owner_color():
+    """Pick cards live in Box 1; color mark names the owner (Brainstorm vs Flex)."""
+    html = Path("src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
+    css = Path("src/gnom_hub/ui/static/app.css").read_text(encoding="utf-8")
+    part = Path("src/gnom_hub/ui/static/parts/03-chat-jobs-ops.js").read_text(encoding="utf-8")
+    pre = Path("src/gnom_hub/ui/static/parts/00-preamble.js").read_text(encoding="utf-8")
+    snap = Path("src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
+    app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
+    box1 = html.split('id="box1"', 1)[1].split('id="box2"', 1)[0]
+    rest = html.split('id="box2"', 1)[1]
+    assert 'id="box1-choice-cards"' in box1
+    assert 'id="box1-choice-cards"' not in rest
+    assert 'id="flex-ask"' in box1
+    assert "function markOwner" in pre
+    assert "function markOwner" in app
+    for src in (part, app):
+        assert "markOwner(host" in src
+        assert 'btn.className = "box1-choice-card mode-" + m' in src
+        assert "markOwner(btn" in src
+    for src in (snap, app):
+        assert 'owner = "brainstorm"' in src
+        assert 'owner = "flex"' in src
+        chunk = src.split('owner = "brainstorm"', 1)[1][:900]
+        call = chunk.split("renderChoiceCards(", 1)[1]
+        assert '"suggest"' in call
+        assert "owner" in call[:240]
+    assert ".agent-mark" in css
+    assert '[data-agent="brainstorm"]' in css or 'data-agent="brainstorm"' in css
+    assert "var(--c-brainstorm)" in css
+    assert "var(--c-flex)" in css.split(".box1-choice-card", 1)[1][:1200] or (
+        "--owner-color" in css
+    )
+
+
+def test_flex_box1_uses_yellow_not_lilac():
+    """Flex agent token is yellow; Box 1 Flex chrome must not fall back to lilac."""
+    css = Path("src/gnom_hub/ui/static/app.css").read_text(encoding="utf-8")
+    html = Path("src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
+    assert "--c-flex: #f0c000" in css
+    assert "#a78bfa" not in css
+    assert 'flex: "#f0c000"' in html
+    assert 'flex: "#a78bfa"' not in html
+    flex_ask = css.split(".flex-ask {", 1)[1].split(".flex-ask-list", 1)[0]
+    assert "var(--c-flex)" in flex_ask
+    assert "#a78bfa" not in flex_ask
+
+
+def test_scrollbars_hidden_but_overflow_kept():
+    """Box 1, Box 2 chat log, chat input: scrollable, no visible bar."""
+    css = Path("src/gnom_hub/ui/static/app.css").read_text(encoding="utf-8")
+    html = Path("src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
+    assert "overflow-y: scroll" in css
+    assert "scrollbar-width: none" in css
+    assert "::-webkit-scrollbar" in css
+    chat = html.split('id="chat-input"', 1)[0][-80:] + html.split('id="chat-input"', 1)[1][:400]
+    assert "<textarea" in chat
+    assert 'id="chat-input"' in html
+    inp = css.split(".chat-input {", 1)[-1].split("}", 1)[0]
+    assert "overflow-y: auto" in inp or "overflow-y: auto" in css.split(".chat-input", 1)[1][:800]
 
 
 def test_tool_drill_s6_plugins_forced(tmp_path, monkeypatch):

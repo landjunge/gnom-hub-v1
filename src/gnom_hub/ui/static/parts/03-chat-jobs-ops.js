@@ -40,6 +40,7 @@
       }
       if (els.chatInput && text) {
         els.chatInput.value = (els.chatInput.value + " " + text).trim();
+        if (typeof fitChatInput === "function") fitChatInput();
       }
     };
     try {
@@ -165,8 +166,9 @@
   /**
    * Render interactive pick cards in Box 1.
    * mode: "clarify" → onClarify; "suggest" → fill chat input.
+   * agentId colors the cards (brainstorm red / flex yellow / coordinator green).
    */
-  function renderChoiceCards(cards, mode, title) {
+  function renderChoiceCards(cards, mode, title, agentId) {
     const host = document.getElementById("box1-choice-cards");
     const grid = document.getElementById("box1-choice-grid");
     const titleEl = document.getElementById("box1-choice-title");
@@ -177,6 +179,10 @@
       return;
     }
     const m = mode === "clarify" ? "clarify" : "suggest";
+    const owner =
+      String(agentId || (m === "clarify" ? "coordinator" : "brainstorm")).toLowerCase();
+    if (typeof markOwner === "function") markOwner(host, owner);
+    else host.dataset.agent = owner;
     if (titleEl) {
       titleEl.textContent =
         title ||
@@ -204,6 +210,7 @@
       btn.setAttribute("role", "option");
       btn.dataset.value = value;
       btn.dataset.mode = m;
+      if (typeof markOwner === "function") markOwner(btn, owner);
       const lab = document.createElement("span");
       lab.className = "choice-label";
       lab.textContent = label;
@@ -305,7 +312,8 @@
         };
       }),
       "clarify",
-      "Clarify — eine Option wählen"
+      "Coordinator — eine Option",
+      "coordinator"
     );
     bindChoiceCardChrome();
   }
@@ -1436,9 +1444,15 @@
       bubble.appendChild(tsel);
     }
     const label = document.createElement("span");
+    const whoKey = w.toLowerCase();
+    const whoHex =
+      !isYou && !isSys && typeof ownerColorFor === "function"
+        ? ownerColorFor(whoKey)
+        : "";
     label.className =
       "chat-who-label mr-1 text-2xs font-semibold uppercase tracking-wide " +
-      (isYou ? "text-gnom-accent" : isSys ? "text-gnom-muted" : "text-gnom-flex");
+      (isYou ? "text-gnom-accent" : isSys ? "text-gnom-muted" : "");
+    if (whoHex) label.style.color = whoHex;
     label.textContent = who;
     bubble.appendChild(label);
     const body = document.createElement("span");
@@ -1838,11 +1852,13 @@
       if (chatHistIdx >= chatHist.length) {
         chatHistIdx = -1;
         els.chatInput.value = chatDraft;
+        if (typeof fitChatInput === "function") fitChatInput();
         return;
       }
     }
     const line = chatHist[chatHistIdx] || "";
     els.chatInput.value = line;
+    if (typeof fitChatInput === "function") fitChatInput();
     try {
       els.chatInput.setSelectionRange(line.length, line.length);
     } catch (_e) {
@@ -1955,11 +1971,20 @@
         return;
       }
       els.chatInput.value = pack.text;
+      if (typeof fitChatInput === "function") fitChatInput();
       els.chatInput.focus();
       toast("ThreadDesk geladen — Send nicht gedrückt", "info");
     } catch (_e) {
       toast("ThreadDesk nicht lesbar", "error");
     }
+  }
+
+  function fitChatInput() {
+    const el = (els && els.chatInput) || document.getElementById("chat-input");
+    if (!el) return;
+    el.style.height = "32px";
+    const next = Math.min(Math.max(el.scrollHeight, 32), 72);
+    el.style.height = next + "px";
   }
 
   async function sendChat() {
@@ -1970,6 +1995,7 @@
     appendChat("you", text);
     pushChatHist(raw);
     els.chatInput.value = "";
+    if (typeof fitChatInput === "function") fitChatInput();
     chatHistIdx = -1;
     chatDraft = "";
     const cb = w.GnomHub.onSend;

@@ -29,6 +29,19 @@
     worker4: "#ff8a3d",
   };
 
+  function ownerColorFor(agentId) {
+    const k = String(agentId || "").toLowerCase();
+    return (typeof COLOR_HEX !== "undefined" && COLOR_HEX[k]) || "";
+  }
+
+  function markOwner(el, agentId) {
+    if (!el) return;
+    const aid = String(agentId || "").toLowerCase();
+    if (aid) el.dataset.agent = aid;
+    const hex = ownerColorFor(aid);
+    if (hex) el.style.setProperty("--owner-color", hex);
+  }
+
   const SLIDER_TIPS = {
     temperature:
       "Temperature: higher = more creative/random; lower = more focused and deterministic.",

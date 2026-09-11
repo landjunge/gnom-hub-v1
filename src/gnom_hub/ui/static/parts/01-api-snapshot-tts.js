@@ -149,12 +149,17 @@
     host.hidden = false;
     if (placeholder) placeholder.hidden = true;
     qs = qs.slice(0, 1);
+    if (typeof markOwner === "function") markOwner(host, "flex");
+    else host.dataset.agent = "flex";
     const title = document.getElementById("flex-ask-title");
     if (title) title.textContent = (box && box.title) || "Rückfragen und Entscheidungen";
     list.textContent = "";
     qs.forEach(function (q) {
       const card = document.createElement("div");
       card.className = "flex-ask-card";
+      if (typeof markOwner === "function") {
+        markOwner(card, q.agent_id || "flex");
+      }
       const p = document.createElement("p");
       p.className = "flex-ask-text";
       p.textContent = String(q.text || "");
@@ -637,6 +642,7 @@
           p.stage === "done" ||
           !p.stage)
       ) {
+        let owner = "brainstorm";
         let picks = parseChoiceList(p.brainstorm_notes || "");
         if (!picks.length && Array.isArray(p.brainstorm_turns)) {
           for (let ti = p.brainstorm_turns.length - 1; ti >= 0; ti--) {
@@ -649,9 +655,15 @@
         }
         if (!picks.length && p.flex_notes) {
           picks = parseChoiceList(p.flex_notes);
+          owner = "flex";
         }
         if (picks.length) {
-          renderChoiceCards(picks, "suggest", "Agent-Vorschläge — antippen");
+          renderChoiceCards(
+            picks,
+            "suggest",
+            owner === "flex" ? "Flex — antippen" : "Brainstorm — antippen",
+            owner
+          );
           if (typeof bindChoiceCardChrome === "function") bindChoiceCardChrome();
         } else if (typeof hideChoiceCards === "function") {
           const grid = document.getElementById("box1-choice-grid");
@@ -1224,6 +1236,8 @@
     const p = panel || {};
     const active = !!p.active;
     root.hidden = !active;
+    if (typeof markOwner === "function") markOwner(root, "flex");
+    else root.dataset.agent = "flex";
     root.classList.toggle("is-active", active);
     root.classList.toggle("ring-1", active);
     root.classList.toggle("ring-gnom-flex/40", active);

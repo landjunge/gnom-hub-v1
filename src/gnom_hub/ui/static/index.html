@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=158" />
+  <link rel="stylesheet" href="/static/app.css?v=160" />
   <!-- Tailwind utilities for Chat module (preflight OFF) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -21,7 +21,7 @@
               border: "#2c2e34",
               text: "#d8dbe0",
               muted: "#7a7f88",
-              flex: "#a78bfa",
+              flex: "#f0c000",
               ok: "#3dd68c",
               accent: "#4dabf7",
             },
@@ -106,6 +106,7 @@
             <aside
               id="flex-ask"
               class="flex-ask box1-flex-ask"
+              data-agent="flex"
               hidden
               aria-label="Rückfragen und Entscheidungen"
             >
@@ -116,6 +117,7 @@
             <aside
               id="flex-review"
               class="flex-review box1-flex-review"
+              data-agent="flex"
               hidden
               aria-label="Flex Feedback in Box 1"
             >
@@ -262,13 +264,13 @@
               class="btn-td h-8 shrink-0 rounded-md border border-gnom-border bg-gnom-card px-2.5 text-xs font-medium text-gnom-text transition hover:border-gnom-accent hover:text-gnom-accent"
               title="ThreadDesk: fill chat from last packet (does not send)"
             >TD</button>
-            <input
-              type="text"
+            <textarea
               id="chat-input"
-              class="chat-input h-8 min-w-[80px] flex-1 rounded-md border border-gnom-border bg-gnom-bg px-2.5 text-[13px] text-gnom-text placeholder:text-gnom-muted focus:border-gnom-accent focus:outline-none focus:ring-1 focus:ring-gnom-accent/50"
+              class="chat-input min-h-8 max-h-[72px] min-w-[80px] flex-1 rounded-md border border-gnom-border bg-gnom-bg px-2.5 text-[13px] leading-tight text-gnom-text placeholder:text-gnom-muted focus:border-gnom-accent focus:outline-none focus:ring-1 focus:ring-gnom-accent/50"
               placeholder="Chat-Layer (Crux) — Agent-Klick wechselt Layer"
               autocomplete="off"
-            />
+              rows="1"
+            ></textarea>
             <button
               type="button"
               id="btn-send"
@@ -689,6 +691,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=158"></script>
+  <script src="/static/app.js?v=160"></script>
 </body>
 </html>
