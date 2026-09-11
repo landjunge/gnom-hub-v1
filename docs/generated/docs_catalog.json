@@ -1,6 +1,6 @@
 {
   "version": "3.10.1",
-  "count": 54,
+  "count": 56,
   "docs": [
     {
       "file": "AGENTS_DEFINITION.md",
@@ -10,21 +10,45 @@
       "keywords": [
         "flex",
         "agents",
-        "worker",
-        "brainstorm",
         "kein",
-        "definition",
+        "worker",
         "nicht",
+        "brainstorm",
         "user",
+        "definition",
         "coordinator",
         "code",
+        "w\u00fcnsche",
+        "box",
         "default",
-        "hub",
-        "keine",
         "memory"
       ],
-      "chars": 8441,
-      "lines": 206
+      "chars": 8615,
+      "lines": 208
+    },
+    {
+      "file": "AGENTS_PROMPTS.md",
+      "path": "docs/AGENTS_PROMPTS.md",
+      "title": "Agenten-Prompts und Rechte \u2014 Gnom-Hub-V1",
+      "topic": "Architecture & agents",
+      "keywords": [
+        "kein",
+        "box",
+        "agents",
+        "hub",
+        "tools",
+        "execute",
+        "prompts",
+        "arbeit",
+        "brainstorm",
+        "flex",
+        "gnom",
+        "html",
+        "nicht",
+        "user"
+      ],
+      "chars": 10377,
+      "lines": 271
     },
     {
       "file": "ARCHITECTURE.md",
@@ -169,6 +193,30 @@
       ],
       "chars": 22173,
       "lines": 555
+    },
+    {
+      "file": "DESK_UI_MAP.md",
+      "path": "docs/DESK_UI_MAP.md",
+      "title": "Desk-UI-Karte \u2014 Gnom-Hub-V1",
+      "topic": "Architecture & agents",
+      "keywords": [
+        "box",
+        "desk",
+        "boxes",
+        "volle",
+        "app",
+        "box2",
+        "breite",
+        "map",
+        "box1",
+        "chat",
+        "h\u00f6he",
+        "toolbar",
+        "top",
+        "ui"
+      ],
+      "chars": 11539,
+      "lines": 311
     },
     {
       "file": "DOD_GATE.md",
@@ -1086,7 +1134,7 @@
       "file": "UI-STATE-CONTRACT.md",
       "path": "docs/UI-STATE-CONTRACT.md",
       "title": "UI-State-Vertrag \u2014 Box 1 Flex-Desk",
-      "topic": "Other",
+      "topic": "Architecture & agents",
       "keywords": [
         "box",
         "execute",

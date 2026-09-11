@@ -1,22 +1,25 @@
 # Konkrete Agenten-Definition (Gnom-Hub v1)
 
 **Source of truth = Python.** UI-Karten sind Spiegel + Tuning.  
-Dateien: `agents/models.py`, `agents/manager.py`, `agents/roles.py`, `agents/roles_ext.py`, `agents/base.py`
+Vollständige Prompt-Texte und Rechte: [AGENTS_PROMPTS.md](AGENTS_PROMPTS.md).  
+Desk-Zellen (L / M1 / M2 / R): [DESK_UI_MAP.md](DESK_UI_MAP.md).
+
+Dateien: `agents/models.py`, `agents/manager.py`, `agents/roles.py`, `agents/roles_ext.py`, `agents/roles_workers.py`, `agents/base.py`
 
 ---
 
 ## 1. Registry (8 feste slots)
 
-| # | id | Name | role | Farbe (CSS/UI) | Enabled default | Toggleable | Preset |
-|---|-----|------|------|----------------|-----------------|------------|--------|
-| 1 | brainstorm | Brainstorm | brainstorm | red / `#ff0000` | an | ja | — |
-| 2 | memory | Memory | memory | blue / `#0066ff` | an | nein (locked on) | — |
-| 3 | flex | Flex | flex | yellow / `#ffff00` | an | **nein (locked on, fixed role)** | — (kein Preset) |
-| 4 | coordinator | Coordinator | coordinator | green / `#00cc44` | an | ja | — |
-| 5 | worker1 | Worker 1 | worker | cyan / `#00d4ff` | an | ja | — |
-| 6 | worker2 | Worker 2 | worker | violet / `#7c3aed` | an | ja | — |
-| 7 | worker3 | Worker 3 | worker | magenta / `#ff2d95` | an | ja | — |
-| 8 | worker4 | Worker 4 | worker | orange / `#ff6600` | an | ja | — |
+| # | id | Name | role | Farbe (CSS `--c-*`) | Enabled default | Toggleable | Preset |
+|---|-----|------|------|---------------------|-----------------|------------|--------|
+| 1 | brainstorm | Brainstorm | brainstorm | `#ef5350` | an | ja | — |
+| 2 | memory | Memory | memory | `#42a5f5` | an | nein (locked on) | — |
+| 3 | flex | Flex | flex | `#f0c000` (gelb, nicht Lila) | an | **nein (locked on, fixed role)** | — (kein Preset) |
+| 4 | coordinator | Coordinator | coordinator | `#26c281` | an | ja | — |
+| 5 | worker1 | Worker 1 | worker | `#29b6f6` | an | ja | — |
+| 6 | worker2 | Worker 2 | worker | `#8b6cf6` | an | ja | — |
+| 7 | worker3 | Worker 3 | worker | `#ec5f9b` | an | ja | — |
+| 8 | worker4 | Worker 4 | worker | `#ff8a3d` | an | ja | — |
 
 Gebaut in `AgentManager._build_agents()`.
 
@@ -182,7 +185,8 @@ TTS-Checkbox für Flex/Brainstorm: default **on** (User kann stummschalten, Roll
 | IDs, Farben, State | `agents/models.py` |
 | 8er-Registry, Toggle, Flex **locked** | `agents/manager.py` |
 | Brainstorm, Flex (fixed) | `agents/roles.py` |
-| Coordinator, Worker, Memory | `agents/roles_ext.py` |
+| Coordinator | `agents/roles_ext.py` |
+| Worker, Memory | `agents/roles_workers.py` |
 | HUB_IDENTITY, ask(), Tuning-Merge | `agents/base.py` |
 | Persist/Tune API | `agent_ops.py` |
 | Wishes / open tasks | Memory + ggf. `flex_wishes` |
@@ -194,10 +198,10 @@ TTS-Checkbox für Flex/Brainstorm: default **on** (User kann stummschalten, Roll
 - [ ] Flex-Toggle/Preset weg bzw. wirkungslos
 - [ ] User-Wunsch nach Clear HOT noch da
 - [ ] Worker ignoriert Regel → Flex schiebt nach
-- [ ] Flex schreibt im Brainstorm mit
+- [ ] Flex bleibt in Box 2 still, außer ein gespeicherter Wunsch muss gespiegelt werden
 - [ ] Flex löst Execute nicht aus — nur Box 1 start_work Ja oder #btn-execute
 - [ ] TTS default on für Flex + Brainstorm
 
 ---
 
-*Siehe auch: [LAYERS_FOR_AI.md](./LAYERS_FOR_AI.md)*
+*Siehe auch: [AGENTS_PROMPTS.md](AGENTS_PROMPTS.md) · [DESK_UI_MAP.md](DESK_UI_MAP.md) · [LAYERS_FOR_AI.md](LAYERS_FOR_AI.md)*

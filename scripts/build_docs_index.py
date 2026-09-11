@@ -30,7 +30,7 @@ TOPIC_RULES: list[tuple[str, re.Pattern[str]]] = [
     (
         "Architecture & agents",
         re.compile(
-            r"ARCHITECTURE|HUB_|ORCHESTRATION|AGENTS_DEFINITION|LAYERS|CODE_ANALYSIS|WORKFLOWS|MCP_",
+            r"ARCHITECTURE|HUB_|ORCHESTRATION|AGENTS_|LAYERS|CODE_ANALYSIS|WORKFLOWS|MCP_|DESK_UI|UI-STATE",
             re.IGNORECASE,
         ),
     ),

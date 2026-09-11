@@ -25,14 +25,17 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 ### Architecture & agents
 | Doc | Keywords |
 |-----|----------|
-| [AGENTS_DEFINITION.md](AGENTS_DEFINITION.md) | flex, agents, worker, brainstorm, kein, definition, nicht, user, coordinator, code |
+| [AGENTS_DEFINITION.md](AGENTS_DEFINITION.md) | flex, agents, kein, worker, nicht, brainstorm, user, definition, coordinator, code |
+| [AGENTS_PROMPTS.md](AGENTS_PROMPTS.md) | kein, box, agents, hub, tools, execute, prompts, arbeit, brainstorm, flex |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | stroke, architecture, orch, rest, tools, agents, core, classdef, color, fill |
 | [CODE_ANALYSIS_FOR_AI.md](CODE_ANALYSIS_FOR_AI.md) | hub, analysis, code, ai, product, worker, agents, app, execute, gnom |
+| [DESK_UI_MAP.md](DESK_UI_MAP.md) | box, desk, boxes, volle, app, box2, breite, map, box1, chat |
 | [GITHUB_HOLDER_3.10.md](GITHUB_HOLDER_3.10.md) | skills, github, holder, skill, 3.10, inject, mobile, neural, embeddings, install |
 | [HUB_ARCHITECTURE.md](HUB_ARCHITECTURE.md) | architecture, hub, tools, data, plugins, vector, warm, hot, cancel, cold |
 | [LAYERS_FOR_AI.md](LAYERS_FOR_AI.md) | hub, layers, user, hot, ai, gnom, selected, warm, worker1, brainstorm |
 | [MCP_ARCHITECTURE.md](MCP_ARCHITECTURE.md) | mcp, api, tools, core, hub, call, stroke, architecture, reg, plugins |
 | [ORCHESTRATION.md](ORCHESTRATION.md) | skills, orchestration, flex, coordinator, user, worker, agent, api, brainstorm, plan |
+| [UI-STATE-CONTRACT.md](UI-STATE-CONTRACT.md) | box, execute, flex, nicht, worker, kein, hub, api, arbeit, clarify |
 | [WORKFLOWS_AND_PRESETS.md](WORKFLOWS_AND_PRESETS.md) | presets, plan_mode, workflow, workflows, api, skills, team, plan, worker, agent |
 
 ### Skills & plugins
@@ -97,7 +100,6 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 | [PIPELINE_RELIABILITY.md](PIPELINE_RELIABILITY.md) | pipeline, reliability, clarify, timeout, cancel, later, busy, prefetch, tests, tool |
 | [THREADDESK.md](THREADDESK.md) | threaddesk, gnom, chat, json, tollgate, api, drückst, execute, keine, liest |
 | [TOLLGATE.md](TOLLGATE.md) | tollgate, gnom, export, hub, bash, default, desk, gnom_tollgate_llm, client, n8n |
-| [UI-STATE-CONTRACT.md](UI-STATE-CONTRACT.md) | box, execute, flex, nicht, worker, kein, hub, api, arbeit, clarify |
 
 ### Root meta
 | Doc | Keywords |
@@ -111,12 +113,14 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 ## A–Z file list
 
 - [AGENTS_DEFINITION.md](AGENTS_DEFINITION.md) — Konkrete Agenten-Definition (Gnom-Hub v1)
+- [AGENTS_PROMPTS.md](AGENTS_PROMPTS.md) — Agenten-Prompts und Rechte — Gnom-Hub-V1
 - [ARCHITECTURE.md](ARCHITECTURE.md) — Gnom-Hub Architecture (overview)
 - [BASIC_USER_TEST.md](BASIC_USER_TEST.md) — Basic User Test (canonical)
 - [BUG_HUNT_TEAM.md](BUG_HUNT_TEAM.md) — Team Bug-Hunt Report (static)
 - [CHANGELOG_3.10.md](CHANGELOG_3.10.md) — Changelog — 3.10.0 (V4 Skills wave)
 - [CHANGELOG_3.9.md](CHANGELOG_3.9.md) — Changelog — 3.9.x
 - [CODE_ANALYSIS_FOR_AI.md](CODE_ANALYSIS_FOR_AI.md) — Gnom-Hub v1 — Detailed Code Analysis (for external AI readers)
+- [DESK_UI_MAP.md](DESK_UI_MAP.md) — Desk-UI-Karte — Gnom-Hub-V1
 - [DOD_GATE.md](DOD_GATE.md) — DoD Gate (automated)
 - [DOD_GATE_PLAN.md](DOD_GATE_PLAN.md) — DoD-Gate — Implementierungsplan
 - [DOD_LINT.md](DOD_LINT.md) — DoD Linting Rules
