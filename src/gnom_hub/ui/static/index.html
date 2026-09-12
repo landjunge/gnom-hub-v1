@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=173" />
+  <link rel="stylesheet" href="/static/app.css?v=174" />
   <!-- Tailwind utilities for Chat module (preflight OFF) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -380,11 +380,12 @@
           <div id="box3-content" class="layer-slot layer-slot-a is-front" data-slot="a"></div>
           <div class="layer-slot layer-slot-b" data-slot="b"></div>
         </div>
+        <div id="box3-empty" class="box3-empty">Noch kein Ergebnis. Arbeit starten legt die Worker-Seiten hier ab.</div>
         <!-- Always-on top: worker deliverable the user must see after Execute -->
         <div id="box3-result-stage" class="box3-result-stage" hidden>
+          <div id="box3-worker-tabs" class="box3-worker-tabs" hidden role="tablist" aria-label="Worker"></div>
           <div class="box3-result-bar">
-            <div id="box3-worker-tabs" class="box3-worker-tabs" hidden aria-label="Worker wählen"></div>
-            <span id="box3-result-label" class="box3-result-label">Worker-Ergebnis</span>
+            <span id="box3-result-label" class="box3-result-label" hidden>Worker-Ergebnis</span>
             <div class="box3-result-actions" role="toolbar" aria-label="Worker-Aktionen">
               <button type="button" id="box3-btn-copy" class="btn-ws-sm" title="Ergebnis kopieren">Kopieren</button>
               <button type="button" id="box3-btn-dl" class="btn-ws-sm" title="Herunterladen">↓</button>
@@ -761,6 +762,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=171"></script>
+  <script src="/static/app.js?v=172"></script>
 </body>
 </html>

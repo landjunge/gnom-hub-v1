@@ -137,12 +137,12 @@ def test_box3_keep_away_new_are_german():
     assert ">Preview<" not in _inner_by_id(HTML, "box3")
 
 
-def test_box3_preview_source_js_are_vorschau_quelle():
+def test_box3_preview_source_js_are_sicht_code():
     assert 'name + " Preview"' not in BOXES_JS
     assert "HTML-Preview" not in BOXES_JS
-    assert "HTML-Vorschau" in BOXES_JS
-    assert "Vorschau" in BOXES_JS
-    assert "Quelltext" in BOXES_JS
+    assert 'textContent = "Sicht"' in BOXES_JS
+    assert 'textContent = "Code"' in BOXES_JS
+    assert "Quelltext (Worker-Ausgabe)" not in BOXES_JS
 
 
 def test_all_scrollbars_hidden_globally_still_overflow():
