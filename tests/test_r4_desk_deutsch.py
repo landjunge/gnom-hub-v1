@@ -18,5 +18,7 @@ def test_chat_tooltip_de_send_is_talk():
 def test_box2_empty_state_is_german():
     js = Path("src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
     assert "Brainstorm dialogue appears here" not in js
-    assert "Brainstorm-Dialog erscheint hier" in js
+    assert "Empty — send" not in js
+    assert "Noch keine Antwort" in js or "Brainstorm-Dialog erscheint hier" in js
+    assert "reden" in js
     assert "Arbeit starten" in js

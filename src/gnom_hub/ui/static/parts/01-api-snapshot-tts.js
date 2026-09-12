@@ -339,7 +339,13 @@
     if (!conv.length) return;
     const lines = [];
     conv.forEach(function (m) {
-      const role = m.role === "user" ? "You" : pipelineMessageAgent(m);
+      const aid = pipelineMessageAgent(m);
+      const role =
+        m.role === "user"
+          ? "Du"
+          : typeof box2AgentTabLabel === "function"
+            ? box2AgentTabLabel(aid)
+            : aid;
       lines.push("");
       lines.push(role + ":");
       lines.push(pipelineMessageText(m));
@@ -651,40 +657,43 @@
 
     /* content → agent layers (box2: brainstorm/flex/coordinator; box3: workers) */
     if (p.brainstorm_turns && p.brainstorm_turns.length) {
-      const lines = ["=== Brainstorm dialogue ==="];
+      const lines = ["=== Brainstorm-Dialog ==="];
       p.brainstorm_turns.forEach(function (t) {
-        const role = t.role === "user" ? "You" : "Brainstorm";
+        const role =
+          t.role === "user"
+            ? "Du"
+            : typeof box2AgentTabLabel === "function"
+              ? box2AgentTabLabel(t.role)
+              : "Brainstorm";
         lines.push("");
         lines.push(role + ":");
         lines.push(String(t.text || ""));
       });
       setBox2(lines.join("\n"));
-      if (typeof renderBox2ReplyTabs === "function") {
-        renderBox2ReplyTabs(p.brainstorm_turns);
-      }
     } else if (p.brainstorm_notes) {
       setBox2("=== Brainstorm ===\n" + p.brainstorm_notes);
     } else if (p.stage === "idle") {
       setBox2(
-        "Brainstorm-Dialog erscheint hier.\n\n" +
-          "1) Send = reden, keine Ausführung\n" +
-          "2) Arbeit starten, wenn Worker loslegen sollen"
+        "Noch keine Antwort. Senden = reden. Die Antwort erscheint hier."
       );
     }
     if (p.flex_notes && typeof setBox2Agent === "function") {
-      setBox2Agent("flex", "=== Flex review ===\n" + p.flex_notes, "Flex");
+      setBox2Agent("flex", "=== Flex-Rückmeldung ===\n" + p.flex_notes, "Flex");
     }
     if (
       p.distilled_requirements &&
       p.distilled_requirements.length &&
       typeof setBox2Agent === "function"
     ) {
-      const req = ["=== Requirements ==="].concat(
+      const req = ["=== Anforderungen ==="].concat(
         p.distilled_requirements.map(function (r) {
           return "• " + r;
         })
       );
-      setBox2Agent("coordinator", req.join("\n"), "Coordinator");
+      setBox2Agent("coordinator", req.join("\n"), "Koordinator");
+    }
+    if (typeof renderBox2ReplyTabs === "function") {
+      renderBox2ReplyTabs(p.brainstorm_turns);
     }
 
     /* Canonical conversation wins over brainstorm_turns / notes (same content as chat). */

@@ -3278,7 +3278,7 @@ a:focus-visible {
   padding: 4px 8px;
   background: #14161a;
   border-bottom: 1px solid var(--border);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 .box2-page-label {
@@ -3886,24 +3886,72 @@ a:focus-visible {
   color: inherit;
   cursor: pointer;
 }
+/* R4.2 Box 2 reply tabs — square desk, 32px, R2 tokens, agent color on active. */
+#box2,
+#box2 * {
+  border-radius: 0;
+}
+#box2 {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 12px;
+  color: var(--text);
+}
+#box2.box2-has-tabs > #box2-layers {
+  top: 32px;
+}
 .box2-reply-tabs {
   flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  padding: 4px 6px;
+  gap: 0;
+  padding: 0;
+  min-height: 32px;
   border-bottom: 1px solid var(--border);
+  background: var(--bg-strip, #15171b);
+  position: relative;
+  z-index: 5;
+}
+.box2-reply-tabs[hidden] {
+  display: none !important;
 }
 .box2-reply-tab {
-  border: 1px solid var(--border);
-  background: var(--bg-elev);
+  height: 32px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-card);
   color: var(--text);
-  border-radius: 4px;
-  font-size: 11px;
-  padding: 2px 6px;
+  border-radius: 0;
+  font-size: 12px;
+  font-family: inherit;
+  line-height: 1;
   cursor: pointer;
 }
-.box2-reply-tab.is-on { outline: 1px solid var(--c-brainstorm, #ef5350); }
+.box2-reply-tab:hover:not(:disabled) {
+  background: var(--bg-elev);
+}
+.box2-reply-tab.is-on {
+  background: var(--bg-panel);
+  color: var(--owner-color, var(--text));
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--owner-color, var(--border-strong));
+  outline: none;
+}
+#box2 .worker-mode-btn {
+  height: 28px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
+  font-size: 12px;
+  line-height: 1;
+}
+#box2 .dyn-source {
+  font-size: 12px;
+}
+#box2 .dyn-kind {
+  font-size: 10px;
+}
 
 /* R4.1 Box 1 + chat input row — square desk, R2 tokens, 28px controls.
    ID selectors beat Tailwind rounded-md / h-8 / text-[13px] on these nodes. */

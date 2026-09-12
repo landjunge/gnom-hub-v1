@@ -22,6 +22,8 @@ _TC_VORSCHAU = re.compile(r"""\.textContent\s*=\s*["']Vorschau["']""")
 _TC_QUELLE = re.compile(r"""\.textContent\s*=\s*["']Quelle["']""")
 _TURN_LIT = re.compile(r"""["']turn["']""")
 _SEND_TARGET_ASSIGN = re.compile(r"\bsendTarget\s*=")
+_LAST_CLICKED_ASSIGN = re.compile(r"\blastClickedAgentId\s*=")
+_ACTIVATE_LAYER = re.compile(r"\bactivateAgentLayer\s*\(")
 
 
 def _brace_block(src: str, brace: int) -> str:
@@ -112,20 +114,60 @@ def test_render_dynamic_content_preview_source_are_vorschau_quelle():
     assert _TC_QUELLE.search(body), 'renderDynamicContent must set textContent = "Quelle"'
 
 
+def test_box2_reply_tab_height_32px():
+    """Reply tabs are 32px tall (R2 --tab-h)."""
+    bodies = _css_rules_for(".box2-reply-tab")
+    assert bodies, "missing .box2-reply-tab in app.css"
+    joined = "\n".join(bodies)
+    assert re.search(r"height\s*:\s*(32px|var\(--tab-h\))", joined), (
+        ".box2-reply-tab must set height: 32px or var(--tab-h); got " + joined.strip()
+    )
+
+
+def test_box2_reply_tab_active_uses_agent_color_not_brainstorm_outline():
+    """Active tab: agent color bottom edge, not a generic brainstorm outline."""
+    bodies = _css_rules_for(".box2-reply-tab.is-on")
+    assert bodies, "missing .box2-reply-tab.is-on in app.css"
+    joined = "\n".join(bodies)
+    assert "--owner-color" in joined, (
+        ".box2-reply-tab.is-on must use --owner-color for the active edge"
+    )
+    assert "var(--c-brainstorm" not in joined, (
+        ".box2-reply-tab.is-on still uses a generic brainstorm outline/color"
+    )
+
+
 def test_box2_reply_tabs_label_not_english_turn():
     """renderBox2ReplyTabs does not use English 'turn' as a tab label."""
     body = _function_body(BOXES_JS, "renderBox2ReplyTabs")
     assert _TURN_LIT.search(body) is None, (
         'renderBox2ReplyTabs still uses English "turn" as tab label'
     )
+    assert "Koordinator" in BOXES_JS or "Arbeiter" in BOXES_JS or "Antwort" in BOXES_JS, (
+        "Box 2 reply tabs must label with agent names or Antwort"
+    )
 
 
 def test_box2_reply_tabs_click_does_not_assign_send_target():
-    """Clicking a reply tab must not assign sendTarget."""
+    """Clicking a reply tab must not assign sendTarget or lastClicked routing."""
     body = _function_body(BOXES_JS, "renderBox2ReplyTabs")
     assert _SEND_TARGET_ASSIGN.search(body) is None, (
         "renderBox2ReplyTabs click handler must not assign sendTarget"
     )
+    assert _LAST_CLICKED_ASSIGN.search(body) is None, (
+        "renderBox2ReplyTabs click handler must not assign lastClickedAgentId"
+    )
+    assert _ACTIVATE_LAYER.search(body) is None, (
+        "renderBox2ReplyTabs must not call activateAgentLayer"
+    )
+
+
+def test_close_box2_page_does_not_clear_chat():
+    """Page × returns to the answer; chat is not wiped."""
+    body = _function_body(BOXES_JS, "closeBox2Page")
+    assert "chatLog" not in body
+    assert "chat-layers" not in body
+    assert "box2-page-stage" in body
 
 
 def test_box2_empty_german_contains_antwort_or_reden():
