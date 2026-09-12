@@ -104,11 +104,7 @@ def is_live_browser_task(text: str) -> bool:
         return True
     if not any(v in low for v in _NAV_VERBS):
         return False
-    return bool(
-        extract_urls(t)
-        or _guess_domain(t)
-        or any(brand in low for brand in _BRAND_SITES)
-    )
+    return bool(extract_urls(t) or _guess_domain(t) or any(brand in low for brand in _BRAND_SITES))
 
 
 _BRAND_SITES = {

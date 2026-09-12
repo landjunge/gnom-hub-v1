@@ -7,9 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 HTML = (ROOT / "src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
-PREAMBLE = (ROOT / "src/gnom_hub/ui/static/parts/00-preamble.js").read_text(
-    encoding="utf-8"
-)
+PREAMBLE = (ROOT / "src/gnom_hub/ui/static/parts/00-preamble.js").read_text(encoding="utf-8")
 
 AGENT_PAGE_TABS = (
     "jetzt",
@@ -69,15 +67,11 @@ def test_html_agent_page_tabs_and_set_target():
 
 def test_html_agent_page_tab_buttons():
     for tab in AGENT_PAGE_TABS:
-        class_then_tab = (
-            rf'<button\b[^>]*class="[^"]*agent-page-tab[^"]*"[^>]*data-tab="{tab}"'
+        class_then_tab = rf'<button\b[^>]*class="[^"]*agent-page-tab[^"]*"[^>]*data-tab="{tab}"'
+        tab_then_class = rf'<button\b[^>]*data-tab="{tab}"[^>]*class="[^"]*agent-page-tab[^"]*"'
+        assert re.search(class_then_tab, HTML) or re.search(tab_then_class, HTML), (
+            f"missing agent-page-tab button data-tab={tab}"
         )
-        tab_then_class = (
-            rf'<button\b[^>]*data-tab="{tab}"[^>]*class="[^"]*agent-page-tab[^"]*"'
-        )
-        assert re.search(class_then_tab, HTML) or re.search(
-            tab_then_class, HTML
-        ), f"missing agent-page-tab button data-tab={tab}"
 
 
 def test_html_agent_page_not_paragraph_only():
