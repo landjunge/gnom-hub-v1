@@ -209,6 +209,137 @@
     return false;
   }
 
+  function agentLiveStatusToken(label) {
+    const s = String(label || "");
+    if (s === "fragt nach") return "fragt";
+    if (s === "benutzt Werkzeug") return "werkzeug";
+    if (s === "hat Ergebnis") return "ergebnis";
+    if (s === "Fehler") return "fehler";
+    if (s === "denkt" || s === "blockiert" || s === "wartet") return s;
+    return "wartet";
+  }
+
+  function agentLiveStatus(agentId) {
+    const id = String(agentId || "");
+    const agent = findAgent(id) || {};
+    const snap = typeof lastSnapshot !== "undefined" ? lastSnapshot : null;
+    const pipe = (snap && snap.pipeline) || {};
+    const stage = String(pipe.stage || activeStage || "idle");
+    const send = String(pipe.send_target || "");
+    const isSend = send === id;
+    const isWorker = id.indexOf("worker") === 0;
+    const err = String(
+      pipe.error || pipe.last_error || (snap && snap.last_error) || ""
+    );
+    const result = String(pipe.result_status || "");
+    if (agent.parked) return "blockiert";
+
+    const flexBox = (snap && snap.flex_box1) || {};
+    const flexQs = Array.isArray(flexBox.questions)
+      ? flexBox.questions
+      : Array.isArray(pipe.flex_questions)
+        ? pipe.flex_questions
+        : [];
+    const blockedQ = flexQs.some(function (q) {
+      if (!q) return false;
+      const qid = String(q.agent_id || q.agent || "").toLowerCase();
+      if (qid && qid !== id) return false;
+      return String(q.entry_type || "").toLowerCase() === "blockiert";
+    });
+    if (blockedQ) return "blockiert";
+
+    const val = pipe.validation;
+    if (
+      val &&
+      val.ok === false &&
+      String(val.worker || "").toLowerCase() === id &&
+      stage !== "error"
+    ) {
+      return "blockiert";
+    }
+
+    const involved =
+      isSend ||
+      (typeof agentIsActive === "function" && agentIsActive(agent)) ||
+      stage === id;
+    if (stage === "error" && (involved || (isWorker && result === "FEHLER"))) {
+      return "Fehler";
+    }
+    if (err && stage === "error" && involved) return "Fehler";
+    if (result === "FEHLER" && (isSend || involved)) return "Fehler";
+
+    const pending = pipe.pending_question;
+    const asking =
+      stage === "clarify" ||
+      (pending && pending.text) ||
+      flexQs.some(function (q) {
+        if (!q) return false;
+        const qid = String(q.agent_id || q.agent || "").toLowerCase();
+        if (qid && qid !== id) return false;
+        return !!(q.text || q.question || q.prompt);
+      });
+    if (asking && (id === "flex" || id === "coordinator" || isSend)) {
+      return "fragt nach";
+    }
+
+    const tools = [].concat(pipe.tool_log || [], pipe.tool_calls || []);
+    const toolForMe = tools.some(function (t) {
+      if (!t) return false;
+      const a = String(t.agent || t.agent_id || "").toLowerCase();
+      return !a || a === id;
+    });
+    const working = stage === "work" || stage === id;
+    if (
+      working &&
+      toolForMe &&
+      (involved || (isWorker && stage === "work"))
+    ) {
+      return "benutzt Werkzeug";
+    }
+
+    if (stage === "done") {
+      const outs = pipe.worker_outputs || [];
+      const mine = outs.some(function (o) {
+        return _agentPageOutputMine(o, id);
+      });
+      if (
+        mine ||
+        (isSend && (result === "GELIEFERT" || result === "UNGEPRÜFT" || result))
+      ) {
+        return "hat Ergebnis";
+      }
+    }
+
+    if (typeof agentIsActive === "function" && agentIsActive(agent)) {
+      return "denkt";
+    }
+    if (
+      isSend &&
+      (stage === "brainstorm" ||
+        stage === "distill" ||
+        stage === "flex" ||
+        stage === "coordinate" ||
+        stage === "work" ||
+        stage === "memory")
+    ) {
+      return "denkt";
+    }
+    if (typeof chatBusy !== "undefined" && chatBusy && isSend) return "denkt";
+    return "wartet";
+  }
+
+  function _agentPageOutputMine(o, agentId) {
+    const id = String(agentId || "").toLowerCase();
+    const w = String((o && (o.worker || o.id || o.name)) || "").toLowerCase();
+    if (!id || !w) return false;
+    if (w === id) return true;
+    if (id === "worker1" && /worker\s*1|\bw1\b/.test(w)) return true;
+    if (id === "worker2" && /worker\s*2|\bw2\b/.test(w)) return true;
+    if (id === "worker3" && /worker\s*3|\bw3\b/.test(w)) return true;
+    if (id === "worker4" && /worker\s*4|\bw4\b/.test(w)) return true;
+    return false;
+  }
+
   /** Crux: one chat log layer per agent. */
   function buildChatLayers() {
     const stack = document.getElementById("chat-layers");
@@ -572,83 +703,488 @@
     if (page) page.hidden = true;
   }
 
-  function _agentPageAdd(body, tag, className, text) {
+  const AGENT_PAGE_TABS = [
+    "jetzt",
+    "auftrag",
+    "verlauf",
+    "werkzeuge",
+    "dateien",
+    "memory",
+    "ergebnis",
+    "einstellungen",
+  ];
+  const AGENT_PAGE_RIGHTS = {
+    brainstorm: "Darf Dialog in Box 2. Darf nicht Execute, Code oder Box 3.",
+    memory: "Darf Recall. Darf nicht Boxen füllen.",
+    flex: "Darf Box 1 und Wünsche. Darf nicht Execute, Tools, God-Mode.",
+    coordinator: "Darf Plan und Distill. Darf nicht bauen.",
+    worker1: "Darf Deliverable in Box 3. Darf nicht raten, Box 1/2 schreiben.",
+    worker2: "Darf Deliverable in Box 3. Darf nicht raten, Box 1/2 schreiben.",
+    worker3: "Darf Deliverable in Box 3. Darf nicht raten, Box 1/2 schreiben.",
+    worker4: "Darf Deliverable in Box 3. Darf nicht raten, Box 1/2 schreiben.",
+  };
+
+  function _agentPageAdd(parent, tag, className, text) {
     const el = document.createElement(tag);
     if (className) el.className = className;
     if (text != null) el.textContent = text;
-    body.appendChild(el);
+    if (parent) parent.appendChild(el);
     return el;
+  }
+
+  function _agentPageClear(el) {
+    if (el) el.textContent = "";
+  }
+
+  function _agentPageMsgAgent(m) {
+    if (typeof pipelineMessageAgent === "function") return pipelineMessageAgent(m);
+    if (!m || typeof m !== "object") return "brainstorm";
+    const reply = String(m.reply_agent_id || "").trim();
+    if (reply) return reply;
+    const target = String(m.target_agent_id || "").trim();
+    if (target) return target;
+    return "brainstorm";
+  }
+
+  function _agentPageMsgText(m) {
+    if (typeof pipelineMessageText === "function") return pipelineMessageText(m);
+    return String((m && (m.visible_text || m.user_text)) || "");
+  }
+
+  function _agentPageMsgUserAgent(m) {
+    if (!m || typeof m !== "object") return false;
+    const role = String(m.role || "").toLowerCase();
+    if (role === "thought" || role === "reasoning" || role === "cot") return false;
+    if (m.chain_of_thought && !m.visible_text && !m.user_text) return false;
+    return role === "user" || role === "agent" || role === "assistant";
+  }
+
+  function _agentPageMessagesFor(pipe, agentId) {
+    const msgs = (pipe && Array.isArray(pipe.messages) && pipe.messages) || [];
+    return msgs.filter(function (m) {
+      return _agentPageMsgUserAgent(m) && _agentPageMsgAgent(m) === agentId;
+    });
+  }
+
+  function _agentPageFactText(f) {
+    if (!f) return "";
+    if (typeof f === "string") return f;
+    return String(f.text || f.fact || f.value || "");
+  }
+
+  function _agentPageFileName(f) {
+    if (!f) return "";
+    if (typeof f === "string") return f;
+    return String(f.name || f.path || "");
+  }
+
+  function _paintChatTargets() {
+    const root = document.getElementById("chat-targets");
+    if (!root) return;
+    if (typeof bindSendTargets === "function") bindSendTargets();
+    root.querySelectorAll(".chat-target").forEach(function (el) {
+      const on = el.dataset.target === sendTarget;
+      el.classList.toggle("is-on", on);
+      el.setAttribute("aria-checked", on ? "true" : "false");
+    });
+  }
+
+  function showAgentPageTab(tabId) {
+    const id = AGENT_PAGE_TABS.indexOf(tabId) >= 0 ? tabId : "jetzt";
+    const page = document.getElementById("agent-page");
+    if (page) page.dataset.tab = id;
+    document.querySelectorAll("#agent-page-tabs .agent-page-tab").forEach(function (btn) {
+      const on = btn.getAttribute("data-tab") === id;
+      btn.classList.toggle("is-on", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    AGENT_PAGE_TABS.forEach(function (t) {
+      const panel = document.getElementById("agent-page-panel-" + t);
+      if (!panel) return;
+      const on = t === id;
+      panel.classList.toggle("is-on", on);
+      if (on) panel.removeAttribute("hidden");
+      else panel.hidden = true;
+    });
+  }
+
+  function _refreshAgentPageLive() {
+    const page = document.getElementById("agent-page");
+    if (!page || page.hidden || !page.dataset.agent) return;
+    const liveEl = document.getElementById("agent-page-live");
+    if (!liveEl || typeof agentLiveStatus !== "function") return;
+    const st = agentLiveStatus(page.dataset.agent);
+    liveEl.textContent = st;
+    liveEl.dataset.status = agentLiveStatusToken(st);
   }
 
   function openAgentPage(agentId) {
     const page = document.getElementById("agent-page");
     const body = document.getElementById("agent-page-body");
-    const title = document.getElementById("agent-page-title");
     if (!page || !body) return;
+    const prevAgent = page.dataset.agent;
+    const keepTab =
+      !page.hidden && prevAgent === agentId && page.dataset.tab
+        ? page.dataset.tab
+        : "jetzt";
     const agent = findAgent(agentId) || {};
     const tip = TOOLTIPS[agentId] || {};
-    const rights = {
-      brainstorm: "Darf Dialog in Box 2. Darf nicht Execute, Code oder Box 3.",
-      memory: "Darf Recall. Darf nicht Boxen füllen.",
-      flex: "Darf Box 1 und Wünsche. Darf nicht Execute, Tools, God-Mode.",
-      coordinator: "Darf Plan und Distill. Darf nicht bauen.",
-      worker1: "Darf Deliverable in Box 3. Darf nicht raten, Box 1/2 schreiben.",
-      worker2: "Darf Deliverable in Box 3. Darf nicht raten, Box 1/2 schreiben.",
-      worker3: "Darf Deliverable in Box 3. Darf nicht raten, Box 1/2 schreiben.",
-      worker4: "Darf Deliverable in Box 3. Darf nicht raten, Box 1/2 schreiben.",
-    };
-    if (title) title.textContent = (agent.label || agentId) + " — Agentenseite";
-    const promptRaw =
-      (agent.system_prompt && String(agent.system_prompt).trim()) ||
-      DEFAULT_PROMPTS[agentId] ||
-      "";
+    const rights = AGENT_PAGE_RIGHTS[agentId] || "siehe Docs";
     const snap = typeof lastSnapshot !== "undefined" ? lastSnapshot : null;
     const pipe = (snap && snap.pipeline) || {};
     const expert = !!(page.dataset && page.dataset.expert === "1");
-    body.textContent = "";
-    _agentPageAdd(body, "p", "agent-page-line", "Farbe ist Orientierung, keine Rechte.");
-    _agentPageAdd(
-      body,
-      "p",
-      "agent-page-line",
-      "Rolle: " + ((tip && tip.how_to) || rights[agentId] || "")
-    );
-    _agentPageAdd(body, "p", "agent-page-line", "Rechte: " + (rights[agentId] || "siehe Docs"));
-    _agentPageAdd(
-      body,
-      "p",
-      "agent-page-line",
-      "Status: " +
-        (agent.enabled ? "an" : "aus") +
-        (agent.online ? " · online" : " · offline") +
-        (agent.parked ? " · geparkt" : "")
-    );
-    _agentPageAdd(
-      body,
-      "p",
-      "agent-page-line",
-      "Modell: " + (agent.model || "—") + "  (API-Schlüssel werden nicht angezeigt)"
-    );
-    _agentPageAdd(
-      body,
-      "p",
-      "agent-page-line",
-      "Aktuelle Aufgabe: " +
-        ((pipe.user_text && String(pipe.user_text).slice(0, 240)) || "(keine)") +
-        (pipe.stage ? " · Stage " + pipe.stage : "")
-    );
-    const err = pipe.last_error || pipe.error || "";
-    if (err) _agentPageAdd(body, "p", "agent-page-line", "Letzter Fehler: " + String(err));
-    _agentPageAdd(
-      body,
-      "p",
-      "agent-page-line",
-      "Kosten/Tokens: " +
+    const live =
+      typeof agentLiveStatus === "function" ? agentLiveStatus(agentId) : "wartet";
+    const roleText = (tip && tip.how_to) || rights;
+    page.dataset.agent = agentId;
+    const title = document.getElementById("agent-page-title");
+    if (title) title.textContent = agent.label || agentId;
+    const roleEl = document.getElementById("agent-page-role");
+    if (roleEl) roleEl.textContent = roleText;
+    const liveEl = document.getElementById("agent-page-live");
+    if (liveEl) {
+      liveEl.textContent = live;
+      liveEl.dataset.status = agentLiveStatusToken(live);
+    }
+    const modelEl = document.getElementById("agent-page-model");
+    if (modelEl) {
+      modelEl.textContent =
+        (agent.model || "—") + "  (API-Schlüssel werden nicht angezeigt)";
+    }
+    const costEl = document.getElementById("agent-page-cost");
+    if (costEl) {
+      costEl.textContent =
         (agent.tokens || 0) +
         " tok · $" +
-        Number(agent.cost_usd || 0).toFixed(4)
+        Number(agent.cost_usd || 0).toFixed(4);
+    }
+    if (COLOR_HEX[agentId]) {
+      page.style.setProperty("--agent-page-color", COLOR_HEX[agentId]);
+    }
+
+    const mineMsgs = _agentPageMessagesFor(pipe, agentId);
+    fillAgentPageJetzt(agentId, agent, pipe, snap, live, mineMsgs);
+    fillAgentPageAuftrag(agentId, pipe, rights);
+    fillAgentPageVerlauf(agentId, agent, mineMsgs, expert);
+    fillAgentPageWerkzeuge(snap, pipe, expert);
+    fillAgentPageDateien(snap);
+    fillAgentPageMemory(snap, pipe);
+    fillAgentPageErgebnis(agentId, pipe, expert);
+    fillAgentPageEinstellungen(agentId, agent, snap, expert, rights);
+
+    showAgentPageTab(keepTab || "jetzt");
+    page.hidden = false;
+    if (typeof bindAgentPage === "function") bindAgentPage();
+  }
+
+  function fillAgentPageJetzt(agentId, agent, pipe, snap, live, mineMsgs) {
+    const panel = document.getElementById("agent-page-panel-jetzt");
+    if (!panel) return;
+    _agentPageClear(panel);
+    const status =
+      (agent.enabled ? "an" : "aus") +
+      (agent.online ? " · online" : " · offline") +
+      (agent.parked ? " · geparkt" : "");
+    _agentPageAdd(panel, "p", "agent-page-line", "Status: " + live + " · " + status);
+    const isTarget = String(pipe.send_target || "") === agentId;
+    if (isTarget && pipe.user_text) {
+      _agentPageAdd(
+        panel,
+        "p",
+        "agent-page-line",
+        "Aktuell: " + String(pipe.user_text).slice(0, 240)
+      );
+    } else if (mineMsgs.length) {
+      const last = mineMsgs[mineMsgs.length - 1];
+      const who = last.role === "user" ? "Du" : agent.label || agentId;
+      _agentPageAdd(
+        panel,
+        "p",
+        "agent-page-line",
+        "Letzte Nachricht (" + who + "): " + _agentPageMsgText(last).slice(0, 240)
+      );
+    } else {
+      _agentPageAdd(panel, "p", "agent-page-line", "Aktuell: (keine)");
+    }
+    const last3 = mineMsgs.slice(-3);
+    if (last3.length) {
+      _agentPageAdd(panel, "h3", "agent-page-h", "Letzte Nachrichten");
+      last3.forEach(function (m) {
+        const who = m.role === "user" ? "Du" : agent.label || agentId;
+        _agentPageAdd(
+          panel,
+          "p",
+          "agent-page-line",
+          who + ": " + _agentPageMsgText(m).slice(0, 240)
+        );
+      });
+    }
+    const err = pipe.last_error || pipe.error || (snap && snap.last_error) || "";
+    if (err) {
+      _agentPageAdd(panel, "p", "agent-page-line", "Fehler: " + String(err));
+    }
+    if (agent.parked) {
+      _agentPageAdd(panel, "p", "agent-page-line", "Blocker: Agent ist geparkt.");
+    } else if (pipe.result_status === "FEHLER") {
+      _agentPageAdd(panel, "p", "agent-page-line", "Blocker: Ergebnisstatus FEHLER.");
+    } else if (pipe.pending_question && pipe.pending_question.text) {
+      _agentPageAdd(
+        panel,
+        "p",
+        "agent-page-line",
+        "Blocker: " + String(pipe.pending_question.text).slice(0, 240)
+      );
+    }
+  }
+
+  function fillAgentPageAuftrag(agentId, pipe, rights) {
+    const panel = document.getElementById("agent-page-panel-auftrag");
+    if (!panel) return;
+    _agentPageClear(panel);
+    _agentPageAdd(
+      panel,
+      "p",
+      "agent-page-line",
+      "Auftrag: " + (pipe.user_text ? String(pipe.user_text) : "(keiner)")
     );
-    _agentPageAdd(body, "h3", "agent-page-h", "Regler");
+    _agentPageAdd(
+      panel,
+      "p",
+      "agent-page-line",
+      "Empfänger: " + (pipe.send_target || sendTarget || agentId)
+    );
+    _agentPageAdd(
+      panel,
+      "p",
+      "agent-page-line",
+      "Stage: " + (pipe.stage || "idle")
+    );
+    _agentPageAdd(
+      panel,
+      "p",
+      "agent-page-line",
+      "Ergebnisstatus: " + (pipe.result_status || "—")
+    );
+    _agentPageAdd(panel, "p", "agent-page-line", "Rechte: " + rights);
+  }
+
+  function fillAgentPageVerlauf(agentId, agent, mineMsgs, expert) {
+    const panel = document.getElementById("agent-page-panel-verlauf");
+    if (!panel) return;
+    _agentPageClear(panel);
+    if (!mineMsgs.length) {
+      _agentPageAdd(panel, "p", "agent-page-line", "Kein Verlauf für diesen Agenten.");
+      return;
+    }
+    const cap = expert ? mineMsgs.length : Math.min(mineMsgs.length, 40);
+    mineMsgs.slice(-cap).forEach(function (m) {
+      const who = m.role === "user" ? "Du" : agent.label || agentId;
+      const text = _agentPageMsgText(m);
+      _agentPageAdd(
+        panel,
+        "p",
+        "agent-page-line",
+        who + ": " + (expert || text.length <= 800 ? text : text.slice(0, 797) + "…")
+      );
+    });
+  }
+
+  function fillAgentPageWerkzeuge(snap, pipe, expert) {
+    const panel = document.getElementById("agent-page-panel-werkzeuge");
+    if (!panel) return;
+    _agentPageClear(panel);
+    const tools = (snap && snap.tools) || [];
+    const log = (pipe && (pipe.tool_log || pipe.tool_calls)) || [];
+    const hasTools = Array.isArray(tools) && tools.length;
+    const hasLog = Array.isArray(log) && log.length;
+    if (!hasTools && !hasLog) {
+      _agentPageAdd(
+        panel,
+        "p",
+        "agent-page-line",
+        "Keine Werkzeuge in dieser Sitzung."
+      );
+      return;
+    }
+    if (hasTools) {
+      tools.slice(0, expert ? 40 : 12).forEach(function (t) {
+        const card = _agentPageAdd(panel, "div", "agent-tool-card", "");
+        _agentPageAdd(card, "p", "agent-page-line", t.name || "?");
+        _agentPageAdd(card, "p", "agent-page-line", t.description || "");
+      });
+    }
+    if (hasLog) {
+      _agentPageAdd(panel, "h3", "agent-page-h", "Letzte Aufrufe");
+      log.slice(expert ? -20 : -8).forEach(function (e) {
+        const name = (e && (e.tool || e.name)) || "?";
+        const ok = !e || e.ok !== false ? "ok" : "FAIL";
+        const mode = e && e.mode ? " · " + e.mode : "";
+        _agentPageAdd(panel, "p", "agent-page-line", name + " · " + ok + mode);
+      });
+    }
+  }
+
+  function fillAgentPageDateien(snap) {
+    const panel = document.getElementById("agent-page-panel-dateien");
+    if (!panel) return;
+    _agentPageClear(panel);
+    const ws = (snap && snap.workspace) || {};
+    const zones = [
+      ["selected", "Selected"],
+      ["temp", "Temp"],
+      ["perm", "Perm"],
+    ];
+    let n = 0;
+    zones.forEach(function (z) {
+      const list = Array.isArray(ws[z[0]]) ? ws[z[0]] : [];
+      const names = list
+        .map(_agentPageFileName)
+        .filter(function (nm) {
+          return !!nm;
+        });
+      if (!names.length) return;
+      n += names.length;
+      _agentPageAdd(panel, "h3", "agent-page-h", z[1]);
+      names.forEach(function (nm) {
+        const row = _agentPageAdd(panel, "div", "agent-file-row", "");
+        _agentPageAdd(row, "p", "agent-page-line", nm);
+      });
+    });
+    if (!n) {
+      _agentPageAdd(
+        panel,
+        "p",
+        "agent-page-line",
+        "Keine Dateien in selected, temp oder perm."
+      );
+    }
+  }
+
+  function fillAgentPageMemory(snap, pipe) {
+    const panel = document.getElementById("agent-page-panel-memory");
+    if (!panel) return;
+    _agentPageClear(panel);
+    const mem = (snap && snap.memory) || {};
+    const hotN = mem.hot_count != null ? mem.hot_count : (mem.facts || []).length;
+    const warmN =
+      mem.warm_count != null ? mem.warm_count : (mem.warm_facts || []).length;
+    _agentPageAdd(
+      panel,
+      "p",
+      "agent-page-line",
+      "HOT: " + hotN + " · WARM: " + warmN
+    );
+    if (pipe && pipe.memory_context) {
+      _agentPageAdd(panel, "p", "agent-page-line", "Memory verwendet");
+    }
+    const facts = [];
+    (mem.facts || []).forEach(function (f) {
+      const t = _agentPageFactText(f);
+      if (t && facts.indexOf(t) < 0) facts.push(t);
+    });
+    (mem.warm_facts || []).forEach(function (f) {
+      const t = _agentPageFactText(f);
+      if (t && facts.indexOf(t) < 0) facts.push(t);
+    });
+    if (!facts.length) {
+      _agentPageAdd(panel, "p", "agent-page-line", "Keine Fakten in dieser Sitzung.");
+      return;
+    }
+    facts.slice(0, 6).forEach(function (t) {
+      const row = _agentPageAdd(panel, "div", "agent-mem-row", "");
+      _agentPageAdd(row, "p", "agent-page-line", t);
+    });
+  }
+
+  function fillAgentPageErgebnis(agentId, pipe, expert) {
+    const panel = document.getElementById("agent-page-panel-ergebnis");
+    if (!panel) return;
+    _agentPageClear(panel);
+    const calls = (pipe && (pipe.tool_calls || pipe.tool_log)) || [];
+    const nTools = Array.isArray(calls) ? calls.length : 0;
+    _agentPageAdd(
+      panel,
+      "p",
+      "agent-page-line",
+      "Stage: " + ((pipe && pipe.stage) || "idle")
+    );
+    _agentPageAdd(
+      panel,
+      "p",
+      "agent-page-line",
+      "Ergebnisstatus: " + ((pipe && pipe.result_status) || "—")
+    );
+    _agentPageAdd(panel, "p", "agent-page-line", "Tools: " + nTools);
+    const outs = ((pipe && pipe.worker_outputs) || []).filter(function (o) {
+      return _agentPageOutputMine(o, agentId);
+    });
+    if (!outs.length) {
+      _agentPageAdd(
+        panel,
+        "p",
+        "agent-page-line",
+        "Kein Deliverable für diesen Agenten."
+      );
+      return;
+    }
+    outs.forEach(function (out) {
+      const raw = String((out && out.result) || "");
+      const shown =
+        expert || raw.length <= 600 ? raw : raw.slice(0, 597) + "…";
+      _agentPageAdd(
+        panel,
+        "p",
+        "agent-page-line",
+        (out.name || out.worker || agentId) + (out.task ? " · " + out.task : "")
+      );
+      if (shown) _agentPageAdd(panel, "p", "agent-page-line", shown);
+      const actions = _agentPageAdd(panel, "div", "agent-page-result-actions", "");
+      let idx = -1;
+      if (typeof lastWorkerOutputs !== "undefined" && lastWorkerOutputs) {
+        for (let i = 0; i < lastWorkerOutputs.length; i++) {
+          if (_agentPageOutputMine(lastWorkerOutputs[i], agentId)) {
+            idx = i;
+            break;
+          }
+        }
+      }
+      if (typeof keepWorkerToPersonalWs === "function" || document.getElementById("box3-btn-keep")) {
+        const keepBtn = document.createElement("button");
+        keepBtn.type = "button";
+        keepBtn.className = "btn-ws-sm";
+        keepBtn.textContent = "Behalten";
+        keepBtn.addEventListener("click", function () {
+          if (typeof keepWorkerToPersonalWs === "function") {
+            keepWorkerToPersonalWs(out, idx >= 0 ? idx : 0);
+            return;
+          }
+          const btn = document.getElementById("box3-btn-keep");
+          if (btn) btn.click();
+        });
+        actions.appendChild(keepBtn);
+      }
+      if (document.getElementById("box3-btn-away")) {
+        const awayBtn = document.createElement("button");
+        awayBtn.type = "button";
+        awayBtn.className = "btn-ws-sm";
+        awayBtn.textContent = "Weg";
+        awayBtn.addEventListener("click", function () {
+          if (typeof focusBox3WorkerResult === "function" && idx >= 0) {
+            focusBox3WorkerResult(idx);
+          }
+          const btn = document.getElementById("box3-btn-away");
+          if (btn) btn.click();
+        });
+        actions.appendChild(awayBtn);
+      }
+    });
+  }
+
+  function fillAgentPageEinstellungen(agentId, agent, snap, expert, rights) {
+    const panel = document.getElementById("agent-page-panel-einstellungen");
+    if (!panel) return;
+    _agentPageClear(panel);
+    _agentPageAdd(panel, "h3", "agent-page-h", "Verhalten");
     [
       ["temperature", "Temperature", agent.temperature, SLIDER_DEFAULTS.temperature],
       ["top_p", "Top-P", agent.top_p, SLIDER_DEFAULTS.top_p],
@@ -657,7 +1193,7 @@
       ["presence", "Presence", agent.presence_penalty, SLIDER_DEFAULTS.presence],
     ].forEach(function (row) {
       const p = _agentPageAdd(
-        body,
+        panel,
         "p",
         "agent-page-line",
         row[1] + ": " + paramVal(row[2], row[3]) + " — " + (SLIDER_TIPS[row[0]] || "")
@@ -667,49 +1203,37 @@
     const tuneBtn = document.createElement("button");
     tuneBtn.type = "button";
     tuneBtn.className = "btn-ws-sm";
-    tuneBtn.textContent = "Regler in Box 3 (Reset dort)";
+    tuneBtn.textContent = "Regler in Box 3";
     tuneBtn.addEventListener("click", function () {
       if (typeof openTuneModal === "function") openTuneModal(agentId);
     });
-    body.appendChild(tuneBtn);
-    _agentPageAdd(body, "h3", "agent-page-h", "Prompt");
-    const promptEl = _agentPageAdd(body, "p", "agent-page-line", promptRaw);
-    if (!expert && promptRaw.length > 400) {
-      promptEl.textContent = promptRaw.slice(0, 397) + "…";
-    }
-    _agentPageAdd(body, "h3", "agent-page-h", "Werkzeuge");
-    const tools = (snap && snap.tools) || [];
-    if (Array.isArray(tools) && tools.length) {
-      tools.slice(0, expert ? 40 : 12).forEach(function (t) {
-        _agentPageAdd(
-          body,
-          "p",
-          "agent-page-line",
-          (t.name || "?") + " — " + (t.description || "")
-        );
-      });
-    } else {
-      _agentPageAdd(body, "p", "agent-page-line", "Keine Werkzeugliste in dieser Sitzung.");
-    }
-    const skillHost = _agentPageAdd(body, "div", "agent-page-skills", "");
+    panel.appendChild(tuneBtn);
+    _agentPageAdd(
+      panel,
+      "p",
+      "agent-page-line",
+      "Modell: " + (agent.model || "—") + "  (API-Schlüssel werden nicht angezeigt)"
+    );
+
+    _agentPageAdd(panel, "h3", "agent-page-h", "Fähigkeiten");
+    const skillHost = _agentPageAdd(panel, "div", "agent-page-skills", "");
     skillHost.id = "agent-page-skills";
-    _agentPageAdd(skillHost, "h3", "agent-page-h", "Skills");
     _agentPageAdd(skillHost, "p", "agent-page-line", "Lade Skills…");
-    page.hidden = false;
-    if (typeof bindAgentPage === "function") bindAgentPage();
     function fillSkills(list) {
-      skillHost.textContent = "";
-      _agentPageAdd(skillHost, "h3", "agent-page-h", "Skills");
+      const pageNow = document.getElementById("agent-page");
+      if (!pageNow || pageNow.dataset.agent !== agentId) return;
+      const host = document.getElementById("agent-page-skills") || skillHost;
+      host.textContent = "";
       const mine = (list || []).filter(function (s) {
         const ag = s.agents || [];
         return !ag.length || ag.indexOf(agentId) >= 0;
       });
       if (!mine.length) {
-        _agentPageAdd(skillHost, "p", "agent-page-line", "Keine zugewiesenen Skills.");
+        _agentPageAdd(host, "p", "agent-page-line", "Keine zugewiesenen Skills.");
         return;
       }
       mine.forEach(function (s) {
-        const card = _agentPageAdd(skillHost, "div", "agent-page-skill", "");
+        const card = _agentPageAdd(host, "div", "agent-page-skill", "");
         _agentPageAdd(
           card,
           "p",
@@ -731,18 +1255,23 @@
           "agent-page-line",
           "Auslöser: " + ((s.triggers || []).join(", ") || "manuell / Rollen-Match")
         );
-        _agentPageAdd(
-          card,
-          "p",
-          "agent-page-line",
-          "Daten: Skill-Text unter " + (s.path || "skills/") + " · Quelle " + (s.source || "")
-        );
-        _agentPageAdd(
-          card,
-          "p",
-          "agent-page-line",
-          "Wirkung: Prompt-Text an den Agenten. Grenze: kein Code, keine Extra-Rechte, keine Secrets."
-        );
+        if (expert) {
+          _agentPageAdd(
+            card,
+            "p",
+            "agent-page-line",
+            "Daten: Skill-Text unter " +
+              (s.path || "skills/") +
+              " · Quelle " +
+              (s.source || "")
+          );
+          _agentPageAdd(
+            card,
+            "p",
+            "agent-page-line",
+            "Wirkung: Prompt-Text an den Agenten. Grenze: kein Code, keine Extra-Rechte, keine Secrets."
+          );
+        }
       });
     }
     if (typeof api === "function") {
@@ -756,6 +1285,18 @@
     } else {
       fillSkills([]);
     }
+
+    _agentPageAdd(panel, "h3", "agent-page-h", "Rechte");
+    _agentPageAdd(panel, "p", "agent-page-line", rights);
+    const godOn = !!(snap && snap.god_mode && snap.god_mode.enabled);
+    _agentPageAdd(
+      panel,
+      "p",
+      "agent-page-line",
+      "God: " +
+        (godOn ? "an" : "aus") +
+        " · God-Mode nur über den roten Knopf"
+    );
   }
 
   function bindAgentPage() {
@@ -773,15 +1314,30 @@
         const on = page.dataset.expert === "1";
         page.dataset.expert = on ? "0" : "1";
         expert.textContent = on ? "Expertenansicht" : "Standardansicht";
-        const title = document.getElementById("agent-page-title");
-        const aid =
-          title && title.textContent
-            ? String(title.textContent).split(" — ")[0]
-            : lastClickedAgentId;
-        const agent = AGENTS.find(function (a) {
-          return a.label === aid || a.id === aid;
-        });
-        openAgentPage((agent && agent.id) || lastClickedAgentId || "brainstorm");
+        openAgentPage(page.dataset.agent || lastClickedAgentId || "brainstorm");
+      });
+    }
+    const tabs = document.getElementById("agent-page-tabs");
+    if (tabs && !tabs._bound) {
+      tabs._bound = true;
+      tabs.addEventListener("click", function (ev) {
+        const btn =
+          ev.target && ev.target.closest
+            ? ev.target.closest(".agent-page-tab")
+            : null;
+        if (!btn) return;
+        showAgentPageTab(btn.getAttribute("data-tab") || "jetzt");
+      });
+    }
+    const setTarget = document.getElementById("agent-page-set-target");
+    if (setTarget && !setTarget._bound) {
+      setTarget._bound = true;
+      setTarget.addEventListener("click", function () {
+        const page = document.getElementById("agent-page");
+        const id = (page && page.dataset.agent) || lastClickedAgentId;
+        if (!id) return;
+        sendTarget = id;
+        _paintChatTargets();
       });
     }
   }
@@ -830,6 +1386,9 @@
           ? Number(agent.cost_usd)
           : 0;
       const costStr = cost > 0 ? "$" + cost.toFixed(4) : "$0";
+      const live =
+        typeof agentLiveStatus === "function" ? agentLiveStatus(agent.id) : "";
+      if (live) card.dataset.live = live;
       // eslint-disable-next-line no-unsanitized/property
       card.innerHTML =
         '<div class="card-name">' +
@@ -856,7 +1415,8 @@
         presetLine +
         '<div class="card-status">' +
         statusLabel(agent) +
-        "</div>";
+        "</div>" +
+        (live ? '<div class="card-live">' + live + "</div>" : "");
 
       const ttsInput = card.querySelector(".card-tts input");
       if (ttsInput) {
@@ -912,6 +1472,7 @@
       els.cards.appendChild(card);
     });
     updateBoxBorders();
+    if (typeof _refreshAgentPageLive === "function") _refreshAgentPageLive();
   }
 
   function findAgent(id) {

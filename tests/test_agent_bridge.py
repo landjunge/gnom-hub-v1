@@ -38,7 +38,8 @@ def test_is_live_browser_negative_bare_site_or_domain():
 
 
 def test_resolve_browser_url_known_site():
-    assert "kleinanzeigen" in resolve_browser_url("kleinanzeigen")
+    assert resolve_browser_url("kleinanzeigen") == ""
+    assert "kleinanzeigen" in resolve_browser_url("öffne kleinanzeigen")
 
 
 def test_parse_tool_calls_json():
