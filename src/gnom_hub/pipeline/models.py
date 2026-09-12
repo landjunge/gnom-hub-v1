@@ -74,3 +74,5 @@ class PipelineState:
     flex_wait_remaining: list[dict] = field(default_factory=list)
     send_target: str = "brainstorm"
     result_status: str = ""
+    # Canonical conversation log (Send contract). localStorage is cache only.
+    messages: list[dict] = field(default_factory=list)

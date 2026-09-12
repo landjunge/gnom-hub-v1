@@ -11,6 +11,7 @@ from __future__ import annotations
 import time
 import uuid
 from collections.abc import Callable
+from datetime import datetime, timezone
 from typing import Any
 
 from gnom_hub.agents.manager import AgentManager
@@ -77,6 +78,61 @@ class Orchestrator:
     def _sync_flex_state(self) -> None:
         self._state.flex_job_id = self.flex_desk.job_id
         self._state.flex_questions = self.flex_desk.to_list()
+
+    def _comm_now(self) -> str:
+        return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+    def _record_user(self, text: str, agent: str) -> dict[str, Any]:
+        rec = {
+            "message_id": f"m-{uuid.uuid4().hex[:12]}",
+            "conversation_id": f"conv-{agent}",
+            "target_agent_id": agent,
+            "role": "user",
+            "user_text": text,
+            "visible_text": text,
+            "status": "sent",
+            "source": "user",
+            "accepted_at": self._comm_now(),
+            "created_at": self._comm_now(),
+        }
+        self._state.messages.append(rec)
+        return rec
+
+    def _record_reply(
+        self,
+        *,
+        agent: str,
+        text: str,
+        in_reply_to: str,
+        source: str = "live",
+    ) -> dict[str, Any]:
+        rid = f"r-{uuid.uuid4().hex[:12]}"
+        status = "replied"
+        if source in ("template", "fallback"):
+            status = source
+        rec = {
+            "reply_id": rid,
+            "message_id": rid,
+            "conversation_id": f"conv-{agent}",
+            "target_agent_id": agent,
+            "reply_agent_id": agent,
+            "role": "agent",
+            "in_reply_to": in_reply_to,
+            "visible_text": text,
+            "status": status,
+            "source": source,
+            "created_at": self._comm_now(),
+        }
+        self._state.messages.append(rec)
+        return rec
+
+    def _reply_source(self, text: str) -> str:
+        low = (text or "").lower()
+        if "ziel in einem satz" in low or "mvp mit 3 kernfunktionen" in low:
+            return "template"
+        if (text or "").startswith("(Brainstorm agent is off"):
+            return "fallback"
+        return "live"
 
     def restore_flex_from_state(self) -> None:
         """Rebuild FlexDesk after checkpoint / snapshot reload."""
@@ -266,7 +322,7 @@ class Orchestrator:
         """Send to an explicit target. Never starts Execute."""
         t = str(target or "brainstorm").strip().lower()
         if t not in ALLOWED_SEND_TARGETS:
-            t = "brainstorm"
+            raise ValueError(f"invalid send target: {t}")
         self._state.send_target = t
         if t == "coordinator":
             return self.coordinator_intake(user_text)
@@ -285,6 +341,7 @@ class Orchestrator:
         self._state.user_text = text
         self._state.mode = "brainstorm"
         self._state.error = None
+        user = self._record_user(text, "coordinator")
         mem = self.memory.recall(text)
         self._state.memory_context = mem
         reqs, question = self.coordinator.distill(text, text, mem)
@@ -292,8 +349,27 @@ class Orchestrator:
         self.bus.emit("pipeline.distill", {"requirements": list(reqs)})
         if question is not None:
             self._post_coordinator_clarify(question)
+            body = "Coordinator: Rückfrage in Box 1.\n" + str(question.text)
+            self._record_reply(
+                agent="coordinator",
+                text=body,
+                in_reply_to=user["message_id"],
+                source=self._reply_source(body),
+            )
             return self._state
         self._offer_start_work(reason="coordinator_ready")
+        req_txt = "\n".join(f"- {r}" for r in (reqs or [])[:8]) or "(keine Pakete)"
+        body = (
+            "Coordinator: Auftrag geprüft. Send startet keine Arbeit.\n"
+            f"{req_txt}\n"
+            "Freigabe nur über die sichtbare START-ID in Box 1 oder Arbeit starten."
+        )
+        self._record_reply(
+            agent="coordinator",
+            text=body,
+            in_reply_to=user["message_id"],
+            source=self._reply_source(body + " " + req_txt),
+        )
         self._set_stage(PipelineStage.brainstorm)
         return self._state
 
@@ -304,6 +380,7 @@ class Orchestrator:
             return self._state
         self._state.send_target = "flex"
         self._state.user_text = text
+        user = self._record_user(text, "flex")
         if getattr(self.flex, "enabled", False):
             try:
                 self.flex.absorb(text, self._state.memory_context or "")
@@ -317,6 +394,12 @@ class Orchestrator:
             entry_type="entscheidung",
         )
         self._sync_flex_state()
+        self._record_reply(
+            agent="flex",
+            text="Flex: Nachricht in Box 1. Flex startet keine Arbeit.",
+            in_reply_to=user["message_id"],
+            source="live",
+        )
         self._set_stage(PipelineStage.brainstorm)
         return self._state
 
@@ -327,6 +410,7 @@ class Orchestrator:
             return self._state
         self._state.send_target = worker_id
         self._state.user_text = text
+        user = self._record_user(text, worker_id)
         self._ensure_flex_job()
         if _worker_direct_too_big(text):
             self.flex_desk.ask(
@@ -340,9 +424,26 @@ class Orchestrator:
                 entry_type="entscheidung",
             )
             self._sync_flex_state()
+            self._record_reply(
+                agent=worker_id,
+                text=(f"{worker_id}: Auftrag ist zu groß. Rückfrage in Box 1 — keine Ausführung."),
+                in_reply_to=user["message_id"],
+                source="live",
+            )
             self._set_stage(PipelineStage.clarify)
             return self._state
         self._offer_start_work(reason="worker_direct", workers=worker_id)
+        aid = self._open_assignment_id()
+        start = f"START-{aid}" if aid else "die sichtbare START-ID"
+        self._record_reply(
+            agent=worker_id,
+            text=(
+                f"{worker_id}: verstanden. Send startet keine Arbeit. "
+                f"Freigabe nur über {start} in Box 1 oder Arbeit starten."
+            ),
+            in_reply_to=user["message_id"],
+            source="live",
+        )
         self._set_stage(PipelineStage.brainstorm)
         return self._state
 
@@ -361,22 +462,44 @@ class Orchestrator:
             if is_tool_drill_task(text) and self.tools is not None:
                 self._state.user_text = text
                 self._state.send_target = getattr(self._state, "send_target", "") or "brainstorm"
+                user = self._record_user(text, "brainstorm")
                 self._offer_start_work(reason="tool_drill")
+                aid = self._open_assignment_id()
+                start = f"START-{aid}" if aid else "die sichtbare START-ID"
+                self._record_reply(
+                    agent="brainstorm",
+                    text=(
+                        "Brainstorm: Tool-Drill erkannt. Send startet keine Arbeit. "
+                        f"Freigabe nur über {start} in Box 1 oder Arbeit starten."
+                    ),
+                    in_reply_to=user["message_id"],
+                    source="live",
+                )
                 self._set_stage(PipelineStage.brainstorm)
                 return self._state
 
             # Live browser: Send still does not run tools — Box 1 START-ID only.
             if is_live_browser_task(text) and self.tools is not None:
                 self._state.user_text = text
+                notes = "Live-Browser erkannt — Start nur nach Freigabe in Box 1."
                 self._state.brainstorm_turns = [
                     {"role": "user", "text": text},
-                    {
-                        "role": "brainstorm",
-                        "text": "Live-Browser erkannt — Start nur nach Freigabe in Box 1.",
-                    },
+                    {"role": "brainstorm", "text": notes},
                 ]
                 self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
+                user = self._record_user(text, "brainstorm")
                 self._offer_start_work(reason="browser_nav")
+                aid = self._open_assignment_id()
+                start = f"START-{aid}" if aid else "die sichtbare START-ID"
+                self._record_reply(
+                    agent="brainstorm",
+                    text=(
+                        f"{notes} Send startet keine Arbeit. "
+                        f"Freigabe nur über {start} in Box 1 oder Arbeit starten."
+                    ),
+                    in_reply_to=user["message_id"],
+                    source="live",
+                )
                 self._set_stage(PipelineStage.brainstorm)
                 return self._state
 
@@ -394,9 +517,11 @@ class Orchestrator:
                 prev_task = (self._state.user_text or "").strip()
                 prev_flex_job = self._state.flex_job_id
                 prev_target = getattr(self._state, "send_target", "") or "brainstorm"
+                prev_messages = list(getattr(self._state, "messages", None) or [])
                 self._state = PipelineState(user_text=text, mode="brainstorm")
                 self._state.flex_job_id = prev_flex_job
                 self._state.send_target = prev_target
+                self._state.messages = prev_messages
                 self._sync_flex_state()
                 if _exec_only and prev_turns:
                     # Resolve last real task (browser/HTML/long), not the go-phrase
@@ -434,7 +559,19 @@ class Orchestrator:
                         }
                     )
                     self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
+                    user = self._record_user(text, "brainstorm")
                     self._offer_start_work(reason="go_only")
+                    aid = self._open_assignment_id()
+                    start = f"START-{aid}" if aid else "die sichtbare START-ID"
+                    self._record_reply(
+                        agent="brainstorm",
+                        text=(
+                            f"Brainstorm: Plan liegt vor. Send startet keine Arbeit. "
+                            f"Freigabe nur über {start} in Box 1 oder Arbeit starten."
+                        ),
+                        in_reply_to=user["message_id"],
+                        source="live",
+                    )
                     self._set_stage(PipelineStage.brainstorm)
                     self.bus.emit(
                         "pipeline.brainstorm_ready",
@@ -455,23 +592,7 @@ class Orchestrator:
 
             history = list(self._state.brainstorm_turns)
             self._state.brainstorm_turns.append({"role": "user", "text": text})
-            try:
-                from gnom_hub.tools.worker_prefetch import prefetch_for_brainstorm
-
-                spark = prefetch_for_brainstorm(
-                    text,
-                    bus=self.bus,
-                    tools=getattr(self, "tools", None),
-                    memory=self.memory_store,
-                )
-                if spark:
-                    mem = (mem or "").rstrip() + "\n\n" + spark
-                    self._state.memory_context = mem
-            except Exception as exc:  # noqa: BLE001
-                self.bus.emit(
-                    "pipeline.warning",
-                    {"stage": "brainstorm_prefetch", "error": str(exc)},
-                )
+            # Send must not call tools. Prefetch belongs to Execute, not chat_turn.
 
             self._check_cancel()
             if not self.brainstorm.enabled:
@@ -482,6 +603,13 @@ class Orchestrator:
 
             self._state.brainstorm_turns.append({"role": "brainstorm", "text": notes})
             self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
+            user = self._record_user(text, "brainstorm")
+            self._record_reply(
+                agent="brainstorm",
+                text=str(notes or ""),
+                in_reply_to=user["message_id"],
+                source=self._reply_source(str(notes or "")),
+            )
 
             if self.flex.enabled:
                 absorbed: list[str] = []
@@ -1641,6 +1769,13 @@ class Orchestrator:
         self._stage_t0 = time.perf_counter()
         self._stage_name = stage.value
 
+    def _open_assignment_id(self) -> str:
+        """START-ID from the latest open Flex question (object or dict)."""
+        open_qs = list(self.flex_desk.open_questions() or [])
+        if not open_qs:
+            return ""
+        return _question_assignment_id(open_qs[-1])
+
     def _fail(self, message: str) -> None:
         self._close_stage_timing()
         self._state.stage = PipelineStage.error
@@ -1654,6 +1789,13 @@ class Orchestrator:
                 "stage_timings": dict(self._state.stage_timings),
             },
         )
+
+
+def _question_assignment_id(q: Any) -> str:
+    """FlexQuestion.assignment_id, or dict key if snapshot restored as dict."""
+    if isinstance(q, dict):
+        return str(q.get("assignment_id") or "")
+    return str(getattr(q, "assignment_id", "") or "")
 
 
 def _worker_direct_too_big(text: str) -> bool:

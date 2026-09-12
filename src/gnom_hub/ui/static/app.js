@@ -1255,6 +1255,92 @@
     });
   }
 
+  function pipelineMessageAgent(m) {
+    if (!m || typeof m !== "object") return "brainstorm";
+    const reply = String(m.reply_agent_id || "").trim();
+    if (reply) return reply;
+    const target = String(m.target_agent_id || "").trim();
+    if (target) return target;
+    const conv = String(m.conversation_id || "");
+    if (conv.indexOf("conv-") === 0 && conv.length > 5) return conv.slice(5);
+    return "brainstorm";
+  }
+
+  function pipelineMessageText(m) {
+    let text = String((m && (m.visible_text || m.user_text)) || "");
+    const src = String((m && m.source) || "");
+    if (
+      (src === "template" || src === "fallback") &&
+      text.indexOf("[Vorlage] ") !== 0
+    ) {
+      text = "[Vorlage] " + text;
+    }
+    return text;
+  }
+
+  function pipelineMessageWho(m) {
+    if (!m) return "system";
+    if (m.role === "user") return "you";
+    if (m.role === "agent") return pipelineMessageAgent(m);
+    return String(m.role || "system");
+  }
+
+  /** Server messages are the conversation truth — chat log + Box2, not a second copy. */
+  function renderPipelineMessages(messages, activeTarget) {
+    if (!Array.isArray(messages) || !messages.length) return;
+    const byAgent = {};
+    messages.forEach(function (m) {
+      if (!m || typeof m !== "object") return;
+      const aid = pipelineMessageAgent(m);
+      if (!byAgent[aid]) byAgent[aid] = [];
+      let ts = "";
+      const rawTs = String(m.created_at || m.accepted_at || "");
+      if (rawTs.length >= 19) ts = rawTs.slice(11, 19);
+      byAgent[aid].push({
+        who: pipelineMessageWho(m),
+        text: pipelineMessageText(m),
+        ts: ts,
+      });
+    });
+    const prevLog = els.chatLog;
+    Object.keys(byAgent).forEach(function (aid) {
+      const log =
+        typeof chatLogElForAgent === "function" ? chatLogElForAgent(aid) : null;
+      if (log && typeof fillChatLogEl === "function") {
+        fillChatLogEl(log, byAgent[aid]);
+        return;
+      }
+      if (!log) return;
+      els.chatLog = log;
+      log.innerHTML = "";
+      byAgent[aid].forEach(function (entry) {
+        if (typeof renderChatLine === "function") {
+          renderChatLine(entry.who, entry.text, entry.ts);
+        }
+      });
+    });
+    els.chatLog = prevLog;
+    if (typeof persistChatLog === "function") persistChatLog();
+
+    const active = activeTarget || sendTarget || "brainstorm";
+    const conv = messages.filter(function (m) {
+      return m && pipelineMessageAgent(m) === active;
+    });
+    if (!conv.length) return;
+    const lines = [];
+    conv.forEach(function (m) {
+      const role = m.role === "user" ? "You" : pipelineMessageAgent(m);
+      lines.push("");
+      lines.push(role + ":");
+      lines.push(pipelineMessageText(m));
+    });
+    const body = lines.join("\n").replace(/^\n/, "");
+    if (typeof setBox2 === "function") setBox2(body);
+    if (active !== "brainstorm" && typeof setBox2Agent === "function") {
+      setBox2Agent(active, body, active);
+    }
+  }
+
   function applySnapshot(snap) {
     if (!snap) {
       lastSnapshot = null;
@@ -1589,6 +1675,14 @@
         })
       );
       setBox2Agent("coordinator", req.join("\n"), "Coordinator");
+    }
+
+    /* Canonical conversation wins over brainstorm_turns / notes (same content as chat). */
+    if (Array.isArray(p.messages) && p.messages.length) {
+      renderPipelineMessages(
+        p.messages,
+        p.send_target || sendTarget || "brainstorm"
+      );
     }
 
     lastCanExecute = !!p.can_execute;
@@ -6317,7 +6411,8 @@
     const raw = (els.chatInput.value || "").trim();
     if (!raw || chatBusy) return;
     const text = composeChatWithFlags(raw);
-    appendChat("you", text);
+    const target = sendTarget || "brainstorm";
+    appendChat("you", text, target);
     pushChatHist(raw);
     els.chatInput.value = "";
     if (typeof fitChatInput === "function") fitChatInput();
@@ -6329,9 +6424,23 @@
     setChatBusy(true);
     // Prefer long poll always for async jobs (badge may lag bootstrap)
     const pollMs = 180000;
-    const target = sendTarget || "brainstorm";
-    appendChat("system", "Send → " + target + "…");
+    appendChat("system", "Send → " + target + "…", target);
     toast("Send = " + target + " · keine Ausführung", "info");
+
+    function applySendSnap(snap) {
+      applySnapshot(snap);
+      const msgs = snap && snap.pipeline && snap.pipeline.messages;
+      if (
+        Array.isArray(msgs) &&
+        msgs.length &&
+        typeof renderPipelineMessages === "function"
+      ) {
+        renderPipelineMessages(
+          msgs,
+          (snap.pipeline && snap.pipeline.send_target) || target
+        );
+      }
+    }
 
     try {
       const start = await api("POST", "/api/chat", { text: text, target: target });
@@ -6348,26 +6457,27 @@
         const job = await pollJob(start.job_id, pollMs);
         snap = job.snapshot || (await api("GET", "/api/state"));
         if (job.status === "error") {
-          appendChat("system", "Brainstorm error: " + (job.error || "?"));
+          appendChat("system", "Brainstorm error: " + (job.error || "?"), target);
           toast(job.error || "Brainstorm error", "error");
-          applySnapshot(snap);
+          applySendSnap(snap);
           return;
         }
         if (job.status === "cancelled") {
-          appendChat("system", "Job cancelled.");
+          appendChat("system", "Job cancelled.", target);
           toast("Cancelled", "info");
           hideBusyBanner();
-          applySnapshot(snap);
+          applySendSnap(snap);
           return;
         }
       }
-      applySnapshot(snap);
+      applySendSnap(snap);
       const stage =
         (snap.pipeline && snap.pipeline.stage) || start.stage || "";
       if (stage === "brainstorm") {
         appendChat(
           "system",
-          "Brainstorm — Send bleibt Dialog. Umsetzen: Arbeit starten oder Ja in Box 1."
+          "Send an " + target + " — keine Ausführung.",
+          target
         );
         toast("Send = sprechen · Arbeit starten / Ja in Box 1 = Arbeit", "ok");
       } else if (stage === "done") {
@@ -6375,29 +6485,31 @@
         if (okDeliverable) {
           appendChat(
             "system",
-            "Umsetzung aus Kontext (Befehl oder dein Ja nach Nachfrage) — siehe Box 3."
+            "Umsetzung aus Kontext (Befehl oder dein Ja nach Nachfrage) — siehe Box 3.",
+            target
           );
           toast("Umgesetzt · Box 3", "ok");
         } else {
           appendChat(
             "system",
-            "Pipeline fertig, aber kein gültiges Deliverable — siehe Box 3."
+            "Pipeline fertig, aber kein gültiges Deliverable — siehe Box 3.",
+            target
           );
           toast("Kein Deliverable · Box 3", "error");
         }
         focusBox3();
       } else if (stage === "clarify") {
-        appendChat("system", "Need a clarify answer in Box 1.");
+        appendChat("system", "Need a clarify answer in Box 1.", target);
         toast("Clarify needed in Box 1", "info");
       } else if (stage === "cancelled") {
-        appendChat("system", "Job cancelled.");
+        appendChat("system", "Job cancelled.", target);
         toast("Cancelled", "info");
       }
     } catch (err) {
       if (err && (err.status === 409 || (err.detail && err.detail.busy))) {
         handleBusyError(err, text);
       } else {
-        appendChat("system", "Chat failed: " + err.message);
+        appendChat("system", "Chat failed: " + err.message, target);
         toast("Chat failed: " + err.message, "error");
       }
     } finally {
@@ -6495,10 +6607,11 @@
     }
   }
 
-  function appendChat(who, text) {
-    /* Crux: write into active agent chat layer */
+  function appendChat(who, text, agentId) {
+    /* Crux: write into send-target layer — never the clicked card */
+    const aid = agentId || sendTarget || "brainstorm";
     if (typeof syncActiveChatLog === "function") {
-      syncActiveChatLog(lastClickedAgentId || "brainstorm");
+      syncActiveChatLog(aid);
     }
     if (!els.chatLog) return;
     renderChatLine(who, text, formatChatTime());
@@ -6536,7 +6649,7 @@
       els.tipRoot.hidden = false;
       els.tipTitle.textContent = "Help";
       els.tipHow.textContent =
-        "Send = brainstorm. Execute = workers. Send+Exec = both. Card click = tune.";
+        "Send = reden. Arbeit starten = Worker.";
       els.tipExample.textContent =
         "Keyboard: Enter send · Ctrl/⌘+Enter execute · Ctrl/⌘+S save · Esc cancel/close FS";
       toast("Help offline: " + err.message, "error");
