@@ -8214,6 +8214,17 @@
 
   function box2AgentTabLabel(role) {
     const id = String(role || "").toLowerCase();
+    if (id === "brainstorm") return "Brain";
+    if (id === "flex") return "Flex";
+    if (id === "coordinator") return "Koord";
+    if (id === "memory") return "Mem";
+    const wm = /^worker(\d+)$/.exec(id);
+    if (wm) return "A" + wm[1];
+    return "Antw";
+  }
+
+  function box2AgentTabTitle(role) {
+    const id = String(role || "").toLowerCase();
     if (id === "brainstorm") return "Brainstorm";
     if (id === "flex") return "Flex";
     if (id === "coordinator") return "Koordinator";
@@ -8278,6 +8289,7 @@
       btn.setAttribute("role", "tab");
       btn.setAttribute("aria-selected", role === pick ? "true" : "false");
       btn.textContent = box2AgentTabLabel(role);
+      btn.title = box2AgentTabTitle(role);
       if (typeof markOwner === "function") {
         markOwner(btn, role);
       } else if (typeof COLOR_HEX !== "undefined" && COLOR_HEX[role]) {
@@ -8325,12 +8337,12 @@
       const btnPrev = document.createElement("button");
       btnPrev.type = "button";
       btnPrev.className = "worker-mode-btn is-active";
-      btnPrev.textContent = "Vorschau";
+      btnPrev.textContent = "Sicht";
       btnPrev.dataset.mode = "preview";
       const btnSrc = document.createElement("button");
       btnSrc.type = "button";
       btnSrc.className = "worker-mode-btn";
-      btnSrc.textContent = "Quelle";
+      btnSrc.textContent = "Code";
       btnSrc.dataset.mode = "source";
       modes.appendChild(btnPrev);
       modes.appendChild(btnSrc);

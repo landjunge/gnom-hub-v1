@@ -3924,9 +3924,12 @@ a:focus-visible {
 .box2-reply-tabs {
   flex: 0 0 auto;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: stretch;
   gap: 0;
   padding: 0;
+  width: 100%;
   min-height: var(--tab-h);
   border-bottom: 1px solid var(--border);
   background: var(--bg-strip, #15171b);
@@ -3937,36 +3940,64 @@ a:focus-visible {
   display: none !important;
 }
 .box2-reply-tab {
+  flex: 1 1 0;
+  min-width: 0;
   height: var(--tab-h);
   min-height: var(--tab-h);
-  padding: 0 12px;
+  padding: 0 4px;
   border: 1px solid var(--border-strong);
   background: var(--bg-card);
-  color: var(--text);
+  color: #fff;
   border-radius: 0;
   font-size: 12px;
   font-family: inherit;
   line-height: 1;
   cursor: pointer;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .box2-reply-tab:hover:not(:disabled) {
   background: var(--bg-elev);
+  color: #fff;
 }
 .box2-reply-tab.is-on {
   background: var(--bg-panel);
-  color: var(--owner-color, var(--text));
+  color: #fff;
   font-weight: 600;
   box-shadow: inset 0 -2px 0 var(--owner-color, var(--border-strong));
   outline: none;
 }
-#box2 .worker-mode-btn {
+#box2 .dyn-bar {
+  justify-content: center;
+  width: 100%;
+  gap: 0;
+  padding: 0;
+}
+#box2 .dyn-kind {
+  display: none;
+}
+#box2 .worker-panel-modes {
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
+  gap: 0;
+}
+#box2 .worker-mode-btn,
+#box2 .worker-mode-btn.is-active,
+#box2 .worker-mode-btn:hover {
+  flex: 1 1 0;
+  min-width: 0;
   height: var(--btn-h);
   min-height: var(--btn-h);
-  padding: 0 10px;
+  padding: 0 4px;
   border: 1px solid var(--border-strong);
   border-radius: 0;
   font-size: 12px;
   line-height: 1;
+  color: #fff;
+  text-align: center;
 }
 #box2 .dyn-source {
   font-size: 12px;
