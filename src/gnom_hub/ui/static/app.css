@@ -44,6 +44,9 @@
   /* Alias — Box 1 Flex chrome must follow the yellow agent token, never lilac. */
   --flex: var(--c-flex);
   --owner-color: var(--c-flex);
+  /* All desk buttons/tabs: one height, 30% under the old 28px. */
+  --btn-h: 20px;
+  --tab-h: 20px;
 }
 
 * {
@@ -167,7 +170,7 @@ html, body {
 .btn-archive,
 .btn-system,
 .btn-workspace {
-  height: 28px;
+  height: var(--btn-h);
   min-width: 64px;
   width: auto;
   padding: 0 10px;
@@ -2266,8 +2269,8 @@ body.worker-fs-open {
 
 .chat-input {
   flex: 1 1 auto;
-  height: 28px;
-  min-height: 28px;
+  height: var(--btn-h);
+  min-height: var(--btn-h);
   max-height: 72px;
   border: 1px solid var(--border-strong);
   border-radius: 0;
@@ -2295,7 +2298,7 @@ body.worker-fs-open {
 .btn-mic {
   flex: 0 0 auto;
   min-width: 64px;
-  height: 28px;
+  height: var(--btn-h);
   border: 1px solid var(--border-strong);
   border-radius: 0;
   background: var(--bg-card);
@@ -2307,7 +2310,7 @@ body.worker-fs-open {
 .btn-td {
   flex: 0 0 auto;
   min-width: 64px;
-  height: 28px;
+  height: var(--btn-h);
   border: 1px solid var(--border-strong);
   border-radius: 0;
   background: var(--bg-card);
@@ -2326,7 +2329,7 @@ body.worker-fs-open {
 .btn-send {
   flex: 0 0 auto;
   min-width: 64px;
-  height: 28px;
+  height: var(--btn-h);
   border: 1px solid var(--border-strong);
   border-radius: 0;
   background: var(--bg-card);
@@ -2338,7 +2341,7 @@ body.worker-fs-open {
 .btn-execute {
   flex: 0 0 auto;
   min-width: 64px;
-  height: 28px;
+  height: var(--btn-h);
   border: 1px solid var(--border-strong);
   border-radius: 0;
   background: var(--bg-elev);
@@ -2836,7 +2839,7 @@ body.phase3-off .btn-archive {
 .flex-review-note {
   flex: 1;
   min-width: 0;
-  height: 28px;
+  height: var(--btn-h);
   border: 1px solid var(--border-strong);
   border-radius: 0;
   background: var(--bg-card);
@@ -2849,7 +2852,7 @@ body.phase3-off .btn-archive {
   border-color: var(--c-flex);
 }
 .flex-review-note-save {
-  height: 28px;
+  height: var(--btn-h);
   padding: 0 10px;
   border: 1px solid var(--border-strong);
   border-radius: 0;
@@ -3418,8 +3421,6 @@ a:focus-visible {
   --t-body: 12px;
   --t-title: 14px;
   --t-app: 16px;
-  --btn-h: 28px;
-  --tab-h: 32px;
 }
 .agent-page,
 .agent-page * {
@@ -3590,7 +3591,7 @@ a:focus-visible {
 }
 .agent-page-tab {
   height: var(--tab-h);
-  min-height: 32px;
+  min-height: var(--tab-h);
   padding: 0 12px;
   border: 1px solid var(--border-strong);
   background: var(--bg-card);
@@ -3897,7 +3898,7 @@ a:focus-visible {
   color: var(--text);
 }
 #box2.box2-has-tabs > #box2-layers {
-  top: 32px;
+  top: var(--tab-h);
 }
 .box2-reply-tabs {
   flex: 0 0 auto;
@@ -3905,7 +3906,7 @@ a:focus-visible {
   flex-wrap: wrap;
   gap: 0;
   padding: 0;
-  min-height: 32px;
+  min-height: var(--tab-h);
   border-bottom: 1px solid var(--border);
   background: var(--bg-strip, #15171b);
   position: relative;
@@ -3915,8 +3916,8 @@ a:focus-visible {
   display: none !important;
 }
 .box2-reply-tab {
-  height: 32px;
-  min-height: 32px;
+  height: var(--tab-h);
+  min-height: var(--tab-h);
   padding: 0 12px;
   border: 1px solid var(--border-strong);
   background: var(--bg-card);
@@ -3938,8 +3939,8 @@ a:focus-visible {
   outline: none;
 }
 #box2 .worker-mode-btn {
-  height: 28px;
-  min-height: 28px;
+  height: var(--btn-h);
+  min-height: var(--btn-h);
   padding: 0 10px;
   border: 1px solid var(--border-strong);
   border-radius: 0;
@@ -3983,7 +3984,7 @@ a:focus-visible {
 #box1-content button:not(.box1-choice-card),
 #box1-content input,
 #box1-content textarea {
-  height: 28px;
+  height: var(--btn-h);
   font-size: 12px;
   border-radius: 0;
   border-color: var(--border-strong);
@@ -3991,7 +3992,7 @@ a:focus-visible {
 }
 #box1-content .box1-choice-card {
   height: auto;
-  min-height: 28px;
+  min-height: var(--btn-h);
   font-size: 12px;
 }
 
@@ -4012,8 +4013,8 @@ a:focus-visible {
 #btn-mic,
 #btn-td,
 #btn-cancel {
-  height: 28px;
-  min-height: 28px;
+  height: var(--btn-h);
+  min-height: var(--btn-h);
   border: 1px solid var(--border-strong);
   border-radius: 0;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;

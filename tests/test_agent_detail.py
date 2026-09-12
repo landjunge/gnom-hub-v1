@@ -210,5 +210,5 @@ def test_css_agent_page_tokens():
     assert "--border-strong: #5c616a" in CSS
     assert "--border-hover: #6b7280" in CSS
     assert "--ok: #3d9b6a" in CSS
-    assert "--btn-h: 28px" in CSS
-    assert "--tab-h: 32px" in CSS
+    assert "--btn-h: 20px" in CSS
+    assert "--tab-h: 20px" in CSS

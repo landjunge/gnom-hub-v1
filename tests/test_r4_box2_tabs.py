@@ -114,14 +114,16 @@ def test_render_dynamic_content_preview_source_are_vorschau_quelle():
     assert _TC_QUELLE.search(body), 'renderDynamicContent must set textContent = "Quelle"'
 
 
-def test_box2_reply_tab_height_32px():
-    """Reply tabs are 32px tall (R2 --tab-h)."""
+def test_box2_reply_tab_height_matches_buttons():
+    """Reply tabs share --tab-h with all desk buttons (20px)."""
     bodies = _css_rules_for(".box2-reply-tab")
     assert bodies, "missing .box2-reply-tab in app.css"
     joined = "\n".join(bodies)
-    assert re.search(r"height\s*:\s*(32px|var\(--tab-h\))", joined), (
-        ".box2-reply-tab must set height: 32px or var(--tab-h); got " + joined.strip()
+    assert re.search(r"height\s*:\s*(20px|var\(--tab-h\))", joined), (
+        ".box2-reply-tab must set height: 20px or var(--tab-h); got " + joined.strip()
     )
+    css = CSS
+    assert "--btn-h: 20px" in css and "--tab-h: 20px" in css
 
 
 def test_box2_reply_tab_active_uses_agent_color_not_brainstorm_outline():
