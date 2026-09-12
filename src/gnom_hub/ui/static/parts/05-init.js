@@ -124,6 +124,12 @@
           closeWorkerFullscreen();
           return;
         }
+        const agentPage = document.getElementById("agent-page");
+        if (agentPage && !agentPage.hidden) {
+          ev.preventDefault();
+          closeAgentPage();
+          return;
+        }
         if (chatBusy) {
           ev.preventDefault();
           cancelCurrentJob();
