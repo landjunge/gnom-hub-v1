@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=175" />
+  <link rel="stylesheet" href="/static/app.css?v=176" />
   <!-- Tailwind utilities for Chat module (preflight OFF) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -63,8 +63,8 @@
         <button type="button" id="btn-workspace" class="btn-workspace" data-tooltip-id="workspace" title="Temp / permanent workspace">
           Workspace
         </button>
-        <button type="button" id="btn-tools" class="btn-workspace" title="List and call registered tools">
-          Tools
+        <button type="button" id="btn-tools" class="btn-workspace" title="Werkzeuge listen und ausführen">
+          Werkzeuge
         </button>
         <button type="button" id="btn-clear-chat" class="btn-clear-chat" title="Clear chat log (this browser)">
           Clear chat
@@ -742,7 +742,11 @@
         <input id="cu-shell" class="tune-input" type="text" placeholder="Shell (Allowlist: ls pwd date …)" style="flex:1;min-width:140px" value="pwd" />
         <button type="button" id="cu-shell-btn" class="btn-ws-sm">Shell</button>
       </div>
-      <pre id="tools-result" class="trace-body muted" style="max-height:200px">Werkzeuge + Computer-Nutzung. Ohne God-Mode nur Trockenlauf. Echte Maus/Tastatur braucht God an + pyautogui.</pre>
+      <div class="tools-result-modes" role="tablist" aria-label="Ergebnis">
+        <button type="button" id="tools-result-sicht" class="btn-ws-sm is-on">Sicht</button>
+        <button type="button" id="tools-result-code" class="btn-ws-sm">Code</button>
+      </div>
+      <pre id="tools-result" class="trace-body muted" style="max-height:200px">Werkzeuge und Computer-Nutzung. Ohne God-Badge nur Trockenlauf. Echte Maus und Tastatur brauchen den roten God-Knopf.</pre>
     </div>
   </div>
 
@@ -765,6 +769,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=173"></script>
+  <script src="/static/app.js?v=174"></script>
 </body>
 </html>

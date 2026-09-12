@@ -159,6 +159,9 @@
   let lastSnapshot = null; // latest hub snapshot (tools history etc.)
   let lastToolCalls = []; // pipeline.tool_calls for Tools modal history
   let manualToolCalls = []; // this browser session (Tools Run / Fetch)
+  let toolsResultMode = "preview";
+  let lastToolsSicht = "";
+  let lastToolsCode = "";
   let lastDryRunKey = ""; // avoid re-toasting dry-run God hint
   let lastPlanKey = ""; // avoid re-toasting resolved plan mode
   let currentJobId = null;
