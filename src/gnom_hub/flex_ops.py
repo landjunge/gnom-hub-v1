@@ -27,7 +27,7 @@ class FlexOpsMixin:
             return {
                 "active": False,
                 "title": "Flex",
-                "question": "Nach einem Ergebnis fragt Flex hier nach Feedback.",
+                "question": "Nach einem Ergebnis fragt Flex hier nach Rückmeldung.",
                 "buttons": [],
                 "hint": "Box 1 = Flex lernt & steuert",
                 "deliverable_ok": False,
@@ -149,7 +149,7 @@ class FlexOpsMixin:
 
         return {
             "active": True,
-            "title": "Flex · Feedback",
+            "title": "Flex · Rückmeldung",
             "question": question,
             "buttons": buttons[:10],
             "hint": "Klick = lernen · Bauen fragt in Box 1",

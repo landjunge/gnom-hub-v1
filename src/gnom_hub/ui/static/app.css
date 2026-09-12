@@ -257,12 +257,13 @@ html, body {
   background: rgba(200, 60, 45, 0.75);
 }
 .btn-cancel {
-  flex: 0 0 72px;
+  flex: 0 0 auto;
+  min-width: 64px;
   height: 28px;
-  border: 1px solid var(--border);
-  border-radius: 3px;
+  border: 1px solid var(--err);
+  border-radius: 0;
   background: var(--bg-card);
-  color: var(--text-muted);
+  color: var(--err);
   font-size: 12px;
   cursor: pointer;
 }
@@ -281,9 +282,9 @@ html, body {
   border-left: 3px solid var(--owner-color, #888);
   background: var(--bg-elev, #24262d);
   color: var(--text, #e2e4e9);
-  border-radius: 4px;
+  border-radius: 0;
   padding: 2px 7px;
-  font-size: 11px;
+  font-size: 10px;
   cursor: pointer;
 }
 .chat-target.is-on {
@@ -469,9 +470,9 @@ html, body {
   padding: 4px 6px;
   margin-bottom: 2px;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: 0;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .cold-list li:hover,
@@ -491,11 +492,11 @@ html, body {
 }
 
 .btn-cold-close {
-  height: 24px;
+  height: 28px;
   padding: 0 10px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: #343a40;
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
+  background: var(--bg-elev);
   color: var(--text);
   font-size: 12px;
   cursor: pointer;
@@ -903,7 +904,7 @@ html, body {
 }
 
 .box1-overlay .tip-example {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-muted);
   margin: 6px 0 0;
   flex: 0 0 auto;
@@ -1601,6 +1602,20 @@ body.worker-fs-open {
   margin: 0;
 }
 
+.box1-card,
+#box1-content .box1-placeholder {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  margin: 0 0 8px;
+  font-size: 12px;
+}
+
 /* Box 1 tooltip panel */
 .box1-tooltip[hidden],
 .clarify[hidden] {
@@ -1625,7 +1640,7 @@ body.worker-fs-open {
 }
 
 .tip-example::before {
-  content: "Example: ";
+  content: "Beispiel: ";
   font-style: normal;
   font-weight: 600;
   color: var(--text-muted);
@@ -1652,9 +1667,9 @@ body.worker-fs-open {
 .btn-clarify {
   min-width: 72px;
   height: 28px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: #343a40;
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
+  background: var(--bg-elev);
   color: var(--text);
   font-size: 12px;
   cursor: pointer;
@@ -1730,7 +1745,7 @@ body.worker-fs-open {
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--c-flex) 35%, var(--border, #333));
   border-left: 3px solid var(--c-flex);
-  border-radius: 8px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--bg-panel, #14161a) 92%, var(--c-flex));
 }
 .flex-ask #flex-ask-title,
@@ -1759,7 +1774,7 @@ body.worker-fs-open {
   padding: 6px 7px;
   border: 1px solid var(--border, #333);
   border-left: 3px solid var(--owner-color, var(--c-flex));
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--bg-card, #1e1f24);
 }
 .flex-ask-text { margin: 0; color: var(--text, #d8dbe0); font-size: 12px; line-height: 1.3; }
@@ -1767,13 +1782,14 @@ body.worker-fs-open {
 .flex-ask-hint { margin: 0; font-size: 10px; }
 .flex-ask-btns { display: flex; flex-wrap: wrap; gap: 4px; }
 .flex-ask-btn {
-  border: 1px solid var(--border, #333);
+  border: 1px solid var(--border-strong, #5c616a);
   background: var(--bg-elev, #222);
   color: var(--text, #d8dbe0);
-  border-radius: 4px;
-  padding: 2px 7px;
+  border-radius: 0;
+  height: 28px;
+  padding: 0 10px;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 12px;
 }
 .flex-ask-btn.is-on {
   outline: 2px solid var(--text, #d8dbe0);
@@ -1784,11 +1800,13 @@ body.worker-fs-open {
 .flex-ask-free input {
   flex: 1;
   min-width: 0;
+  height: 28px;
   background: var(--bg, #121316);
   color: var(--text, #d8dbe0);
-  border: 1px solid var(--border, #333);
-  border-radius: 6px;
+  border: 1px solid var(--border-strong, #5c616a);
+  border-radius: 0;
   padding: 4px 8px;
+  font-size: 12px;
 }
 
 /* Flex feedback panel — in Box 1 under placeholder */
@@ -1809,7 +1827,7 @@ body.worker-fs-open {
   background: color-mix(in srgb, var(--bg-panel, #14161a) 92%, var(--c-flex));
   border: 1px solid color-mix(in srgb, var(--c-flex) 35%, var(--border, #333));
   border-left: 3px solid var(--c-flex);
-  border-radius: 10px;
+  border-radius: 0;
   margin: 8px 0 10px;
 }
 
@@ -1831,7 +1849,7 @@ body.worker-fs-open {
 
 .flex-review-title {
   font-weight: 600;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--c-flex);
   display: flex;
   align-items: center;
@@ -1843,7 +1861,7 @@ body.worker-fs-open {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   padding: 2px 6px;
-  border-radius: 999px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--c-flex) 25%, var(--bg-card));
   color: var(--text);
 }
@@ -1863,12 +1881,13 @@ body.worker-fs-open {
 }
 
 .flex-review-btn {
-  border: 1px solid var(--border);
-  border-radius: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
   background: var(--bg-card);
   color: var(--text);
   font-size: 12px;
-  padding: 6px 10px;
+  height: 28px;
+  padding: 0 10px;
   cursor: pointer;
   line-height: 1.2;
 }
@@ -1888,7 +1907,7 @@ body.worker-fs-open {
 
 .flex-review-hint {
   margin: 0;
-  font-size: 11px;
+  font-size: 10px;
 }
 
 /* Box 3 must show worker deliverable on top — no hunting layers */
@@ -2242,19 +2261,20 @@ body.worker-fs-open {
   gap: 6px;
   padding: 6px 8px;
   border-top: 1px solid var(--border);
+  border-radius: 0;
 }
 
 .chat-input {
   flex: 1 1 auto;
-  height: 32px;
-  min-height: 32px;
+  height: 28px;
+  min-height: 28px;
   max-height: 72px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
   background: var(--bg);
   color: var(--text);
-  padding: 6px 8px;
-  font-size: 13px;
+  padding: 4px 8px;
+  font-size: 12px;
   line-height: 1.25;
   resize: none;
   overflow-y: auto;
@@ -2273,11 +2293,24 @@ body.worker-fs-open {
 }
 
 .btn-mic {
-  flex: 0 0 48px;
+  flex: 0 0 auto;
+  min-width: 64px;
   height: 28px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: #343a40;
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
+  background: var(--bg-card);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.btn-td {
+  flex: 0 0 auto;
+  min-width: 64px;
+  height: 28px;
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
+  background: var(--bg-card);
   color: var(--text);
   font-size: 12px;
   cursor: pointer;
@@ -2291,21 +2324,23 @@ body.worker-fs-open {
 }
 
 .btn-send {
-  flex: 0 0 64px;
+  flex: 0 0 auto;
+  min-width: 64px;
   height: 28px;
-  border: 1px solid var(--border);
-  border-radius: 3px;
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
   background: var(--bg-card);
   color: var(--text);
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
 }
 
 .btn-execute {
-  flex: 0 0 78px;
+  flex: 0 0 auto;
+  min-width: 64px;
   height: 28px;
-  border: 1px solid #3f434c;
-  border-radius: 3px;
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
   background: var(--bg-elev);
   color: var(--text);
   font-size: 12px;
@@ -2779,7 +2814,7 @@ body.phase3-off .btn-archive {
 .chat-flag {
   width: 16px;
   height: 16px;
-  border-radius: 3px;
+  border-radius: 0;
   border: 1px solid color-mix(in srgb, var(--flag-color, #888) 70%, #000);
   background: var(--flag-color, #888);
   padding: 0;
@@ -2801,9 +2836,9 @@ body.phase3-off .btn-archive {
 .flex-review-note {
   flex: 1;
   min-width: 0;
-  height: 30px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
+  height: 28px;
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
   background: var(--bg-card);
   color: var(--text);
   font-size: 12px;
@@ -2814,13 +2849,13 @@ body.phase3-off .btn-archive {
   border-color: var(--c-flex);
 }
 .flex-review-note-save {
-  height: 30px;
+  height: 28px;
   padding: 0 10px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
   background: var(--bg-card);
   color: var(--text);
-  font-size: 11px;
+  font-size: 12px;
   cursor: pointer;
   white-space: nowrap;
 }
@@ -3107,11 +3142,11 @@ a:focus-visible {
 .box1-choice-cards {
   --owner-color: var(--c-brainstorm);
   margin: 4px 0 6px;
-  padding: 4px 6px 6px;
+  padding: 8px 10px;
   border: 1px solid var(--border, #333);
   border-left: 3px solid var(--owner-color, var(--c-brainstorm));
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--bg, #0d0f12) 88%, #1a2330);
+  border-radius: 0;
+  background: var(--bg-card);
   max-height: min(28vh, 200px);
   overflow: auto;
   scrollbar-width: none;
@@ -3141,7 +3176,7 @@ a:focus-visible {
   margin-bottom: 4px;
 }
 .box1-choice-title {
-  font-size: 0.68rem;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -3177,8 +3212,8 @@ a:focus-visible {
   gap: 1px;
   text-align: left;
   width: 100%;
-  padding: 5px 8px;
-  border-radius: 6px;
+  padding: 8px 10px;
+  border-radius: 0;
   border: 1px solid var(--border, #333);
   border-left: 3px solid var(--owner-color, var(--c-brainstorm));
   background: color-mix(in srgb, #141820 90%, var(--owner-color, var(--c-brainstorm)));
@@ -3200,14 +3235,14 @@ a:focus-visible {
   background: color-mix(in srgb, #6bcf8e 22%, #141820);
 }
 .box1-choice-card .choice-label {
-  font-size: 0.62rem;
+  font-size: 10px;
   font-weight: 700;
   color: var(--owner-color, var(--accent-hi, #7db7ff));
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
 .box1-choice-card .choice-text {
-  font-size: 0.78rem;
+  font-size: 12px;
   line-height: 1.25;
   color: var(--text, #e8eaed);
 }
@@ -3869,3 +3904,117 @@ a:focus-visible {
   cursor: pointer;
 }
 .box2-reply-tab.is-on { outline: 1px solid var(--c-brainstorm, #ef5350); }
+
+/* R4.1 Box 1 + chat input row — square desk, R2 tokens, 28px controls.
+   ID selectors beat Tailwind rounded-md / h-8 / text-[13px] on these nodes. */
+#box1-content,
+#box1-content * {
+  border-radius: 0;
+}
+#box1-content {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--bg-panel);
+}
+#box1-content .tip-title,
+#box1-content .flex-review-title {
+  font-size: 14px;
+}
+#box1-content .flex-ask-meta,
+#box1-content .flex-ask-hint,
+#box1-content .flex-review-badge,
+#box1-content .flex-review-hint,
+#box1-content .box1-choice-title,
+#box1-content .choice-label,
+#box1-content .tip-example,
+#box1-content .agent-explain-head,
+#box1-content .agent-explain-foot {
+  font-size: 10px;
+}
+#box1-content button:not(.box1-choice-card),
+#box1-content input,
+#box1-content textarea {
+  height: 28px;
+  font-size: 12px;
+  border-radius: 0;
+  border-color: var(--border-strong);
+  font-family: inherit;
+}
+#box1-content .box1-choice-card {
+  height: auto;
+  min-height: 28px;
+  font-size: 12px;
+}
+
+.chat-input-row,
+.chat-input,
+#chat-input,
+.btn-send,
+.btn-execute,
+.btn-mic,
+.btn-td,
+.btn-cancel {
+  border-radius: 0;
+}
+
+#chat-input,
+#btn-send,
+#btn-execute,
+#btn-mic,
+#btn-td,
+#btn-cancel {
+  height: 28px;
+  min-height: 28px;
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 12px;
+  line-height: 1;
+}
+
+#chat-input {
+  background: var(--bg);
+  color: var(--text);
+  max-height: 72px;
+  padding: 4px 8px;
+  line-height: 1.25;
+}
+
+#btn-send,
+#btn-mic,
+#btn-td,
+#btn-execute {
+  padding: 0 10px;
+  width: auto;
+  min-width: 64px;
+  flex: 0 0 auto;
+  background: var(--bg-card);
+  color: var(--text);
+}
+
+#btn-execute {
+  background: var(--bg-elev);
+  font-weight: 600;
+}
+
+#btn-cancel {
+  padding: 0 10px;
+  width: auto;
+  min-width: 64px;
+  flex: 0 0 auto;
+  background: var(--bg-card);
+  color: var(--err);
+  border-color: var(--err);
+}
+
+#chat-mod .chat-target,
+#chat-mod .chat-flag {
+  border-radius: 0;
+}
+
+#chat-mod .kbd-hint,
+#chat-mod .chat-flags-label {
+  font-size: 10px;
+  color: var(--text-muted);
+}

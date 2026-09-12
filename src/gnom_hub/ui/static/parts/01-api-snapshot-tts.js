@@ -1357,11 +1357,11 @@
     if (titleEl) titleEl.textContent = p.title || "Flex";
     if (badgeEl) {
       badgeEl.hidden = !active;
-      badgeEl.textContent = active ? "Feedback" : "";
+      badgeEl.textContent = active ? "Rückmeldung" : "";
     }
     const qText =
       p.question ||
-      "Nach einem Ergebnis fragt Flex hier nach Feedback.";
+      "Nach einem Ergebnis fragt Flex hier nach Rückmeldung.";
     if (qEl) qEl.textContent = qText;
     if (hintEl) {
       hintEl.textContent =
@@ -1381,7 +1381,7 @@
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className =
-        "flex-review-btn rounded-md border border-gnom-border bg-gnom-card px-2.5 py-1.5 " +
+        "flex-review-btn border border-gnom-border bg-gnom-card px-2.5 py-1.5 " +
         "text-xs leading-tight text-gnom-text transition hover:border-gnom-flex hover:text-gnom-flex " +
         (String(b.action || "") === "start_work"
           ? "border-gnom-ok/50 hover:border-gnom-ok hover:text-gnom-ok "
