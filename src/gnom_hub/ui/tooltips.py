@@ -60,8 +60,8 @@ TOOLTIPS: dict[str, dict[str, TooltipText]] = {
         },
         "de": {
             "title": "Coordinator",
-            "how_to": "Destilliert Anforderungen und steuert 1–2 Worker. Läuft bei Execute.",
-            "example": "Nach Brainstorm → Execute → Requirements + Worker-Aufgaben.",
+            "how_to": "Destilliert Anforderungen und steuert 1–2 Worker. Läuft bei Arbeit starten.",
+            "example": "Nach Brainstorm → Arbeit starten → Pakete + Worker-Aufgaben.",
         },
     },
     "worker1": {
@@ -151,13 +151,13 @@ TOOLTIPS: dict[str, dict[str, TooltipText]] = {
     "chat": {
         "en": {
             "title": "Chat",
-            "how_to": "Send = brainstorm turn. Execute = full worker pipeline. Mic = speech-to-text.",
-            "example": "Type ideas freely, then press green Execute.",
+            "how_to": "Send = talk, never execute. Arbeit starten = workers. Mic = speech.",
+            "example": "Type ideas, then press Arbeit starten when ready.",
         },
         "de": {
             "title": "Chat",
-            "how_to": "Send = Brainstorm-Turn. Execute = Worker-Pipeline. Mic = Spracheingabe.",
-            "example": "Frei brainstormen, dann grünes Execute.",
+            "how_to": "Send = reden, keine Ausführung. Arbeit starten = Worker. Mic = Spracheingabe.",
+            "example": "Frei brainstormen, dann Arbeit starten.",
         },
     },
     "save": {
