@@ -147,7 +147,7 @@ def test_box2_reply_tabs_label_not_english_turn():
     assert _TURN_LIT.search(body) is None, (
         'renderBox2ReplyTabs still uses English "turn" as tab label'
     )
-    assert "Koord" in BOXES_JS or '"A"' in BOXES_JS or "Brain" in BOXES_JS, (
+    assert "Coord" in BOXES_JS or '"A"' in BOXES_JS or "Brain" in BOXES_JS, (
         "Box 2 reply tabs must use short agent labels"
     )
 
@@ -162,7 +162,7 @@ def test_box2_reply_tabs_equal_flex_centered_white():
     assert "color: #fff" in tab, ".box2-reply-tab names must be white"
     body = _function_body(BOXES_JS, "box2AgentTabLabel")
     assert 'return "Brain"' in body
-    assert 'return "Koord"' in body
+    assert 'return "Coord"' in body
     assert 'return "Mem"' in body
 
 

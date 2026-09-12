@@ -8216,7 +8216,7 @@
     const id = String(role || "").toLowerCase();
     if (id === "brainstorm") return "Brain";
     if (id === "flex") return "Flex";
-    if (id === "coordinator") return "Koord";
+    if (id === "coordinator") return "Coord";
     if (id === "memory") return "Mem";
     const wm = /^worker(\d+)$/.exec(id);
     if (wm) return "A" + wm[1];
