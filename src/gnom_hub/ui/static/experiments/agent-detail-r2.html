@@ -1,0 +1,1667 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gnom-Hub-V1 — Agentendetail Arbeiter 1</title>
+  <style>
+    :root {
+      --bg: #121316;
+      --bg-panel: #1a1b1f;
+      --bg-card: #1e1f24;
+      --bg-elev: #24262d;
+      --bg-strip: #15171b;
+      --text: #e2e4e9;
+      --text-muted: #8b909a;
+      --border: #2e3138;
+      --border-strong: #5c616a;
+      --border-hover: #6b7280;
+      --ok: #3d9b6a;
+      --warn: #c9a227;
+      --err: #c45c5c;
+      --c-brainstorm: #ef5350;
+      --c-memory: #42a5f5;
+      --c-flex: #f0c000;
+      --c-coordinator: #26c281;
+      --c-worker1: #29b6f6;
+      --c-worker2: #8b6cf6;
+      --c-worker3: #ec5f9b;
+      --c-worker4: #ff8a3d;
+      --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+      --t-meta: 10px;
+      --t-body: 12px;
+      --t-title: 14px;
+      --t-app: 16px;
+      --radius: 0;
+      --btn-h: 28px;
+      --tab-h: 32px;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      border-radius: 0;
+    }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: var(--t-body);
+      line-height: 1.4;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100dvh;
+    }
+
+    button, input, select, textarea {
+      font-family: inherit;
+      font-size: var(--t-body);
+      color: var(--text);
+      background: var(--bg-elev);
+      border: 1px solid var(--border-strong);
+      border-radius: 0;
+    }
+
+    button {
+      height: var(--btn-h);
+      padding: 0 10px;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    button:hover:not(:disabled) {
+      border-color: var(--border-hover);
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    :focus {
+      outline: none;
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--text);
+      outline-offset: 2px;
+    }
+
+    kbd {
+      font-family: inherit;
+      font-size: var(--t-meta);
+      border: 1px solid var(--border-strong);
+      padding: 0 4px;
+      background: var(--bg-elev);
+    }
+
+    /* —— Prototype chrome (not product) —— */
+    .proto {
+      background: var(--bg-strip);
+      border-bottom: 1px dashed var(--border-strong);
+      padding: 8px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+
+    .proto-kicker {
+      font-size: var(--t-meta);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--warn);
+      margin: 0;
+    }
+
+    .proto-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .proto h1 {
+      margin: 0;
+      font-size: var(--t-app);
+      font-weight: 700;
+    }
+
+    .proto p {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: var(--t-body);
+    }
+
+    .proto-label {
+      font-size: var(--t-meta);
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .state-btn.is-on {
+      border-color: var(--text);
+      background: var(--bg-card);
+      font-weight: 600;
+    }
+
+    .toast {
+      font-size: var(--t-body);
+      border: 1px solid var(--border-strong);
+      background: var(--bg-card);
+      padding: 6px 10px;
+      min-height: var(--btn-h);
+      display: none;
+      align-items: center;
+    }
+
+    .toast.is-on { display: flex; }
+
+    /* —— Product stage —— */
+    .stage {
+      flex: 1 1 auto;
+      min-height: 0;
+      padding: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+    }
+
+    .product {
+      width: 100%;
+      max-width: 1100px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--c-worker1);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      min-width: 0;
+    }
+
+    body.is-narrow .stage {
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    body.is-narrow .product {
+      width: 360px;
+      max-width: 360px;
+      min-height: 640px;
+      border: 1px solid var(--border-strong);
+      border-left: 3px solid var(--c-worker1);
+    }
+
+    .recipient-note {
+      flex: 0 0 auto;
+      padding: 6px 10px;
+      font-size: var(--t-body);
+      background: var(--bg-strip);
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .recipient-note.is-set {
+      border-bottom-color: var(--ok);
+    }
+
+    /* Header L→R */
+    .bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      flex: 0 0 auto;
+    }
+
+    .agent-mark {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex: 0 0 auto;
+    }
+
+    .agent-swatch {
+      width: 16px;
+      height: 16px;
+      background: var(--c-worker1);
+      border: 1px solid var(--border-strong);
+      flex: 0 0 auto;
+    }
+
+    .agent-glyph {
+      width: 16px;
+      height: 16px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--c-worker1);
+      background: var(--bg-card);
+      font-size: var(--t-meta);
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .who {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      gap: 0;
+    }
+
+    .who strong {
+      font-size: var(--t-title);
+      font-weight: 700;
+    }
+
+    .who span {
+      font-size: var(--t-meta);
+      color: var(--text-muted);
+    }
+
+    .live {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: var(--btn-h);
+      padding: 0 8px;
+      border: 1px solid var(--border-strong);
+      background: var(--bg-card);
+      font-size: var(--t-body);
+      flex: 0 0 auto;
+    }
+
+    .live .sym {
+      width: 14px;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .live[data-state="laedt"] { border-left: 3px solid var(--text-muted); }
+    .live[data-state="wartet"] { border-left: 3px solid var(--text-muted); }
+    .live[data-state="aktiv"] { border-left: 3px solid var(--ok); }
+    .live[data-state="fragt"] { border-left: 3px solid var(--warn); }
+    .live[data-state="blockiert"] { border-left: 3px solid var(--warn); }
+    .live[data-state="fehler"] { border-left: 3px solid var(--err); }
+    .live[data-state="fertig"] { border-left: 3px solid var(--ok); }
+    .live[data-state="offline"] { border-left: 3px solid var(--text-muted); }
+    .live[data-state="leer"] { border-left: 3px solid var(--border-strong); }
+
+    .meta-chip {
+      font-size: var(--t-meta);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      padding: 4px 8px;
+      min-height: var(--btn-h);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .meta-chip b {
+      color: var(--text);
+      font-weight: 600;
+      font-size: var(--t-body);
+    }
+
+    .bar .push { margin-left: auto; }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+      flex: 0 0 auto;
+      background: var(--bg-strip);
+    }
+
+    .tab {
+      height: var(--tab-h);
+      min-height: 32px;
+      padding: 0 12px;
+      border: 1px solid var(--border-strong);
+      border-right: 1px solid var(--border-strong);
+      background: var(--bg-card);
+      color: var(--text);
+      font-size: var(--t-body);
+      cursor: pointer;
+    }
+
+    .tab:hover:not(:disabled) {
+      color: var(--text);
+      background: var(--bg-elev);
+    }
+
+    .tab[aria-selected="true"] {
+      color: var(--text);
+      background: var(--bg-panel);
+      border-color: var(--border-strong);
+      font-weight: 600;
+      box-shadow: inset 0 -2px 0 var(--c-worker1);
+    }
+
+    .body {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: auto;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+    }
+
+    .panel { display: none; flex-direction: column; gap: 10px; }
+    .panel.is-on { display: flex !important; }
+    .panel[hidden] { display: none !important; }
+    .panel.is-on[hidden] { display: flex !important; }
+
+    h2 {
+      margin: 0;
+      font-size: var(--t-title);
+      font-weight: 700;
+    }
+
+    h3 {
+      margin: 0;
+      font-size: var(--t-body);
+      font-weight: 700;
+    }
+
+    p { margin: 0; }
+
+    .muted { color: var(--text-muted); }
+    .meta { font-size: var(--t-meta); color: var(--text-muted); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 8px;
+    }
+
+    body.is-narrow .grid { grid-template-columns: 1fr; }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .card.edge-ok { border-left: 3px solid var(--ok); }
+    .card.edge-warn { border-left: 3px solid var(--warn); }
+    .card.edge-err { border-left: 3px solid var(--err); }
+    .card.edge-hot { border-left: 3px solid var(--err); }
+    .card.edge-warm { border-left: 3px solid var(--warn); }
+    .card.edge-cold { border-left: 3px solid var(--text-muted); }
+
+    .kv {
+      display: grid;
+      grid-template-columns: 92px 1fr;
+      gap: 4px 8px;
+      font-size: var(--t-body);
+    }
+
+    .kv dt { color: var(--text-muted); font-size: var(--t-meta); }
+    .kv dd { margin: 0; }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .event, .hist {
+      display: grid;
+      grid-template-columns: 52px 1fr auto;
+      gap: 8px;
+      align-items: start;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      padding: 6px 8px;
+    }
+
+    body.is-narrow .event,
+    body.is-narrow .hist {
+      grid-template-columns: 1fr;
+    }
+
+    .hist summary {
+      cursor: pointer;
+      font-weight: 600;
+      list-style: none;
+    }
+
+    .hist summary::-webkit-details-marker { display: none; }
+
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .filters button {
+      height: var(--tab-h);
+      font-size: var(--t-meta);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .filters button.is-on {
+      border-color: var(--text);
+      color: var(--text);
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    body.is-narrow .split { grid-template-columns: 1fr; }
+
+    .banner {
+      border: 1px solid var(--border-strong);
+      background: var(--bg-elev);
+      padding: 8px 10px;
+    }
+
+    .banner.warn { border-left: 3px solid var(--warn); }
+    .banner.err { border-left: 3px solid var(--err); }
+    .banner.ok { border-left: 3px solid var(--ok); }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .skel {
+      height: 12px;
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      width: 100%;
+    }
+
+    .skel.w50 { width: 50%; }
+    .skel.w70 { width: 70%; }
+
+    .preview {
+      display: none;
+      border: 1px solid var(--border-strong);
+      background: var(--bg-elev);
+      padding: 8px 10px;
+      white-space: pre-wrap;
+      font-size: var(--t-body);
+    }
+
+    .preview.is-on { display: block; }
+
+    .confirm {
+      display: none;
+      border: 1px solid var(--warn);
+      background: var(--bg-elev);
+      padding: 8px 10px;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .confirm.is-on { display: flex; }
+
+    .switch {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      padding: 6px 8px;
+    }
+
+    .switch input {
+      width: 14px;
+      height: 14px;
+      accent-color: var(--text);
+    }
+
+    .slider-block {
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    input[type="range"] {
+      appearance: none;
+      -webkit-appearance: none;
+      height: 8px;
+      background: var(--bg-elev);
+      border: 1px solid var(--border-strong);
+      padding: 0;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 12px;
+      height: 16px;
+      background: var(--text);
+      border: 1px solid var(--border-strong);
+      border-radius: 0;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 12px;
+      height: 16px;
+      background: var(--text);
+      border: 1px solid var(--border-strong);
+      border-radius: 0;
+      cursor: pointer;
+    }
+
+    .god {
+      border: 1px solid var(--border-strong);
+      background: var(--bg-strip);
+      padding: 8px 10px;
+    }
+
+    .god b { font-size: var(--t-title); }
+
+    .file {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px 8px;
+      align-items: center;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      padding: 6px 8px;
+    }
+
+    .diff {
+      font-size: var(--t-meta);
+      border: 1px solid var(--border);
+      background: var(--bg-strip);
+      padding: 6px 8px;
+      display: none;
+      white-space: pre-wrap;
+    }
+
+    .diff.is-on { display: block; }
+
+    .tag {
+      font-size: var(--t-meta);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border: 1px solid var(--border-strong);
+      padding: 1px 6px;
+      color: var(--text-muted);
+    }
+
+    .tag.hot { color: var(--err); border-color: var(--err); }
+    .tag.warm { color: var(--warn); border-color: var(--warn); }
+    .tag.cold { color: var(--text-muted); }
+
+    .empty {
+      display: none;
+      border: 1px dashed var(--border-strong);
+      padding: 16px 10px;
+      color: var(--text-muted);
+      text-align: left;
+    }
+
+    body[data-state="leer"] .has-data { display: none; }
+    body[data-state="leer"] .empty { display: block; }
+
+    body[data-state="laedt"] .has-data { display: none; }
+    body[data-state="laedt"] .loading { display: flex; }
+    .loading {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .dim-note {
+      display: none;
+      border: 1px solid var(--border-strong);
+      padding: 8px 10px;
+      background: var(--bg-strip);
+    }
+
+    body[data-state="offline"] .dim-note { display: block; }
+
+    .sr {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+    }
+  </style>
+</head>
+<body data-state="aktiv">
+  <header class="proto" aria-label="Prototyp-Leiste, nicht Produkt">
+    <p class="proto-kicker">Prototyp-Leiste — nicht Produktchrome</p>
+    <div class="proto-row">
+      <h1>Gnom-Hub-V1</h1>
+      <p>Klickbarer Entwurf der Agentendetail-Ansicht. Kein Live-Desk, keine Produktionslogik.</p>
+    </div>
+    <div class="proto-row">
+      <span class="proto-label">Zustand</span>
+      <button type="button" class="state-btn" data-state="laedt" onclick="r2State('laedt')">lädt</button>
+      <button type="button" class="state-btn" data-state="wartet" onclick="r2State('wartet')">wartet</button>
+      <button type="button" class="state-btn is-on" data-state="aktiv" onclick="r2State('aktiv')">aktiv</button>
+      <button type="button" class="state-btn" data-state="fragt" onclick="r2State('fragt')">fragt</button>
+      <button type="button" class="state-btn" data-state="blockiert" onclick="r2State('blockiert')">blockiert</button>
+      <button type="button" class="state-btn" data-state="fehler" onclick="r2State('fehler')">Fehler</button>
+      <button type="button" class="state-btn" data-state="fertig" onclick="r2State('fertig')">fertig</button>
+      <button type="button" class="state-btn" data-state="offline" onclick="r2State('offline')">offline</button>
+      <button type="button" class="state-btn" data-state="leer" onclick="r2State('leer')">keine Daten</button>
+    </div>
+    <div class="proto-row">
+      <button type="button" id="btn-narrow" aria-pressed="false" onclick="r2Narrow()">Kleines Fenster (~360 px)</button>
+      <p>
+        Tastatur: <kbd>Tab</kbd> Fokus ·
+        <kbd>←</kbd><kbd>→</kbd> Reiter ·
+        <kbd>Esc</kbd> Zurück zum Desk ·
+        <kbd>Alt</kbd>+<kbd>E</kbd> Als Empfänger wählen
+      </p>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </div>
+  </header>
+
+  <div class="stage">
+    <article class="product" aria-label="Agentendetail Arbeiter 1">
+      <div class="recipient-note" id="recipient-note">
+        Ansicht geöffnet — Empfänger unverändert
+      </div>
+
+      <header class="bar">
+        <button type="button" id="btn-back" onclick="r2Back()">Zurück zum Desk</button>
+        <span class="agent-mark" title="Arbeiter 1">
+          <span class="agent-swatch" aria-hidden="true"></span>
+          <span class="agent-glyph" aria-hidden="true">1</span>
+        </span>
+        <div class="who">
+          <strong>Arbeiter 1</strong>
+          <span>Arbeiter — führt den bestätigten Plan aus</span>
+        </div>
+        <span class="live" id="live" data-state="aktiv" title="Live-Status">
+          <span class="sym" id="live-sym" aria-hidden="true">▶</span>
+          <span id="live-text">aktiv</span>
+        </span>
+        <span class="meta-chip" title="Aktuelles Modell">
+          Modell <b id="model-name">deepseek-v4-flash</b>
+        </span>
+        <span class="meta-chip" title="Laufzeit und Kosten dieses Laufs">
+          Lauf <b id="run-time">4 min 12 s</b>
+          ·
+          <b id="run-cost">0,018 $</b>
+        </span>
+        <button type="button" class="push" id="btn-target" onclick="r2Target()">Als Empfänger wählen</button>
+      </header>
+
+      <nav class="tabs" id="tabs" role="tablist" aria-label="Agentendetail">
+        <button type="button" class="tab" role="tab" id="tab-jetzt" aria-controls="panel-jetzt" aria-selected="true" tabindex="0" data-tab="jetzt" onclick="r2Tab('jetzt')">Jetzt</button>
+        <button type="button" class="tab" role="tab" id="tab-auftrag" aria-controls="panel-auftrag" aria-selected="false" tabindex="-1" data-tab="auftrag" onclick="r2Tab('auftrag')">Auftrag</button>
+        <button type="button" class="tab" role="tab" id="tab-verlauf" aria-controls="panel-verlauf" aria-selected="false" tabindex="-1" data-tab="verlauf" onclick="r2Tab('verlauf')">Verlauf</button>
+        <button type="button" class="tab" role="tab" id="tab-werkzeuge" aria-controls="panel-werkzeuge" aria-selected="false" tabindex="-1" data-tab="werkzeuge" onclick="r2Tab('werkzeuge')">Werkzeuge</button>
+        <button type="button" class="tab" role="tab" id="tab-dateien" aria-controls="panel-dateien" aria-selected="false" tabindex="-1" data-tab="dateien" onclick="r2Tab('dateien')">Dateien</button>
+        <button type="button" class="tab" role="tab" id="tab-memory" aria-controls="panel-memory" aria-selected="false" tabindex="-1" data-tab="memory" onclick="r2Tab('memory')">Memory</button>
+        <button type="button" class="tab" role="tab" id="tab-ergebnis" aria-controls="panel-ergebnis" aria-selected="false" tabindex="-1" data-tab="ergebnis" onclick="r2Tab('ergebnis')">Ergebnis</button>
+        <button type="button" class="tab" role="tab" id="tab-einstellungen" aria-controls="panel-einstellungen" aria-selected="false" tabindex="-1" data-tab="einstellungen" onclick="r2Tab('einstellungen')">Einstellungen</button>
+      </nav>
+
+      <div class="body">
+        <p class="dim-note" id="offline-note">
+          Arbeiter 1 ist offline. Anzeige der letzten bekannten Daten — keine neuen Aktionen möglich.
+        </p>
+
+        <!-- JETZT -->
+        <section class="panel is-on" id="panel-jetzt" role="tabpanel" aria-labelledby="tab-jetzt">
+          <div class="loading">
+            <h2>Jetzt</h2>
+            <p class="muted">Ansicht wird geladen.</p>
+            <div class="skel"></div>
+            <div class="skel w70"></div>
+            <div class="skel w50"></div>
+          </div>
+          <p class="empty">Keine aktuellen Daten für Arbeiter 1. Es läuft kein Auftrag, es gibt keine Ereignisse.</p>
+          <div class="has-data">
+            <h2>Jetzt</h2>
+            <div class="grid">
+              <div class="card">
+                <h3>Aktueller Auftrag</h3>
+                <p id="jetzt-task">Landing page für Autowerkstatt Müller — eine HTML-Seite, Deutsch, Leistungen / Preise / Kontakt.</p>
+              </div>
+              <div class="card">
+                <h3>Prüfbarer Schritt</h3>
+                <p id="jetzt-step">Block „Preise“ mit drei Paketen in index.html einfügen.</p>
+              </div>
+              <div class="card">
+                <h3>Zeit</h3>
+                <dl class="kv">
+                  <dt>Start</dt><dd id="jetzt-start">heute 14:02</dd>
+                  <dt>Dauer</dt><dd id="jetzt-dauer">4 min 12 s</dd>
+                </dl>
+              </div>
+              <div class="card">
+                <h3>Status</h3>
+                <p id="jetzt-status">aktiv — schreibt gerade an index.html</p>
+              </div>
+              <div class="card" id="jetzt-block-card">
+                <h3>Blocker</h3>
+                <p id="jetzt-block-text">Kein Blocker.</p>
+              </div>
+            </div>
+
+            <div class="banner warn" id="jetzt-ask" hidden tabindex="-1">
+              <h3>Frage an dich</h3>
+              <p id="jetzt-ask-text"></p>
+            </div>
+            <div class="banner warn" id="jetzt-block" hidden tabindex="-1">
+              <h3>Blocker (Hervorhebung)</h3>
+              <p id="jetzt-block-banner">Kein Blocker.</p>
+            </div>
+            <div class="banner err" id="jetzt-err" hidden tabindex="-1">
+              <h3>Fehler</h3>
+              <p id="jetzt-err-text"></p>
+            </div>
+
+            <h3>Letzte 3 Ereignisse</h3>
+            <ol class="list" id="jetzt-events">
+              <li class="event"><span class="meta">14:04</span><span>Datei index.html geändert</span><span class="tag">Datei</span></li>
+              <li class="event"><span class="meta">14:03</span><span>Werkzeug web_fetch: Impressums-Vorlage gelesen</span><span class="tag">Werkzeug</span></li>
+              <li class="event"><span class="meta">14:02</span><span>Auftrag angenommen von Coordinator</span><span class="tag">Auftrag</span></li>
+            </ol>
+
+            <h3>Erlaubte Aktionen</h3>
+            <p class="meta" id="jetzt-none" hidden>In diesem Zustand keine Aktion. Öffnen der Ansicht wählt den Empfänger nicht.</p>
+            <div class="actions" id="jetzt-actions"></div>
+          </div>
+        </section>
+
+        <!-- AUFTRAG -->
+        <section class="panel" id="panel-auftrag" role="tabpanel" aria-labelledby="tab-auftrag" hidden>
+          <div class="loading">
+            <h2>Auftrag</h2>
+            <div class="skel"></div>
+            <div class="skel w70"></div>
+          </div>
+          <p class="empty">Kein Auftrag hinterlegt. Weder Gespräch noch bestätigtes Execute.</p>
+          <div class="has-data">
+            <h2>Auftrag</h2>
+            <div class="split">
+              <div class="card">
+                <p class="tag">Gespräch — nicht ausgeführt</p>
+                <h3>Unterhaltung vor Execute</h3>
+                <p><b>Du → Flex:</b> Mach mal eine Seite für die Werkstatt.</p>
+                <p><b>Flex:</b> Soll ich eine Landing page bauen, oder nur Texte sammeln?</p>
+                <p><b>Du:</b> Landing page, eine Seite, Deutsch.</p>
+                <p class="meta">Das ist Brainstorm. Noch kein Auftrag an Arbeiter 1.</p>
+              </div>
+              <div class="card edge-ok">
+                <p class="tag">Bestätigtes Execute</p>
+                <h3>Originalauftrag</h3>
+                <p>Eine Landing page für Autowerkstatt Müller. Startseite mit Leistungen, drei Preis-Paketen und Kontakt. Kein Shop.</p>
+                <dl class="kv">
+                  <dt>Sender</dt><dd>Du</dd>
+                  <dt>Auftrag-ID</dt><dd>ORD-1842</dd>
+                  <dt>Freigabe</dt><dd>Execute bestätigt um 14:02</dd>
+                </dl>
+              </div>
+            </div>
+            <div class="grid">
+              <div class="card">
+                <h3>Ziele</h3>
+                <p>Eine HTML-Datei. Deutsch. Leistungen, Preise, Kontakt. Auf einem Bildschirm lesbar.</p>
+                <h3>Nicht-Ziele</h3>
+                <p>Kein Shop, keine Terminbuchung, kein CMS, kein Login.</p>
+              </div>
+              <div class="card">
+                <h3>Rahmen</h3>
+                <dl class="kv">
+                  <dt>Dateien</dt><dd>brief.txt (lesen)</dd>
+                  <dt>Werkzeuge</dt><dd>web_fetch, Datei schreiben</dd>
+                  <dt>Modell</dt><dd>deepseek-v4-flash</dd>
+                  <dt>Kosten</dt><dd>Rahmen 0,05 $ · bisher 0,018 $</dd>
+                  <dt>Risiken</dt><dd>Impressum unvollständig — Rückfrage vorgesehen</dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VERLAUF -->
+        <section class="panel" id="panel-verlauf" role="tabpanel" aria-labelledby="tab-verlauf" hidden>
+          <div class="loading">
+            <h2>Verlauf</h2>
+            <div class="skel"></div>
+            <div class="skel"></div>
+          </div>
+          <p class="empty">Kein Verlauf. Es wurden noch keine Antworten, Werkzeuge oder Dateien aufgezeichnet.</p>
+          <div class="has-data">
+            <h2>Verlauf</h2>
+            <p class="meta">Nur sichtbare Arbeit. Keine internen Gedanken.</p>
+            <div class="filters" id="hist-filters" role="group" aria-label="Verlauf filtern">
+              <button type="button" class="is-on" data-filter="antwort">Antworten</button>
+              <button type="button" class="is-on" data-filter="werkzeug">Werkzeuge</button>
+              <button type="button" class="is-on" data-filter="datei">Dateien</button>
+              <button type="button" class="is-on" data-filter="memory">Memory</button>
+              <button type="button" class="is-on" data-filter="entscheidung">Entscheidungen</button>
+              <button type="button" class="is-on" data-filter="fehler">Fehler</button>
+              <button type="button" class="is-on" data-filter="kosten">Kosten</button>
+            </div>
+            <p class="meta" id="hist-empty" hidden>Keine Einträge für diesen Filter.</p>
+            <div class="list" id="hist-list">
+              <details class="hist" data-kind="entscheidung">
+                <summary><span class="meta">14:02</span> Coordinator · Entscheidung · erledigt</summary>
+                <p>Arbeiter 1 bekommt den Landing-page-Auftrag. Andere Arbeiter bleiben in Reserve.</p>
+                <p class="meta">Quelle: Coordinator · Status: erledigt</p>
+              </details>
+              <details class="hist" data-kind="antwort">
+                <summary><span class="meta">14:02</span> Arbeiter 1 · Antwort · angenommen</summary>
+                <p>Auftrag verstanden: eine HTML-Seite, Deutsch, drei Blöcke. Kein Shop.</p>
+                <p class="meta">Quelle: Arbeiter 1 · Status: angenommen</p>
+              </details>
+              <details class="hist" data-kind="memory">
+                <summary><span class="meta">14:02</span> Memory · gelesen · HOT</summary>
+                <p>Verwendeter Fakt: Kunde heißt Werkstatt Müller, Ort Leipzig.</p>
+                <p class="meta">Quelle: HOT-Memory · Status: gelesen</p>
+              </details>
+              <details class="hist" data-kind="werkzeug">
+                <summary><span class="meta">14:03</span> web_fetch · Werkzeug · ok</summary>
+                <p>Öffentliche Impressums-Vorlage gelesen. Kein Geheimnis, keine Schlüssel.</p>
+                <p class="meta">Quelle: Werkzeug web_fetch · Status: ok</p>
+              </details>
+              <details class="hist" data-kind="kosten">
+                <summary><span class="meta">14:03</span> Lauf · Kosten · 0,007 $</summary>
+                <p>web_fetch: 1 120 Token, 0,007 $. Laufsumme 0,007 $.</p>
+                <p class="meta">Quelle: Abrechnung · Status: gebucht</p>
+              </details>
+              <details class="hist" data-kind="datei">
+                <summary><span class="meta">14:04</span> index.html · Datei · geändert</summary>
+                <p>Block Leistungen geschrieben. Preise noch offen.</p>
+                <p class="meta">Quelle: Arbeiter 1 · Status: geändert</p>
+              </details>
+              <details class="hist" data-kind="fehler">
+                <summary><span class="meta">14:05</span> web_fetch · Fehler · Zeitüberschreitung</summary>
+                <p>Zweiter Abruf (Öffnungszeiten) nach 20 s abgebrochen. Auftrag läuft weiter ohne diese Zeile.</p>
+                <p class="meta">Quelle: Werkzeug web_fetch · Status: Fehler</p>
+              </details>
+              <details class="hist" data-kind="antwort">
+                <summary><span class="meta">14:06</span> Arbeiter 1 · Antwort · Zwischenstand</summary>
+                <p>Leistungen stehen. Als Nächstes drei Preis-Pakete. Impressum braucht noch die Telefonnummer.</p>
+                <p class="meta">Quelle: Arbeiter 1 · Status: Zwischenstand</p>
+              </details>
+            </div>
+          </div>
+        </section>
+
+        <!-- WERKZEUGE -->
+        <section class="panel" id="panel-werkzeuge" role="tabpanel" aria-labelledby="tab-werkzeuge" hidden>
+          <div class="loading">
+            <h2>Werkzeuge</h2>
+            <div class="skel"></div>
+          </div>
+          <p class="empty">Keine Werkzeuge in dieser Sitzung.</p>
+          <div class="has-data">
+            <h2>Werkzeuge</h2>
+            <div class="grid">
+              <article class="card edge-ok">
+                <h3>web_fetch</h3>
+                <p>Liest eine öffentliche Webseite als Text.</p>
+                <dl class="kv">
+                  <dt>Status</dt><dd>bereit · letzter Lauf ok, einer mit Fehler</dd>
+                  <dt>Rechte</dt><dd>Netz lesen (kein Schreiben, keine Shell)</dd>
+                  <dt>Zuletzt</dt><dd>14:05 · Zeitüberschreitung Öffnungszeiten</dd>
+                  <dt>Ergebnis</dt><dd>Vorlage gelesen. Zweiter Abruf fehlgeschlagen.</dd>
+                </dl>
+              </article>
+              <article class="card edge-ok">
+                <h3>Datei schreiben</h3>
+                <p>Schreibt HTML in den Workspace, nicht ins System.</p>
+                <dl class="kv">
+                  <dt>Status</dt><dd>aktiv · schreibt index.html</dd>
+                  <dt>Rechte</dt><dd>Workspace schreiben · kein Secret-Pfad</dd>
+                  <dt>Zuletzt</dt><dd>14:04 · index.html geändert</dd>
+                  <dt>Ergebnis</dt><dd>Leistungsblock steht.</dd>
+                </dl>
+              </article>
+              <article class="card">
+                <h3>Browser (Computer-Use)</h3>
+                <p>Öffnet Seiten am echten Bildschirm, wenn God-Mode am Desk an ist.</p>
+                <dl class="kv">
+                  <dt>Status</dt><dd>nicht benutzt in diesem Lauf</dd>
+                  <dt>Rechte</dt><dd>God-Mode nötig · hier nur Anzeige</dd>
+                  <dt>Zuletzt</dt><dd>—</dd>
+                  <dt>Ergebnis</dt><dd>kein Aufruf</dd>
+                </dl>
+              </article>
+              <article class="card">
+                <h3>Shell</h3>
+                <p>Lokale Kommandos. Standard: Trockenlauf.</p>
+                <dl class="kv">
+                  <dt>Status</dt><dd>gesperrt in diesem Auftrag</dd>
+                  <dt>Rechte</dt><dd>nicht erteilt</dd>
+                  <dt>Zuletzt</dt><dd>—</dd>
+                  <dt>Ergebnis</dt><dd>kein Aufruf</dd>
+                </dl>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <!-- DATEIEN -->
+        <section class="panel" id="panel-dateien" role="tabpanel" aria-labelledby="tab-dateien" hidden>
+          <div class="loading">
+            <h2>Dateien</h2>
+            <div class="skel"></div>
+          </div>
+          <p class="empty">Keine Dateien gelesen, erzeugt oder geändert. Schlüsseldateien werden nicht gezeigt.</p>
+          <div class="has-data">
+            <h2>Dateien</h2>
+            <p class="meta">Öffnen nur über die Taste. Keine Secrets, keine Schlüssel, keine .env.</p>
+
+            <h3>Gelesen</h3>
+            <div class="file">
+              <div>
+                <p><b>brief.txt</b> · Workspace / perm</p>
+                <p class="meta">14:02 · gelesen von Arbeiter 1</p>
+              </div>
+              <button type="button" data-preview="brief">Vorschau</button>
+            </div>
+            <pre class="preview" id="preview-brief">Werkstatt Müller, Leipzig.
+Eine Seite: Leistungen, Preise, Kontakt.
+Kein Shop. Deutsch.</pre>
+
+            <h3>Erzeugt</h3>
+            <div class="file">
+              <div>
+                <p><b>index.html</b> · Workspace / selected</p>
+                <p class="meta">14:03 · erzeugt von Arbeiter 1</p>
+              </div>
+              <div class="row">
+                <button type="button" data-preview="index">Vorschau</button>
+                <button type="button" data-diff="index">Diff</button>
+              </div>
+            </div>
+            <pre class="preview" id="preview-index">&lt;h1&gt;Werkstatt Müller&lt;/h1&gt;
+&lt;section&gt;Leistungen …&lt;/section&gt;
+&lt;!-- Preise folgen --&gt;</pre>
+            <pre class="diff" id="diff-index">+ &lt;section id="preise"&gt;noch leer&lt;/section&gt;
+  Kontaktblock unverändert</pre>
+
+            <h3>Geändert</h3>
+            <div class="file">
+              <div>
+                <p><b>index.html</b> · Workspace / selected</p>
+                <p class="meta">14:04 · geändert von Arbeiter 1 · Leistungsblock</p>
+              </div>
+              <button type="button" data-preview="index">Vorschau</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- MEMORY -->
+        <section class="panel" id="panel-memory" role="tabpanel" aria-labelledby="tab-memory" hidden>
+          <div class="loading">
+            <h2>Memory</h2>
+            <div class="skel"></div>
+          </div>
+          <p class="empty">Kein Memory gelesen, keine Vorschläge, keine Konflikte.</p>
+          <div class="has-data">
+            <h2>Memory</h2>
+            <p class="meta">Dauerhaft merken nur über Bestätigen. HOT / WARM / COLD sind am Rand und am Etikett unterscheidbar.</p>
+
+            <h3>Verwendet</h3>
+            <div class="grid">
+              <article class="card edge-hot">
+                <p><span class="tag hot">HOT</span> Werkstatt Müller sitzt in Leipzig.</p>
+                <dl class="kv">
+                  <dt>Herkunft</dt><dd>Du, dieser Chat</dd>
+                  <dt>Datum</dt><dd>heute 13:40</dd>
+                  <dt>Geltung</dt><dd>dieser Lauf</dd>
+                  <dt>Vertrauen</dt><dd>hoch · von dir gesagt</dd>
+                  <dt>Sperre</dt><dd>offen</dd>
+                </dl>
+              </article>
+              <article class="card edge-warm">
+                <p><span class="tag warm">WARM</span> Kunde will kein Shop-Modul.</p>
+                <dl class="kv">
+                  <dt>Herkunft</dt><dd>Auftrag ORD-1710</dd>
+                  <dt>Datum</dt><dd>3. Sep</dd>
+                  <dt>Geltung</dt><dd>dieses Projekt</dd>
+                  <dt>Vertrauen</dt><dd>mittel</dd>
+                  <dt>Sperre</dt><dd>offen</dd>
+                </dl>
+              </article>
+              <article class="card edge-cold">
+                <p><span class="tag cold">COLD</span> Impressum: Inhaber Klaus Müller.</p>
+                <dl class="kv">
+                  <dt>Herkunft</dt><dd>Archiv 2025</dd>
+                  <dt>Datum</dt><dd>12. Nov 2025</dd>
+                  <dt>Geltung</dt><dd>Kunde Müller</dd>
+                  <dt>Vertrauen</dt><dd>niedrig · prüfen</dd>
+                  <dt>Sperre</dt><dd>nur lesen</dd>
+                </dl>
+              </article>
+            </div>
+
+            <h3>Neue Vorschläge</h3>
+            <article class="card edge-warm" id="mem-propose">
+              <p><span class="tag warm">WARM</span> Landing page ohne Terminbuchung.</p>
+              <dl class="kv">
+                <dt>Herkunft</dt><dd>dieser Auftrag, von dir bestätigt</dd>
+                <dt>Datum</dt><dd>heute 14:02</dd>
+                <dt>Geltung</dt><dd>Projekt Müller</dd>
+                <dt>Vertrauen</dt><dd>hoch</dd>
+                <dt>Sperre</dt><dd>noch nicht gespeichert</dd>
+              </dl>
+              <div class="actions">
+                <button type="button" id="btn-mem-ask">Dauerhaft merken…</button>
+              </div>
+              <div class="confirm" id="mem-confirm">
+                <p>Diesen Fakt nach WARM schreiben? Erst nach Bestätigen, nicht beim Öffnen der Ansicht.</p>
+                <button type="button" id="btn-mem-yes">Bestätigen</button>
+                <button type="button" id="btn-mem-no">Abbrechen</button>
+              </div>
+              <p class="meta" id="mem-saved" hidden>Gespeichert in WARM. Nicht HOT, nicht COLD.</p>
+            </article>
+
+            <h3>Konflikte</h3>
+            <article class="card edge-warn">
+              <p><span class="tag warm">WARM</span> vs. <span class="tag cold">COLD</span></p>
+              <p>COLD sagt Inhaber Klaus Müller. Im aktuellen Brief steht nur „Werkstatt Müller“, ohne Vornamen. Nicht automatisch überschreiben.</p>
+              <p class="meta">Sperre: Konflikt bleibt, bis du entscheidest.</p>
+            </article>
+          </div>
+        </section>
+
+        <!-- ERGEBNIS -->
+        <section class="panel" id="panel-ergebnis" role="tabpanel" aria-labelledby="tab-ergebnis" hidden>
+          <div class="loading">
+            <h2>Ergebnis</h2>
+            <div class="skel"></div>
+          </div>
+          <p class="empty">Kein Ergebnis. Nichts anzusehen, nichts zu behalten.</p>
+          <div class="has-data">
+            <h2>Ergebnis</h2>
+            <div class="banner" id="erg-banner">
+              <p id="erg-status">Lauf noch aktiv — kein gespeichertes Ergebnis. Erfolg gibt es erst nach „Behalten“.</p>
+            </div>
+            <div class="grid">
+              <div class="card">
+                <h3>Artefakte</h3>
+                <p id="erg-art">index.html (Entwurf, nicht behalten)</p>
+              </div>
+              <div class="card">
+                <h3>Tests / Belege</h3>
+                <p id="erg-test">Datei existiert im Workspace. Kein automatischer Screenshot. Kein Tollgate-Lauf.</p>
+              </div>
+              <div class="card">
+                <h3>Offene Punkte</h3>
+                <p id="erg-open">Telefonnummer Impressum. Preis-Pakete unfertig.</p>
+              </div>
+            </div>
+            <div class="actions">
+              <button type="button" id="btn-view">Ansehen</button>
+              <button type="button" id="btn-keep">Behalten</button>
+              <button type="button" id="btn-drop">Verwerfen</button>
+              <button type="button" id="btn-undo" disabled>Rückgängig</button>
+            </div>
+            <pre class="preview" id="erg-preview">&lt;!DOCTYPE html&gt;
+&lt;h1&gt;Werkstatt Müller&lt;/h1&gt;
+&lt;p&gt;Leistungen: Inspektion, Reifen, Inspektion vor TÜV.&lt;/p&gt;
+&lt;p&gt;Preise: folgt.&lt;/p&gt;</pre>
+            <div class="confirm" id="keep-confirm">
+              <p>index.html in den persönlichen Workspace kopieren? Erst danach gilt das Ergebnis als behalten.</p>
+              <button type="button" id="btn-keep-yes">Speichern bestätigen</button>
+              <button type="button" id="btn-keep-no">Nicht speichern</button>
+            </div>
+            <p class="meta" id="erg-saved" hidden>Gespeichert. Erfolg: ja — nach bestätigtem Speichern.</p>
+          </div>
+        </section>
+
+        <!-- EINSTELLUNGEN -->
+        <section class="panel" id="panel-einstellungen" role="tabpanel" aria-labelledby="tab-einstellungen" hidden>
+          <div class="loading">
+            <h2>Einstellungen</h2>
+            <div class="skel"></div>
+          </div>
+          <p class="empty">Keine Einstellungen geladen.</p>
+          <div class="has-data">
+            <h2>Einstellungen</h2>
+            <p class="meta">Drei Gruppen. Schieber erklären niedrig / normal / hoch. Rechte sind harte Schalter. God-Mode hier nur Status.</p>
+
+            <h3>Verhalten</h3>
+            <div class="slider-block">
+              <label for="sl-detail">Ausführlichkeit <span class="muted" id="sl-detail-v">normal</span></label>
+              <input id="sl-detail" type="range" min="0" max="2" value="1" />
+              <p class="meta" id="sl-detail-h">Normal: knapp, aber vollständig. Niedrig: nur das Nötigste. Hoch: mit Begründung und Alternativen.</p>
+            </div>
+            <div class="slider-block">
+              <label for="sl-init">Eigeninitiative <span class="muted" id="sl-init-v">normal</span></label>
+              <input id="sl-init" type="range" min="0" max="2" value="1" />
+              <p class="meta" id="sl-init-h">Normal: nächster klarer Schritt ohne Extra-Bauten. Niedrig: nur explizit Geheißtes. Hoch: darf sinnvolle Nachbarschritte vorschlagen, nicht heimlich ausführen.</p>
+            </div>
+            <div class="slider-block">
+              <label for="sl-ask">Rückfragen <span class="muted" id="sl-ask-v">normal</span></label>
+              <input id="sl-ask" type="range" min="0" max="2" value="1" />
+              <p class="meta" id="sl-ask-h">Normal: fragt bei fehlenden Pflichtangaben. Niedrig: rät still. Hoch: fragt bei jeder Unschärfe.</p>
+            </div>
+
+            <h3>Fähigkeiten</h3>
+            <div class="slider-block">
+              <label for="sl-tools">Werkzeuge <span class="muted" id="sl-tools-v">normal</span></label>
+              <input id="sl-tools" type="range" min="0" max="2" value="1" />
+              <p class="meta" id="sl-tools-h">Normal: erlaubte Werkzeuge bei Bedarf. Niedrig: nur Text. Hoch: Werkzeuge früh, trotzdem nur mit Recht.</p>
+            </div>
+            <div class="slider-block">
+              <label for="sl-files">Dateien schreiben <span class="muted" id="sl-files-v">normal</span></label>
+              <input id="sl-files" type="range" min="0" max="2" value="1" />
+              <p class="meta" id="sl-files-h">Normal: Workspace-Dateien des Auftrags. Niedrig: nur lesen. Hoch: mehrere Artefakte, kein Systempfad.</p>
+            </div>
+            <div class="slider-block">
+              <label for="sl-net">Netz <span class="muted" id="sl-net-v">niedrig</span></label>
+              <input id="sl-net" type="range" min="0" max="2" value="0" />
+              <p class="meta" id="sl-net-h">Niedrig: nur ausdrücklich genannte URLs. Normal: öffentliche Recherche zum Auftrag. Hoch: mehrere Quellen, weiterhin kein Secret-Zugriff.</p>
+            </div>
+
+            <h3>Rechte</h3>
+            <p class="meta">Harte Schalter, kein Schieber. Aus = verboten.</p>
+            <label class="switch"><span>Workspace lesen</span><input type="checkbox" checked /></label>
+            <label class="switch"><span>Workspace schreiben</span><input type="checkbox" checked /></label>
+            <label class="switch"><span>Netz lesen</span><input type="checkbox" checked /></label>
+            <label class="switch"><span>Shell (Trockenlauf)</span><input type="checkbox" /></label>
+            <label class="switch"><span>Echte Shell / GUI</span><input type="checkbox" disabled /> <span class="meta">nur mit God-Mode am Desk</span></label>
+
+            <div class="god">
+              <p><b>God-Mode: aus</b> — nur Status, kein Schalter.</p>
+              <p class="meta">Einschalten geht nicht in dieser Ansicht. Nur das Desk-Badge darf God-Mode setzen. Hier bleibt der Status sichtbar: aus = Shell/GUI nur Trockenlauf.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </article>
+  </div>
+
+  <script>
+    (function () {
+      var TAB_IDS = [
+        "jetzt", "auftrag", "verlauf", "werkzeuge",
+        "dateien", "memory", "ergebnis", "einstellungen"
+      ];
+      var LEVEL = ["niedrig", "normal", "hoch"];
+      var HINT = {
+        "sl-detail": [
+          "Niedrig: nur das Nötigste, keine Extra-Absätze.",
+          "Normal: knapp, aber vollständig.",
+          "Hoch: mit Begründung und Alternativen."
+        ],
+        "sl-init": [
+          "Niedrig: nur explizit Geheißtes.",
+          "Normal: nächster klarer Schritt ohne Extra-Bauten.",
+          "Hoch: darf sinnvolle Nachbarschritte vorschlagen, nicht heimlich ausführen."
+        ],
+        "sl-ask": [
+          "Niedrig: rät still, fragt selten.",
+          "Normal: fragt bei fehlenden Pflichtangaben.",
+          "Hoch: fragt bei jeder Unschärfe."
+        ],
+        "sl-tools": [
+          "Niedrig: nur Text, keine Werkzeuge.",
+          "Normal: erlaubte Werkzeuge bei Bedarf.",
+          "Hoch: Werkzeuge früh, trotzdem nur mit Recht."
+        ],
+        "sl-files": [
+          "Niedrig: nur lesen, nichts schreiben.",
+          "Normal: Workspace-Dateien des Auftrags.",
+          "Hoch: mehrere Artefakte, kein Systempfad."
+        ],
+        "sl-net": [
+          "Niedrig: nur ausdrücklich genannte URLs.",
+          "Normal: öffentliche Recherche zum Auftrag.",
+          "Hoch: mehrere Quellen, weiterhin kein Secret-Zugriff."
+        ]
+      };
+      var STATES = {
+        laedt: {
+          label: "lädt",
+          sym: "↻",
+          time: "—",
+          cost: "—",
+          task: "Auftrag wird geladen.",
+          step: "—",
+          start: "—",
+          status: "lädt — warte auf Laufdaten",
+          actions: []
+        },
+        wartet: {
+          label: "wartet",
+          sym: "○",
+          time: "0 min 00 s",
+          cost: "0,000 $",
+          task: "Kein laufender Auftrag. Arbeiter 1 wartet auf ein bestätigtes Execute.",
+          step: "Kein Schritt.",
+          start: "kein Lauf",
+          status: "wartet — bereit, nichts gestartet",
+          actions: []
+        },
+        aktiv: {
+          label: "aktiv",
+          sym: "▶",
+          time: "4 min 12 s",
+          cost: "0,018 $",
+          task: "Landing page für Autowerkstatt Müller — eine HTML-Seite, Deutsch, Leistungen / Preise / Kontakt.",
+          step: "Block „Preise“ mit drei Paketen in index.html einfügen.",
+          start: "heute 14:02",
+          status: "aktiv — schreibt gerade an index.html",
+          actions: [{ id: "cancel", label: "Abbrechen" }]
+        },
+        fragt: {
+          label: "fragt",
+          sym: "?",
+          time: "5 min 01 s",
+          cost: "0,021 $",
+          task: "Landing page für Autowerkstatt Müller — Impressum unvollständig.",
+          step: "Wartet auf deine Antwort, bevor der Kontaktblock fertig wird.",
+          start: "heute 14:02",
+          status: "fragt — braucht eine Pflichtangabe von dir",
+          ask: "Welche Telefonnummer soll ins Impressum?",
+          actions: [{ id: "goto-ask", label: "Zur Frage" }]
+        },
+        blockiert: {
+          label: "blockiert",
+          sym: "⊘",
+          time: "5 min 40 s",
+          cost: "0,021 $",
+          task: "Landing page für Autowerkstatt Müller — Logo fehlt.",
+          step: "Kann den Kopf der Seite nicht fertigsetzen.",
+          start: "heute 14:02",
+          status: "blockiert — fehlt eine Datei",
+          block: "Datei logo.svg fehlt im Workspace. Ohne Logo kein Kopf.",
+          actions: [{ id: "show-block", label: "Blocker anzeigen" }]
+        },
+        fehler: {
+          label: "Fehler",
+          sym: "×",
+          time: "6 min 02 s",
+          cost: "0,024 $",
+          task: "Landing page für Autowerkstatt Müller — Lauf mit Fehler.",
+          step: "Zweiter Webabruf gescheitert.",
+          start: "heute 14:02",
+          status: "Fehler — Werkzeug zeitüberschritten",
+          err: "web_fetch: Zeitüberschreitung nach 20 s (Öffnungszeiten).",
+          actions: [{ id: "show-err", label: "Fehler ansehen" }]
+        },
+        fertig: {
+          label: "fertig",
+          sym: "✓",
+          time: "6 min 40 s",
+          cost: "0,031 $",
+          task: "Landing page für Autowerkstatt Müller — Entwurf liegt vor.",
+          step: "Kein offener Schritt. Ergebnis noch nicht behalten.",
+          start: "heute 14:02",
+          status: "fertig — Entwurf bereit, nicht gespeichert",
+          actions: [{ id: "open-result", label: "Ergebnis öffnen" }]
+        },
+        offline: {
+          label: "offline",
+          sym: "●",
+          time: "zuletzt 4 min 12 s",
+          cost: "zuletzt 0,018 $",
+          task: "Letzter bekannter Auftrag: Landing page Werkstatt Müller.",
+          step: "Unbekannt — Agent nicht erreichbar.",
+          start: "heute 14:02",
+          status: "offline — keine neuen Aktionen",
+          actions: []
+        },
+        leer: {
+          label: "keine Daten",
+          sym: "—",
+          time: "—",
+          cost: "—",
+          task: "—",
+          step: "—",
+          start: "—",
+          status: "keine Daten",
+          actions: []
+        }
+      };
+
+      var toastTimer = 0;
+      var recipientSet = false;
+      var resultKept = false;
+      var resultDropped = false;
+      var lastKeep = false;
+
+      function $(id) { return document.getElementById(id); }
+
+      function toast(msg) {
+        var el = $("toast");
+        el.textContent = msg;
+        el.classList.add("is-on");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { el.classList.remove("is-on"); }, 2800);
+      }
+
+      function showTab(name, fromKeyboard) {
+        TAB_IDS.forEach(function (id) {
+          var tab = $("tab-" + id);
+          var panel = $("panel-" + id);
+          var on = id === name;
+          tab.setAttribute("aria-selected", on ? "true" : "false");
+          tab.tabIndex = on ? 0 : -1;
+          panel.classList.toggle("is-on", on);
+          if (on) panel.removeAttribute("hidden");
+          else panel.setAttribute("hidden", "");
+        });
+        if (fromKeyboard) $("tab-" + name).focus();
+      }
+
+      function setRecipient(on) {
+        recipientSet = on;
+        var note = $("recipient-note");
+        if (on) {
+          note.textContent = "Empfänger: Arbeiter 1";
+          note.classList.add("is-set");
+        } else {
+          note.textContent = "Ansicht geöffnet — Empfänger unverändert";
+          note.classList.remove("is-set");
+        }
+      }
+
+      function fillActions(spec) {
+        var box = $("jetzt-actions");
+        var none = $("jetzt-none");
+        box.innerHTML = "";
+        if (!spec.actions.length) {
+          none.hidden = false;
+          return;
+        }
+        none.hidden = true;
+        spec.actions.forEach(function (a) {
+          var b = document.createElement("button");
+          b.type = "button";
+          b.textContent = a.label;
+          b.dataset.act = a.id;
+          b.addEventListener("click", onJetztAction);
+          box.appendChild(b);
+        });
+      }
+
+      function onJetztAction(ev) {
+        var id = ev.currentTarget.dataset.act;
+        if (id === "open-result") {
+          showTab("ergebnis", false);
+          toast("Reiter Ergebnis geöffnet.");
+          return;
+        }
+        if (id === "goto-ask") {
+          $("jetzt-ask").hidden = false;
+          $("jetzt-ask").focus();
+          toast("Frage bleibt hier — Chat wäre am Desk.");
+          return;
+        }
+        if (id === "show-block") {
+          $("jetzt-block").hidden = false;
+          toast("Blocker sichtbar.");
+          return;
+        }
+        if (id === "show-err") {
+          $("jetzt-err").hidden = false;
+          toast("Fehler sichtbar.");
+          return;
+        }
+        if (id === "cancel") {
+          toast("Prototyp: Lauf würde abbrechen. Kein echter Stop.");
+        }
+      }
+
+      function applyState(name) {
+        var spec = STATES[name];
+        if (!spec) return;
+        document.body.setAttribute("data-state", name);
+        document.querySelectorAll(".state-btn").forEach(function (b) {
+          b.classList.toggle("is-on", b.getAttribute("data-state") === name);
+        });
+        $("live").setAttribute("data-state", name);
+        $("live-sym").textContent = spec.sym;
+        $("live-text").textContent = spec.label;
+        $("run-time").textContent = spec.time;
+        $("run-cost").textContent = spec.cost;
+        $("jetzt-task").textContent = spec.task;
+        $("jetzt-step").textContent = spec.step;
+        $("jetzt-start").textContent = spec.start;
+        $("jetzt-dauer").textContent = spec.time;
+        $("jetzt-status").textContent = spec.status;
+        $("jetzt-ask").hidden = !spec.ask;
+        $("jetzt-ask-text").textContent = spec.ask || "";
+        $("jetzt-block-text").textContent = spec.block || "Kein Blocker.";
+        $("jetzt-block-banner").textContent = spec.block || "Kein Blocker.";
+        $("jetzt-block").hidden = !spec.block;
+        $("jetzt-err").hidden = !spec.err;
+        $("jetzt-err-text").textContent = spec.err || "";
+        fillActions(spec);
+
+        var banner = $("erg-banner");
+        var st = $("erg-status");
+        banner.className = "banner";
+        if (name === "fertig") {
+          st.textContent = "Entwurf fertig. Erfolg: nein — erst nach bestätigtem Speichern.";
+        } else if (name === "fehler") {
+          banner.classList.add("err");
+          st.textContent = "Lauf mit Fehler. Artefakt unvollständig. Erfolg: nein.";
+        } else if (name === "aktiv" || name === "fragt" || name === "blockiert") {
+          st.textContent = "Lauf noch aktiv — kein gespeichertes Ergebnis. Erfolg gibt es erst nach „Behalten“.";
+        } else if (name === "wartet") {
+          st.textContent = "Kein Lauf, kein Ergebnis.";
+        } else if (name === "offline") {
+          st.textContent = "Letzter bekannter Entwurf. Agent offline — Behalten nur lokal im Prototyp.";
+        }
+        if (resultKept) {
+          banner.classList.add("ok");
+          st.textContent = "Gespeichert. Erfolg: ja — nach bestätigtem Speichern.";
+        }
+      }
+
+      function toggleNarrow() {
+        var on = document.body.classList.toggle("is-narrow");
+        $("btn-narrow").setAttribute("aria-pressed", on ? "true" : "false");
+        $("btn-narrow").textContent = on
+          ? "Großes Fenster"
+          : "Kleines Fenster (~360 px)";
+      }
+
+      function goBack() {
+        setRecipient(false);
+        toast("Prototyp: würde zum Desk zurückkehren. Empfänger unverändert.");
+      }
+
+      function chooseTarget() {
+        setRecipient(true);
+        toast("Empfänger ist jetzt Arbeiter 1. Vorher war die Ansicht nur geöffnet.");
+      }
+
+      window.r2Tab = function (name) { showTab(name, false); };
+      window.r2State = function (name) { applyState(name); };
+      window.r2Narrow = toggleNarrow;
+      window.r2Back = goBack;
+      window.r2Target = chooseTarget;
+
+      $("tabs").addEventListener("keydown", function (ev) {
+        var i = TAB_IDS.indexOf(document.querySelector('.tab[aria-selected="true"]').getAttribute("data-tab"));
+        if (ev.key === "ArrowRight" || ev.key === "ArrowDown") {
+          ev.preventDefault();
+          showTab(TAB_IDS[(i + 1) % TAB_IDS.length], true);
+        } else if (ev.key === "ArrowLeft" || ev.key === "ArrowUp") {
+          ev.preventDefault();
+          showTab(TAB_IDS[(i + TAB_IDS.length - 1) % TAB_IDS.length], true);
+        } else if (ev.key === "Home") {
+          ev.preventDefault();
+          showTab(TAB_IDS[0], true);
+        } else if (ev.key === "End") {
+          ev.preventDefault();
+          showTab(TAB_IDS[TAB_IDS.length - 1], true);
+        }
+      });
+
+      document.addEventListener("keydown", function (ev) {
+        var tag = (ev.target && ev.target.tagName) || "";
+        var typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+        if (ev.key === "Escape") {
+          goBack();
+          $("btn-back").focus();
+          return;
+        }
+        if (ev.altKey && (ev.key === "e" || ev.key === "E")) {
+          ev.preventDefault();
+          chooseTarget();
+          $("btn-target").focus();
+        }
+        if (typing) return;
+      });
+
+      $("hist-filters").addEventListener("click", function (ev) {
+        var btn = ev.target.closest("button");
+        if (!btn) return;
+        btn.classList.toggle("is-on");
+        var on = {};
+        document.querySelectorAll("#hist-filters button").forEach(function (b) {
+          on[b.getAttribute("data-filter")] = b.classList.contains("is-on");
+        });
+        var any = false;
+        document.querySelectorAll("#hist-list .hist").forEach(function (row) {
+          var show = on[row.getAttribute("data-kind")];
+          row.hidden = !show;
+          if (show) any = true;
+        });
+        $("hist-empty").hidden = any;
+      });
+
+      document.querySelectorAll("[data-preview]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var id = "preview-" + btn.getAttribute("data-preview");
+          var el = $(id);
+          if (!el) return;
+          el.classList.toggle("is-on");
+        });
+      });
+      document.querySelectorAll("[data-diff]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var el = $("diff-" + btn.getAttribute("data-diff"));
+          if (el) el.classList.toggle("is-on");
+        });
+      });
+
+      $("btn-mem-ask").addEventListener("click", function () {
+        $("mem-confirm").classList.add("is-on");
+      });
+      $("btn-mem-no").addEventListener("click", function () {
+        $("mem-confirm").classList.remove("is-on");
+        toast("Nicht gespeichert.");
+      });
+      $("btn-mem-yes").addEventListener("click", function () {
+        $("mem-confirm").classList.remove("is-on");
+        $("mem-saved").hidden = false;
+        $("btn-mem-ask").disabled = true;
+        toast("Fakt in WARM gespeichert. Erst nach dieser Bestätigung.");
+      });
+
+      $("btn-view").addEventListener("click", function () {
+        $("erg-preview").classList.toggle("is-on");
+      });
+      $("btn-keep").addEventListener("click", function () {
+        $("keep-confirm").classList.add("is-on");
+      });
+      $("btn-keep-no").addEventListener("click", function () {
+        $("keep-confirm").classList.remove("is-on");
+        toast("Nicht gespeichert. Erfolg bleibt nein.");
+      });
+      $("btn-keep-yes").addEventListener("click", function () {
+        $("keep-confirm").classList.remove("is-on");
+        resultKept = true;
+        resultDropped = false;
+        lastKeep = true;
+        $("erg-saved").hidden = false;
+        $("erg-banner").className = "banner ok";
+        $("erg-status").textContent = "Gespeichert. Erfolg: ja — nach bestätigtem Speichern.";
+        $("erg-art").textContent = "index.html (behalten, persönlicher Workspace)";
+        $("btn-undo").disabled = false;
+        $("btn-keep").disabled = true;
+        toast("Behalten bestätigt.");
+      });
+      $("btn-drop").addEventListener("click", function () {
+        lastKeep = resultKept;
+        resultDropped = true;
+        resultKept = false;
+        $("erg-saved").hidden = true;
+        $("erg-banner").className = "banner";
+        $("erg-status").textContent = "Verworfen. Erfolg: nein. Rückgängig möglich.";
+        $("erg-art").textContent = "index.html (verworfen, nicht behalten)";
+        $("btn-undo").disabled = false;
+        $("btn-keep").disabled = false;
+        $("keep-confirm").classList.remove("is-on");
+        toast("Verworfen.");
+      });
+      $("btn-undo").addEventListener("click", function () {
+        if (resultDropped && lastKeep) {
+          resultKept = true;
+          resultDropped = false;
+          $("erg-saved").hidden = false;
+          $("erg-banner").className = "banner ok";
+          $("erg-status").textContent = "Gespeichert. Erfolg: ja — nach bestätigtem Speichern.";
+          $("erg-art").textContent = "index.html (behalten, persönlicher Workspace)";
+          $("btn-keep").disabled = true;
+        } else {
+          resultDropped = false;
+          resultKept = false;
+          $("erg-saved").hidden = true;
+          $("erg-banner").className = "banner";
+          $("erg-status").textContent = "Zurück auf Entwurf. Erfolg: nein — erst nach bestätigtem Speichern.";
+          $("erg-art").textContent = "index.html (Entwurf, nicht behalten)";
+          $("btn-keep").disabled = false;
+        }
+        $("btn-undo").disabled = true;
+        toast("Rückgängig.");
+      });
+
+      ["sl-detail", "sl-init", "sl-ask", "sl-tools", "sl-files", "sl-net"].forEach(function (id) {
+        var el = $(id);
+        function sync() {
+          var n = Number(el.value);
+          $(id + "-v").textContent = LEVEL[n];
+          $(id + "-h").textContent = HINT[id][n];
+        }
+        el.addEventListener("input", sync);
+        sync();
+      });
+
+      applyState("aktiv");
+      showTab("jetzt", false);
+    })();
+  </script>
+</body>
+</html>
