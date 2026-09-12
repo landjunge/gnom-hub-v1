@@ -1725,7 +1725,7 @@
     if (document.getElementById("box3-btn-away")) {
       const awayBtn = document.createElement("button");
       awayBtn.type = "button";
-      awayBtn.textContent = "Verwerfen";
+      awayBtn.textContent = "Weg";
       awayBtn.addEventListener("click", function () {
         if (typeof focusBox3WorkerResult === "function" && idx >= 0) {
           focusBox3WorkerResult(idx);
@@ -8594,8 +8594,15 @@
   function box3WorkerTabLabel(out, i) {
     const raw = String((out && (out.worker || out.name)) || "").toLowerCase();
     const wm = /worker\s*(\d+)/.exec(raw);
-    if (wm) return "A" + wm[1];
-    return "A" + (i + 1);
+    const base = wm ? "A" + wm[1] : "A" + (i + 1);
+    if (out && out.variant_of != null) return base + "v";
+    return base;
+  }
+
+  function updateBox3RestoreBtn() {
+    const btn = document.getElementById("box3-btn-restore");
+    if (!btn) return;
+    btn.hidden = !(resultTrash && resultTrash.length);
   }
 
   function box3WorkerTabTitle(out, i) {
@@ -8752,7 +8759,7 @@
     const away = document.getElementById("box3-btn-away");
     if (away && !away._bound) {
       away._bound = true;
-      away.addEventListener("click", function () {
+      away.addEventListener("click", async function () {
         const i = box3FocusIdx || 0;
         if (!lastWorkerOutputs || !lastWorkerOutputs[i]) return;
         const gone = lastWorkerOutputs[i];
@@ -8762,28 +8769,57 @@
           ((gone && (gone.worker || gone.name)) || "result")
             .toString()
             .replace(/[^\w.-]+/g, "_") + ".txt";
+        let persisted = false;
         if (typeof api === "function") {
-          api("POST", "/api/workspace/write", {
-            zone: "trash",
-            name: tname,
-            content: (gone && gone.result) || "",
-          }).catch(function () {
-            /* keep in-memory trash */
-          });
+          try {
+            const data = await api("POST", "/api/workspace/write", {
+              zone: "trash",
+              name: tname,
+              content: (gone && gone.result) || "",
+            });
+            persisted = !!(data && data.ok !== false);
+          } catch (_e) {
+            persisted = false;
+          }
         }
-        toast("Weg — im Papierkorb, wiederherstellbar", "info");
+        if (persisted) {
+          toast("Weg — im Papierkorb", "ok");
+        } else {
+          toast("Weg — nur in diesem Lauf, Papierkorb nicht geschrieben", "info");
+        }
+        updateBox3RestoreBtn();
         if (lastWorkerOutputs.length) {
           focusBox3WorkerResult(Math.min(i, lastWorkerOutputs.length - 1));
         } else {
           const stage = document.getElementById("box3-result-stage");
-          if (stage) {
-            stage.hidden = true;
-            stage.classList.remove("is-open");
-          }
           const emptyEl = document.getElementById("box3-empty");
-          if (emptyEl) emptyEl.hidden = false;
+          const body = document.getElementById("box3-result-body");
+          if (resultTrash.length && stage) {
+            if (body) body.innerHTML = "";
+            if (emptyEl) emptyEl.hidden = true;
+            stage.hidden = false;
+            stage.classList.add("is-open");
+          } else {
+            if (stage) {
+              stage.hidden = true;
+              stage.classList.remove("is-open");
+            }
+            if (emptyEl) emptyEl.hidden = false;
+          }
           renderBox3WorkerTabs();
         }
+      });
+    }
+    const restore = document.getElementById("box3-btn-restore");
+    if (restore && !restore._bound) {
+      restore._bound = true;
+      restore.addEventListener("click", function () {
+        if (!resultTrash.length) return;
+        const back = resultTrash.shift();
+        lastWorkerOutputs.push(back);
+        updateBox3RestoreBtn();
+        toast("Zurück — wieder in Box 3", "ok");
+        focusBox3WorkerResult(lastWorkerOutputs.length - 1);
       });
     }
     const neu = document.getElementById("box3-btn-new");
@@ -8800,7 +8836,7 @@
         copy.name = (src.name || src.worker || "Ergebnis") + " Variante";
         copy.variant_of = src.worker || i;
         lastWorkerOutputs.splice(i + 1, 0, copy);
-        toast("Neu — Original bleibt, Variante daneben", "ok");
+        toast("Neu — Original bleibt, Variante noch nicht gespeichert", "ok");
         focusBox3WorkerResult(i + 1);
       });
     }
@@ -9553,6 +9589,7 @@
   /** Save one worker result: HTML → selected/, other text → perm/. */
   async function keepWorkerToPersonalWs(out, idx, overwrite) {
     const raw = (out && out.result) || "";
+    const keepBtn = document.getElementById("box3-btn-keep");
     if (!String(raw).trim()) {
       toast("Nichts zum Behalten", "info");
       return;
@@ -9563,6 +9600,10 @@
         .toString()
         .replace(/[^\w.-]+/g, "_");
     const name = base + (html ? ".html" : ".txt");
+    if (keepBtn) {
+      keepBtn.disabled = true;
+      keepBtn.textContent = "…";
+    }
     try {
       const data = await api("POST", "/api/workspace/keep", {
         content: html || raw,
@@ -9584,22 +9625,24 @@
         toast((data && data.status) || "Speichern fehlgeschlagen", "error");
         return;
       }
-      toast(
-        (data.status || "Behalten") +
-          " · " +
-          (data.path || name) +
-          (data.kept_at ? " · " + data.kept_at : "") +
-          (data.result_id ? " · " + data.result_id : ""),
-        "ok"
-      );
+      if (data.verified !== true) {
+        toast("Speichern nicht bestätigt — Datei nicht zurückgelesen", "error");
+        return;
+      }
+      toast("Behalten — im Workspace gespeichert", "ok");
     } catch (err) {
       toast("Speichern fehlgeschlagen: " + (err.message || err), "error");
+    } finally {
+      if (keepBtn) {
+        keepBtn.disabled = false;
+        keepBtn.textContent = "Behalten";
+      }
     }
   }
 
   function copyAllWorkerResults() {
     if (!lastWorkerOutputs.length) {
-      toast("No worker results to copy", "info");
+      toast("Keine Worker-Ergebnisse zum Kopieren", "info");
       return;
     }
     lastWorkerOutputs.forEach(function (o, i) {
@@ -9617,10 +9660,10 @@
           toast("Behalten + Zwischenablage (" + text.length + " Zeichen)", "ok");
         })
         .catch(function () {
-          toast("Copy failed", "error");
+          toast("Kopieren fehlgeschlagen", "error");
         });
     }
-    toast("Clipboard not available", "error");
+    toast("Zwischenablage nicht verfügbar", "error");
   }
 
   /**

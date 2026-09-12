@@ -1725,7 +1725,7 @@
     if (document.getElementById("box3-btn-away")) {
       const awayBtn = document.createElement("button");
       awayBtn.type = "button";
-      awayBtn.textContent = "Verwerfen";
+      awayBtn.textContent = "Weg";
       awayBtn.addEventListener("click", function () {
         if (typeof focusBox3WorkerResult === "function" && idx >= 0) {
           focusBox3WorkerResult(idx);
