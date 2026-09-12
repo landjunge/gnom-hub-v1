@@ -156,7 +156,7 @@ TOOLTIPS: dict[str, dict[str, TooltipText]] = {
         },
         "de": {
             "title": "Chat",
-            "how_to": "Send = reden, keine Ausführung. Arbeit starten = Worker. Mic = Spracheingabe.",
+            "how_to": "Senden = reden, keine Ausführung. Arbeit starten = Worker. Mikrofon = Spracheingabe.",
             "example": "Frei brainstormen, dann Arbeit starten.",
         },
     },
@@ -181,7 +181,7 @@ TOOLTIPS: dict[str, dict[str, TooltipText]] = {
         "de": {
             "title": "Clarify",
             "how_to": "Destillationsfragen: Ja / Nein / Egal / Später.",
-            "example": "Frage: „MVP oder robust?“ → Yes / No / …",
+            "example": "Frage: „MVP oder robust?“ → Ja / Nein / …",
         },
     },
     "system": {

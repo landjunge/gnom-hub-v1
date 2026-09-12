@@ -3526,11 +3526,11 @@
     if (titleEl) titleEl.textContent = p.title || "Flex";
     if (badgeEl) {
       badgeEl.hidden = !active;
-      badgeEl.textContent = active ? "Feedback" : "";
+      badgeEl.textContent = active ? "Rückmeldung" : "";
     }
     const qText =
       p.question ||
-      "Nach einem Ergebnis fragt Flex hier nach Feedback.";
+      "Nach einem Ergebnis fragt Flex hier nach Rückmeldung.";
     if (qEl) qEl.textContent = qText;
     if (hintEl) {
       hintEl.textContent =
@@ -3550,7 +3550,7 @@
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className =
-        "flex-review-btn rounded-md border border-gnom-border bg-gnom-card px-2.5 py-1.5 " +
+        "flex-review-btn border border-gnom-border bg-gnom-card px-2.5 py-1.5 " +
         "text-xs leading-tight text-gnom-text transition hover:border-gnom-flex hover:text-gnom-flex " +
         (String(b.action || "") === "start_work"
           ? "border-gnom-ok/50 hover:border-gnom-ok hover:text-gnom-ok "
@@ -5981,7 +5981,7 @@
     chatBusy = next;
     if (els.btnSend) {
       els.btnSend.disabled = chatBusy;
-      els.btnSend.textContent = chatBusy ? "…" : "Send";
+      els.btnSend.textContent = chatBusy ? "…" : "Senden";
     }
     if (els.btnExecute) {
       // Must re-apply can_execute when busy ends — applySnapshot often ran while busy=true
@@ -7441,7 +7441,7 @@
       label.className =
         "chat-flags-label text-2xs uppercase tracking-wide text-gnom-muted";
       label.title = "Klick = an nächste Nachricht anhängen";
-      label.textContent = "Flags";
+      label.textContent = "Wünsche";
     }
     root.appendChild(label);
     CHAT_FLAG_DEFS.forEach(function (f) {
@@ -7536,8 +7536,8 @@
   function fitChatInput() {
     const el = (els && els.chatInput) || document.getElementById("chat-input");
     if (!el) return;
-    el.style.height = "32px";
-    const next = Math.min(Math.max(el.scrollHeight, 32), 72);
+    el.style.height = "28px";
+    const next = Math.min(Math.max(el.scrollHeight, 28), 72);
     el.style.height = next + "px";
   }
 
@@ -7569,7 +7569,7 @@
             : id === "flex"
               ? "Flex"
               : id.replace("worker", "W");
-      btn.title = "Send an " + id;
+      btn.title = "Senden an " + id;
       if (typeof COLOR_HEX !== "undefined" && COLOR_HEX[id]) {
         btn.style.setProperty("--owner-color", COLOR_HEX[id]);
       }
@@ -7828,9 +7828,9 @@
       els.tipRoot.hidden = false;
       els.tipTitle.textContent = "Help";
       els.tipHow.textContent =
-        "Send = reden. Arbeit starten = Worker.";
+        "Senden = reden. Arbeit starten = Worker.";
       els.tipExample.textContent =
-        "Keyboard: Enter send · Ctrl/⌘+Enter execute · Ctrl/⌘+S save · Esc cancel/close FS";
+        "Tastatur: Enter senden · Ctrl/⌘+Enter Arbeit starten · Ctrl/⌘+S speichern · Esc abbrechen";
       toast("Help offline: " + err.message, "error");
     }
   }

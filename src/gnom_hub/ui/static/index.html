@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=166" />
+  <link rel="stylesheet" href="/static/app.css?v=167" />
   <!-- Tailwind utilities for Chat module (preflight OFF) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -155,7 +155,7 @@
         <!-- shared overlays (not per-agent chrome) -->
         <div id="box1-content" class="box1-overlay box-body box1-info">
           <div class="info-layer is-active" data-info-layer="live" id="box1-layer-live">
-            <p class="box1-placeholder">Agent-Klick → Info hier (Box 1). Rahmenfarbe = Modul.</p>
+            <p class="box1-placeholder">Noch nichts zu entscheiden. Flex fragt hier, wenn etwas unklar ist.</p>
             <aside
               id="flex-ask"
               class="flex-ask box1-flex-ask"
@@ -172,7 +172,7 @@
               class="flex-review box1-flex-review"
               data-agent="flex"
               hidden
-              aria-label="Flex Feedback in Box 1"
+              aria-label="Flex-Rückmeldung in Box 1"
             >
               <div class="flex-review-head">
                 <span class="flex-review-title" id="flex-review-title">Flex</span>
@@ -180,10 +180,10 @@
                   class="flex-review-badge"
                   id="flex-review-badge"
                   hidden
-                >Feedback</span>
+                >Rückmeldung</span>
               </div>
               <p class="flex-review-q" id="flex-review-q">
-                Nach einem Ergebnis fragt Flex hier nach Feedback.
+                Nach einem Ergebnis fragt Flex hier nach Rückmeldung.
               </p>
               <div
                 class="flex-review-btns"
@@ -199,14 +199,14 @@
                   id="flex-review-note"
                   class="flex-review-note"
                   maxlength="200"
-                  placeholder="Flag/Notiz zum Button (z.B. dunkler, mehr DE)…"
+                  placeholder="Notiz zum Button (z.B. dunkler, mehr DE)…"
                   autocomplete="off"
                 />
                 <button
                   type="button"
                   id="flex-review-note-save"
                   class="flex-review-note-save"
-                  title="Nur als Wish speichern"
+                  title="Nur als Wunsch speichern"
                 >Merken</button>
               </div>
               <p class="flex-review-hint muted" id="flex-review-hint">
@@ -228,26 +228,26 @@
               <div id="box1-choice-grid" class="box1-choice-grid" role="listbox"></div>
             </div>
             <div id="cold-browser" class="cold-browser" hidden>
-              <h2 class="tip-title">COLD archives</h2>
+              <h2 class="tip-title">COLD-Archive</h2>
               <ul id="cold-list" class="cold-list"></ul>
               <pre id="cold-detail" class="cold-detail"></pre>
               <div class="cold-actions" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-                <button type="button" id="btn-cold-restore" class="btn-ws-sm" title="Restore selected into HOT">Restore to HOT</button>
-                <button type="button" id="btn-cold-delete" class="btn-ws-sm" title="Delete selected archive">Delete</button>
-                <button type="button" id="btn-cold-close" class="btn-cold-close">Close</button>
+                <button type="button" id="btn-cold-restore" class="btn-ws-sm" title="Auswahl in HOT wiederherstellen">Wiederherstellen</button>
+                <button type="button" id="btn-cold-delete" class="btn-ws-sm" title="Gewähltes Archiv löschen">Löschen</button>
+                <button type="button" id="btn-cold-close" class="btn-cold-close">Schließen</button>
               </div>
             </div>
             <div id="clarify" class="clarify" hidden>
               <p id="clarify-question" class="clarify-question"></p>
               <div class="clarify-actions">
-                <button type="button" class="btn-clarify" data-answer="Yes">Yes</button>
-                <button type="button" class="btn-clarify" data-answer="No">No</button>
-                <button type="button" class="btn-clarify" data-answer="Whatever">Whatever</button>
-                <button type="button" class="btn-clarify" data-answer="Later">Later</button>
+                <button type="button" class="btn-clarify" data-answer="Yes">Ja</button>
+                <button type="button" class="btn-clarify" data-answer="No">Nein</button>
+                <button type="button" class="btn-clarify" data-answer="Whatever">Egal</button>
+                <button type="button" class="btn-clarify" data-answer="Later">Später</button>
               </div>
             </div>
             <div id="deferred-clarify" class="clarify deferred-clarify" hidden>
-              <p class="clarify-question muted" style="font-size:0.9em">Parked (Later) — resume when ready:</p>
+              <p class="clarify-question muted" style="font-size:12px">Geparkt (Später) — weitermachen, wenn bereit:</p>
               <ul id="deferred-clarify-list" class="ws-list" style="max-height:120px;margin:4px 0"></ul>
             </div>
           </div>
@@ -289,18 +289,18 @@
       <section
         id="chat-mod"
         class="chat-mod overflow-hidden"
-        aria-label="Chat module"
+        aria-label="Chat"
       >
         <section
           id="chat"
           class="chat-mod-chat chat flex min-w-0 flex-1 flex-col overflow-hidden bg-gnom-panel"
           data-tooltip-id="chat"
-          aria-label="Chat layer"
+          aria-label="Chat"
         >
           <div
             id="chat-layers"
             class="chat-layer-stack relative min-h-0 flex-1 overflow-hidden"
-            aria-label="Per-agent chat layers"
+            aria-label="Chat-Layer je Agent"
           ></div>
 
           <div
@@ -310,18 +310,19 @@
               type="button"
               id="btn-mic"
               class="btn-mic h-8 shrink-0 rounded-md border border-gnom-border bg-gnom-card px-2.5 text-xs font-medium text-gnom-text transition hover:border-gnom-accent hover:text-gnom-accent"
-              title="Speech to text (browser)"
-            >Mic</button>
+              title="Mikrofon — Spracheingabe (Browser)"
+              aria-label="Mikrofon"
+            >Mikrofon</button>
             <button
               type="button"
               id="btn-td"
               class="btn-td h-8 shrink-0 rounded-md border border-gnom-border bg-gnom-card px-2.5 text-xs font-medium text-gnom-text transition hover:border-gnom-accent hover:text-gnom-accent"
-              title="ThreadDesk: fill chat from last packet (does not send)"
+              title="ThreadDesk: letzten Satz in den Chat legen (sendet nicht)"
             >TD</button>
             <textarea
               id="chat-input"
               class="chat-input min-h-8 max-h-[72px] min-w-[80px] flex-1 rounded-md border border-gnom-border bg-gnom-bg px-2.5 text-[13px] leading-tight text-gnom-text placeholder:text-gnom-muted focus:border-gnom-accent focus:outline-none focus:ring-1 focus:ring-gnom-accent/50"
-              placeholder="Chat-Layer (Crux) — Agent-Klick wechselt Layer"
+              placeholder="An den gewählten Agenten schreiben. Senden = reden."
               autocomplete="off"
               rows="1"
             ></textarea>
@@ -329,28 +330,28 @@
               type="button"
               id="btn-send"
               class="btn-send h-8 shrink-0 rounded-md border border-gnom-border bg-gnom-card px-3 text-[13px] font-medium text-gnom-text transition hover:border-gnom-accent hover:bg-gnom-elev"
-            >Send</button>
+            >Senden</button>
             <button
               type="button"
               id="btn-execute"
               class="btn-execute h-8 shrink-0 rounded-md border border-gnom-ok/40 bg-gnom-elev px-3 text-xs font-semibold text-gnom-text transition hover:border-gnom-ok hover:text-gnom-ok disabled:cursor-not-allowed disabled:opacity-40"
-              title="Arbeit starten — distill + workers (Ctrl+Enter)"
+              title="Arbeit starten — Destillieren + Worker (Ctrl+Enter)"
               disabled
             >Arbeit starten</button>
             <button
               type="button"
               id="btn-cancel"
               class="btn-cancel h-8 shrink-0 rounded-md border border-red-500/50 bg-red-950/40 px-2.5 text-xs font-medium text-red-300 transition hover:bg-red-900/50"
-              title="Cancel running job (Esc)"
+              title="Laufenden Auftrag abbrechen (Esc)"
               hidden
-            >Cancel</button>
+            >Abbrechen</button>
           </div>
 
           <div
             id="chat-targets"
             class="chat-targets flex shrink-0 flex-wrap items-center gap-1.5 border-t border-gnom-border/60 bg-gnom-bg/40 px-2 py-1"
             role="radiogroup"
-            aria-label="Send-Ziel"
+            aria-label="Sendeziel"
           >
             <span class="chat-flags-label text-2xs uppercase tracking-wide text-gnom-muted">An</span>
           </div>
@@ -358,15 +359,15 @@
             id="chat-flags"
             class="chat-flags flex shrink-0 flex-wrap items-center gap-1.5 border-t border-gnom-border/60 bg-gnom-bg/40 px-2 py-1"
             role="group"
-            aria-label="Wunsch-Flags"
+            aria-label="Wünsche"
           >
             <span
               class="chat-flags-label text-2xs uppercase tracking-wide text-gnom-muted"
               title="Klick = an nächste Nachricht anhängen"
-            >Flags</span>
+            >Wünsche</span>
           </div>
           <p class="kbd-hint m-0 shrink-0 px-2 pb-1 text-2xs text-gnom-muted">
-            Chat-Layer = Crux · kleine Quadrate = stehende Wünsche · Enter = Send
+            Senden = reden · Arbeit starten = Worker · Quadrate = stehende Wünsche
           </p>
         </section>
       </section>
@@ -760,6 +761,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=165"></script>
+  <script src="/static/app.js?v=167"></script>
 </body>
 </html>
