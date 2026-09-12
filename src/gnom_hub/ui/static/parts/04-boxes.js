@@ -6,6 +6,17 @@
 
   function box2AgentTabLabel(role) {
     const id = String(role || "").toLowerCase();
+    if (id === "brainstorm") return "Brain";
+    if (id === "flex") return "Flex";
+    if (id === "coordinator") return "Coord";
+    if (id === "memory") return "Mem";
+    const wm = /^worker(\d+)$/.exec(id);
+    if (wm) return "A" + wm[1];
+    return "Antw";
+  }
+
+  function box2AgentTabTitle(role) {
+    const id = String(role || "").toLowerCase();
     if (id === "brainstorm") return "Brainstorm";
     if (id === "flex") return "Flex";
     if (id === "coordinator") return "Koordinator";
@@ -70,6 +81,7 @@
       btn.setAttribute("role", "tab");
       btn.setAttribute("aria-selected", role === pick ? "true" : "false");
       btn.textContent = box2AgentTabLabel(role);
+      btn.title = box2AgentTabTitle(role);
       if (typeof markOwner === "function") {
         markOwner(btn, role);
       } else if (typeof COLOR_HEX !== "undefined" && COLOR_HEX[role]) {
@@ -117,12 +129,12 @@
       const btnPrev = document.createElement("button");
       btnPrev.type = "button";
       btnPrev.className = "worker-mode-btn is-active";
-      btnPrev.textContent = "Vorschau";
+      btnPrev.textContent = "Sicht";
       btnPrev.dataset.mode = "preview";
       const btnSrc = document.createElement("button");
       btnSrc.type = "button";
       btnSrc.className = "worker-mode-btn";
-      btnSrc.textContent = "Quelle";
+      btnSrc.textContent = "Code";
       btnSrc.dataset.mode = "source";
       modes.appendChild(btnPrev);
       modes.appendChild(btnSrc);
@@ -951,7 +963,7 @@
         " · " +
         raw.length +
         " Zeichen" +
-        (html ? " · HTML-Preview" : " · Text") +
+        (html ? " · HTML-Vorschau" : " · Text") +
         (lastWorkerOutputs.length > 1
           ? " · " + lastWorkerOutputs.length + " Worker"
           : "");
@@ -993,7 +1005,7 @@
       prevWrap.className = "box3-split-preview";
       const frame = document.createElement("iframe");
       frame.className = "worker-preview-frame box3-live-frame";
-      frame.setAttribute("title", name + " Preview");
+      frame.setAttribute("title", name + " Vorschau");
       frame.setAttribute(
         "sandbox",
         "allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
@@ -1630,11 +1642,33 @@
     /* box chrome buttons removed — pure frame */
   }
 
+  function hideScrollbarCss() {
+    return (
+      "*{scrollbar-width:none;-ms-overflow-style:none}" +
+      "*::-webkit-scrollbar{width:0;height:0}" +
+      "html,body{overflow:auto}"
+    );
+  }
+
+  function withHiddenScrollbars(doc) {
+    const html = String(doc || "");
+    if (!html) return html;
+    if (html.indexOf("scrollbar-width:none") >= 0) return html;
+    const style = "<style>" + hideScrollbarCss() + "</style>";
+    if (/<head[\s>]/i.test(html)) {
+      return html.replace(/<head([^>]*)>/i, "<head$1>" + style);
+    }
+    if (/<html[\s>]/i.test(html)) {
+      return html.replace(/<html([^>]*)>/i, "<html$1><head>" + style + "</head>");
+    }
+    return style + html;
+  }
+
   function wrapHtmlDocument(html) {
     let doc = html || "";
     /* Prefer healed full documents (truncated workers) */
     if (/<!DOCTYPE/i.test(doc) || /<html[\s>]/i.test(doc)) {
-      return healTruncatedHtml(doc);
+      return withHiddenScrollbars(healTruncatedHtml(doc));
     }
     /* Dark shell so fragments are not a blinding white box in the desk */
     doc =
@@ -1642,9 +1676,10 @@
       "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
       "<style>" +
       "html,body{margin:0;min-height:100%;background:#111;color:#e8eaed;" +
-      "font-family:system-ui,sans-serif;}" +
+      "font-family:system-ui,sans-serif;overflow:auto;}" +
       "body{padding:12px;box-sizing:border-box;}" +
       "a{color:#7db7ff;}" +
+      hideScrollbarCss() +
       "</style>" +
       "</head><body>" +
       doc +

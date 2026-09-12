@@ -10,6 +10,7 @@ from gnom_hub.agents.roles_helpers import (
     _needs_clarify,
     _with_memory,
 )
+from gnom_hub.agents.roles_workers import MemoryAgent, WorkerAgent  # noqa: F401
 from gnom_hub.pipeline.models import DistillQuestion
 
 
@@ -339,6 +340,3 @@ def _simple_task_plan(
     if clean and templates:
         templates[0] += "\n" + "\n".join(f"- {r}" for r in clean[:4])
     return [(wid, templates[i % len(templates)]) for i, wid in enumerate(worker_ids[:4])]
-
-
-from gnom_hub.agents.roles_workers import MemoryAgent, WorkerAgent  # noqa: F401

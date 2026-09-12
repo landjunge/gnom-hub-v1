@@ -12,7 +12,7 @@
     if (!a || !layer) return;
     tuneAgentId = id;
     const title = document.getElementById("tune-title");
-    if (title) title.textContent = a.label + " — tuning";
+    if (title) title.textContent = a.label + " — Regler";
     const promptEl = document.getElementById("tune-prompt");
     if (promptEl)
       promptEl.value = a.system_prompt || DEFAULT_PROMPTS[id] || "";
@@ -222,24 +222,24 @@
         if (line) {
           const host = om.host ? " @ " + om.host : "";
           line.textContent = om.ok
-            ? "Ollama models" + host + ": " + ((om.models || []).join(", ") || "(none pulled)")
-            : "Ollama offline" + host + " — start ollama serve or use DeepSeek";
+            ? "Ollama-Modelle" + host + ": " + ((om.models || []).join(", ") || "(keine geladen)")
+            : "Ollama offline" + host + " — ollama serve starten oder DeepSeek nutzen";
         }
       } catch (_e) {
         /* ignore */
       }
       document.getElementById("system-spend").textContent =
-        "Spent: $" +
+        "Ausgegeben: $" +
         (Number(s.spent_usd) || 0).toFixed(4) +
-        " · tokens " +
+        " · Tokens " +
         ((s.prompt_tokens || 0) + (s.completion_tokens || 0));
       const langEl = document.getElementById("sys-lang");
       if (langEl) langEl.value = s.ui_lang || uiLang || "en";
       const ck = document.getElementById("system-ckpt");
       if (ck) {
         ck.textContent = s.checkpoint_exists
-          ? "Checkpoint: available (Load to resume)"
-          : "Checkpoint: none yet";
+          ? "Checkpoint: vorhanden (Laden zum Fortsetzen)"
+          : "Checkpoint: keiner";
       }
       // Worker presets
       try {
@@ -247,7 +247,7 @@
         const sel = document.getElementById("sys-preset-select");
         if (sel) {
           const cur = sel.value;
-          sel.innerHTML = '<option value="">— select preset —</option>';
+          sel.innerHTML = '<option value="">— Preset wählen —</option>';
           (pl.presets || []).forEach(function (p) {
             const opt = document.createElement("option");
             opt.value = p.name || "";
@@ -266,7 +266,7 @@
         const tsel = document.getElementById("sys-team-select");
         if (tsel) {
           const cur = tsel.value;
-          tsel.innerHTML = '<option value="">— select team —</option>';
+          tsel.innerHTML = '<option value="">— Team wählen —</option>';
           (tp.presets || []).forEach(function (p) {
             const opt = document.createElement("option");
             opt.value = p.name || "";
@@ -312,7 +312,7 @@
           if (!items.length) {
             const li = document.createElement("li");
             li.className = "muted";
-            li.textContent = "(no backups yet)";
+            li.textContent = "(noch keine Backups)";
             ul.appendChild(li);
           } else {
             items.slice(0, 8).forEach(function (b) {
@@ -339,8 +339,8 @@
               const rst = document.createElement("button");
               rst.type = "button";
               rst.className = "btn-ws-sm";
-              rst.textContent = "Rest";
-              rst.title = "Restore HOT/WARM/agents from this backup";
+              rst.textContent = "Laden";
+              rst.title = "HOT/WARM/Agenten aus diesem Backup laden";
               rst.addEventListener("click", function (ev) {
                 ev.stopPropagation();
                 restoreBackupByName(b.name);
@@ -349,7 +349,7 @@
               del.type = "button";
               del.className = "ws-action";
               del.textContent = "×";
-              del.title = "Delete backup";
+              del.title = "Backup löschen";
               del.addEventListener("click", function (ev) {
                 ev.stopPropagation();
                 deleteBackupByName(b.name);
@@ -578,23 +578,23 @@
     });
     if (sum) {
       sum.textContent =
-        "This run: " +
+        "Dieser Lauf: " +
         nPipe +
-        " pipeline" +
-        (nMan ? " · " + nMan + " manual" : "") +
+        " Pipeline" +
+        (nMan ? " · " + nMan + " manuell" : "") +
         " · " +
         nOk +
         " ok / " +
         nFail +
-        " fail" +
-        (list.length ? " · click row for JSON" : "");
+        " Fehler" +
+        (list.length ? " · Zeile klicken für JSON" : "");
     }
     ul.innerHTML = "";
     if (!list.length) {
       const li = document.createElement("li");
       li.className = "muted";
       li.textContent =
-        "(no tool calls yet — Execute with URL / memory / install, or Run below)";
+        "(noch keine Tool-Aufrufe — Arbeit starten mit URL / Memory / Install, oder unten Ausführen)";
       ul.appendChild(li);
       return;
     }
@@ -776,12 +776,12 @@
         [];
       line.textContent =
         "God-Mode: " +
-        (god ? "ON (real control)" : "off (dry-run only)") +
-        " · shell: " +
+        (god ? "an (echte Steuerung)" : "aus (nur Trockenlauf)") +
+        " · Shell: " +
         allow.slice(0, 6).join(" ") +
         (allow.length > 6 ? "…" : "");
     } catch (_e) {
-      line.textContent = "Computer use: status unavailable";
+      line.textContent = "Computer-Nutzung: Status unbekannt";
     }
   }
 
@@ -892,12 +892,12 @@
         }).length;
         const diskN = disk.length;
         countEl.textContent =
-          "Tools: " +
+          "Werkzeuge: " +
           tools.length +
-          " · plugins loaded: " +
+          " · Plugins geladen: " +
           loadedN +
-          (diskN ? " · on disk: " + diskN : "") +
-          (errs.length ? " · errors: " + errs.length : "");
+          (diskN ? " · auf Datenträger: " + diskN : "") +
+          (errs.length ? " · Fehler: " + errs.length : "");
       }
       if (ul) {
         ul.innerHTML = "";
@@ -906,7 +906,7 @@
           const head = document.createElement("li");
           head.className = "muted";
           head.style.fontWeight = "600";
-          head.textContent = "Plugins on disk (drop-in)";
+          head.textContent = "Plugins auf Datenträger (Drop-in)";
           ul.appendChild(head);
           disk.forEach(function (d) {
             const li = document.createElement("li");
@@ -933,7 +933,7 @@
           const headE = document.createElement("li");
           headE.className = "muted";
           headE.style.fontWeight = "600";
-          headE.textContent = "Load errors";
+          headE.textContent = "Ladefehler";
           ul.appendChild(headE);
           errs.forEach(function (e) {
             const li = document.createElement("li");
@@ -946,12 +946,12 @@
         const headT = document.createElement("li");
         headT.className = "muted";
         headT.style.fontWeight = "600";
-        headT.textContent = "Registered tools";
+        headT.textContent = "Registrierte Werkzeuge";
         ul.appendChild(headT);
         if (!tools.length) {
           const li = document.createElement("li");
           li.className = "muted";
-          li.textContent = "(no tools)";
+          li.textContent = "(keine Werkzeuge)";
           ul.appendChild(li);
         } else {
           tools.forEach(function (t) {
@@ -1523,13 +1523,13 @@
     if (!(snap.temp || []).length) {
       const li = document.createElement("li");
       li.className = "muted";
-      li.textContent = "(empty — Execute fills temp)";
+      li.textContent = "(leer — Arbeit starten füllt Temp)";
       tempUl.appendChild(li);
     }
     if (!(snap.perm || []).length) {
       const li = document.createElement("li");
       li.className = "muted";
-      li.textContent = "(empty — promote from temp)";
+      li.textContent = "(leer — aus Temp übernehmen)";
       permUl.appendChild(li);
     }
   }
@@ -1549,8 +1549,8 @@
       const promo = document.createElement("button");
       promo.type = "button";
       promo.className = "ws-action";
-      promo.textContent = "↑ perm";
-      promo.title = "Promote to permanent";
+      promo.textContent = "↑ dauerhaft";
+      promo.title = "Nach Dauerhaft übernehmen";
       promo.addEventListener("click", function (ev) {
         ev.stopPropagation();
         promoteWs(f.name);
@@ -1561,7 +1561,7 @@
     del.type = "button";
     del.className = "ws-action";
     del.textContent = "×";
-    del.title = "Delete";
+    del.title = "Löschen";
     del.addEventListener("click", function (ev) {
       ev.stopPropagation();
       deleteWs(zone, f.name);
@@ -1589,9 +1589,9 @@
           "&name=" +
           encodeURIComponent(name)
       );
-      if (pre) pre.textContent = data.content || "(empty)";
+      if (pre) pre.textContent = data.content || "(leer)";
     } catch (err) {
-      if (pre) pre.textContent = "Preview failed: " + err.message;
+      if (pre) pre.textContent = "Vorschau fehlgeschlagen: " + err.message;
     }
   }
 
@@ -1625,7 +1625,7 @@
   }
 
   async function clearTempWs() {
-    if (!confirm("Clear all temp workspace files?")) return;
+    if (!confirm("Alle Temp-Dateien im Workspace leeren?")) return;
     try {
       const data = await api("POST", "/api/workspace/clear-temp");
       renderWorkspaceLists(data.workspace || { temp: [], perm: [] });

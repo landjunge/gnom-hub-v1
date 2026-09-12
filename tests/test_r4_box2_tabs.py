@@ -18,8 +18,6 @@ _ALLOWED_PX = frozenset({"10px", "12px", "14px", "16px"})
 _FONT_VAR = re.compile(r"^var\(--(?:t-[a-z0-9-]+|tab-h)\)$")
 _TC_PREVIEW = re.compile(r"""\.textContent\s*=\s*["']Preview["']""")
 _TC_SOURCE = re.compile(r"""\.textContent\s*=\s*["']Source["']""")
-_TC_VORSCHAU = re.compile(r"""\.textContent\s*=\s*["']Vorschau["']""")
-_TC_QUELLE = re.compile(r"""\.textContent\s*=\s*["']Quelle["']""")
 _TURN_LIT = re.compile(r"""["']turn["']""")
 _SEND_TARGET_ASSIGN = re.compile(r"\bsendTarget\s*=")
 _LAST_CLICKED_ASSIGN = re.compile(r"\blastClickedAgentId\s*=")
@@ -103,15 +101,19 @@ def test_box2_reply_tab_font_size_token_or_even_px_not_11():
         )
 
 
-def test_render_dynamic_content_preview_source_are_vorschau_quelle():
-    """Visible Preview/Source strings become Vorschau and Quelle."""
+def test_render_dynamic_content_preview_source_are_sicht_code():
+    """Visible Preview/Source strings become short Sicht / Code."""
     body = _function_body(BOXES_JS, "renderDynamicContent")
     assert _TC_PREVIEW.search(body) is None, (
         'renderDynamicContent still sets textContent = "Preview"'
     )
     assert _TC_SOURCE.search(body) is None, 'renderDynamicContent still sets textContent = "Source"'
-    assert _TC_VORSCHAU.search(body), 'renderDynamicContent must set textContent = "Vorschau"'
-    assert _TC_QUELLE.search(body), 'renderDynamicContent must set textContent = "Quelle"'
+    assert 'textContent = "Sicht"' in body or "textContent = 'Sicht'" in body, (
+        'renderDynamicContent must set textContent = "Sicht"'
+    )
+    assert 'textContent = "Code"' in body or "textContent = 'Code'" in body, (
+        'renderDynamicContent must set textContent = "Code"'
+    )
 
 
 def test_box2_reply_tab_height_matches_buttons():
@@ -145,9 +147,23 @@ def test_box2_reply_tabs_label_not_english_turn():
     assert _TURN_LIT.search(body) is None, (
         'renderBox2ReplyTabs still uses English "turn" as tab label'
     )
-    assert "Koordinator" in BOXES_JS or "Arbeiter" in BOXES_JS or "Antwort" in BOXES_JS, (
-        "Box 2 reply tabs must label with agent names or Antwort"
+    assert "Coord" in BOXES_JS or '"A"' in BOXES_JS or "Brain" in BOXES_JS, (
+        "Box 2 reply tabs must use short agent labels"
     )
+
+
+def test_box2_reply_tabs_equal_flex_centered_white():
+    """Box 2 tabs fill the row equally, sit centered, names are white."""
+    row = "\n".join(_css_rules_for(".box2-reply-tabs"))
+    assert "justify-content: center" in row, ".box2-reply-tabs must center the row"
+    assert "width: 100%" in row, ".box2-reply-tabs must span the box"
+    tab = "\n".join(_css_rules_for(".box2-reply-tab"))
+    assert "flex: 1 1 0" in tab, ".box2-reply-tab must share equal flex width"
+    assert "color: #fff" in tab, ".box2-reply-tab names must be white"
+    body = _function_body(BOXES_JS, "box2AgentTabLabel")
+    assert 'return "Brain"' in body
+    assert 'return "Coord"' in body
+    assert 'return "Mem"' in body
 
 
 def test_box2_reply_tabs_click_does_not_assign_send_target():

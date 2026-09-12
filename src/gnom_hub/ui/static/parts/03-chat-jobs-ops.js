@@ -2282,7 +2282,7 @@
       showTooltip("help");
       if (els.placeholder) els.placeholder.hidden = true;
       els.tipRoot.hidden = false;
-      els.tipTitle.textContent = h.title || "Help";
+      els.tipTitle.textContent = h.title || "Hilfe";
       els.tipHow.textContent = h.how_to || "";
       const keys = h.keys ? "\n\n" + h.keys : "";
       els.tipExample.textContent =
@@ -2292,12 +2292,12 @@
     } catch (err) {
       if (els.placeholder) els.placeholder.hidden = true;
       els.tipRoot.hidden = false;
-      els.tipTitle.textContent = "Help";
+      els.tipTitle.textContent = "Hilfe";
       els.tipHow.textContent =
         "Senden = reden. Arbeit starten = Worker.";
       els.tipExample.textContent =
         "Tastatur: Enter senden · Ctrl/⌘+Enter Arbeit starten · Ctrl/⌘+S speichern · Esc abbrechen";
-      toast("Help offline: " + err.message, "error");
+      toast("Hilfe offline: " + err.message, "error");
     }
   }
 

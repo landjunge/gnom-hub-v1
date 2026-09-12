@@ -67,12 +67,12 @@ TOOLTIPS: dict[str, dict[str, TooltipText]] = {
     "worker1": {
         "en": {
             "title": "Worker 1",
-            "how_to": "First execution slot. Results in Box 3; HTML gets Preview/Source.",
+            "how_to": "First execution slot. Results in Box 3; HTML gets Vorschau/Quelle.",
             "example": "Assigned 'draft HTML' → full page appears in Box 3 + Workspace temp.",
         },
         "de": {
             "title": "Worker 1",
-            "how_to": "Erster Ausführungs-Slot. Ergebnisse in Box 3; HTML mit Preview/Source.",
+            "how_to": "Erster Ausführungs-Slot. Ergebnisse in Box 3; HTML mit Vorschau/Quelle.",
             "example": "Aufgabe „HTML entwerfen“ → Seite in Box 3 + Workspace Temp.",
         },
     },
@@ -139,13 +139,13 @@ TOOLTIPS: dict[str, dict[str, TooltipText]] = {
     "box3": {
         "en": {
             "title": "Box 3",
-            "how_to": "Worker 1/2 panels with HTML Preview + Source.",
-            "example": "After Execute, landing-page HTML renders in Preview.",
+            "how_to": "Worker 1/2 panels with HTML Vorschau + Quelle.",
+            "example": "After Execute, landing-page HTML renders in Vorschau.",
         },
         "de": {
             "title": "Worker-Ergebnisse (Box 3)",
-            "how_to": "Worker-1/2-Panels mit HTML Preview + Source.",
-            "example": "Nach Execute: Landingpage-HTML im Preview.",
+            "how_to": "Worker-1/2-Panels mit HTML-Vorschau + Quelle.",
+            "example": "Nach Arbeit starten: Landingpage-HTML in der Vorschau.",
         },
     },
     "chat": {
