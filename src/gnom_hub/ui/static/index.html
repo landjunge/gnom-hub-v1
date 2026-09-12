@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=161" />
+  <link rel="stylesheet" href="/static/app.css?v=162" />
   <!-- Tailwind utilities for Chat module (preflight OFF) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -92,6 +92,13 @@
 
     <!-- 3 boxes: pro Agent ein Layer (Klick = Layer + 1px Modulrahmen) -->
     <section class="boxes" aria-label="Main panels">
+      <div id="agent-page" class="agent-page" hidden>
+        <div class="agent-page-bar">
+          <span id="agent-page-title" class="agent-page-title">Agent</span>
+          <button type="button" id="agent-page-back" class="btn-ws-sm">Zurück zum Desk</button>
+        </div>
+        <div id="agent-page-body" class="agent-page-body"></div>
+      </div>
       <div id="mobile-box-tabs" class="mobile-box-tabs" hidden role="tablist" aria-label="Boxes">
         <button type="button" class="mobile-box-tab is-active" data-box-tab="1" role="tab">Box 1</button>
         <button type="button" class="mobile-box-tab" data-box-tab="2" role="tab">Box 2</button>
@@ -221,6 +228,7 @@
       <div class="boxes-right">
       <div class="box2-stack" id="box2-stack">
       <div id="box2" class="box box-2" data-tooltip-id="box2" aria-label="Box 2">
+        <div id="box2-reply-tabs" class="box2-reply-tabs" hidden role="tablist" aria-label="Antworten"></div>
         <div class="agent-layer-stack" data-box="box2" id="box2-layers"></div>
         <!-- Real HTML page in Box 2 (not a popup) -->
         <div id="box2-page-stage" class="box2-page-stage" hidden>
@@ -334,7 +342,11 @@
               <button type="button" id="box3-btn-copy" class="btn-ws-sm" title="Ergebnis kopieren">Copy</button>
               <button type="button" id="box3-btn-dl" class="btn-ws-sm" title="Herunterladen">↓</button>
               <button type="button" id="box3-btn-open" class="btn-ws-sm" title="Seite in Box 2+3 (Shift = Browser-Tab)">↗</button>
-              <button type="button" id="box3-btn-keep" class="btn-ws-sm" title="HTML dauerhaft behalten">Keep</button>
+              <button type="button" id="box3-btn-prev" class="btn-ws-sm" title="Vorheriges Ergebnis">←</button>
+              <button type="button" id="box3-btn-next" class="btn-ws-sm" title="Nächstes Ergebnis">→</button>
+              <button type="button" id="box3-btn-away" class="btn-ws-sm" title="Weg — wiederherstellbar in den Papierkorb">Weg</button>
+              <button type="button" id="box3-btn-new" class="btn-ws-sm" title="Neu — Original behalten, Variante">Neu</button>
+              <button type="button" id="box3-btn-keep" class="btn-ws-sm" title="Behalten — dauerhaft in den Workspace">Behalten</button>
               <button type="button" id="box3-btn-temp" class="btn-ws-sm" title="Temp-Workspace">Temp</button>
               <button type="button" id="box3-btn-perm" class="btn-ws-sm" title="Permanent-Workspace">Perm</button>
               <button type="button" id="box3-result-fs" class="btn-ws-sm" title="Vollbild in den Boxen">⛶</button>
@@ -455,8 +467,8 @@
         <label class="system-row">
           UI language
           <select id="sys-lang" class="tune-input">
+            <option value="de" selected>Deutsch</option>
             <option value="en">English</option>
-            <option value="de">Deutsch</option>
           </select>
         </label>
         <div class="system-row system-row-actions">
@@ -692,6 +704,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=161"></script>
+  <script src="/static/app.js?v=162"></script>
 </body>
 </html>

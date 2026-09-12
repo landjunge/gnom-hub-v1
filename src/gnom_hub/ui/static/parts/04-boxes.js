@@ -3,6 +3,33 @@
   let box3FocusIdx = 0;
   let lastBox3StageKey = "";
 
+  function renderBox2ReplyTabs(turns) {
+    const host = document.getElementById("box2-reply-tabs");
+    if (!host) return;
+    const list = Array.isArray(turns) ? turns : [];
+    host.textContent = "";
+    if (list.length < 2) {
+      host.hidden = true;
+      return;
+    }
+    host.hidden = false;
+    list.forEach(function (t, i) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "box2-reply-tab";
+      btn.textContent = (t.role || "turn") + " " + (i + 1);
+      btn.addEventListener("click", function () {
+        if (typeof setBox2 === "function") {
+          setBox2(String((t.role || "") + ":\n" + (t.text || "")));
+        }
+        host.querySelectorAll(".box2-reply-tab").forEach(function (el) {
+          el.classList.toggle("is-on", el === btn);
+        });
+      });
+      host.appendChild(btn);
+    });
+  }
+
   /**
    * Dynamic presentation inside a box/panel:
    * HTML → live preview (+ Source), code fence → code view, JSON → pretty, else text.
@@ -403,6 +430,60 @@
           keepWorkerToPersonalWs(out, idx);
         })
       );
+    }
+    const prev = document.getElementById("box3-btn-prev");
+    if (prev && !prev._bound) {
+      prev._bound = true;
+      prev.addEventListener("click", function () {
+        if (typeof focusBox3WorkerResult === "function") {
+          focusBox3WorkerResult(Math.max(0, (box3FocusIdx || 0) - 1));
+        }
+      });
+    }
+    const next = document.getElementById("box3-btn-next");
+    if (next && !next._bound) {
+      next._bound = true;
+      next.addEventListener("click", function () {
+        const n = (lastWorkerOutputs && lastWorkerOutputs.length) || 0;
+        if (typeof focusBox3WorkerResult === "function") {
+          focusBox3WorkerResult(Math.min(n - 1, (box3FocusIdx || 0) + 1));
+        }
+      });
+    }
+    const away = document.getElementById("box3-btn-away");
+    if (away && !away._bound) {
+      away._bound = true;
+      away.addEventListener("click", function () {
+        const i = box3FocusIdx || 0;
+        if (!lastWorkerOutputs || !lastWorkerOutputs[i]) return;
+        resultTrash.unshift(lastWorkerOutputs[i]);
+        lastWorkerOutputs.splice(i, 1);
+        toast("Weg — im Papierkorb, wiederherstellbar", "info");
+        if (lastWorkerOutputs.length) {
+          focusBox3WorkerResult(Math.min(i, lastWorkerOutputs.length - 1));
+        } else {
+          const stage = document.getElementById("box3-result-stage");
+          if (stage) stage.hidden = true;
+        }
+      });
+    }
+    const neu = document.getElementById("box3-btn-new");
+    if (neu && !neu._bound) {
+      neu._bound = true;
+      neu.addEventListener("click", function () {
+        const i = box3FocusIdx || 0;
+        const src = lastWorkerOutputs && lastWorkerOutputs[i];
+        if (!src) return;
+        const copy = {};
+        Object.keys(src).forEach(function (k) {
+          copy[k] = src[k];
+        });
+        copy.name = (src.name || src.worker || "Ergebnis") + " Variante";
+        copy.variant_of = src.worker || i;
+        lastWorkerOutputs.splice(i + 1, 0, copy);
+        toast("Neu — Original bleibt, Variante daneben", "ok");
+        focusBox3WorkerResult(i + 1);
+      });
     }
     const temp = document.getElementById("box3-btn-temp");
     if (temp && !temp._bound) {
@@ -1135,11 +1216,11 @@
   }
 
   /** Save one worker HTML into personal WS (WS-gnom-hub-v1/selected/). */
-  async function keepWorkerToPersonalWs(out, idx) {
+  async function keepWorkerToPersonalWs(out, idx, overwrite) {
     const raw = (out && out.result) || "";
     const html = extractHtml(raw);
     if (!html) {
-      toast("No HTML to keep — only HTML goes to personal WS", "info");
+      toast("Kein HTML — Behalten gilt nur für HTML", "info");
       return;
     }
     const name =
@@ -1151,17 +1232,31 @@
         content: html,
         name: name,
         worker: (out && out.worker) || null,
+        overwrite: !!overwrite,
       });
+      if (data && data.ok === false && data.error === "exists") {
+        const go = window.confirm(
+          "Datei existiert schon:\n" +
+            (data.path || name) +
+            "\nÜberschreiben? Abbrechen belässt den Wiederherstellungsspeicher."
+        );
+        if (go) return keepWorkerToPersonalWs(out, idx, true);
+        toast(data.status || "nicht überschrieben", "info");
+        return;
+      }
+      if (!data || data.ok === false) {
+        toast((data && data.status) || "Speichern fehlgeschlagen", "error");
+        return;
+      }
       toast(
-        "Saved → " + (data.path || "personal WS/selected/") + " (Clear won't delete this)",
+        (data.status || "Behalten") +
+          " · " +
+          (data.path || name) +
+          (data.kept_at ? " · " + data.kept_at : ""),
         "ok"
       );
-      // optional clipboard convenience
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(html).catch(function () {});
-      }
     } catch (err) {
-      toast("Keep failed: " + (err.message || err), "error");
+      toast("Speichern fehlgeschlagen: " + (err.message || err), "error");
     }
   }
 

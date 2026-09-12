@@ -36,6 +36,7 @@ class ExportOpsMixin:
         *,
         name: str | None = None,
         worker: str | None = None,
+        overwrite: bool = False,
     ) -> dict[str, Any]:
         """
         Copy ONE chosen HTML result into personal WS selected/.
@@ -71,7 +72,43 @@ class ExportOpsMixin:
         if not html:
             raise ValueError("not HTML — only HTML is kept in personal WS selected/")
         fname = name or (f"{worker}.html" if worker else "page.html")
+        staged = self.workspace.stage_recovery(html, fname)
+        dest = self.workspace.selected / Path(fname).name
+        if dest.exists() and not overwrite:
+            return {
+                "ok": False,
+                "error": "exists",
+                "name": dest.name,
+                "path": str(dest),
+                "staged": str(staged),
+                "status": "existiert — Version, neuer Name oder Abbruch",
+            }
         path = self.workspace.keep_html_content(html, fname)
+        try:
+            back = path.read_text(encoding="utf-8")
+        except OSError as exc:
+            return {
+                "ok": False,
+                "error": "verify_failed",
+                "path": str(path),
+                "staged": str(staged),
+                "status": "Speichern fehlgeschlagen",
+                "detail": str(exc),
+            }
+        if back != html:
+            return {
+                "ok": False,
+                "error": "verify_failed",
+                "path": str(path),
+                "staged": str(staged),
+                "status": "Speichern fehlgeschlagen",
+            }
+        try:
+            staged.unlink(missing_ok=True)
+        except OSError:
+            pass
+        from datetime import datetime, timezone
+
         self._append_trace(
             "workspace.keep",
             {"name": path.name, "bytes": path.stat().st_size, "path": str(path)},
@@ -81,6 +118,9 @@ class ExportOpsMixin:
             "name": path.name,
             "path": str(path),
             "bytes": path.stat().st_size,
+            "verified": True,
+            "kept_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+            "status": "Behalten — im Workspace gespeichert",
             "personal_ws": str(path.parent.parent),
             "selected_dir": str(path.parent),
             "workspace": self.workspace.snapshot(),

@@ -573,6 +573,9 @@
         lines.push(String(t.text || ""));
       });
       setBox2(lines.join("\n"));
+      if (typeof renderBox2ReplyTabs === "function") {
+        renderBox2ReplyTabs(p.brainstorm_turns);
+      }
     } else if (p.brainstorm_notes) {
       setBox2("=== Brainstorm ===\n" + p.brainstorm_notes);
     } else if (p.stage === "idle") {

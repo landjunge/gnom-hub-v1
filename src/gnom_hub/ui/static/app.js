@@ -14,7 +14,7 @@
 
   /** Loaded from /api/tooltips?lang=… (en/de) */
   let TOOLTIPS = {};
-  let uiLang = "en";
+  let uiLang = "de";
 
   const _FLEX_PRESETS = ["personal", "security", "neutral", "researcher"]; // kept for desk docs/export
 
@@ -42,17 +42,24 @@
     if (hex) el.style.setProperty("--owner-color", hex);
   }
 
+  const SLIDER_DEFAULTS = {
+    temperature: 0.5,
+    top_p: 1,
+    max_tokens: 800,
+    frequency: 0,
+    presence: 0,
+  };
   const SLIDER_TIPS = {
     temperature:
-      "Temperature: higher = more creative/random; lower = more focused and deterministic.",
+      "Temperature steuert Zufall. Niedrig = gleichmäßiger und vorsichtiger. Hoch = kreativer, aber unberechenbarer. Empfehlung 0.3–0.8. Standard 0.50.",
     top_p:
-      "Top-P (nucleus): samples from the smallest set of tokens whose probability mass ≥ p. Lower = safer.",
+      "Top-P begrenzt die Wortauswahl. Klein = engere Auswahl. Groß = breitere Auswahl. Empfehlung 0.8–1.0. Standard 1.00.",
     max_tokens:
-      "Max Tokens: hard cap on completion length. Higher allows longer HTML/docs; costs more.",
+      "Max Tokens ist die Längengrenze. Klein = kürzere Antworten. Groß = ausführlicher, langsamer, teurer. Standard 800.",
     frequency:
-      "Frequency Penalty: reduces repeating the same tokens already used in the answer.",
+      "Frequency Penalty mindert Wiederholungen. Höher = weniger Repeats, kann wichtige Begriffe meiden. Standard 0.00.",
     presence:
-      "Presence Penalty: encourages talking about new topics; reduces staying on the same idea.",
+      "Presence Penalty fördert neue Aspekte. Höher = eher neue Themen, kann vom Kern wegführen. Standard 0.00.",
   };
 
   // Display hints only (role prompts live in Python). Empty = code default.
@@ -171,6 +178,7 @@
   const CHAT_HIST_MAX = 50;
   const HISTORY_MAX = 12;
   let resultHistory = [];
+  const resultTrash = [];
   let selectedColdId = null;
   /** Terminal-style input history (ArrowUp/Down). idx -1 = live draft. */
   let chatHist = [];
@@ -559,6 +567,87 @@
     }
   }
 
+  function closeAgentPage() {
+    const page = document.getElementById("agent-page");
+    if (page) page.hidden = true;
+  }
+
+  function openAgentPage(agentId) {
+    const page = document.getElementById("agent-page");
+    const body = document.getElementById("agent-page-body");
+    const title = document.getElementById("agent-page-title");
+    if (!page || !body) return;
+    const agent = findAgent(agentId) || {};
+    const tip = TOOLTIPS[agentId] || {};
+    const rights = {
+      brainstorm: "Darf Dialog in Box 2. Darf nicht Execute, Code oder Box 3.",
+      memory: "Darf Recall. Darf nicht Boxen füllen.",
+      flex: "Darf Box 1 und Wünsche. Darf nicht Execute, Tools, God-Mode.",
+      coordinator: "Darf Plan und Distill. Darf nicht bauen.",
+      worker1: "Darf Deliverable in Box 3. Darf nicht raten, Box 1/2 schreiben.",
+      worker2: "Darf Deliverable in Box 3. Darf nicht raten, Box 1/2 schreiben.",
+      worker3: "Darf Deliverable in Box 3. Darf nicht raten, Box 1/2 schreiben.",
+      worker4: "Darf Deliverable in Box 3. Darf nicht raten, Box 1/2 schreiben.",
+    };
+    if (title) title.textContent = (agent.label || agentId) + " — Agentenseite";
+    const promptRaw =
+      (agent.system_prompt && String(agent.system_prompt).trim()) ||
+      DEFAULT_PROMPTS[agentId] ||
+      "";
+    const snap = typeof lastSnapshot !== "undefined" ? lastSnapshot : null;
+    const skills = (snap && snap.skills) || {};
+    const toolsN = (snap && snap.pipeline && snap.pipeline.tool_log) || [];
+    const lines = [
+      "Rolle: " + ((tip && tip.how_to) || rights[agentId] || ""),
+      "Rechte: " + (rights[agentId] || "siehe Docs"),
+      "Status: " + (agent.enabled ? "an" : "aus") + (agent.online ? " · online" : " · offline"),
+      "Modell: " + (agent.model || "—") + "  (API-Schlüssel werden nicht angezeigt)",
+      "Temperature " +
+        paramVal(agent.temperature, 0.5) +
+        " · Top-P " +
+        paramVal(agent.top_p, 1) +
+        " · Max Tokens " +
+        paramVal(agent.max_tokens, 800),
+      "Frequency " +
+        paramVal(agent.frequency_penalty, 0) +
+        " · Presence " +
+        paramVal(agent.presence_penalty, 0),
+      "TTS: " + (agent.tts ? "an" : "aus"),
+      "Kosten/Tokens: " +
+        (agent.tokens || 0) +
+        " tok · $" +
+        Number(agent.cost_usd || 0).toFixed(4),
+      "Skills: " + (skills.count != null ? String(skills.count) : "—"),
+      "Tool-Log dieser Pipeline: " + (Array.isArray(toolsN) ? toolsN.length : 0),
+      "Prompt: " + promptRaw,
+    ];
+    body.textContent = "";
+    lines.forEach(function (line) {
+      const p = document.createElement("p");
+      p.className = "agent-page-line";
+      p.textContent = line;
+      body.appendChild(p);
+    });
+    const tuneBtn = document.createElement("button");
+    tuneBtn.type = "button";
+    tuneBtn.className = "btn-ws-sm";
+    tuneBtn.textContent = "Regler in Box 3";
+    tuneBtn.addEventListener("click", function () {
+      if (typeof openTuneModal === "function") openTuneModal(agentId);
+    });
+    body.appendChild(tuneBtn);
+    page.hidden = false;
+    if (typeof bindAgentPage === "function") bindAgentPage();
+  }
+
+  function bindAgentPage() {
+    const back = document.getElementById("agent-page-back");
+    if (back && !back._bound) {
+      back._bound = true;
+      back.addEventListener("click", closeAgentPage);
+    }
+  }
+
   function updateBoxBorders() {
     /* nur Modulrahmen; Box-Rahmen bleiben neutral */
     if (lastClickedAgentId && COLOR_HEX[lastClickedAgentId]) {
@@ -655,16 +744,12 @@
         }
         if (clickTimer) clearTimeout(clickTimer);
         const shiftTune = !!ev.shiftKey;
-        /* second click on same agent the user already picked → tune */
-        const alreadyUserPick =
-          document.body.dataset.agentUserPick === agent.id &&
-          lastClickedAgentId === agent.id;
         clickTimer = setTimeout(function () {
           clickTimer = null;
-          /* B1: click = layer + Box1 info only; tune only explicit */
           activateAgentLayer(agent.id, true);
           document.body.dataset.agentUserPick = agent.id;
-          if (shiftTune || alreadyUserPick) {
+          if (typeof openAgentPage === "function") openAgentPage(agent.id);
+          if (shiftTune && typeof openTuneModal === "function") {
             openTuneModal(agent.id);
           }
         }, 220);
@@ -711,12 +796,25 @@
     requestAnimationFrame(function () {
       el.classList.add("show");
     });
+    const ms = kind === "error" ? 0 : 4000;
+    if (kind === "error") {
+      el.classList.add("toast-sticky");
+      const x = document.createElement("button");
+      x.type = "button";
+      x.className = "toast-dismiss";
+      x.textContent = "×";
+      x.addEventListener("click", function () {
+        if (el.parentNode) el.parentNode.removeChild(el);
+      });
+      el.appendChild(x);
+      return;
+    }
     setTimeout(function () {
       el.classList.remove("show");
       setTimeout(function () {
         if (el.parentNode) el.parentNode.removeChild(el);
       }, 220);
-    }, 4200);
+    }, ms);
   }
 
 /* part: 01-api-snapshot-tts.js  lines 324-704 of app.js — edit parts, run scripts/build_ui_js.py */
@@ -1294,6 +1392,9 @@
         lines.push(String(t.text || ""));
       });
       setBox2(lines.join("\n"));
+      if (typeof renderBox2ReplyTabs === "function") {
+        renderBox2ReplyTabs(p.brainstorm_turns);
+      }
     } else if (p.brainstorm_notes) {
       setBox2("=== Brainstorm ===\n" + p.brainstorm_notes);
     } else if (p.stage === "idle") {
@@ -2125,6 +2226,13 @@
   }
 
 /* part: 02-modals-tools-ws.js  lines 705-1949 of app.js — edit parts, run scripts/build_ui_js.py */
+  function dockIntoBoxes(el) {
+    const boxes = document.querySelector(".boxes");
+    if (!el || !boxes) return;
+    if (el.parentNode !== boxes) boxes.appendChild(el);
+    el.classList.add("in-boxes");
+  }
+
   function openTuneModal(id) {
     const a = findAgent(id);
     const layer = document.getElementById("tune-layer");
@@ -2149,11 +2257,11 @@
         valNode.textContent =
           digits === 0 ? String(Math.round(num)) : Number(num).toFixed(digits);
     };
-    setRange("tune-temp", "tune-temp-val", a.temperature, 0.5, 2);
-    setRange("tune-topp", "tune-topp-val", a.top_p, 1, 2);
-    setRange("tune-maxtok", "tune-maxtok-val", a.max_tokens, 800, 0);
-    setRange("tune-freq", "tune-freq-val", a.frequency_penalty, 0, 2);
-    setRange("tune-pres", "tune-pres-val", a.presence_penalty, 0, 2);
+    setRange("tune-temp", "tune-temp-val", a.temperature, SLIDER_DEFAULTS.temperature, 2);
+    setRange("tune-topp", "tune-topp-val", a.top_p, SLIDER_DEFAULTS.top_p, 2);
+    setRange("tune-maxtok", "tune-maxtok-val", a.max_tokens, SLIDER_DEFAULTS.max_tokens, 0);
+    setRange("tune-freq", "tune-freq-val", a.frequency_penalty, SLIDER_DEFAULTS.frequency, 2);
+    setRange("tune-pres", "tune-pres-val", a.presence_penalty, SLIDER_DEFAULTS.presence, 2);
     const tts = document.getElementById("tune-tts");
     if (tts) tts.checked = !!a.tts;
     layer.hidden = false;
@@ -2249,6 +2357,21 @@
     } else {
       stopSpeech();
     }
+    const summary =
+      "Speichern für " +
+      tuneAgentId +
+      ":\nTemperature " +
+      body.temperature +
+      " (niedrig=vorsichtig, hoch=kreativ)\nTop-P " +
+      body.top_p +
+      "\nMax Tokens " +
+      body.max_tokens +
+      "\nFrequency " +
+      body.frequency_penalty +
+      "\nPresence " +
+      body.presence_penalty +
+      "\nRegler geben keine Extra-Rechte.";
+    if (!window.confirm(summary)) return;
     try {
       const data = await api(
         "POST",
@@ -2270,6 +2393,7 @@
 
   async function openSystemModal() {
     if (!els.systemModal) return;
+    dockIntoBoxes(els.systemModal);
     try {
       const s = await api("GET", "/api/system");
       const parts = [];
@@ -2821,6 +2945,7 @@
 
   async function openToolsModal() {
     if (!els.toolsModal) return;
+    dockIntoBoxes(els.toolsModal);
     els.toolsModal.hidden = false;
     try {
       const snap = lastSnapshot || null;
@@ -3541,6 +3666,7 @@
 
   async function openWorkspaceModal() {
     if (!els.workspaceModal) return;
+    dockIntoBoxes(els.workspaceModal);
     els.workspaceModal.hidden = false;
     await refreshWorkspace();
   }
@@ -3939,40 +4065,59 @@
     const SR =
       window.SpeechRecognition || window.webkitSpeechRecognition || null;
     if (!SR) {
-      toast("Speech recognition not supported in this browser", "error");
+      toast("Spracheingabe geht in diesem Browser nicht", "error");
       return;
     }
     if (listening && recognition) {
+      listening = false;
       try {
         recognition.stop();
       } catch (_e) {
         /* */
       }
-      listening = false;
-      if (els.btnMic) els.btnMic.classList.remove("listening");
+      if (els.btnMic) {
+        els.btnMic.classList.remove("listening");
+        els.btnMic.setAttribute("aria-pressed", "false");
+        els.btnMic.title = "Mikrofon aus";
+      }
+      toast("Mikrofon aus", "info");
       return;
     }
     recognition = new SR();
-    recognition.lang = "de-DE";
+    recognition.lang = uiLang === "en" ? "en-US" : "de-DE";
     recognition.interimResults = true;
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.onstart = function () {
       listening = true;
-      if (els.btnMic) els.btnMic.classList.add("listening");
+      if (els.btnMic) {
+        els.btnMic.classList.add("listening");
+        els.btnMic.setAttribute("aria-pressed", "true");
+        els.btnMic.title = "Mikrofon an — klick zum Aus";
+      }
     };
     recognition.onend = function () {
-      listening = false;
+      if (listening) {
+        try {
+          recognition.start();
+        } catch (_e) {
+          listening = false;
+          if (els.btnMic) els.btnMic.classList.remove("listening");
+        }
+        return;
+      }
       if (els.btnMic) els.btnMic.classList.remove("listening");
     };
     recognition.onerror = function (ev) {
+      const err = (ev && ev.error) || "unknown";
+      if (err === "no-speech" || err === "aborted") return;
       listening = false;
       if (els.btnMic) els.btnMic.classList.remove("listening");
-      toast("Mic error: " + (ev.error || "unknown"), "error");
+      toast("Mikrofon: " + err, "error");
     };
     recognition.onresult = function (ev) {
       let text = "";
       for (let i = ev.resultIndex; i < ev.results.length; i++) {
-        text += ev.results[i][0].transcript;
+        if (ev.results[i].isFinal) text += ev.results[i][0].transcript;
       }
       if (els.chatInput && text) {
         els.chatInput.value = (els.chatInput.value + " " + text).trim();
@@ -3982,7 +4127,8 @@
     try {
       recognition.start();
     } catch (err) {
-      toast("Mic start failed: " + err.message, "error");
+      listening = false;
+      toast("Mikrofon startet nicht: " + err.message, "error");
     }
   }
 
@@ -4015,7 +4161,7 @@
       const data = await api("GET", "/api/tooltips?lang=" + encodeURIComponent(lang || "en"));
       // hub returns flat map id → {title, how_to, example}
       TOOLTIPS = data.tooltips || data || {};
-      uiLang = lang || "en";
+      uiLang = lang || "de";
     } catch (_e) {
       /* keep previous */
     }
@@ -6565,6 +6711,33 @@
   let box3FocusIdx = 0;
   let lastBox3StageKey = "";
 
+  function renderBox2ReplyTabs(turns) {
+    const host = document.getElementById("box2-reply-tabs");
+    if (!host) return;
+    const list = Array.isArray(turns) ? turns : [];
+    host.textContent = "";
+    if (list.length < 2) {
+      host.hidden = true;
+      return;
+    }
+    host.hidden = false;
+    list.forEach(function (t, i) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "box2-reply-tab";
+      btn.textContent = (t.role || "turn") + " " + (i + 1);
+      btn.addEventListener("click", function () {
+        if (typeof setBox2 === "function") {
+          setBox2(String((t.role || "") + ":\n" + (t.text || "")));
+        }
+        host.querySelectorAll(".box2-reply-tab").forEach(function (el) {
+          el.classList.toggle("is-on", el === btn);
+        });
+      });
+      host.appendChild(btn);
+    });
+  }
+
   /**
    * Dynamic presentation inside a box/panel:
    * HTML → live preview (+ Source), code fence → code view, JSON → pretty, else text.
@@ -6965,6 +7138,60 @@
           keepWorkerToPersonalWs(out, idx);
         })
       );
+    }
+    const prev = document.getElementById("box3-btn-prev");
+    if (prev && !prev._bound) {
+      prev._bound = true;
+      prev.addEventListener("click", function () {
+        if (typeof focusBox3WorkerResult === "function") {
+          focusBox3WorkerResult(Math.max(0, (box3FocusIdx || 0) - 1));
+        }
+      });
+    }
+    const next = document.getElementById("box3-btn-next");
+    if (next && !next._bound) {
+      next._bound = true;
+      next.addEventListener("click", function () {
+        const n = (lastWorkerOutputs && lastWorkerOutputs.length) || 0;
+        if (typeof focusBox3WorkerResult === "function") {
+          focusBox3WorkerResult(Math.min(n - 1, (box3FocusIdx || 0) + 1));
+        }
+      });
+    }
+    const away = document.getElementById("box3-btn-away");
+    if (away && !away._bound) {
+      away._bound = true;
+      away.addEventListener("click", function () {
+        const i = box3FocusIdx || 0;
+        if (!lastWorkerOutputs || !lastWorkerOutputs[i]) return;
+        resultTrash.unshift(lastWorkerOutputs[i]);
+        lastWorkerOutputs.splice(i, 1);
+        toast("Weg — im Papierkorb, wiederherstellbar", "info");
+        if (lastWorkerOutputs.length) {
+          focusBox3WorkerResult(Math.min(i, lastWorkerOutputs.length - 1));
+        } else {
+          const stage = document.getElementById("box3-result-stage");
+          if (stage) stage.hidden = true;
+        }
+      });
+    }
+    const neu = document.getElementById("box3-btn-new");
+    if (neu && !neu._bound) {
+      neu._bound = true;
+      neu.addEventListener("click", function () {
+        const i = box3FocusIdx || 0;
+        const src = lastWorkerOutputs && lastWorkerOutputs[i];
+        if (!src) return;
+        const copy = {};
+        Object.keys(src).forEach(function (k) {
+          copy[k] = src[k];
+        });
+        copy.name = (src.name || src.worker || "Ergebnis") + " Variante";
+        copy.variant_of = src.worker || i;
+        lastWorkerOutputs.splice(i + 1, 0, copy);
+        toast("Neu — Original bleibt, Variante daneben", "ok");
+        focusBox3WorkerResult(i + 1);
+      });
     }
     const temp = document.getElementById("box3-btn-temp");
     if (temp && !temp._bound) {
@@ -7697,11 +7924,11 @@
   }
 
   /** Save one worker HTML into personal WS (WS-gnom-hub-v1/selected/). */
-  async function keepWorkerToPersonalWs(out, idx) {
+  async function keepWorkerToPersonalWs(out, idx, overwrite) {
     const raw = (out && out.result) || "";
     const html = extractHtml(raw);
     if (!html) {
-      toast("No HTML to keep — only HTML goes to personal WS", "info");
+      toast("Kein HTML — Behalten gilt nur für HTML", "info");
       return;
     }
     const name =
@@ -7713,17 +7940,31 @@
         content: html,
         name: name,
         worker: (out && out.worker) || null,
+        overwrite: !!overwrite,
       });
+      if (data && data.ok === false && data.error === "exists") {
+        const go = window.confirm(
+          "Datei existiert schon:\n" +
+            (data.path || name) +
+            "\nÜberschreiben? Abbrechen belässt den Wiederherstellungsspeicher."
+        );
+        if (go) return keepWorkerToPersonalWs(out, idx, true);
+        toast(data.status || "nicht überschrieben", "info");
+        return;
+      }
+      if (!data || data.ok === false) {
+        toast((data && data.status) || "Speichern fehlgeschlagen", "error");
+        return;
+      }
       toast(
-        "Saved → " + (data.path || "personal WS/selected/") + " (Clear won't delete this)",
+        (data.status || "Behalten") +
+          " · " +
+          (data.path || name) +
+          (data.kept_at ? " · " + data.kept_at : ""),
         "ok"
       );
-      // optional clipboard convenience
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(html).catch(function () {});
-      }
     } catch (err) {
-      toast("Keep failed: " + (err.message || err), "error");
+      toast("Speichern fehlgeschlagen: " + (err.message || err), "error");
     }
   }
 
@@ -8269,6 +8510,7 @@
     renderCards();
     bindTooltipHovers();
     bindTuneSliders();
+    if (typeof bindAgentPage === "function") bindAgentPage();
     refreshBusyFromServer();
 
     els.btnSend.addEventListener("click", sendChat);

@@ -93,6 +93,7 @@ class KeepSelectedBody(BaseModel):
     content: str | None = None
     name: str | None = None
     worker: str | None = None
+    overwrite: bool = False
 
 
 class TelegramInBody(BaseModel):
@@ -959,6 +960,7 @@ def create_app() -> FastAPI:
                 body.content,
                 name=body.name,
                 worker=body.worker,
+                overwrite=body.overwrite,
             )
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e

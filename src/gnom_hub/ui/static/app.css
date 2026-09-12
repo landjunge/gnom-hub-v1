@@ -3353,3 +3353,83 @@ a:focus-visible {
   flex: 1 1 auto;
   min-height: 0;
 }
+
+.agent-page {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  background: var(--bg-panel, #1a1b1f);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 10px 12px;
+}
+.agent-page[hidden] { display: none !important; }
+.agent-page-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.agent-page-title { font-weight: 700; }
+.agent-page-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: none;
+}
+.agent-page-line { margin: 0 0 8px; font-size: 13px; line-height: 1.4; white-space: pre-wrap; }
+
+.btn-mic.listening {
+  animation: mic-pulse 1.2s ease-in-out infinite;
+  border-color: #ef5350;
+}
+@keyframes mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 83, 80, 0.45); }
+  50% { box-shadow: 0 0 0 5px rgba(239, 83, 80, 0.08); }
+}
+
+.god-badge.on {
+  color: #ffcdd2;
+  border-color: #c62828;
+  background: #3b1111;
+  animation: god-pulse 1.6s ease-in-out infinite;
+}
+@keyframes god-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(198, 40, 40, 0.5); }
+  50% { box-shadow: 0 0 0 4px rgba(198, 40, 40, 0.12); }
+}
+
+.boxes .modal.in-boxes {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  background: rgba(0, 0, 0, 0.5);
+}
+.toast-sticky { pointer-events: auto; }
+.toast-dismiss {
+  margin-left: 8px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.box2-reply-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+}
+.box2-reply-tab {
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  color: var(--text);
+  border-radius: 4px;
+  font-size: 11px;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+.box2-reply-tab.is-on { outline: 1px solid var(--c-brainstorm, #ef5350); }

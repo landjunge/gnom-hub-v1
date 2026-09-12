@@ -1,4 +1,11 @@
 /* part: 02-modals-tools-ws.js  lines 705-1949 of app.js — edit parts, run scripts/build_ui_js.py */
+  function dockIntoBoxes(el) {
+    const boxes = document.querySelector(".boxes");
+    if (!el || !boxes) return;
+    if (el.parentNode !== boxes) boxes.appendChild(el);
+    el.classList.add("in-boxes");
+  }
+
   function openTuneModal(id) {
     const a = findAgent(id);
     const layer = document.getElementById("tune-layer");
@@ -23,11 +30,11 @@
         valNode.textContent =
           digits === 0 ? String(Math.round(num)) : Number(num).toFixed(digits);
     };
-    setRange("tune-temp", "tune-temp-val", a.temperature, 0.5, 2);
-    setRange("tune-topp", "tune-topp-val", a.top_p, 1, 2);
-    setRange("tune-maxtok", "tune-maxtok-val", a.max_tokens, 800, 0);
-    setRange("tune-freq", "tune-freq-val", a.frequency_penalty, 0, 2);
-    setRange("tune-pres", "tune-pres-val", a.presence_penalty, 0, 2);
+    setRange("tune-temp", "tune-temp-val", a.temperature, SLIDER_DEFAULTS.temperature, 2);
+    setRange("tune-topp", "tune-topp-val", a.top_p, SLIDER_DEFAULTS.top_p, 2);
+    setRange("tune-maxtok", "tune-maxtok-val", a.max_tokens, SLIDER_DEFAULTS.max_tokens, 0);
+    setRange("tune-freq", "tune-freq-val", a.frequency_penalty, SLIDER_DEFAULTS.frequency, 2);
+    setRange("tune-pres", "tune-pres-val", a.presence_penalty, SLIDER_DEFAULTS.presence, 2);
     const tts = document.getElementById("tune-tts");
     if (tts) tts.checked = !!a.tts;
     layer.hidden = false;
@@ -123,6 +130,21 @@
     } else {
       stopSpeech();
     }
+    const summary =
+      "Speichern für " +
+      tuneAgentId +
+      ":\nTemperature " +
+      body.temperature +
+      " (niedrig=vorsichtig, hoch=kreativ)\nTop-P " +
+      body.top_p +
+      "\nMax Tokens " +
+      body.max_tokens +
+      "\nFrequency " +
+      body.frequency_penalty +
+      "\nPresence " +
+      body.presence_penalty +
+      "\nRegler geben keine Extra-Rechte.";
+    if (!window.confirm(summary)) return;
     try {
       const data = await api(
         "POST",
@@ -144,6 +166,7 @@
 
   async function openSystemModal() {
     if (!els.systemModal) return;
+    dockIntoBoxes(els.systemModal);
     try {
       const s = await api("GET", "/api/system");
       const parts = [];
@@ -695,6 +718,7 @@
 
   async function openToolsModal() {
     if (!els.toolsModal) return;
+    dockIntoBoxes(els.toolsModal);
     els.toolsModal.hidden = false;
     try {
       const snap = lastSnapshot || null;
@@ -1415,6 +1439,7 @@
 
   async function openWorkspaceModal() {
     if (!els.workspaceModal) return;
+    dockIntoBoxes(els.workspaceModal);
     els.workspaceModal.hidden = false;
     await refreshWorkspace();
   }

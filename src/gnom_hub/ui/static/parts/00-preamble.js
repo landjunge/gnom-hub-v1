@@ -14,7 +14,7 @@
 
   /** Loaded from /api/tooltips?lang=… (en/de) */
   let TOOLTIPS = {};
-  let uiLang = "en";
+  let uiLang = "de";
 
   const _FLEX_PRESETS = ["personal", "security", "neutral", "researcher"]; // kept for desk docs/export
 
@@ -42,17 +42,24 @@
     if (hex) el.style.setProperty("--owner-color", hex);
   }
 
+  const SLIDER_DEFAULTS = {
+    temperature: 0.5,
+    top_p: 1,
+    max_tokens: 800,
+    frequency: 0,
+    presence: 0,
+  };
   const SLIDER_TIPS = {
     temperature:
-      "Temperature: higher = more creative/random; lower = more focused and deterministic.",
+      "Temperature steuert Zufall. Niedrig = gleichmäßiger und vorsichtiger. Hoch = kreativer, aber unberechenbarer. Empfehlung 0.3–0.8. Standard 0.50.",
     top_p:
-      "Top-P (nucleus): samples from the smallest set of tokens whose probability mass ≥ p. Lower = safer.",
+      "Top-P begrenzt die Wortauswahl. Klein = engere Auswahl. Groß = breitere Auswahl. Empfehlung 0.8–1.0. Standard 1.00.",
     max_tokens:
-      "Max Tokens: hard cap on completion length. Higher allows longer HTML/docs; costs more.",
+      "Max Tokens ist die Längengrenze. Klein = kürzere Antworten. Groß = ausführlicher, langsamer, teurer. Standard 800.",
     frequency:
-      "Frequency Penalty: reduces repeating the same tokens already used in the answer.",
+      "Frequency Penalty mindert Wiederholungen. Höher = weniger Repeats, kann wichtige Begriffe meiden. Standard 0.00.",
     presence:
-      "Presence Penalty: encourages talking about new topics; reduces staying on the same idea.",
+      "Presence Penalty fördert neue Aspekte. Höher = eher neue Themen, kann vom Kern wegführen. Standard 0.00.",
   };
 
   // Display hints only (role prompts live in Python). Empty = code default.
@@ -171,6 +178,7 @@
   const CHAT_HIST_MAX = 50;
   const HISTORY_MAX = 12;
   let resultHistory = [];
+  const resultTrash = [];
   let selectedColdId = null;
   /** Terminal-style input history (ArrowUp/Down). idx -1 = live draft. */
   let chatHist = [];
@@ -559,6 +567,87 @@
     }
   }
 
+  function closeAgentPage() {
+    const page = document.getElementById("agent-page");
+    if (page) page.hidden = true;
+  }
+
+  function openAgentPage(agentId) {
+    const page = document.getElementById("agent-page");
+    const body = document.getElementById("agent-page-body");
+    const title = document.getElementById("agent-page-title");
+    if (!page || !body) return;
+    const agent = findAgent(agentId) || {};
+    const tip = TOOLTIPS[agentId] || {};
+    const rights = {
+      brainstorm: "Darf Dialog in Box 2. Darf nicht Execute, Code oder Box 3.",
+      memory: "Darf Recall. Darf nicht Boxen füllen.",
+      flex: "Darf Box 1 und Wünsche. Darf nicht Execute, Tools, God-Mode.",
+      coordinator: "Darf Plan und Distill. Darf nicht bauen.",
+      worker1: "Darf Deliverable in Box 3. Darf nicht raten, Box 1/2 schreiben.",
+      worker2: "Darf Deliverable in Box 3. Darf nicht raten, Box 1/2 schreiben.",
+      worker3: "Darf Deliverable in Box 3. Darf nicht raten, Box 1/2 schreiben.",
+      worker4: "Darf Deliverable in Box 3. Darf nicht raten, Box 1/2 schreiben.",
+    };
+    if (title) title.textContent = (agent.label || agentId) + " — Agentenseite";
+    const promptRaw =
+      (agent.system_prompt && String(agent.system_prompt).trim()) ||
+      DEFAULT_PROMPTS[agentId] ||
+      "";
+    const snap = typeof lastSnapshot !== "undefined" ? lastSnapshot : null;
+    const skills = (snap && snap.skills) || {};
+    const toolsN = (snap && snap.pipeline && snap.pipeline.tool_log) || [];
+    const lines = [
+      "Rolle: " + ((tip && tip.how_to) || rights[agentId] || ""),
+      "Rechte: " + (rights[agentId] || "siehe Docs"),
+      "Status: " + (agent.enabled ? "an" : "aus") + (agent.online ? " · online" : " · offline"),
+      "Modell: " + (agent.model || "—") + "  (API-Schlüssel werden nicht angezeigt)",
+      "Temperature " +
+        paramVal(agent.temperature, 0.5) +
+        " · Top-P " +
+        paramVal(agent.top_p, 1) +
+        " · Max Tokens " +
+        paramVal(agent.max_tokens, 800),
+      "Frequency " +
+        paramVal(agent.frequency_penalty, 0) +
+        " · Presence " +
+        paramVal(agent.presence_penalty, 0),
+      "TTS: " + (agent.tts ? "an" : "aus"),
+      "Kosten/Tokens: " +
+        (agent.tokens || 0) +
+        " tok · $" +
+        Number(agent.cost_usd || 0).toFixed(4),
+      "Skills: " + (skills.count != null ? String(skills.count) : "—"),
+      "Tool-Log dieser Pipeline: " + (Array.isArray(toolsN) ? toolsN.length : 0),
+      "Prompt: " + promptRaw,
+    ];
+    body.textContent = "";
+    lines.forEach(function (line) {
+      const p = document.createElement("p");
+      p.className = "agent-page-line";
+      p.textContent = line;
+      body.appendChild(p);
+    });
+    const tuneBtn = document.createElement("button");
+    tuneBtn.type = "button";
+    tuneBtn.className = "btn-ws-sm";
+    tuneBtn.textContent = "Regler in Box 3";
+    tuneBtn.addEventListener("click", function () {
+      if (typeof openTuneModal === "function") openTuneModal(agentId);
+    });
+    body.appendChild(tuneBtn);
+    page.hidden = false;
+    if (typeof bindAgentPage === "function") bindAgentPage();
+  }
+
+  function bindAgentPage() {
+    const back = document.getElementById("agent-page-back");
+    if (back && !back._bound) {
+      back._bound = true;
+      back.addEventListener("click", closeAgentPage);
+    }
+  }
+
   function updateBoxBorders() {
     /* nur Modulrahmen; Box-Rahmen bleiben neutral */
     if (lastClickedAgentId && COLOR_HEX[lastClickedAgentId]) {
@@ -655,16 +744,12 @@
         }
         if (clickTimer) clearTimeout(clickTimer);
         const shiftTune = !!ev.shiftKey;
-        /* second click on same agent the user already picked → tune */
-        const alreadyUserPick =
-          document.body.dataset.agentUserPick === agent.id &&
-          lastClickedAgentId === agent.id;
         clickTimer = setTimeout(function () {
           clickTimer = null;
-          /* B1: click = layer + Box1 info only; tune only explicit */
           activateAgentLayer(agent.id, true);
           document.body.dataset.agentUserPick = agent.id;
-          if (shiftTune || alreadyUserPick) {
+          if (typeof openAgentPage === "function") openAgentPage(agent.id);
+          if (shiftTune && typeof openTuneModal === "function") {
             openTuneModal(agent.id);
           }
         }, 220);
@@ -711,11 +796,24 @@
     requestAnimationFrame(function () {
       el.classList.add("show");
     });
+    const ms = kind === "error" ? 0 : 4000;
+    if (kind === "error") {
+      el.classList.add("toast-sticky");
+      const x = document.createElement("button");
+      x.type = "button";
+      x.className = "toast-dismiss";
+      x.textContent = "×";
+      x.addEventListener("click", function () {
+        if (el.parentNode) el.parentNode.removeChild(el);
+      });
+      el.appendChild(x);
+      return;
+    }
     setTimeout(function () {
       el.classList.remove("show");
       setTimeout(function () {
         if (el.parentNode) el.parentNode.removeChild(el);
       }, 220);
-    }, 4200);
+    }, ms);
   }
 

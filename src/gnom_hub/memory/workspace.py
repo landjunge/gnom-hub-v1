@@ -24,8 +24,12 @@ class WorkspaceStore:
         self.base = self.root / "data" / "workspace"
         self.temp = self.base / "temp"
         self.perm = self.base / "perm"
+        self.recovery = self.base / "recovery"
+        self.trash = self.base / "trash"
         self.temp.mkdir(parents=True, exist_ok=True)
         self.perm.mkdir(parents=True, exist_ok=True)
+        self.recovery.mkdir(parents=True, exist_ok=True)
+        self.trash.mkdir(parents=True, exist_ok=True)
         self.selected = selected_dir(self.root)
         self.selected.mkdir(parents=True, exist_ok=True)
 
@@ -75,6 +79,12 @@ class WorkspaceStore:
             else:
                 raise FileNotFoundError(safe)
         return copy_selected_html(src, self.root)
+
+    def stage_recovery(self, content: str, name: str = "page.html") -> Path:
+        safe = Path(name or "page.html").name
+        path = self.recovery / f"{safe}.pending"
+        atomic_write_text(path, str(content or ""))
+        return path
 
     def keep_html_content(self, content: str, name: str = "page.html") -> Path:
         """
@@ -183,4 +193,8 @@ class WorkspaceStore:
             return self.temp
         if w in ("perm", "permanent", "keep"):
             return self.perm
+        if w in ("recovery", "staging"):
+            return self.recovery
+        if w in ("trash", "bin"):
+            return self.trash
         raise ValueError(f"Unknown workspace zone: {which!r}")

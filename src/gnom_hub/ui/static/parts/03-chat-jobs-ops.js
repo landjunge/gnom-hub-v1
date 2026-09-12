@@ -3,40 +3,59 @@
     const SR =
       window.SpeechRecognition || window.webkitSpeechRecognition || null;
     if (!SR) {
-      toast("Speech recognition not supported in this browser", "error");
+      toast("Spracheingabe geht in diesem Browser nicht", "error");
       return;
     }
     if (listening && recognition) {
+      listening = false;
       try {
         recognition.stop();
       } catch (_e) {
         /* */
       }
-      listening = false;
-      if (els.btnMic) els.btnMic.classList.remove("listening");
+      if (els.btnMic) {
+        els.btnMic.classList.remove("listening");
+        els.btnMic.setAttribute("aria-pressed", "false");
+        els.btnMic.title = "Mikrofon aus";
+      }
+      toast("Mikrofon aus", "info");
       return;
     }
     recognition = new SR();
-    recognition.lang = "de-DE";
+    recognition.lang = uiLang === "en" ? "en-US" : "de-DE";
     recognition.interimResults = true;
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.onstart = function () {
       listening = true;
-      if (els.btnMic) els.btnMic.classList.add("listening");
+      if (els.btnMic) {
+        els.btnMic.classList.add("listening");
+        els.btnMic.setAttribute("aria-pressed", "true");
+        els.btnMic.title = "Mikrofon an — klick zum Aus";
+      }
     };
     recognition.onend = function () {
-      listening = false;
+      if (listening) {
+        try {
+          recognition.start();
+        } catch (_e) {
+          listening = false;
+          if (els.btnMic) els.btnMic.classList.remove("listening");
+        }
+        return;
+      }
       if (els.btnMic) els.btnMic.classList.remove("listening");
     };
     recognition.onerror = function (ev) {
+      const err = (ev && ev.error) || "unknown";
+      if (err === "no-speech" || err === "aborted") return;
       listening = false;
       if (els.btnMic) els.btnMic.classList.remove("listening");
-      toast("Mic error: " + (ev.error || "unknown"), "error");
+      toast("Mikrofon: " + err, "error");
     };
     recognition.onresult = function (ev) {
       let text = "";
       for (let i = ev.resultIndex; i < ev.results.length; i++) {
-        text += ev.results[i][0].transcript;
+        if (ev.results[i].isFinal) text += ev.results[i][0].transcript;
       }
       if (els.chatInput && text) {
         els.chatInput.value = (els.chatInput.value + " " + text).trim();
@@ -46,7 +65,8 @@
     try {
       recognition.start();
     } catch (err) {
-      toast("Mic start failed: " + err.message, "error");
+      listening = false;
+      toast("Mikrofon startet nicht: " + err.message, "error");
     }
   }
 
@@ -79,7 +99,7 @@
       const data = await api("GET", "/api/tooltips?lang=" + encodeURIComponent(lang || "en"));
       // hub returns flat map id → {title, how_to, example}
       TOOLTIPS = data.tooltips || data || {};
-      uiLang = lang || "en";
+      uiLang = lang || "de";
     } catch (_e) {
       /* keep previous */
     }
