@@ -51,6 +51,13 @@
 
 * {
   box-sizing: border-box;
+  scrollbar-width: none; /* Firefox: no bar, still scroll */
+  -ms-overflow-style: none;
+}
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 html, body {

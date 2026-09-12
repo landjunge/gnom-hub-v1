@@ -1642,11 +1642,32 @@
     /* box chrome buttons removed — pure frame */
   }
 
+  function hideScrollbarCss() {
+    return (
+      "*{scrollbar-width:none;-ms-overflow-style:none}" +
+      "*::-webkit-scrollbar{width:0;height:0;display:none}"
+    );
+  }
+
+  function withHiddenScrollbars(doc) {
+    const html = String(doc || "");
+    if (!html) return html;
+    if (html.indexOf("scrollbar-width:none") >= 0) return html;
+    const style = "<style>" + hideScrollbarCss() + "</style>";
+    if (/<head[\s>]/i.test(html)) {
+      return html.replace(/<head([^>]*)>/i, "<head$1>" + style);
+    }
+    if (/<html[\s>]/i.test(html)) {
+      return html.replace(/<html([^>]*)>/i, "<html$1><head>" + style + "</head>");
+    }
+    return style + html;
+  }
+
   function wrapHtmlDocument(html) {
     let doc = html || "";
     /* Prefer healed full documents (truncated workers) */
     if (/<!DOCTYPE/i.test(doc) || /<html[\s>]/i.test(doc)) {
-      return healTruncatedHtml(doc);
+      return withHiddenScrollbars(healTruncatedHtml(doc));
     }
     /* Dark shell so fragments are not a blinding white box in the desk */
     doc =
@@ -1657,6 +1678,7 @@
       "font-family:system-ui,sans-serif;}" +
       "body{padding:12px;box-sizing:border-box;}" +
       "a{color:#7db7ff;}" +
+      hideScrollbarCss() +
       "</style>" +
       "</head><body>" +
       doc +

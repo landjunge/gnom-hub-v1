@@ -145,6 +145,18 @@ def test_box3_preview_source_js_are_vorschau_quelle():
     assert "Quelltext" in BOXES_JS
 
 
+def test_all_scrollbars_hidden_globally_still_overflow():
+    """Desk: no visible bars; overflow auto/scroll still there."""
+    assert re.search(r"\*\s*\{[^}]*scrollbar-width:\s*none", CSS, re.DOTALL)
+    assert "*::-webkit-scrollbar" in CSS
+    assert "display: none" in CSS.split("*::-webkit-scrollbar", 1)[1][:160]
+    assert "overflow-y: auto" in CSS or "overflow: auto" in CSS
+    assert "function hideScrollbarCss" in BOXES_JS
+    assert "function withHiddenScrollbars" in BOXES_JS
+    assert "scrollbar-width:none" in BOXES_JS
+    assert "::-webkit-scrollbar" in BOXES_JS
+
+
 def test_overlay_titles_german_chrome():
     ws = _visible_text(_inner_by_id(HTML, "workspace-modal"))
     assert "Vorschau" in ws
