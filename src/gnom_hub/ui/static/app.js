@@ -572,6 +572,14 @@
     if (page) page.hidden = true;
   }
 
+  function _agentPageAdd(body, tag, className, text) {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text != null) el.textContent = text;
+    body.appendChild(el);
+    return el;
+  }
+
   function openAgentPage(agentId) {
     const page = document.getElementById("agent-page");
     const body = document.getElementById("agent-page-body");
@@ -595,49 +603,159 @@
       DEFAULT_PROMPTS[agentId] ||
       "";
     const snap = typeof lastSnapshot !== "undefined" ? lastSnapshot : null;
-    const skills = (snap && snap.skills) || {};
-    const toolsN = (snap && snap.pipeline && snap.pipeline.tool_log) || [];
-    const lines = [
-      "Rolle: " + ((tip && tip.how_to) || rights[agentId] || ""),
-      "Rechte: " + (rights[agentId] || "siehe Docs"),
-      "Status: " + (agent.enabled ? "an" : "aus") + (agent.online ? " · online" : " · offline"),
-      "Modell: " + (agent.model || "—") + "  (API-Schlüssel werden nicht angezeigt)",
-      "Temperature " +
-        paramVal(agent.temperature, 0.5) +
-        " · Top-P " +
-        paramVal(agent.top_p, 1) +
-        " · Max Tokens " +
-        paramVal(agent.max_tokens, 800),
-      "Frequency " +
-        paramVal(agent.frequency_penalty, 0) +
-        " · Presence " +
-        paramVal(agent.presence_penalty, 0),
-      "TTS: " + (agent.tts ? "an" : "aus"),
+    const pipe = (snap && snap.pipeline) || {};
+    const expert = !!(page.dataset && page.dataset.expert === "1");
+    body.textContent = "";
+    _agentPageAdd(body, "p", "agent-page-line", "Farbe ist Orientierung, keine Rechte.");
+    _agentPageAdd(
+      body,
+      "p",
+      "agent-page-line",
+      "Rolle: " + ((tip && tip.how_to) || rights[agentId] || "")
+    );
+    _agentPageAdd(body, "p", "agent-page-line", "Rechte: " + (rights[agentId] || "siehe Docs"));
+    _agentPageAdd(
+      body,
+      "p",
+      "agent-page-line",
+      "Status: " +
+        (agent.enabled ? "an" : "aus") +
+        (agent.online ? " · online" : " · offline") +
+        (agent.parked ? " · geparkt" : "")
+    );
+    _agentPageAdd(
+      body,
+      "p",
+      "agent-page-line",
+      "Modell: " + (agent.model || "—") + "  (API-Schlüssel werden nicht angezeigt)"
+    );
+    _agentPageAdd(
+      body,
+      "p",
+      "agent-page-line",
+      "Aktuelle Aufgabe: " +
+        ((pipe.user_text && String(pipe.user_text).slice(0, 240)) || "(keine)") +
+        (pipe.stage ? " · Stage " + pipe.stage : "")
+    );
+    const err = pipe.last_error || pipe.error || "";
+    if (err) _agentPageAdd(body, "p", "agent-page-line", "Letzter Fehler: " + String(err));
+    _agentPageAdd(
+      body,
+      "p",
+      "agent-page-line",
       "Kosten/Tokens: " +
         (agent.tokens || 0) +
         " tok · $" +
-        Number(agent.cost_usd || 0).toFixed(4),
-      "Skills: " + (skills.count != null ? String(skills.count) : "—"),
-      "Tool-Log dieser Pipeline: " + (Array.isArray(toolsN) ? toolsN.length : 0),
-      "Prompt: " + promptRaw,
-    ];
-    body.textContent = "";
-    lines.forEach(function (line) {
-      const p = document.createElement("p");
-      p.className = "agent-page-line";
-      p.textContent = line;
-      body.appendChild(p);
+        Number(agent.cost_usd || 0).toFixed(4)
+    );
+    _agentPageAdd(body, "h3", "agent-page-h", "Regler");
+    [
+      ["temperature", "Temperature", agent.temperature, SLIDER_DEFAULTS.temperature],
+      ["top_p", "Top-P", agent.top_p, SLIDER_DEFAULTS.top_p],
+      ["max_tokens", "Max Tokens", agent.max_tokens, SLIDER_DEFAULTS.max_tokens],
+      ["frequency", "Frequency", agent.frequency_penalty, SLIDER_DEFAULTS.frequency],
+      ["presence", "Presence", agent.presence_penalty, SLIDER_DEFAULTS.presence],
+    ].forEach(function (row) {
+      const p = _agentPageAdd(
+        body,
+        "p",
+        "agent-page-line",
+        row[1] + ": " + paramVal(row[2], row[3]) + " — " + (SLIDER_TIPS[row[0]] || "")
+      );
+      p.dataset.slider = row[0];
     });
     const tuneBtn = document.createElement("button");
     tuneBtn.type = "button";
     tuneBtn.className = "btn-ws-sm";
-    tuneBtn.textContent = "Regler in Box 3";
+    tuneBtn.textContent = "Regler in Box 3 (Reset dort)";
     tuneBtn.addEventListener("click", function () {
       if (typeof openTuneModal === "function") openTuneModal(agentId);
     });
     body.appendChild(tuneBtn);
+    _agentPageAdd(body, "h3", "agent-page-h", "Prompt");
+    const promptEl = _agentPageAdd(body, "p", "agent-page-line", promptRaw);
+    if (!expert && promptRaw.length > 400) {
+      promptEl.textContent = promptRaw.slice(0, 397) + "…";
+    }
+    _agentPageAdd(body, "h3", "agent-page-h", "Werkzeuge");
+    const tools = (snap && snap.tools) || [];
+    if (Array.isArray(tools) && tools.length) {
+      tools.slice(0, expert ? 40 : 12).forEach(function (t) {
+        _agentPageAdd(
+          body,
+          "p",
+          "agent-page-line",
+          (t.name || "?") + " — " + (t.description || "")
+        );
+      });
+    } else {
+      _agentPageAdd(body, "p", "agent-page-line", "Keine Werkzeugliste in dieser Sitzung.");
+    }
+    const skillHost = _agentPageAdd(body, "div", "agent-page-skills", "");
+    skillHost.id = "agent-page-skills";
+    _agentPageAdd(skillHost, "h3", "agent-page-h", "Skills");
+    _agentPageAdd(skillHost, "p", "agent-page-line", "Lade Skills…");
     page.hidden = false;
     if (typeof bindAgentPage === "function") bindAgentPage();
+    function fillSkills(list) {
+      skillHost.textContent = "";
+      _agentPageAdd(skillHost, "h3", "agent-page-h", "Skills");
+      const mine = (list || []).filter(function (s) {
+        const ag = s.agents || [];
+        return !ag.length || ag.indexOf(agentId) >= 0;
+      });
+      if (!mine.length) {
+        _agentPageAdd(skillHost, "p", "agent-page-line", "Keine zugewiesenen Skills.");
+        return;
+      }
+      mine.forEach(function (s) {
+        const card = _agentPageAdd(skillHost, "div", "agent-page-skill", "");
+        _agentPageAdd(
+          card,
+          "p",
+          "agent-page-line",
+          (s.name || s.id || "?") +
+            " v" +
+            (s.version || "?") +
+            (s.enabled === false ? " · aus" : "")
+        );
+        _agentPageAdd(
+          card,
+          "p",
+          "agent-page-line",
+          "Zweck: " + (s.description || "(Playbook, nur Prompt)")
+        );
+        _agentPageAdd(
+          card,
+          "p",
+          "agent-page-line",
+          "Auslöser: " + ((s.triggers || []).join(", ") || "manuell / Rollen-Match")
+        );
+        _agentPageAdd(
+          card,
+          "p",
+          "agent-page-line",
+          "Daten: Skill-Text unter " + (s.path || "skills/") + " · Quelle " + (s.source || "")
+        );
+        _agentPageAdd(
+          card,
+          "p",
+          "agent-page-line",
+          "Wirkung: Prompt-Text an den Agenten. Grenze: kein Code, keine Extra-Rechte, keine Secrets."
+        );
+      });
+    }
+    if (typeof api === "function") {
+      api("GET", "/api/skills")
+        .then(function (data) {
+          fillSkills((data && data.skills) || []);
+        })
+        .catch(function () {
+          fillSkills([]);
+        });
+    } else {
+      fillSkills([]);
+    }
   }
 
   function bindAgentPage() {
@@ -645,6 +763,26 @@
     if (back && !back._bound) {
       back._bound = true;
       back.addEventListener("click", closeAgentPage);
+    }
+    const expert = document.getElementById("agent-page-expert");
+    if (expert && !expert._bound) {
+      expert._bound = true;
+      expert.addEventListener("click", function () {
+        const page = document.getElementById("agent-page");
+        if (!page) return;
+        const on = page.dataset.expert === "1";
+        page.dataset.expert = on ? "0" : "1";
+        expert.textContent = on ? "Expertenansicht" : "Standardansicht";
+        const title = document.getElementById("agent-page-title");
+        const aid =
+          title && title.textContent
+            ? String(title.textContent).split(" — ")[0]
+            : lastClickedAgentId;
+        const agent = AGENTS.find(function (a) {
+          return a.label === aid || a.id === aid;
+        });
+        openAgentPage((agent && agent.id) || lastClickedAgentId || "brainstorm");
+      });
     }
   }
 
@@ -783,38 +921,71 @@
     return null;
   }
 
+  const TOAST_MAX = 2;
+  const toastQueue = [];
+
   function toast(message, kind) {
+    toastQueue.push({ message: String(message || ""), kind: kind || "info" });
+    flushToasts();
+  }
+
+  function flushToasts() {
     const host = document.getElementById("toast-host");
     if (!host) {
-      console.log("[toast]", kind || "info", message);
+      while (toastQueue.length) {
+        const item = toastQueue.shift();
+        console.log("[toast]", item.kind, item.message);
+      }
       return;
     }
+    while (host.children.length < TOAST_MAX && toastQueue.length) {
+      mountToast(host, toastQueue.shift());
+    }
+  }
+
+  function mountToast(host, item) {
     const el = document.createElement("div");
-    el.className = "toast toast-" + (kind || "info");
-    el.textContent = message;
+    el.className = "toast toast-" + (item.kind || "info");
+    el.textContent = item.message;
     host.appendChild(el);
     requestAnimationFrame(function () {
       el.classList.add("show");
     });
-    const ms = kind === "error" ? 0 : 4000;
-    if (kind === "error") {
+    function dismiss() {
+      el.classList.remove("show");
+      setTimeout(function () {
+        if (el.parentNode) el.parentNode.removeChild(el);
+        flushToasts();
+      }, 220);
+    }
+    if (item.kind === "error") {
       el.classList.add("toast-sticky");
       const x = document.createElement("button");
       x.type = "button";
       x.className = "toast-dismiss";
       x.textContent = "×";
-      x.addEventListener("click", function () {
-        if (el.parentNode) el.parentNode.removeChild(el);
-      });
+      x.addEventListener("click", dismiss);
       el.appendChild(x);
       return;
     }
-    setTimeout(function () {
-      el.classList.remove("show");
-      setTimeout(function () {
-        if (el.parentNode) el.parentNode.removeChild(el);
-      }, 220);
-    }, ms);
+    let remaining = 4000;
+    let timer = null;
+    let started = 0;
+    function arm() {
+      started = Date.now();
+      timer = setTimeout(dismiss, remaining);
+    }
+    el.addEventListener("mouseenter", function () {
+      if (!timer) return;
+      remaining -= Date.now() - started;
+      clearTimeout(timer);
+      timer = null;
+    });
+    el.addEventListener("mouseleave", function () {
+      if (timer || remaining <= 0) return;
+      arm();
+    });
+    arm();
   }
 
 /* part: 01-api-snapshot-tts.js  lines 324-704 of app.js — edit parts, run scripts/build_ui_js.py */
@@ -2302,6 +2473,26 @@
     if (val && el) val.textContent = "Aktuell: " + el.value;
   }
 
+  function resetSlider(key) {
+    const map = {
+      temperature: ["tune-temp", "tune-temp-val", 2],
+      top_p: ["tune-topp", "tune-topp-val", 2],
+      max_tokens: ["tune-maxtok", "tune-maxtok-val", 0],
+      frequency: ["tune-freq", "tune-freq-val", 2],
+      presence: ["tune-pres", "tune-pres-val", 2],
+    };
+    const spec = map[key];
+    if (!spec || SLIDER_DEFAULTS[key] == null) return;
+    const el = document.getElementById(spec[0]);
+    const def = SLIDER_DEFAULTS[key];
+    if (el) el.value = String(def);
+    const valNode = document.getElementById(spec[1]);
+    if (valNode)
+      valNode.textContent =
+        spec[2] === 0 ? String(Math.round(def)) : Number(def).toFixed(spec[2]);
+    showSliderTip(key);
+  }
+
   function bindTuneSliders() {
     const pairs = [
       ["tune-temp", "tune-temp-val", 2, "temperature"],
@@ -2323,6 +2514,14 @@
       });
       el.addEventListener("pointerdown", function () {
         showSliderTip(p[3]);
+      });
+    });
+    document.querySelectorAll(".tune-reset").forEach(function (btn) {
+      if (btn._bound) return;
+      btn._bound = true;
+      btn.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        resetSlider(btn.getAttribute("data-reset"));
       });
     });
   }
@@ -7164,8 +7363,22 @@
       away.addEventListener("click", function () {
         const i = box3FocusIdx || 0;
         if (!lastWorkerOutputs || !lastWorkerOutputs[i]) return;
-        resultTrash.unshift(lastWorkerOutputs[i]);
+        const gone = lastWorkerOutputs[i];
+        resultTrash.unshift(gone);
         lastWorkerOutputs.splice(i, 1);
+        const tname =
+          ((gone && (gone.worker || gone.name)) || "result")
+            .toString()
+            .replace(/[^\w.-]+/g, "_") + ".txt";
+        if (typeof api === "function") {
+          api("POST", "/api/workspace/write", {
+            zone: "trash",
+            name: tname,
+            content: (gone && gone.result) || "",
+          }).catch(function () {
+            /* keep in-memory trash */
+          });
+        }
         toast("Weg — im Papierkorb, wiederherstellbar", "info");
         if (lastWorkerOutputs.length) {
           focusBox3WorkerResult(Math.min(i, lastWorkerOutputs.length - 1));
@@ -7760,6 +7973,7 @@
         ? lastWorkerOutputs[box3FocusIdx].worker
         : null;
     lastWorkerOutputs = outputs;
+    stageResultsRecovery(outputs);
     updateBox3Toolbar();
     if (pipeline) {
       renderToolStrip(pipeline.tool_log || [], pipeline.quality_notes || "");
@@ -7923,21 +8137,50 @@
     }
   }
 
-  /** Save one worker HTML into personal WS (WS-gnom-hub-v1/selected/). */
+  let lastRecoveryKey = "";
+  function stageResultsRecovery(outputs) {
+    const list = Array.isArray(outputs) ? outputs : [];
+    if (!list.length || typeof api !== "function") return;
+    const key = list
+      .map(function (o) {
+        return String((o && (o.worker || o.name)) || "") + ":" + String((o && o.result) || "").length;
+      })
+      .join("|");
+    if (key === lastRecoveryKey) return;
+    lastRecoveryKey = key;
+    list.forEach(function (o, i) {
+      const raw = (o && o.result) || "";
+      if (!raw) return;
+      const name =
+        ((o && (o.worker || o.name)) || "worker" + (i + 1))
+          .toString()
+          .replace(/[^\w.-]+/g, "_") + ".txt";
+      api("POST", "/api/workspace/write", {
+        zone: "recovery",
+        name: name,
+        content: raw,
+      }).catch(function () {
+        /* recovery is best-effort */
+      });
+    });
+  }
+
+  /** Save one worker result: HTML → selected/, other text → perm/. */
   async function keepWorkerToPersonalWs(out, idx, overwrite) {
     const raw = (out && out.result) || "";
-    const html = extractHtml(raw);
-    if (!html) {
-      toast("Kein HTML — Behalten gilt nur für HTML", "info");
+    if (!String(raw).trim()) {
+      toast("Nichts zum Behalten", "info");
       return;
     }
-    const name =
+    const html = extractHtml(raw);
+    const base =
       ((out && (out.worker || out.name)) || "worker" + (idx + 1))
         .toString()
-        .replace(/[^\w.-]+/g, "_") + ".html";
+        .replace(/[^\w.-]+/g, "_");
+    const name = base + (html ? ".html" : ".txt");
     try {
       const data = await api("POST", "/api/workspace/keep", {
-        content: html,
+        content: html || raw,
         name: name,
         worker: (out && out.worker) || null,
         overwrite: !!overwrite,
@@ -7960,7 +8203,8 @@
         (data.status || "Behalten") +
           " · " +
           (data.path || name) +
-          (data.kept_at ? " · " + data.kept_at : ""),
+          (data.kept_at ? " · " + data.kept_at : "") +
+          (data.result_id ? " · " + data.result_id : ""),
         "ok"
       );
     } catch (err) {
@@ -7973,18 +8217,9 @@
       toast("No worker results to copy", "info");
       return;
     }
-    // Keep each HTML result into personal WS (only chosen outputs that are HTML)
-    let kept = 0;
     lastWorkerOutputs.forEach(function (o, i) {
-      if (extractHtml(o.result || "")) {
-        kept += 1;
-        keepWorkerToPersonalWs(o, i);
-      }
+      keepWorkerToPersonalWs(o, i);
     });
-    if (!kept) {
-      toast("No HTML among worker results to keep", "info");
-      return;
-    }
     const parts = lastWorkerOutputs.map(function (o, i) {
       const label = o.name || "Worker " + (i + 1);
       return "=== " + label + " ===\n" + (o.result || "");
@@ -7994,7 +8229,7 @@
       return navigator.clipboard
         .writeText(text)
         .then(function () {
-          toast("Kept HTML to personal WS + clipboard (" + text.length + " chars)", "ok");
+          toast("Behalten + Zwischenablage (" + text.length + " Zeichen)", "ok");
         })
         .catch(function () {
           toast("Copy failed", "error");

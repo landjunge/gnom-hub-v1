@@ -9,6 +9,11 @@ from gnom_hub.config.paths import project_root, selected_dir
 from gnom_hub.memory.atomic import atomic_write_text
 
 
+def _looks_like_html(content: str) -> bool:
+    s = (content or "").lstrip().lower()
+    return s.startswith(("<!doctype", "<html")) or "<html" in s[:400]
+
+
 class WorkspaceStore:
     """
     Hub (work):
@@ -86,23 +91,55 @@ class WorkspaceStore:
         atomic_write_text(path, str(content or ""))
         return path
 
-    def keep_html_content(self, content: str, name: str = "page.html") -> Path:
+    def keep_dest_path(self, name: str, *, as_html: bool) -> Path:
+        if as_html:
+            safe = Path(name or "page.html").name
+            if not safe.lower().endswith((".html", ".htm")):
+                safe = f"{safe}.html"
+            return self.selected / safe
+        safe = Path(name or "result.txt").name
+        if "." not in safe:
+            safe = f"{safe}.txt"
+        return self.perm / safe
+
+    def keep_content(
+        self,
+        content: str,
+        name: str = "page.html",
+        *,
+        overwrite: bool = False,
+        as_html: bool | None = None,
+    ) -> Path:
+        """Write one result: HTML → selected/, other text → perm/. Never silent overwrite."""
+        body = str(content or "")
+        if not body.strip():
+            raise ValueError("empty content")
+        html = _looks_like_html(body) if as_html is None else bool(as_html)
+        dest = self.keep_dest_path(name, as_html=html)
+        if dest.exists() and not overwrite:
+            raise FileExistsError(str(dest))
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_text(dest, body)
+        return dest
+
+    def keep_html_content(
+        self,
+        content: str,
+        name: str = "page.html",
+        *,
+        overwrite: bool = False,
+    ) -> Path:
         """
         Save one chosen HTML body into personal WS selected/
         (WS-gnom-hub-v1/selected on real install).
         """
-        from gnom_hub.config.user_workspace import copy_selected_html_text
-
         body = str(content or "").strip()
         if not body:
             raise ValueError("empty content")
         low = body.lower()
         if "<html" not in low and "<!doctype" not in low and not body.lstrip().startswith("<"):
             raise ValueError("not HTML — only HTML goes into personal selected/")
-        safe = Path(name or "page.html").name
-        if not safe.lower().endswith((".html", ".htm")):
-            safe = f"{safe}.html"
-        return copy_selected_html_text(body, safe, self.root)
+        return self.keep_content(body, name, overwrite=overwrite, as_html=True)
 
     def read_text(self, which: str, name: str, max_chars: int = 12000) -> str:
         safe = Path(name).name

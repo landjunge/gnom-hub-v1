@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=162" />
+  <link rel="stylesheet" href="/static/app.css?v=163" />
   <!-- Tailwind utilities for Chat module (preflight OFF) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -95,7 +95,10 @@
       <div id="agent-page" class="agent-page" hidden>
         <div class="agent-page-bar">
           <span id="agent-page-title" class="agent-page-title">Agent</span>
-          <button type="button" id="agent-page-back" class="btn-ws-sm">Zurück zum Desk</button>
+          <div class="agent-page-bar-actions">
+            <button type="button" id="agent-page-expert" class="btn-ws-sm">Expertenansicht</button>
+            <button type="button" id="agent-page-back" class="btn-ws-sm">Zurück zum Desk</button>
+          </div>
         </div>
         <div id="agent-page-body" class="agent-page-body"></div>
       </div>
@@ -365,23 +368,33 @@
           <div class="tune-layer-body">
             <div class="tune-sliders-col">
               <div class="tune-slider" data-tip="temperature">
-                <label>Temperature <span id="tune-temp-val">0.50</span></label>
+                <label>Temperature <span id="tune-temp-val">0.50</span>
+                  <button type="button" class="tune-reset" data-reset="temperature" id="tune-temp-reset">Reset</button>
+                </label>
                 <input id="tune-temp" type="range" min="0" max="2" step="0.05" value="0.5" />
               </div>
               <div class="tune-slider" data-tip="top_p">
-                <label>Top-P <span id="tune-topp-val">1.00</span></label>
+                <label>Top-P <span id="tune-topp-val">1.00</span>
+                  <button type="button" class="tune-reset" data-reset="top_p" id="tune-topp-reset">Reset</button>
+                </label>
                 <input id="tune-topp" type="range" min="0" max="1" step="0.01" value="1" />
               </div>
               <div class="tune-slider" data-tip="max_tokens">
-                <label>Max Tokens <span id="tune-maxtok-val">800</span></label>
+                <label>Max Tokens <span id="tune-maxtok-val">800</span>
+                  <button type="button" class="tune-reset" data-reset="max_tokens" id="tune-maxtok-reset">Reset</button>
+                </label>
                 <input id="tune-maxtok" type="range" min="64" max="4096" step="32" value="800" />
               </div>
               <div class="tune-slider" data-tip="frequency">
-                <label>Frequency Penalty <span id="tune-freq-val">0.00</span></label>
+                <label>Frequency Penalty <span id="tune-freq-val">0.00</span>
+                  <button type="button" class="tune-reset" data-reset="frequency" id="tune-freq-reset">Reset</button>
+                </label>
                 <input id="tune-freq" type="range" min="0" max="2" step="0.05" value="0" />
               </div>
               <div class="tune-slider" data-tip="presence">
-                <label>Presence Penalty <span id="tune-pres-val">0.00</span></label>
+                <label>Presence Penalty <span id="tune-pres-val">0.00</span>
+                  <button type="button" class="tune-reset" data-reset="presence" id="tune-pres-reset">Reset</button>
+                </label>
                 <input id="tune-pres" type="range" min="0" max="2" step="0.05" value="0" />
               </div>
               <label class="tune-tts-row">
@@ -704,6 +717,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=162"></script>
+  <script src="/static/app.js?v=163"></script>
 </body>
 </html>

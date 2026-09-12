@@ -88,7 +88,7 @@ class WorkspaceWriteBody(BaseModel):
 
 
 class KeepSelectedBody(BaseModel):
-    """Copy one chosen HTML into personal WS selected/ (not hub temp)."""
+    """Copy one chosen result: HTML → selected/, other text → perm/."""
 
     content: str | None = None
     name: str | None = None
@@ -952,8 +952,8 @@ def create_app() -> FastAPI:
     @app.post("/api/workspace/keep")
     def workspace_keep(body: KeepSelectedBody) -> dict[str, Any]:
         """
-        Copy button target: save chosen HTML into personal WS
-        (WS-gnom-hub-v1/selected/). Hub clear does not touch this.
+        Behalten: HTML into personal WS selected/, other text into hub perm/.
+        Never silent overwrite; verify read-back before success.
         """
         try:
             return get_hub().keep_result_to_personal_ws(

@@ -75,6 +75,26 @@
     if (val && el) val.textContent = "Aktuell: " + el.value;
   }
 
+  function resetSlider(key) {
+    const map = {
+      temperature: ["tune-temp", "tune-temp-val", 2],
+      top_p: ["tune-topp", "tune-topp-val", 2],
+      max_tokens: ["tune-maxtok", "tune-maxtok-val", 0],
+      frequency: ["tune-freq", "tune-freq-val", 2],
+      presence: ["tune-pres", "tune-pres-val", 2],
+    };
+    const spec = map[key];
+    if (!spec || SLIDER_DEFAULTS[key] == null) return;
+    const el = document.getElementById(spec[0]);
+    const def = SLIDER_DEFAULTS[key];
+    if (el) el.value = String(def);
+    const valNode = document.getElementById(spec[1]);
+    if (valNode)
+      valNode.textContent =
+        spec[2] === 0 ? String(Math.round(def)) : Number(def).toFixed(spec[2]);
+    showSliderTip(key);
+  }
+
   function bindTuneSliders() {
     const pairs = [
       ["tune-temp", "tune-temp-val", 2, "temperature"],
@@ -96,6 +116,14 @@
       });
       el.addEventListener("pointerdown", function () {
         showSliderTip(p[3]);
+      });
+    });
+    document.querySelectorAll(".tune-reset").forEach(function (btn) {
+      if (btn._bound) return;
+      btn._bound = true;
+      btn.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        resetSlider(btn.getAttribute("data-reset"));
       });
     });
   }

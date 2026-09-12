@@ -456,8 +456,22 @@
       away.addEventListener("click", function () {
         const i = box3FocusIdx || 0;
         if (!lastWorkerOutputs || !lastWorkerOutputs[i]) return;
-        resultTrash.unshift(lastWorkerOutputs[i]);
+        const gone = lastWorkerOutputs[i];
+        resultTrash.unshift(gone);
         lastWorkerOutputs.splice(i, 1);
+        const tname =
+          ((gone && (gone.worker || gone.name)) || "result")
+            .toString()
+            .replace(/[^\w.-]+/g, "_") + ".txt";
+        if (typeof api === "function") {
+          api("POST", "/api/workspace/write", {
+            zone: "trash",
+            name: tname,
+            content: (gone && gone.result) || "",
+          }).catch(function () {
+            /* keep in-memory trash */
+          });
+        }
         toast("Weg — im Papierkorb, wiederherstellbar", "info");
         if (lastWorkerOutputs.length) {
           focusBox3WorkerResult(Math.min(i, lastWorkerOutputs.length - 1));
@@ -1052,6 +1066,7 @@
         ? lastWorkerOutputs[box3FocusIdx].worker
         : null;
     lastWorkerOutputs = outputs;
+    stageResultsRecovery(outputs);
     updateBox3Toolbar();
     if (pipeline) {
       renderToolStrip(pipeline.tool_log || [], pipeline.quality_notes || "");
@@ -1215,21 +1230,50 @@
     }
   }
 
-  /** Save one worker HTML into personal WS (WS-gnom-hub-v1/selected/). */
+  let lastRecoveryKey = "";
+  function stageResultsRecovery(outputs) {
+    const list = Array.isArray(outputs) ? outputs : [];
+    if (!list.length || typeof api !== "function") return;
+    const key = list
+      .map(function (o) {
+        return String((o && (o.worker || o.name)) || "") + ":" + String((o && o.result) || "").length;
+      })
+      .join("|");
+    if (key === lastRecoveryKey) return;
+    lastRecoveryKey = key;
+    list.forEach(function (o, i) {
+      const raw = (o && o.result) || "";
+      if (!raw) return;
+      const name =
+        ((o && (o.worker || o.name)) || "worker" + (i + 1))
+          .toString()
+          .replace(/[^\w.-]+/g, "_") + ".txt";
+      api("POST", "/api/workspace/write", {
+        zone: "recovery",
+        name: name,
+        content: raw,
+      }).catch(function () {
+        /* recovery is best-effort */
+      });
+    });
+  }
+
+  /** Save one worker result: HTML → selected/, other text → perm/. */
   async function keepWorkerToPersonalWs(out, idx, overwrite) {
     const raw = (out && out.result) || "";
-    const html = extractHtml(raw);
-    if (!html) {
-      toast("Kein HTML — Behalten gilt nur für HTML", "info");
+    if (!String(raw).trim()) {
+      toast("Nichts zum Behalten", "info");
       return;
     }
-    const name =
+    const html = extractHtml(raw);
+    const base =
       ((out && (out.worker || out.name)) || "worker" + (idx + 1))
         .toString()
-        .replace(/[^\w.-]+/g, "_") + ".html";
+        .replace(/[^\w.-]+/g, "_");
+    const name = base + (html ? ".html" : ".txt");
     try {
       const data = await api("POST", "/api/workspace/keep", {
-        content: html,
+        content: html || raw,
         name: name,
         worker: (out && out.worker) || null,
         overwrite: !!overwrite,
@@ -1252,7 +1296,8 @@
         (data.status || "Behalten") +
           " · " +
           (data.path || name) +
-          (data.kept_at ? " · " + data.kept_at : ""),
+          (data.kept_at ? " · " + data.kept_at : "") +
+          (data.result_id ? " · " + data.result_id : ""),
         "ok"
       );
     } catch (err) {
@@ -1265,18 +1310,9 @@
       toast("No worker results to copy", "info");
       return;
     }
-    // Keep each HTML result into personal WS (only chosen outputs that are HTML)
-    let kept = 0;
     lastWorkerOutputs.forEach(function (o, i) {
-      if (extractHtml(o.result || "")) {
-        kept += 1;
-        keepWorkerToPersonalWs(o, i);
-      }
+      keepWorkerToPersonalWs(o, i);
     });
-    if (!kept) {
-      toast("No HTML among worker results to keep", "info");
-      return;
-    }
     const parts = lastWorkerOutputs.map(function (o, i) {
       const label = o.name || "Worker " + (i + 1);
       return "=== " + label + " ===\n" + (o.result || "");
@@ -1286,7 +1322,7 @@
       return navigator.clipboard
         .writeText(text)
         .then(function () {
-          toast("Kept HTML to personal WS + clipboard (" + text.length + " chars)", "ok");
+          toast("Behalten + Zwischenablage (" + text.length + " Zeichen)", "ok");
         })
         .catch(function () {
           toast("Copy failed", "error");

@@ -3373,6 +3373,7 @@ a:focus-visible {
   margin-bottom: 8px;
 }
 .agent-page-title { font-weight: 700; }
+.agent-page-bar-actions { display: flex; gap: 6px; align-items: center; }
 .agent-page-body {
   flex: 1 1 auto;
   min-height: 0;
@@ -3380,6 +3381,24 @@ a:focus-visible {
   scrollbar-width: none;
 }
 .agent-page-line { margin: 0 0 8px; font-size: 13px; line-height: 1.4; white-space: pre-wrap; }
+.agent-page-h { margin: 14px 0 6px; font-size: 13px; }
+.agent-page-skill {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin: 0 0 8px;
+  background: var(--bg-elev, #22242a);
+}
+.tune-reset {
+  margin-left: 8px;
+  font-size: 10px;
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  color: var(--text-muted, #7a7f88);
+  border-radius: 4px;
+  cursor: pointer;
+}
 
 .btn-mic.listening {
   animation: mic-pulse 1.2s ease-in-out infinite;
