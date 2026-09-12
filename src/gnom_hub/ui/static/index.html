@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=169" />
+  <link rel="stylesheet" href="/static/app.css?v=170" />
   <!-- Tailwind utilities for Chat module (preflight OFF) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -72,8 +72,8 @@
         <button type="button" id="btn-system" class="btn-system" data-tooltip-id="system" title="System settings">
           System
         </button>
-        <button type="button" id="btn-help" class="btn-help" data-tooltip-id="help" title="Help">
-          Help
+        <button type="button" id="btn-help" class="btn-help" data-tooltip-id="help" title="Hilfe">
+          Hilfe
         </button>
         <button type="button" id="btn-archive" class="btn-archive" data-tooltip-id="archive" title="Archive HOT to COLD">
           Archive
@@ -385,8 +385,8 @@
           <div class="box3-result-bar">
             <div id="box3-worker-tabs" class="box3-worker-tabs" hidden aria-label="Worker wählen"></div>
             <span id="box3-result-label" class="box3-result-label">Worker-Ergebnis</span>
-            <div class="box3-result-actions" role="toolbar" aria-label="Worker actions">
-              <button type="button" id="box3-btn-copy" class="btn-ws-sm" title="Ergebnis kopieren">Copy</button>
+            <div class="box3-result-actions" role="toolbar" aria-label="Worker-Aktionen">
+              <button type="button" id="box3-btn-copy" class="btn-ws-sm" title="Ergebnis kopieren">Kopieren</button>
               <button type="button" id="box3-btn-dl" class="btn-ws-sm" title="Herunterladen">↓</button>
               <button type="button" id="box3-btn-open" class="btn-ws-sm" title="Seite in Box 2+3 (Shift = Browser-Tab)">↗</button>
               <button type="button" id="box3-btn-prev" class="btn-ws-sm" title="Vorheriges Ergebnis">←</button>
@@ -394,8 +394,8 @@
               <button type="button" id="box3-btn-away" class="btn-ws-sm" title="Weg — wiederherstellbar in den Papierkorb">Weg</button>
               <button type="button" id="box3-btn-new" class="btn-ws-sm" title="Neu — Original behalten, Variante">Neu</button>
               <button type="button" id="box3-btn-keep" class="btn-ws-sm" title="Behalten — dauerhaft in den Workspace">Behalten</button>
-              <button type="button" id="box3-btn-temp" class="btn-ws-sm" title="Temp-Workspace">Temp</button>
-              <button type="button" id="box3-btn-perm" class="btn-ws-sm" title="Permanent-Workspace">Perm</button>
+              <button type="button" id="box3-btn-temp" class="btn-ws-sm" title="Temporär — Workspace-Entwurf">Temp</button>
+              <button type="button" id="box3-btn-perm" class="btn-ws-sm" title="Dauerhaft — Workspace">Dauerhaft</button>
               <button type="button" id="box3-result-fs" class="btn-ws-sm" title="Vollbild in den Boxen">⛶</button>
             </div>
           </div>
@@ -406,38 +406,38 @@
         <!-- Regler-Modul nur in Box 3 -->
         <div id="tune-layer" class="tune-layer" hidden>
           <div class="tune-layer-bar">
-            <span id="tune-title" class="tune-layer-title">Agent tuning</span>
-            <button type="button" id="tune-close" class="layer-btn" title="Close">×</button>
+            <span id="tune-title" class="tune-layer-title">Agent-Regler</span>
+            <button type="button" id="tune-close" class="layer-btn" title="Schließen">×</button>
           </div>
           <div class="tune-layer-body">
             <div class="tune-sliders-col">
               <div class="tune-slider" data-tip="temperature">
                 <label>Temperature <span id="tune-temp-val">0.50</span>
-                  <button type="button" class="tune-reset" data-reset="temperature" id="tune-temp-reset">Reset</button>
+                  <button type="button" class="tune-reset" data-reset="temperature" id="tune-temp-reset">Zurück</button>
                 </label>
                 <input id="tune-temp" type="range" min="0" max="2" step="0.05" value="0.5" />
               </div>
               <div class="tune-slider" data-tip="top_p">
                 <label>Top-P <span id="tune-topp-val">1.00</span>
-                  <button type="button" class="tune-reset" data-reset="top_p" id="tune-topp-reset">Reset</button>
+                  <button type="button" class="tune-reset" data-reset="top_p" id="tune-topp-reset">Zurück</button>
                 </label>
                 <input id="tune-topp" type="range" min="0" max="1" step="0.01" value="1" />
               </div>
               <div class="tune-slider" data-tip="max_tokens">
                 <label>Max Tokens <span id="tune-maxtok-val">800</span>
-                  <button type="button" class="tune-reset" data-reset="max_tokens" id="tune-maxtok-reset">Reset</button>
+                  <button type="button" class="tune-reset" data-reset="max_tokens" id="tune-maxtok-reset">Zurück</button>
                 </label>
                 <input id="tune-maxtok" type="range" min="64" max="4096" step="32" value="800" />
               </div>
               <div class="tune-slider" data-tip="frequency">
                 <label>Frequency Penalty <span id="tune-freq-val">0.00</span>
-                  <button type="button" class="tune-reset" data-reset="frequency" id="tune-freq-reset">Reset</button>
+                  <button type="button" class="tune-reset" data-reset="frequency" id="tune-freq-reset">Zurück</button>
                 </label>
                 <input id="tune-freq" type="range" min="0" max="2" step="0.05" value="0" />
               </div>
               <div class="tune-slider" data-tip="presence">
                 <label>Presence Penalty <span id="tune-pres-val">0.00</span>
-                  <button type="button" class="tune-reset" data-reset="presence" id="tune-pres-reset">Reset</button>
+                  <button type="button" class="tune-reset" data-reset="presence" id="tune-pres-reset">Zurück</button>
                 </label>
                 <input id="tune-pres" type="range" min="0" max="2" step="0.05" value="0" />
               </div>
@@ -456,7 +456,7 @@
           </div>
           <div class="tune-layer-actions">
             <button type="button" id="tune-preset-save" class="btn-ws-sm">Preset</button>
-            <button type="button" id="tune-save" class="btn-save">Apply</button>
+            <button type="button" id="tune-save" class="btn-save">Übernehmen</button>
           </div>
         </div>
       </div>
@@ -469,31 +469,31 @@
     <div class="modal-panel workspace-panel">
       <div class="modal-head">
         <h2 class="modal-title">Workspace</h2>
-        <button type="button" id="workspace-close" class="modal-close" title="Close">×</button>
+        <button type="button" id="workspace-close" class="modal-close" title="Schließen">×</button>
       </div>
       <div class="workspace-grid">
         <div class="workspace-col">
           <div class="workspace-col-head">
-            <h3>Temp (scratch)</h3>
-            <button type="button" id="ws-clear-temp" class="btn-ws-sm">Clear temp</button>
-            <button type="button" id="ws-dl-temp" class="btn-ws-sm" title="Download temp as zip">↓ zip</button>
+            <h3>Temp (Entwurf)</h3>
+            <button type="button" id="ws-clear-temp" class="btn-ws-sm">Temp leeren</button>
+            <button type="button" id="ws-dl-temp" class="btn-ws-sm" title="Temp als Zip herunterladen">↓ zip</button>
           </div>
           <ul id="ws-temp-list" class="ws-list"></ul>
         </div>
         <div class="workspace-col">
           <div class="workspace-col-head">
-            <h3>Permanent</h3>
-            <button type="button" id="ws-dl-perm" class="btn-ws-sm" title="Download perm as zip">↓ zip</button>
-            <button type="button" id="ws-dl-all" class="btn-ws-sm" title="Download temp+perm zip">↓ all</button>
+            <h3>Dauerhaft</h3>
+            <button type="button" id="ws-dl-perm" class="btn-ws-sm" title="Dauerhaft als Zip herunterladen">↓ zip</button>
+            <button type="button" id="ws-dl-all" class="btn-ws-sm" title="Temp + Dauerhaft als Zip">↓ alle</button>
           </div>
           <ul id="ws-perm-list" class="ws-list"></ul>
         </div>
       </div>
       <div class="workspace-preview-wrap">
         <div class="workspace-col-head">
-          <h3 id="ws-preview-title">Preview</h3>
+          <h3 id="ws-preview-title">Vorschau</h3>
         </div>
-        <pre id="ws-preview" class="ws-preview muted">Select a file to preview.</pre>
+        <pre id="ws-preview" class="ws-preview muted">Datei wählen zum Ansehen.</pre>
       </div>
     </div>
   </div>
@@ -503,76 +503,76 @@
     <div class="modal-panel system-panel">
       <div class="modal-head">
         <h2 class="modal-title">System</h2>
-        <button type="button" id="system-close" class="modal-close" title="Close">×</button>
+        <button type="button" id="system-close" class="modal-close" title="Schließen">×</button>
       </div>
       <div class="system-body">
         <p id="system-llm" class="system-line">DeepSeek: —</p>
         <label class="system-row">
-          <input id="sys-free-only" type="checkbox" /> Free models only
+          <input id="sys-free-only" type="checkbox" /> Nur kostenlose Modelle
         </label>
         <label class="system-row">
-          Max budget USD
-          <input id="sys-budget" class="tune-input" type="number" min="0" step="0.01" placeholder="unlimited" />
+          Max. Budget USD
+          <input id="sys-budget" class="tune-input" type="number" min="0" step="0.01" placeholder="unbegrenzt" />
         </label>
         <label class="system-row">
-          Default model
-          <input id="sys-model" class="tune-input" type="text" list="ollama-models-list" placeholder="deepseek-chat or ollama/llama3.2" />
+          Standard-Modell
+          <input id="sys-model" class="tune-input" type="text" list="ollama-models-list" placeholder="deepseek-chat oder ollama/llama3.2" />
           <datalist id="ollama-models-list"></datalist>
         </label>
-        <p id="sys-ollama-models" class="system-line muted">Ollama models: —</p>
-        <p id="system-spend" class="system-line muted">Spent: —</p>
+        <p id="sys-ollama-models" class="system-line muted">Ollama-Modelle: —</p>
+        <p id="system-spend" class="system-line muted">Ausgegeben: —</p>
         <label class="system-row">
-          UI language
+          UI-Sprache
           <select id="sys-lang" class="tune-input">
             <option value="de" selected>Deutsch</option>
             <option value="en">English</option>
           </select>
         </label>
         <div class="system-row system-row-actions">
-          <button type="button" id="sys-ckpt-save" class="btn-ws-sm">Save checkpoint</button>
-          <button type="button" id="sys-ckpt-load" class="btn-ws-sm">Load checkpoint</button>
-          <button type="button" id="sys-backup" class="btn-ws-sm">Backup zip</button>
-          <button type="button" id="sys-pack-export" class="btn-ws-sm" title="Save + download session pack">Pack ↓</button>
-          <button type="button" id="sys-pack-import" class="btn-ws-sm" title="Import session JSON file">Pack ↑</button>
+          <button type="button" id="sys-ckpt-save" class="btn-ws-sm">Checkpoint speichern</button>
+          <button type="button" id="sys-ckpt-load" class="btn-ws-sm">Checkpoint laden</button>
+          <button type="button" id="sys-backup" class="btn-ws-sm">Backup-Zip</button>
+          <button type="button" id="sys-pack-export" class="btn-ws-sm" title="Speichern und Session-Pack laden">Pack ↓</button>
+          <button type="button" id="sys-pack-import" class="btn-ws-sm" title="Session-JSON importieren">Pack ↑</button>
           <input type="file" id="sys-pack-file" accept="application/json,.json" hidden />
-          <button type="button" id="sys-clean" class="btn-ws-sm">Clean state</button>
+          <button type="button" id="sys-clean" class="btn-ws-sm">Zustand leeren</button>
         </div>
         <label class="system-row">
-          <input id="sys-auto-pack" type="checkbox" /> Auto-pack after Execute
+          <input id="sys-auto-pack" type="checkbox" /> Auto-Pack nach Arbeit starten
         </label>
         <label class="system-row">
-          Max packs kept
-          <input id="sys-pack-max" class="tune-input" type="number" min="5" max="100" step="1" title="Oldest packs pruned after save (5–100)" />
+          Max. Packs behalten
+          <input id="sys-pack-max" class="tune-input" type="number" min="5" max="100" step="1" title="Älteste Packs nach Speichern löschen (5–100)" />
         </label>
         <p id="system-ckpt" class="system-line muted">Checkpoint: —</p>
         <div class="system-row">
-          <span>HOT facts (session)</span>
+          <span>HOT-Fakten (Session)</span>
           <div class="system-row-actions">
-            <input id="sys-hot-input" class="tune-input" type="text" placeholder="Add session fact…" style="max-width:220px" />
-            <button type="button" id="sys-hot-add" class="btn-ws-sm">Add</button>
-            <button type="button" id="sys-hot-clear" class="btn-ws-sm" title="Clear HOT facts only">Clear</button>
+            <input id="sys-hot-input" class="tune-input" type="text" placeholder="Session-Fakt hinzufügen…" style="max-width:220px" />
+            <button type="button" id="sys-hot-add" class="btn-ws-sm">Hinzufügen</button>
+            <button type="button" id="sys-hot-clear" class="btn-ws-sm" title="Nur HOT-Fakten leeren">Leeren</button>
           </div>
           <ul id="sys-hot-list" class="ws-list" style="max-height:90px"></ul>
         </div>
         <div class="system-row">
-          <span>WARM facts</span>
+          <span>WARM-Fakten</span>
           <div class="system-row-actions">
-            <input id="sys-warm-input" class="tune-input" type="text" placeholder="Add durable fact…" style="max-width:220px" />
-            <button type="button" id="sys-warm-add" class="btn-ws-sm">Add</button>
-            <button type="button" id="sys-warm-clear" class="btn-ws-sm" title="Clear all WARM facts">Clear</button>
+            <input id="sys-warm-input" class="tune-input" type="text" placeholder="Dauerhaften Fakt hinzufügen…" style="max-width:220px" />
+            <button type="button" id="sys-warm-add" class="btn-ws-sm">Hinzufügen</button>
+            <button type="button" id="sys-warm-clear" class="btn-ws-sm" title="Alle WARM-Fakten leeren">Leeren</button>
           </div>
           <ul id="sys-warm-list" class="ws-list" style="max-height:90px"></ul>
         </div>
         <div class="system-row">
-          <span>Session packs</span>
-          <input id="sys-pack-filter" class="tune-input" type="search" placeholder="Filter packs…" style="max-width:160px" />
+          <span>Session-Packs</span>
+          <input id="sys-pack-filter" class="tune-input" type="search" placeholder="Packs filtern…" style="max-width:160px" />
           <ul id="sys-pack-list" class="ws-list" style="max-height:100px"></ul>
         </div>
         <div class="system-row">
-          <span>Worker presets</span>
+          <span>Worker-Presets</span>
           <div class="system-row-actions">
             <select id="sys-preset-select" class="tune-input" style="max-width:180px">
-              <option value="">— select preset —</option>
+              <option value="">— Preset wählen —</option>
             </select>
             <select id="sys-preset-agent" class="tune-input" style="max-width:110px">
               <option value="worker1">Worker 1</option>
@@ -580,19 +580,19 @@
               <option value="worker3">Worker 3</option>
               <option value="worker4">Worker 4</option>
             </select>
-            <button type="button" id="sys-preset-apply" class="btn-ws-sm">Apply</button>
-            <button type="button" id="sys-preset-delete" class="btn-ws-sm">Delete</button>
+            <button type="button" id="sys-preset-apply" class="btn-ws-sm">Übernehmen</button>
+            <button type="button" id="sys-preset-delete" class="btn-ws-sm">Löschen</button>
           </div>
         </div>
         <div class="system-row">
-          <span>Team presets</span>
+          <span>Team-Presets</span>
           <div class="system-row-actions">
-            <select id="sys-team-select" class="tune-input" style="max-width:160px" title="Team = enables + flex + plan_mode + worker tunes">
-              <option value="">— select team —</option>
+            <select id="sys-team-select" class="tune-input" style="max-width:160px" title="Team = an/aus + Flex + plan_mode + Worker-Regler">
+              <option value="">— Team wählen —</option>
             </select>
-            <button type="button" id="sys-team-apply" class="btn-ws-sm">Apply</button>
-            <button type="button" id="sys-team-save" class="btn-ws-sm" title="Save current team setup">Save</button>
-            <button type="button" id="sys-team-delete" class="btn-ws-sm">Delete</button>
+            <button type="button" id="sys-team-apply" class="btn-ws-sm">Übernehmen</button>
+            <button type="button" id="sys-team-save" class="btn-ws-sm" title="Aktuelles Team speichern">Speichern</button>
+            <button type="button" id="sys-team-delete" class="btn-ws-sm">Löschen</button>
           </div>
           <div class="system-row-actions" style="margin-top:4px">
             <label class="muted" style="font-size:0.85em">plan_mode
@@ -609,10 +609,10 @@
           <span>Backups</span>
           <ul id="sys-backup-list" class="ws-list" style="max-height:100px"></ul>
         </div>
-        <p class="system-hint muted">Keys: Key.txt → DEEPSEEK_API_KEY. Model ollama/…. Worker 3/4: double-click to enable. Chat log persists in this browser.</p>
+        <p class="system-hint muted">Keys: Key.txt → DEEPSEEK_API_KEY. Modell ollama/…. Worker 3/4: Doppelklick zum Einschalten. Chat bleibt in diesem Browser.</p>
       </div>
       <div class="modal-actions">
-        <button type="button" id="system-save" class="btn-save">Apply</button>
+        <button type="button" id="system-save" class="btn-save">Übernehmen</button>
       </div>
     </div>
   </div>
@@ -697,48 +697,48 @@
   <div id="tools-modal" class="modal" hidden>
     <div class="modal-panel trace-panel">
       <div class="modal-head">
-        <h2 class="modal-title">Tools</h2>
-        <button type="button" id="tools-close" class="modal-close" title="Close">×</button>
+        <h2 class="modal-title">Werkzeuge</h2>
+        <button type="button" id="tools-close" class="modal-close" title="Schließen">×</button>
       </div>
-      <p id="tools-count" class="system-line muted">Tools: 0</p>
+      <p id="tools-count" class="system-line muted">Werkzeuge: 0</p>
       <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px">
-        <p id="tools-run-summary" class="system-line muted" style="margin:0;flex:1">This run: 0 tool calls</p>
-        <button type="button" id="tools-hist-copy" class="btn-ws-sm" title="Copy tool history JSON">Copy hist</button>
-        <button type="button" id="tools-hist-refresh" class="btn-ws-sm" title="Refresh from last snapshot">↻</button>
+        <p id="tools-run-summary" class="system-line muted" style="margin:0;flex:1">Dieser Lauf: 0 Tool-Aufrufe</p>
+        <button type="button" id="tools-hist-copy" class="btn-ws-sm" title="Tool-Verlauf als JSON kopieren">Verlauf kopieren</button>
+        <button type="button" id="tools-hist-refresh" class="btn-ws-sm" title="Aus letztem Snapshot laden">↻</button>
       </div>
       <div id="tools-dod-fail" class="tools-dod-fail" hidden></div>
-      <ul id="tools-run-history" class="ws-list tools-run-history" style="max-height:160px" title="Click a row for full JSON · auto tools from Execute">
-        <li class="muted">(no tool calls yet — Execute with URL / memory / install)</li>
+      <ul id="tools-run-history" class="ws-list tools-run-history" style="max-height:160px" title="Zeile klicken für JSON · Auto-Tools nach Arbeit starten">
+        <li class="muted">(noch keine Tool-Aufrufe — Arbeit starten mit URL / Memory / Install)</li>
       </ul>
       <ul id="tools-list" class="ws-list" style="max-height:140px"></ul>
       <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">
         <select id="tools-select" class="tune-input" style="min-width:140px"></select>
-        <input id="tools-args" class="tune-input" type="text" placeholder='Args JSON or plain text' style="flex:1;min-width:160px" />
-        <button type="button" id="tools-run" class="btn-ws-sm">Run</button>
-        <button type="button" id="tools-refresh" class="btn-ws-sm" title="Hot-reload plugins/ from disk">Reload plugins</button>
+        <input id="tools-args" class="tune-input" type="text" placeholder="Args JSON oder Text" style="flex:1;min-width:160px" />
+        <button type="button" id="tools-run" class="btn-ws-sm">Ausführen</button>
+        <button type="button" id="tools-refresh" class="btn-ws-sm" title="Plugins/ vom Datenträger neu laden">Plugins neu laden</button>
       </div>
-      <p class="system-line muted">Quick fetch</p>
+      <p class="system-line muted">Schnell holen</p>
       <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
         <input id="tools-fetch-url" class="tune-input" type="url" placeholder="https://…" style="flex:1;min-width:160px" />
-        <button type="button" id="tools-fetch-btn" class="btn-ws-sm">Fetch</button>
+        <button type="button" id="tools-fetch-btn" class="btn-ws-sm">Holen</button>
       </div>
-      <p class="system-line muted" style="margin-top:10px">Computer use (screen / mouse / keyboard / shell)</p>
-      <p id="cu-god-line" class="system-line muted">God-Mode: off — click God badge in header to enable real control</p>
+      <p class="system-line muted" style="margin-top:10px">Computer-Nutzung (Bildschirm / Maus / Tastatur / Shell)</p>
+      <p id="cu-god-line" class="system-line muted">God-Mode: aus — God-Badge oben für echte Steuerung</p>
       <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
-        <button type="button" id="cu-inspect" class="btn-ws-sm" title="Screenshot + OCR">Inspect screen</button>
-        <button type="button" id="cu-click" class="btn-ws-sm" title="Click at x,y">Click</button>
+        <button type="button" id="cu-inspect" class="btn-ws-sm" title="Screenshot + OCR">Bildschirm prüfen</button>
+        <button type="button" id="cu-click" class="btn-ws-sm" title="Klick bei x,y">Klick</button>
         <input id="cu-x" class="tune-input" type="number" placeholder="x" style="width:64px" value="100" />
         <input id="cu-y" class="tune-input" type="number" placeholder="y" style="width:64px" value="100" />
       </div>
       <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">
-        <input id="cu-type" class="tune-input" type="text" placeholder="Type text…" style="flex:1;min-width:140px" />
-        <button type="button" id="cu-type-btn" class="btn-ws-sm">Type</button>
+        <input id="cu-type" class="tune-input" type="text" placeholder="Text tippen…" style="flex:1;min-width:140px" />
+        <button type="button" id="cu-type-btn" class="btn-ws-sm">Tippen</button>
       </div>
       <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-        <input id="cu-shell" class="tune-input" type="text" placeholder="Shell (allowlist: ls pwd date …)" style="flex:1;min-width:140px" value="pwd" />
+        <input id="cu-shell" class="tune-input" type="text" placeholder="Shell (Allowlist: ls pwd date …)" style="flex:1;min-width:140px" value="pwd" />
         <button type="button" id="cu-shell-btn" class="btn-ws-sm">Shell</button>
       </div>
-      <pre id="tools-result" class="trace-body muted" style="max-height:200px">Tools + Computer use. Without God-Mode actions are dry-run only. Real mouse/keyboard needs God on + pyautogui.</pre>
+      <pre id="tools-result" class="trace-body muted" style="max-height:200px">Werkzeuge + Computer-Nutzung. Ohne God-Mode nur Trockenlauf. Echte Maus/Tastatur braucht God an + pyautogui.</pre>
     </div>
   </div>
 
@@ -761,6 +761,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=167"></script>
+  <script src="/static/app.js?v=170"></script>
 </body>
 </html>

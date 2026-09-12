@@ -89,7 +89,7 @@ class SystemOpsMixin:
     def help_text(self) -> dict[str, Any]:
 
         return {
-            "title": "Gnom-Hub help",
+            "title": "Hilfe",
             "how_to": (
                 "1) Send / Enter = reden, keine Ausführung. "
                 "2) Arbeit starten / Ctrl+Enter = Distill + Worker. "

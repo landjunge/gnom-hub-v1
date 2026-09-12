@@ -951,7 +951,7 @@
         " · " +
         raw.length +
         " Zeichen" +
-        (html ? " · HTML-Preview" : " · Text") +
+        (html ? " · HTML-Vorschau" : " · Text") +
         (lastWorkerOutputs.length > 1
           ? " · " + lastWorkerOutputs.length + " Worker"
           : "");
@@ -993,7 +993,7 @@
       prevWrap.className = "box3-split-preview";
       const frame = document.createElement("iframe");
       frame.className = "worker-preview-frame box3-live-frame";
-      frame.setAttribute("title", name + " Preview");
+      frame.setAttribute("title", name + " Vorschau");
       frame.setAttribute(
         "sandbox",
         "allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
