@@ -5,7 +5,7 @@ When the user asks for a tool drill / agent tool test, we do NOT invent HTML —
 we run real tools and report results. Workers must use the same tools via
 TOOL_CALL; the orchestrator may short-circuit with run_forced_tool_scenario.
 
-Live target for browser/web drills: example.org (never a marketplace default).
+Live target for browser/web tools: Kleinanzeigen (not example.com).
 """
 
 from __future__ import annotations
@@ -13,9 +13,9 @@ from __future__ import annotations
 import re
 from typing import Any
 
-# Primary site for browser/fetch drills — never auto-open Kleinanzeigen.
-LIVE_SITE = "https://example.org"
-LIVE_SITE_LABEL = "example.org"
+# Primary live site for browser/fetch drills (user preference)
+LIVE_SITE = "https://www.kleinanzeigen.de"
+LIVE_SITE_LABEL = "kleinanzeigen.de"
 
 # Explicit drill / computer-use language only — not bare tool names.
 _DRILL_MARKERS = (
@@ -488,12 +488,12 @@ def tool_drill_worker_prompt() -> str:
         "Plugins (must exist): install_tool, pw_goto/pw_fill/pw_click/pw_screenshot, "
         "file_list/file_read/file_write, git_status/git_diff, shell_safe.\n"
         "Required tools depending on scenario:\n"
-        "  S1: install_tool(playwright) → pw_goto(example.org) → pw_screenshot → browser_eval\n"
+        "  S1: install_tool(playwright) → pw_goto(kleinanzeigen) → pw_screenshot → browser_eval\n"
         "  S2: shell_safe cmds + computer_shell + hub_status\n"
         "  S3: tool_ensure(gui) → computer_inspect → click → type\n"
         "  S5: web_fetch → memory_search → install_tool_check\n"
         "  S6 plugins: install_tool_stack → file_* → git_* → shell_safe\n"
-        "  S7 killer: install_tool → pw_goto(example.org) → pw_screenshot → "
+        "  S7 killer: install_tool → pw_goto(kleinanzeigen) → pw_screenshot → "
         "file_write data/computer_use/kleinanzeigen_probe.md → file_read\n"
         "  S4 full: all of the above\n"
         "If a tool is missing: call install_tool first. Without tools the scenario FAILS.\n"

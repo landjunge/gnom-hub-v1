@@ -6,7 +6,7 @@
   "tools": [
     {
       "name": "pw_goto",
-      "description": "Playwright: open URL (headed), return title/status. Uses install_tool if playwright missing. Empty url is an error — no default site.",
+      "description": "Playwright: open URL (headed), return title/status. Uses install_tool if playwright missing. Default live site kleinanzeigen.de if url empty.",
       "module": "main.py",
       "handler": "pw_goto",
       "input_schema": {
