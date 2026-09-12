@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=165" />
+  <link rel="stylesheet" href="/static/app.css?v=166" />
   <!-- Tailwind utilities for Chat module (preflight OFF) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -92,37 +92,57 @@
 
     <!-- 3 boxes: pro Agent ein Layer (Klick = Layer + 1px Modulrahmen) -->
     <section class="boxes" aria-label="Main panels">
-      <div id="agent-page" class="agent-page" hidden>
-        <div class="agent-page-bar">
-          <button type="button" id="agent-page-back" class="btn-ws-sm">Zurück zum Desk</button>
-          <span id="agent-page-swatch" class="agent-page-swatch" aria-hidden="true"></span>
-          <span id="agent-page-title" class="agent-page-title">Agent</span>
-          <span id="agent-page-role" class="agent-page-role"></span>
-          <span id="agent-page-live" class="agent-page-live" data-status="wartet">wartet</span>
-          <span id="agent-page-model" class="agent-page-model"></span>
-          <span id="agent-page-cost" class="agent-page-cost"></span>
-          <button type="button" id="agent-page-set-target" class="btn-ws-sm">Als Empfänger wählen</button>
-          <button type="button" id="agent-page-expert" class="btn-ws-sm">Expertenansicht</button>
+      <div id="agent-page" class="agent-page" hidden data-state="wartet" aria-label="Agentendetail">
+        <div id="agent-page-recipient" class="agent-page-recipient">
+          Ansicht geöffnet — Empfänger unverändert
         </div>
-        <nav id="agent-page-tabs" class="agent-page-tabs" role="tablist">
-          <button type="button" class="agent-page-tab is-on" data-tab="jetzt" role="tab">Jetzt</button>
-          <button type="button" class="agent-page-tab" data-tab="auftrag" role="tab">Auftrag</button>
-          <button type="button" class="agent-page-tab" data-tab="verlauf" role="tab">Verlauf</button>
-          <button type="button" class="agent-page-tab" data-tab="werkzeuge" role="tab">Werkzeuge</button>
-          <button type="button" class="agent-page-tab" data-tab="dateien" role="tab">Dateien</button>
-          <button type="button" class="agent-page-tab" data-tab="memory" role="tab">Memory</button>
-          <button type="button" class="agent-page-tab" data-tab="ergebnis" role="tab">Ergebnis</button>
-          <button type="button" class="agent-page-tab" data-tab="einstellungen" role="tab">Einstellungen</button>
+        <header class="agent-page-bar">
+          <button type="button" id="agent-page-back">Zurück zum Desk</button>
+          <span class="agent-page-mark" id="agent-page-mark" title="Agent">
+            <span id="agent-page-swatch" class="agent-page-swatch" aria-hidden="true"></span>
+            <span id="agent-page-glyph" class="agent-page-glyph" aria-hidden="true"></span>
+          </span>
+          <div class="agent-page-who">
+            <strong id="agent-page-title" class="agent-page-title">Agent</strong>
+            <span id="agent-page-role" class="agent-page-role"></span>
+          </div>
+          <span id="agent-page-live" class="agent-page-live" data-state="wartet" data-status="wartet" title="Live-Status">
+            <span id="agent-page-live-sym" class="agent-page-live-sym" aria-hidden="true">○</span>
+            <span id="agent-page-live-text">wartet</span>
+          </span>
+          <span class="agent-page-chip" title="Aktuelles Modell">
+            Modell <b id="agent-page-model"></b>
+          </span>
+          <span class="agent-page-chip" title="Laufzeit und Kosten dieses Laufs">
+            Lauf <b id="agent-page-runtime">—</b>
+            ·
+            <b id="agent-page-cost">—</b>
+          </span>
+          <button type="button" class="agent-page-push" id="agent-page-set-target">Als Empfänger wählen</button>
+          <button type="button" id="agent-page-expert" class="agent-page-expert-hidden" hidden>Expertenansicht</button>
+        </header>
+        <nav id="agent-page-tabs" class="agent-page-tabs" role="tablist" aria-label="Agentendetail">
+          <button type="button" class="agent-page-tab is-on" id="agent-page-tab-jetzt" data-tab="jetzt" role="tab" aria-selected="true" aria-controls="agent-page-panel-jetzt" tabindex="0">Jetzt</button>
+          <button type="button" class="agent-page-tab" id="agent-page-tab-auftrag" data-tab="auftrag" role="tab" aria-selected="false" aria-controls="agent-page-panel-auftrag" tabindex="-1">Auftrag</button>
+          <button type="button" class="agent-page-tab" id="agent-page-tab-verlauf" data-tab="verlauf" role="tab" aria-selected="false" aria-controls="agent-page-panel-verlauf" tabindex="-1">Verlauf</button>
+          <button type="button" class="agent-page-tab" id="agent-page-tab-werkzeuge" data-tab="werkzeuge" role="tab" aria-selected="false" aria-controls="agent-page-panel-werkzeuge" tabindex="-1">Werkzeuge</button>
+          <button type="button" class="agent-page-tab" id="agent-page-tab-dateien" data-tab="dateien" role="tab" aria-selected="false" aria-controls="agent-page-panel-dateien" tabindex="-1">Dateien</button>
+          <button type="button" class="agent-page-tab" id="agent-page-tab-memory" data-tab="memory" role="tab" aria-selected="false" aria-controls="agent-page-panel-memory" tabindex="-1">Memory</button>
+          <button type="button" class="agent-page-tab" id="agent-page-tab-ergebnis" data-tab="ergebnis" role="tab" aria-selected="false" aria-controls="agent-page-panel-ergebnis" tabindex="-1">Ergebnis</button>
+          <button type="button" class="agent-page-tab" id="agent-page-tab-einstellungen" data-tab="einstellungen" role="tab" aria-selected="false" aria-controls="agent-page-panel-einstellungen" tabindex="-1">Einstellungen</button>
         </nav>
         <div id="agent-page-body" class="agent-page-body">
-          <section id="agent-page-panel-jetzt" class="agent-page-panel is-on" data-tab="jetzt"></section>
-          <section id="agent-page-panel-auftrag" class="agent-page-panel" data-tab="auftrag" hidden></section>
-          <section id="agent-page-panel-verlauf" class="agent-page-panel" data-tab="verlauf" hidden></section>
-          <section id="agent-page-panel-werkzeuge" class="agent-page-panel" data-tab="werkzeuge" hidden></section>
-          <section id="agent-page-panel-dateien" class="agent-page-panel" data-tab="dateien" hidden></section>
-          <section id="agent-page-panel-memory" class="agent-page-panel" data-tab="memory" hidden></section>
-          <section id="agent-page-panel-ergebnis" class="agent-page-panel" data-tab="ergebnis" hidden></section>
-          <section id="agent-page-panel-einstellungen" class="agent-page-panel" data-tab="einstellungen" hidden></section>
+          <p class="agent-page-dim" id="agent-page-offline" hidden>
+            Agent ist offline. Anzeige der letzten bekannten Daten — keine neuen Aktionen möglich.
+          </p>
+          <section id="agent-page-panel-jetzt" class="agent-page-panel is-on" data-tab="jetzt" role="tabpanel" aria-labelledby="agent-page-tab-jetzt"></section>
+          <section id="agent-page-panel-auftrag" class="agent-page-panel" data-tab="auftrag" role="tabpanel" aria-labelledby="agent-page-tab-auftrag" hidden></section>
+          <section id="agent-page-panel-verlauf" class="agent-page-panel" data-tab="verlauf" role="tabpanel" aria-labelledby="agent-page-tab-verlauf" hidden></section>
+          <section id="agent-page-panel-werkzeuge" class="agent-page-panel" data-tab="werkzeuge" role="tabpanel" aria-labelledby="agent-page-tab-werkzeuge" hidden></section>
+          <section id="agent-page-panel-dateien" class="agent-page-panel" data-tab="dateien" role="tabpanel" aria-labelledby="agent-page-tab-dateien" hidden></section>
+          <section id="agent-page-panel-memory" class="agent-page-panel" data-tab="memory" role="tabpanel" aria-labelledby="agent-page-tab-memory" hidden></section>
+          <section id="agent-page-panel-ergebnis" class="agent-page-panel" data-tab="ergebnis" role="tabpanel" aria-labelledby="agent-page-tab-ergebnis" hidden></section>
+          <section id="agent-page-panel-einstellungen" class="agent-page-panel" data-tab="einstellungen" role="tabpanel" aria-labelledby="agent-page-tab-einstellungen" hidden></section>
         </div>
       </div>
       <div id="mobile-box-tabs" class="mobile-box-tabs" hidden role="tablist" aria-label="Boxes">
