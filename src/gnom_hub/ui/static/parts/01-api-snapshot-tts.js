@@ -666,9 +666,9 @@
       setBox2("=== Brainstorm ===\n" + p.brainstorm_notes);
     } else if (p.stage === "idle") {
       setBox2(
-        "Brainstorm dialogue appears here.\n\n" +
-          "1) Send messages to brainstorm freely\n" +
-          "2) Press Execute when ready for workers"
+        "Brainstorm-Dialog erscheint hier.\n\n" +
+          "1) Send = reden, keine Ausführung\n" +
+          "2) Arbeit starten, wenn Worker loslegen sollen"
       );
     }
     if (p.flex_notes && typeof setBox2Agent === "function") {
