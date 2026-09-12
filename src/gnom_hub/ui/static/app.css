@@ -2055,11 +2055,12 @@ body.worker-fs-open {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  justify-content: stretch;
+  gap: 0;
   padding: 0;
   min-height: var(--tab-h);
-  background: #14161a;
+  width: 100%;
+  background: var(--bg-strip, #15171b);
   border-bottom: 1px solid var(--border-strong);
   font-size: 12px;
   color: var(--text-muted);
@@ -3333,55 +3334,90 @@ a:focus-visible {
   flex: 1 1 auto;
 }
 
-/* Box3 worker tabs + actions */
+/* Box3 worker tabs + actions — same row language as Box 2 */
+.box3-empty {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  pointer-events: none;
+}
+.box3-empty[hidden] {
+  display: none !important;
+}
 .box3-worker-tabs {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  flex: 0 1 auto;
-  max-width: 42%;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  width: 100%;
+  flex: 0 0 auto;
+  min-height: var(--tab-h);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-strip, #15171b);
 }
 .box3-worker-tabs[hidden] {
   display: none !important;
 }
 .box3-worker-tab {
+  flex: 1 1 0;
+  min-width: 0;
   height: var(--tab-h);
   min-height: var(--tab-h);
   font-size: 12px;
-  padding: 0 10px;
+  padding: 0 4px;
   border-radius: 0;
   border: 1px solid var(--border-strong);
   background: var(--bg-card);
-  color: var(--text);
+  color: #fff;
   cursor: pointer;
   line-height: 1;
   font-family: inherit;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .box3-worker-tab:hover {
   border-color: var(--border-hover);
   background: var(--bg-elev);
-  color: var(--text);
+  color: #fff;
 }
 .box3-worker-tab.is-active {
   background: var(--bg-panel);
   border-color: var(--border-strong);
-  color: var(--text);
+  color: #fff;
   font-weight: 600;
   box-shadow: inset 0 -2px 0 var(--owner-color, var(--border-strong));
 }
 .box3-result-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  align-items: center;
-  flex: 0 0 auto;
-}
-.box3-result-label {
+  flex-wrap: nowrap;
+  gap: 0;
+  align-items: stretch;
   flex: 1 1 auto;
-  min-width: 80px;
+  width: 100%;
+}
+.box3-result-actions .btn-ws-sm {
+  flex: 1 1 0;
+  min-width: 0;
+  color: #fff;
+  text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.box3-result-label {
+  display: none;
 }
 
 /* Fullscreen anchored to boxes module */
@@ -4150,12 +4186,43 @@ a:focus-visible {
   color: var(--text);
 }
 #box3 .box3-result-label {
-  font-size: 12px;
-  padding: 0 8px;
-  line-height: var(--tab-h);
+  display: none;
 }
 #box3 .box3-result-actions {
   gap: 0;
+  width: 100%;
+}
+#box3 .box3-dyn {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+#box3 .box3-dyn .dyn-bar {
+  justify-content: center;
+  width: 100%;
+  gap: 0;
+  padding: 0;
+}
+#box3 .box3-dyn .worker-panel-modes {
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
+  gap: 0;
+}
+#box3 .box3-dyn .worker-mode-btn,
+#box3 .box3-dyn .worker-mode-btn.is-active,
+#box3 .box3-dyn .worker-mode-btn:hover {
+  flex: 1 1 0;
+  min-width: 0;
+  color: #fff;
+  text-align: center;
+}
+#box3 .box3-dyn .dyn-stage,
+#box3 .box3-dyn .dyn-source,
+#box3 .box3-dyn .dyn-frame {
+  overflow-x: hidden;
+  overflow-y: auto;
+  min-height: 0;
 }
 #box3 button,
 #box3 .btn-ws-sm,

@@ -8591,12 +8591,23 @@
     return { out: outs[idx] || null, idx: idx };
   }
 
+  function box3WorkerTabLabel(out, i) {
+    const raw = String((out && (out.worker || out.name)) || "").toLowerCase();
+    const wm = /worker\s*(\d+)/.exec(raw);
+    if (wm) return "A" + wm[1];
+    return "A" + (i + 1);
+  }
+
+  function box3WorkerTabTitle(out, i) {
+    return String((out && (out.name || out.worker)) || "Arbeiter " + (i + 1));
+  }
+
   function renderBox3WorkerTabs() {
     const tabs = document.getElementById("box3-worker-tabs");
     if (!tabs) return;
     const outs = lastWorkerOutputs || [];
     tabs.innerHTML = "";
-    if (outs.length < 2) {
+    if (outs.length < 1) {
       tabs.hidden = true;
       return;
     }
@@ -8606,8 +8617,13 @@
       btn.type = "button";
       btn.className =
         "box3-worker-tab" + (i === box3FocusIdx ? " is-active" : "");
-      btn.textContent = (o && (o.name || o.worker)) || "W" + (i + 1);
-      btn.title = "Worker " + (i + 1) + " anzeigen";
+      btn.setAttribute("role", "tab");
+      btn.setAttribute("aria-selected", i === box3FocusIdx ? "true" : "false");
+      btn.textContent = box3WorkerTabLabel(o, i);
+      btn.title = box3WorkerTabTitle(o, i);
+      if (typeof markOwner === "function") {
+        markOwner(btn, (o && o.worker) || "worker" + (i + 1));
+      }
       btn.addEventListener("click", function () {
         focusBox3WorkerResult(i);
       });
@@ -8760,7 +8776,13 @@
           focusBox3WorkerResult(Math.min(i, lastWorkerOutputs.length - 1));
         } else {
           const stage = document.getElementById("box3-result-stage");
-          if (stage) stage.hidden = true;
+          if (stage) {
+            stage.hidden = true;
+            stage.classList.remove("is-open");
+          }
+          const emptyEl = document.getElementById("box3-empty");
+          if (emptyEl) emptyEl.hidden = false;
+          renderBox3WorkerTabs();
         }
       });
     }
@@ -9092,14 +9114,17 @@
     const body = document.getElementById("box3-result-body");
     const label = document.getElementById("box3-result-label");
     if (!stage || !body) return false;
+    const emptyEl = document.getElementById("box3-empty");
     const raw = (out && out.result) != null ? String(out.result) : "";
     if (!raw.trim()) {
       lastBox3StageKey = "";
       revokeBox3Blobs(body);
       stage.hidden = true;
       stage.classList.remove("is-open");
+      if (emptyEl) emptyEl.hidden = false;
       return false;
     }
+    if (emptyEl) emptyEl.hidden = true;
     const name = (out && (out.name || out.worker)) || "Worker";
     const html = extractHtml(raw);
     let val = out && out.validation && typeof out.validation === "object" ? out.validation : null;
@@ -9166,54 +9191,36 @@
       body.appendChild(banner);
     }
     if (label) {
-      let lab =
-        name +
-        " · " +
-        raw.length +
-        " Zeichen" +
-        (html ? " · HTML-Vorschau" : " · Text") +
-        (lastWorkerOutputs.length > 1
-          ? " · " + lastWorkerOutputs.length + " Worker"
-          : "");
-      if (val && val.ok === false) {
-        lab += " · DoD " + (val.score != null ? val.score : "fail");
-      }
-      // Plan observability: mode + html_score from last snapshot
-      try {
-        const pipe =
-          (typeof lastSnapshot !== "undefined" &&
-            lastSnapshot &&
-            lastSnapshot.pipeline) ||
-          null;
-        const pm = pipe && pipe.resolved_plan_mode;
-        const hs = pipe && pipe.plan_html_score;
-        if (pm) {
-          lab += " · Plan " + pm;
-          if (hs != null && hs !== "") lab += " (score=" + hs + ")";
-        }
-      } catch (_e) {
-        /* ignore */
-      }
-      label.textContent = lab;
+      label.textContent = box3WorkerTabLabel(out, idx || 0);
+      label.title = name;
     }
 
-    /*
-     * Page-first layout: large live preview on top, compact collapsible source.
-     * Truncated worker HTML is healed so preview is never a black empty pane.
-     */
-    const split = document.createElement("div");
-    split.className = "box3-split" + (html ? " has-preview" : " text-only");
-
+    const host = document.createElement("div");
+    host.className = "dyn-host box3-dyn";
     if (html) {
-      if ((htmlBodyIsEmpty(html) || !/<\/html>/i.test(html)) && label) {
-        label.textContent =
-          (label.textContent || "") + " · unvollständig → Vorschau geheilt";
-      }
-      const prevWrap = document.createElement("div");
-      prevWrap.className = "box3-split-preview";
+      const bar = document.createElement("div");
+      bar.className = "dyn-bar";
+      const modes = document.createElement("div");
+      modes.className = "worker-panel-modes";
+      const btnPrev = document.createElement("button");
+      btnPrev.type = "button";
+      btnPrev.className = "worker-mode-btn is-active";
+      btnPrev.textContent = "Sicht";
+      btnPrev.dataset.mode = "preview";
+      const btnSrc = document.createElement("button");
+      btnSrc.type = "button";
+      btnSrc.className = "worker-mode-btn";
+      btnSrc.textContent = "Code";
+      btnSrc.dataset.mode = "source";
+      modes.appendChild(btnPrev);
+      modes.appendChild(btnSrc);
+      bar.appendChild(modes);
+      host.appendChild(bar);
+      const vis = document.createElement("div");
+      vis.className = "dyn-stage";
       const frame = document.createElement("iframe");
-      frame.className = "worker-preview-frame box3-live-frame";
-      frame.setAttribute("title", name + " Vorschau");
+      frame.className = "worker-preview-frame box3-live-frame dyn-frame";
+      frame.setAttribute("title", name + " Sicht");
       frame.setAttribute(
         "sandbox",
         "allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
@@ -9228,36 +9235,38 @@
       } catch (_e) {
         frame.srcdoc = docHtml;
       }
-      prevWrap.appendChild(frame);
-      split.appendChild(prevWrap);
-    }
-
-    const srcWrap = document.createElement("div");
-    srcWrap.className =
-      "box3-split-source" + (html ? " is-collapsed" : "");
-    const srcHead = document.createElement("button");
-    srcHead.type = "button";
-    srcHead.className = "box3-split-source-h";
-    srcHead.textContent = html
-      ? "▸ Quelltext (Worker-Ausgabe) — klicken zum Aufklappen"
-      : "Worker-Ausgabe";
-    const pre = document.createElement("pre");
-    pre.className = "result-block box3-result-pre";
-    pre.textContent = raw.slice(0, 30000);
-    if (html) {
-      srcHead.addEventListener("click", function () {
-        const open = srcWrap.classList.toggle("is-open");
-        srcWrap.classList.toggle("is-collapsed", !open);
-        srcHead.textContent = open
-          ? "▾ Quelltext (Worker-Ausgabe)"
-          : "▸ Quelltext (Worker-Ausgabe) — klicken zum Aufklappen";
+      const pre = document.createElement("pre");
+      pre.className = "result-block worker-source dyn-source box3-result-pre";
+      pre.textContent = raw.slice(0, 30000);
+      pre.hidden = true;
+      vis.appendChild(frame);
+      vis.appendChild(pre);
+      host.appendChild(vis);
+      modes.querySelectorAll(".worker-mode-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          modes.querySelectorAll(".worker-mode-btn").forEach(function (b) {
+            b.classList.remove("is-active");
+          });
+          btn.classList.add("is-active");
+          if (btn.dataset.mode === "preview") {
+            frame.hidden = false;
+            pre.hidden = true;
+          } else {
+            frame.hidden = true;
+            pre.hidden = false;
+          }
+        });
       });
+    } else {
+      const vis = document.createElement("div");
+      vis.className = "dyn-stage";
+      const pre = document.createElement("pre");
+      pre.className = "result-block dyn-source box3-result-pre";
+      pre.textContent = raw.slice(0, 30000);
+      vis.appendChild(pre);
+      host.appendChild(vis);
     }
-    srcWrap.appendChild(srcHead);
-    srcWrap.appendChild(pre);
-    split.appendChild(srcWrap);
-
-    body.appendChild(split);
+    body.appendChild(host);
     stage.hidden = false;
     stage.removeAttribute("hidden");
     stage.classList.add("is-open");
