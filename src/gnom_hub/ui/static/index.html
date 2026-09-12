@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=161" />
+  <link rel="stylesheet" href="/static/app.css?v=163" />
   <!-- Tailwind utilities for Chat module (preflight OFF) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -92,6 +92,16 @@
 
     <!-- 3 boxes: pro Agent ein Layer (Klick = Layer + 1px Modulrahmen) -->
     <section class="boxes" aria-label="Main panels">
+      <div id="agent-page" class="agent-page" hidden>
+        <div class="agent-page-bar">
+          <span id="agent-page-title" class="agent-page-title">Agent</span>
+          <div class="agent-page-bar-actions">
+            <button type="button" id="agent-page-expert" class="btn-ws-sm">Expertenansicht</button>
+            <button type="button" id="agent-page-back" class="btn-ws-sm">Zurück zum Desk</button>
+          </div>
+        </div>
+        <div id="agent-page-body" class="agent-page-body"></div>
+      </div>
       <div id="mobile-box-tabs" class="mobile-box-tabs" hidden role="tablist" aria-label="Boxes">
         <button type="button" class="mobile-box-tab is-active" data-box-tab="1" role="tab">Box 1</button>
         <button type="button" class="mobile-box-tab" data-box-tab="2" role="tab">Box 2</button>
@@ -221,6 +231,7 @@
       <div class="boxes-right">
       <div class="box2-stack" id="box2-stack">
       <div id="box2" class="box box-2" data-tooltip-id="box2" aria-label="Box 2">
+        <div id="box2-reply-tabs" class="box2-reply-tabs" hidden role="tablist" aria-label="Antworten"></div>
         <div class="agent-layer-stack" data-box="box2" id="box2-layers"></div>
         <!-- Real HTML page in Box 2 (not a popup) -->
         <div id="box2-page-stage" class="box2-page-stage" hidden>
@@ -334,7 +345,11 @@
               <button type="button" id="box3-btn-copy" class="btn-ws-sm" title="Ergebnis kopieren">Copy</button>
               <button type="button" id="box3-btn-dl" class="btn-ws-sm" title="Herunterladen">↓</button>
               <button type="button" id="box3-btn-open" class="btn-ws-sm" title="Seite in Box 2+3 (Shift = Browser-Tab)">↗</button>
-              <button type="button" id="box3-btn-keep" class="btn-ws-sm" title="HTML dauerhaft behalten">Keep</button>
+              <button type="button" id="box3-btn-prev" class="btn-ws-sm" title="Vorheriges Ergebnis">←</button>
+              <button type="button" id="box3-btn-next" class="btn-ws-sm" title="Nächstes Ergebnis">→</button>
+              <button type="button" id="box3-btn-away" class="btn-ws-sm" title="Weg — wiederherstellbar in den Papierkorb">Weg</button>
+              <button type="button" id="box3-btn-new" class="btn-ws-sm" title="Neu — Original behalten, Variante">Neu</button>
+              <button type="button" id="box3-btn-keep" class="btn-ws-sm" title="Behalten — dauerhaft in den Workspace">Behalten</button>
               <button type="button" id="box3-btn-temp" class="btn-ws-sm" title="Temp-Workspace">Temp</button>
               <button type="button" id="box3-btn-perm" class="btn-ws-sm" title="Permanent-Workspace">Perm</button>
               <button type="button" id="box3-result-fs" class="btn-ws-sm" title="Vollbild in den Boxen">⛶</button>
@@ -353,23 +368,33 @@
           <div class="tune-layer-body">
             <div class="tune-sliders-col">
               <div class="tune-slider" data-tip="temperature">
-                <label>Temperature <span id="tune-temp-val">0.50</span></label>
+                <label>Temperature <span id="tune-temp-val">0.50</span>
+                  <button type="button" class="tune-reset" data-reset="temperature" id="tune-temp-reset">Reset</button>
+                </label>
                 <input id="tune-temp" type="range" min="0" max="2" step="0.05" value="0.5" />
               </div>
               <div class="tune-slider" data-tip="top_p">
-                <label>Top-P <span id="tune-topp-val">1.00</span></label>
+                <label>Top-P <span id="tune-topp-val">1.00</span>
+                  <button type="button" class="tune-reset" data-reset="top_p" id="tune-topp-reset">Reset</button>
+                </label>
                 <input id="tune-topp" type="range" min="0" max="1" step="0.01" value="1" />
               </div>
               <div class="tune-slider" data-tip="max_tokens">
-                <label>Max Tokens <span id="tune-maxtok-val">800</span></label>
+                <label>Max Tokens <span id="tune-maxtok-val">800</span>
+                  <button type="button" class="tune-reset" data-reset="max_tokens" id="tune-maxtok-reset">Reset</button>
+                </label>
                 <input id="tune-maxtok" type="range" min="64" max="4096" step="32" value="800" />
               </div>
               <div class="tune-slider" data-tip="frequency">
-                <label>Frequency Penalty <span id="tune-freq-val">0.00</span></label>
+                <label>Frequency Penalty <span id="tune-freq-val">0.00</span>
+                  <button type="button" class="tune-reset" data-reset="frequency" id="tune-freq-reset">Reset</button>
+                </label>
                 <input id="tune-freq" type="range" min="0" max="2" step="0.05" value="0" />
               </div>
               <div class="tune-slider" data-tip="presence">
-                <label>Presence Penalty <span id="tune-pres-val">0.00</span></label>
+                <label>Presence Penalty <span id="tune-pres-val">0.00</span>
+                  <button type="button" class="tune-reset" data-reset="presence" id="tune-pres-reset">Reset</button>
+                </label>
                 <input id="tune-pres" type="range" min="0" max="2" step="0.05" value="0" />
               </div>
               <label class="tune-tts-row">
@@ -455,8 +480,8 @@
         <label class="system-row">
           UI language
           <select id="sys-lang" class="tune-input">
+            <option value="de" selected>Deutsch</option>
             <option value="en">English</option>
-            <option value="de">Deutsch</option>
           </select>
         </label>
         <div class="system-row system-row-actions">
@@ -692,6 +717,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=161"></script>
+  <script src="/static/app.js?v=163"></script>
 </body>
 </html>

@@ -226,6 +226,11 @@ Steht **in** `#box2-stack` unter M1, nicht unter allen drei Boxen.
 | `#btn-td` | TD | ThreadDesk-Paket in die Eingabe, **kein** Send |
 | `#chat-input` | Textarea | Enter = Send, Shift+Enter = Zeile, Ctrl/Cmd+Enter = Arbeit starten. Scrollbar unsichtbar |
 | `#btn-send` | Send | `POST /api/chat` + Ziel-Flag. **Kein Execute** |
+| Agentenkarte C | Klick | volle Agentenseite über L+M+R, Zurück |
+| `#btn-mic` | Mic | bleibt an bis bewusster Klick aus; kein Auto-Send |
+| `#box3-btn-keep` | Behalten | Workspace schreiben + Rücklesen |
+| `#box3-btn-away` | Weg | Papierkorb, wiederherstellbar |
+| `#box3-btn-new` | Neu | Original bleibt, Variante |
 | `#btn-execute` | Arbeit starten | `POST /api/execute` = Distill + Worker. Default disabled bis bereit |
 | `#chat-targets` | An BS/Co/Flex/Wn | Empfänger der nächsten Nachricht, getrennt vom Kartenklick |
 | `#btn-cancel` | Cancel | hidden bis Job läuft; Esc |

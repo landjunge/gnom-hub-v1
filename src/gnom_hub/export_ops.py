@@ -36,9 +36,10 @@ class ExportOpsMixin:
         *,
         name: str | None = None,
         worker: str | None = None,
+        overwrite: bool = False,
     ) -> dict[str, Any]:
         """
-        Copy ONE chosen HTML result into personal WS selected/.
+        Keep one chosen result: HTML → personal WS selected/, else hub perm/.
 
         Hub temp may be cleared anytime; this is the durable copy for you.
         """
@@ -53,7 +54,7 @@ class ExportOpsMixin:
                         name = f"{out.get('worker') or 'worker'}.html"
                     break
         if not raw:
-            # fall back to first worker with HTML
+            # fall back to first worker with HTML, else first worker text
             for out in self.pipeline.state.worker_outputs or []:
                 if not isinstance(out, dict):
                     continue
@@ -64,14 +65,72 @@ class ExportOpsMixin:
                         name = f"{out.get('worker') or 'worker'}.html"
                     break
             if not raw:
-                raise ValueError("no HTML result to keep")
-        html = _extract_html_document(raw) or (
-            raw if raw.lstrip().lower().startswith(("<!doctype", "<html", "<")) else None
-        )
-        if not html:
-            raise ValueError("not HTML — only HTML is kept in personal WS selected/")
-        fname = name or (f"{worker}.html" if worker else "page.html")
-        path = self.workspace.keep_html_content(html, fname)
+                for out in self.pipeline.state.worker_outputs or []:
+                    if not isinstance(out, dict):
+                        continue
+                    cand = str(out.get("result") or "").strip()
+                    if cand:
+                        raw = cand
+                        if not name:
+                            name = f"{out.get('worker') or 'worker'}.txt"
+                        break
+            if not raw:
+                raise ValueError("no result to keep")
+        html = _extract_html_document(raw)
+        as_html = bool(html)
+        body = html if as_html else raw
+        if as_html:
+            fname = name or (f"{worker}.html" if worker else "page.html")
+        else:
+            fname = name or (f"{worker}.txt" if worker else "result.txt")
+        staged = self.workspace.stage_recovery(body, fname)
+        dest = self.workspace.keep_dest_path(fname, as_html=as_html)
+        if dest.exists() and not overwrite:
+            return {
+                "ok": False,
+                "error": "exists",
+                "name": dest.name,
+                "path": str(dest),
+                "staged": str(staged),
+                "status": "existiert — Version, neuer Name oder Abbruch",
+            }
+        try:
+            path = self.workspace.keep_content(body, fname, overwrite=overwrite, as_html=as_html)
+        except FileExistsError:
+            return {
+                "ok": False,
+                "error": "exists",
+                "name": dest.name,
+                "path": str(dest),
+                "staged": str(staged),
+                "status": "existiert — Version, neuer Name oder Abbruch",
+            }
+        try:
+            back = path.read_text(encoding="utf-8")
+        except OSError as exc:
+            return {
+                "ok": False,
+                "error": "verify_failed",
+                "path": str(path),
+                "staged": str(staged),
+                "status": "Speichern fehlgeschlagen",
+                "detail": str(exc),
+            }
+        if back != body:
+            return {
+                "ok": False,
+                "error": "verify_failed",
+                "path": str(path),
+                "staged": str(staged),
+                "status": "Speichern fehlgeschlagen",
+            }
+        try:
+            staged.unlink(missing_ok=True)
+        except OSError:
+            pass
+        from datetime import datetime, timezone
+
+        kept_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
         self._append_trace(
             "workspace.keep",
             {"name": path.name, "bytes": path.stat().st_size, "path": str(path)},
@@ -81,8 +140,13 @@ class ExportOpsMixin:
             "name": path.name,
             "path": str(path),
             "bytes": path.stat().st_size,
+            "verified": True,
+            "kept_at": kept_at,
+            "result_id": f"{path.name}@{kept_at}",
+            "status": "Behalten — im Workspace gespeichert",
             "personal_ws": str(path.parent.parent),
-            "selected_dir": str(path.parent),
+            "selected_dir": str(self.workspace.selected),
+            "zone": "selected" if as_html else "perm",
             "workspace": self.workspace.snapshot(),
         }
 

@@ -1,4 +1,11 @@
 /* part: 02-modals-tools-ws.js  lines 705-1949 of app.js — edit parts, run scripts/build_ui_js.py */
+  function dockIntoBoxes(el) {
+    const boxes = document.querySelector(".boxes");
+    if (!el || !boxes) return;
+    if (el.parentNode !== boxes) boxes.appendChild(el);
+    el.classList.add("in-boxes");
+  }
+
   function openTuneModal(id) {
     const a = findAgent(id);
     const layer = document.getElementById("tune-layer");
@@ -23,11 +30,11 @@
         valNode.textContent =
           digits === 0 ? String(Math.round(num)) : Number(num).toFixed(digits);
     };
-    setRange("tune-temp", "tune-temp-val", a.temperature, 0.5, 2);
-    setRange("tune-topp", "tune-topp-val", a.top_p, 1, 2);
-    setRange("tune-maxtok", "tune-maxtok-val", a.max_tokens, 800, 0);
-    setRange("tune-freq", "tune-freq-val", a.frequency_penalty, 0, 2);
-    setRange("tune-pres", "tune-pres-val", a.presence_penalty, 0, 2);
+    setRange("tune-temp", "tune-temp-val", a.temperature, SLIDER_DEFAULTS.temperature, 2);
+    setRange("tune-topp", "tune-topp-val", a.top_p, SLIDER_DEFAULTS.top_p, 2);
+    setRange("tune-maxtok", "tune-maxtok-val", a.max_tokens, SLIDER_DEFAULTS.max_tokens, 0);
+    setRange("tune-freq", "tune-freq-val", a.frequency_penalty, SLIDER_DEFAULTS.frequency, 2);
+    setRange("tune-pres", "tune-pres-val", a.presence_penalty, SLIDER_DEFAULTS.presence, 2);
     const tts = document.getElementById("tune-tts");
     if (tts) tts.checked = !!a.tts;
     layer.hidden = false;
@@ -68,6 +75,26 @@
     if (val && el) val.textContent = "Aktuell: " + el.value;
   }
 
+  function resetSlider(key) {
+    const map = {
+      temperature: ["tune-temp", "tune-temp-val", 2],
+      top_p: ["tune-topp", "tune-topp-val", 2],
+      max_tokens: ["tune-maxtok", "tune-maxtok-val", 0],
+      frequency: ["tune-freq", "tune-freq-val", 2],
+      presence: ["tune-pres", "tune-pres-val", 2],
+    };
+    const spec = map[key];
+    if (!spec || SLIDER_DEFAULTS[key] == null) return;
+    const el = document.getElementById(spec[0]);
+    const def = SLIDER_DEFAULTS[key];
+    if (el) el.value = String(def);
+    const valNode = document.getElementById(spec[1]);
+    if (valNode)
+      valNode.textContent =
+        spec[2] === 0 ? String(Math.round(def)) : Number(def).toFixed(spec[2]);
+    showSliderTip(key);
+  }
+
   function bindTuneSliders() {
     const pairs = [
       ["tune-temp", "tune-temp-val", 2, "temperature"],
@@ -89,6 +116,14 @@
       });
       el.addEventListener("pointerdown", function () {
         showSliderTip(p[3]);
+      });
+    });
+    document.querySelectorAll(".tune-reset").forEach(function (btn) {
+      if (btn._bound) return;
+      btn._bound = true;
+      btn.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        resetSlider(btn.getAttribute("data-reset"));
       });
     });
   }
@@ -123,6 +158,21 @@
     } else {
       stopSpeech();
     }
+    const summary =
+      "Speichern für " +
+      tuneAgentId +
+      ":\nTemperature " +
+      body.temperature +
+      " (niedrig=vorsichtig, hoch=kreativ)\nTop-P " +
+      body.top_p +
+      "\nMax Tokens " +
+      body.max_tokens +
+      "\nFrequency " +
+      body.frequency_penalty +
+      "\nPresence " +
+      body.presence_penalty +
+      "\nRegler geben keine Extra-Rechte.";
+    if (!window.confirm(summary)) return;
     try {
       const data = await api(
         "POST",
@@ -144,6 +194,7 @@
 
   async function openSystemModal() {
     if (!els.systemModal) return;
+    dockIntoBoxes(els.systemModal);
     try {
       const s = await api("GET", "/api/system");
       const parts = [];
@@ -695,6 +746,7 @@
 
   async function openToolsModal() {
     if (!els.toolsModal) return;
+    dockIntoBoxes(els.toolsModal);
     els.toolsModal.hidden = false;
     try {
       const snap = lastSnapshot || null;
@@ -1415,6 +1467,7 @@
 
   async function openWorkspaceModal() {
     if (!els.workspaceModal) return;
+    dockIntoBoxes(els.workspaceModal);
     els.workspaceModal.hidden = false;
     await refreshWorkspace();
   }

@@ -14,7 +14,7 @@
 
   /** Loaded from /api/tooltips?lang=… (en/de) */
   let TOOLTIPS = {};
-  let uiLang = "en";
+  let uiLang = "de";
 
   const _FLEX_PRESETS = ["personal", "security", "neutral", "researcher"]; // kept for desk docs/export
 
@@ -42,17 +42,24 @@
     if (hex) el.style.setProperty("--owner-color", hex);
   }
 
+  const SLIDER_DEFAULTS = {
+    temperature: 0.5,
+    top_p: 1,
+    max_tokens: 800,
+    frequency: 0,
+    presence: 0,
+  };
   const SLIDER_TIPS = {
     temperature:
-      "Temperature: higher = more creative/random; lower = more focused and deterministic.",
+      "Temperature steuert Zufall. Niedrig = gleichmäßiger und vorsichtiger. Hoch = kreativer, aber unberechenbarer. Empfehlung 0.3–0.8. Standard 0.50.",
     top_p:
-      "Top-P (nucleus): samples from the smallest set of tokens whose probability mass ≥ p. Lower = safer.",
+      "Top-P begrenzt die Wortauswahl. Klein = engere Auswahl. Groß = breitere Auswahl. Empfehlung 0.8–1.0. Standard 1.00.",
     max_tokens:
-      "Max Tokens: hard cap on completion length. Higher allows longer HTML/docs; costs more.",
+      "Max Tokens ist die Längengrenze. Klein = kürzere Antworten. Groß = ausführlicher, langsamer, teurer. Standard 800.",
     frequency:
-      "Frequency Penalty: reduces repeating the same tokens already used in the answer.",
+      "Frequency Penalty mindert Wiederholungen. Höher = weniger Repeats, kann wichtige Begriffe meiden. Standard 0.00.",
     presence:
-      "Presence Penalty: encourages talking about new topics; reduces staying on the same idea.",
+      "Presence Penalty fördert neue Aspekte. Höher = eher neue Themen, kann vom Kern wegführen. Standard 0.00.",
   };
 
   // Display hints only (role prompts live in Python). Empty = code default.
@@ -171,6 +178,7 @@
   const CHAT_HIST_MAX = 50;
   const HISTORY_MAX = 12;
   let resultHistory = [];
+  const resultTrash = [];
   let selectedColdId = null;
   /** Terminal-style input history (ArrowUp/Down). idx -1 = live draft. */
   let chatHist = [];
@@ -559,6 +567,225 @@
     }
   }
 
+  function closeAgentPage() {
+    const page = document.getElementById("agent-page");
+    if (page) page.hidden = true;
+  }
+
+  function _agentPageAdd(body, tag, className, text) {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text != null) el.textContent = text;
+    body.appendChild(el);
+    return el;
+  }
+
+  function openAgentPage(agentId) {
+    const page = document.getElementById("agent-page");
+    const body = document.getElementById("agent-page-body");
+    const title = document.getElementById("agent-page-title");
+    if (!page || !body) return;
+    const agent = findAgent(agentId) || {};
+    const tip = TOOLTIPS[agentId] || {};
+    const rights = {
+      brainstorm: "Darf Dialog in Box 2. Darf nicht Execute, Code oder Box 3.",
+      memory: "Darf Recall. Darf nicht Boxen füllen.",
+      flex: "Darf Box 1 und Wünsche. Darf nicht Execute, Tools, God-Mode.",
+      coordinator: "Darf Plan und Distill. Darf nicht bauen.",
+      worker1: "Darf Deliverable in Box 3. Darf nicht raten, Box 1/2 schreiben.",
+      worker2: "Darf Deliverable in Box 3. Darf nicht raten, Box 1/2 schreiben.",
+      worker3: "Darf Deliverable in Box 3. Darf nicht raten, Box 1/2 schreiben.",
+      worker4: "Darf Deliverable in Box 3. Darf nicht raten, Box 1/2 schreiben.",
+    };
+    if (title) title.textContent = (agent.label || agentId) + " — Agentenseite";
+    const promptRaw =
+      (agent.system_prompt && String(agent.system_prompt).trim()) ||
+      DEFAULT_PROMPTS[agentId] ||
+      "";
+    const snap = typeof lastSnapshot !== "undefined" ? lastSnapshot : null;
+    const pipe = (snap && snap.pipeline) || {};
+    const expert = !!(page.dataset && page.dataset.expert === "1");
+    body.textContent = "";
+    _agentPageAdd(body, "p", "agent-page-line", "Farbe ist Orientierung, keine Rechte.");
+    _agentPageAdd(
+      body,
+      "p",
+      "agent-page-line",
+      "Rolle: " + ((tip && tip.how_to) || rights[agentId] || "")
+    );
+    _agentPageAdd(body, "p", "agent-page-line", "Rechte: " + (rights[agentId] || "siehe Docs"));
+    _agentPageAdd(
+      body,
+      "p",
+      "agent-page-line",
+      "Status: " +
+        (agent.enabled ? "an" : "aus") +
+        (agent.online ? " · online" : " · offline") +
+        (agent.parked ? " · geparkt" : "")
+    );
+    _agentPageAdd(
+      body,
+      "p",
+      "agent-page-line",
+      "Modell: " + (agent.model || "—") + "  (API-Schlüssel werden nicht angezeigt)"
+    );
+    _agentPageAdd(
+      body,
+      "p",
+      "agent-page-line",
+      "Aktuelle Aufgabe: " +
+        ((pipe.user_text && String(pipe.user_text).slice(0, 240)) || "(keine)") +
+        (pipe.stage ? " · Stage " + pipe.stage : "")
+    );
+    const err = pipe.last_error || pipe.error || "";
+    if (err) _agentPageAdd(body, "p", "agent-page-line", "Letzter Fehler: " + String(err));
+    _agentPageAdd(
+      body,
+      "p",
+      "agent-page-line",
+      "Kosten/Tokens: " +
+        (agent.tokens || 0) +
+        " tok · $" +
+        Number(agent.cost_usd || 0).toFixed(4)
+    );
+    _agentPageAdd(body, "h3", "agent-page-h", "Regler");
+    [
+      ["temperature", "Temperature", agent.temperature, SLIDER_DEFAULTS.temperature],
+      ["top_p", "Top-P", agent.top_p, SLIDER_DEFAULTS.top_p],
+      ["max_tokens", "Max Tokens", agent.max_tokens, SLIDER_DEFAULTS.max_tokens],
+      ["frequency", "Frequency", agent.frequency_penalty, SLIDER_DEFAULTS.frequency],
+      ["presence", "Presence", agent.presence_penalty, SLIDER_DEFAULTS.presence],
+    ].forEach(function (row) {
+      const p = _agentPageAdd(
+        body,
+        "p",
+        "agent-page-line",
+        row[1] + ": " + paramVal(row[2], row[3]) + " — " + (SLIDER_TIPS[row[0]] || "")
+      );
+      p.dataset.slider = row[0];
+    });
+    const tuneBtn = document.createElement("button");
+    tuneBtn.type = "button";
+    tuneBtn.className = "btn-ws-sm";
+    tuneBtn.textContent = "Regler in Box 3 (Reset dort)";
+    tuneBtn.addEventListener("click", function () {
+      if (typeof openTuneModal === "function") openTuneModal(agentId);
+    });
+    body.appendChild(tuneBtn);
+    _agentPageAdd(body, "h3", "agent-page-h", "Prompt");
+    const promptEl = _agentPageAdd(body, "p", "agent-page-line", promptRaw);
+    if (!expert && promptRaw.length > 400) {
+      promptEl.textContent = promptRaw.slice(0, 397) + "…";
+    }
+    _agentPageAdd(body, "h3", "agent-page-h", "Werkzeuge");
+    const tools = (snap && snap.tools) || [];
+    if (Array.isArray(tools) && tools.length) {
+      tools.slice(0, expert ? 40 : 12).forEach(function (t) {
+        _agentPageAdd(
+          body,
+          "p",
+          "agent-page-line",
+          (t.name || "?") + " — " + (t.description || "")
+        );
+      });
+    } else {
+      _agentPageAdd(body, "p", "agent-page-line", "Keine Werkzeugliste in dieser Sitzung.");
+    }
+    const skillHost = _agentPageAdd(body, "div", "agent-page-skills", "");
+    skillHost.id = "agent-page-skills";
+    _agentPageAdd(skillHost, "h3", "agent-page-h", "Skills");
+    _agentPageAdd(skillHost, "p", "agent-page-line", "Lade Skills…");
+    page.hidden = false;
+    if (typeof bindAgentPage === "function") bindAgentPage();
+    function fillSkills(list) {
+      skillHost.textContent = "";
+      _agentPageAdd(skillHost, "h3", "agent-page-h", "Skills");
+      const mine = (list || []).filter(function (s) {
+        const ag = s.agents || [];
+        return !ag.length || ag.indexOf(agentId) >= 0;
+      });
+      if (!mine.length) {
+        _agentPageAdd(skillHost, "p", "agent-page-line", "Keine zugewiesenen Skills.");
+        return;
+      }
+      mine.forEach(function (s) {
+        const card = _agentPageAdd(skillHost, "div", "agent-page-skill", "");
+        _agentPageAdd(
+          card,
+          "p",
+          "agent-page-line",
+          (s.name || s.id || "?") +
+            " v" +
+            (s.version || "?") +
+            (s.enabled === false ? " · aus" : "")
+        );
+        _agentPageAdd(
+          card,
+          "p",
+          "agent-page-line",
+          "Zweck: " + (s.description || "(Playbook, nur Prompt)")
+        );
+        _agentPageAdd(
+          card,
+          "p",
+          "agent-page-line",
+          "Auslöser: " + ((s.triggers || []).join(", ") || "manuell / Rollen-Match")
+        );
+        _agentPageAdd(
+          card,
+          "p",
+          "agent-page-line",
+          "Daten: Skill-Text unter " + (s.path || "skills/") + " · Quelle " + (s.source || "")
+        );
+        _agentPageAdd(
+          card,
+          "p",
+          "agent-page-line",
+          "Wirkung: Prompt-Text an den Agenten. Grenze: kein Code, keine Extra-Rechte, keine Secrets."
+        );
+      });
+    }
+    if (typeof api === "function") {
+      api("GET", "/api/skills")
+        .then(function (data) {
+          fillSkills((data && data.skills) || []);
+        })
+        .catch(function () {
+          fillSkills([]);
+        });
+    } else {
+      fillSkills([]);
+    }
+  }
+
+  function bindAgentPage() {
+    const back = document.getElementById("agent-page-back");
+    if (back && !back._bound) {
+      back._bound = true;
+      back.addEventListener("click", closeAgentPage);
+    }
+    const expert = document.getElementById("agent-page-expert");
+    if (expert && !expert._bound) {
+      expert._bound = true;
+      expert.addEventListener("click", function () {
+        const page = document.getElementById("agent-page");
+        if (!page) return;
+        const on = page.dataset.expert === "1";
+        page.dataset.expert = on ? "0" : "1";
+        expert.textContent = on ? "Expertenansicht" : "Standardansicht";
+        const title = document.getElementById("agent-page-title");
+        const aid =
+          title && title.textContent
+            ? String(title.textContent).split(" — ")[0]
+            : lastClickedAgentId;
+        const agent = AGENTS.find(function (a) {
+          return a.label === aid || a.id === aid;
+        });
+        openAgentPage((agent && agent.id) || lastClickedAgentId || "brainstorm");
+      });
+    }
+  }
+
   function updateBoxBorders() {
     /* nur Modulrahmen; Box-Rahmen bleiben neutral */
     if (lastClickedAgentId && COLOR_HEX[lastClickedAgentId]) {
@@ -655,16 +882,12 @@
         }
         if (clickTimer) clearTimeout(clickTimer);
         const shiftTune = !!ev.shiftKey;
-        /* second click on same agent the user already picked → tune */
-        const alreadyUserPick =
-          document.body.dataset.agentUserPick === agent.id &&
-          lastClickedAgentId === agent.id;
         clickTimer = setTimeout(function () {
           clickTimer = null;
-          /* B1: click = layer + Box1 info only; tune only explicit */
           activateAgentLayer(agent.id, true);
           document.body.dataset.agentUserPick = agent.id;
-          if (shiftTune || alreadyUserPick) {
+          if (typeof openAgentPage === "function") openAgentPage(agent.id);
+          if (shiftTune && typeof openTuneModal === "function") {
             openTuneModal(agent.id);
           }
         }, 220);
@@ -698,24 +921,70 @@
     return null;
   }
 
+  const TOAST_MAX = 2;
+  const toastQueue = [];
+
   function toast(message, kind) {
+    toastQueue.push({ message: String(message || ""), kind: kind || "info" });
+    flushToasts();
+  }
+
+  function flushToasts() {
     const host = document.getElementById("toast-host");
     if (!host) {
-      console.log("[toast]", kind || "info", message);
+      while (toastQueue.length) {
+        const item = toastQueue.shift();
+        console.log("[toast]", item.kind, item.message);
+      }
       return;
     }
+    while (host.children.length < TOAST_MAX && toastQueue.length) {
+      mountToast(host, toastQueue.shift());
+    }
+  }
+
+  function mountToast(host, item) {
     const el = document.createElement("div");
-    el.className = "toast toast-" + (kind || "info");
-    el.textContent = message;
+    el.className = "toast toast-" + (item.kind || "info");
+    el.textContent = item.message;
     host.appendChild(el);
     requestAnimationFrame(function () {
       el.classList.add("show");
     });
-    setTimeout(function () {
+    function dismiss() {
       el.classList.remove("show");
       setTimeout(function () {
         if (el.parentNode) el.parentNode.removeChild(el);
+        flushToasts();
       }, 220);
-    }, 4200);
+    }
+    if (item.kind === "error") {
+      el.classList.add("toast-sticky");
+      const x = document.createElement("button");
+      x.type = "button";
+      x.className = "toast-dismiss";
+      x.textContent = "×";
+      x.addEventListener("click", dismiss);
+      el.appendChild(x);
+      return;
+    }
+    let remaining = 4000;
+    let timer = null;
+    let started = 0;
+    function arm() {
+      started = Date.now();
+      timer = setTimeout(dismiss, remaining);
+    }
+    el.addEventListener("mouseenter", function () {
+      if (!timer) return;
+      remaining -= Date.now() - started;
+      clearTimeout(timer);
+      timer = null;
+    });
+    el.addEventListener("mouseleave", function () {
+      if (timer || remaining <= 0) return;
+      arm();
+    });
+    arm();
   }
 

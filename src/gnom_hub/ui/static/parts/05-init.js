@@ -28,6 +28,7 @@
     renderCards();
     bindTooltipHovers();
     bindTuneSliders();
+    if (typeof bindAgentPage === "function") bindAgentPage();
     refreshBusyFromServer();
 
     els.btnSend.addEventListener("click", sendChat);

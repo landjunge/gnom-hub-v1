@@ -3,6 +3,33 @@
   let box3FocusIdx = 0;
   let lastBox3StageKey = "";
 
+  function renderBox2ReplyTabs(turns) {
+    const host = document.getElementById("box2-reply-tabs");
+    if (!host) return;
+    const list = Array.isArray(turns) ? turns : [];
+    host.textContent = "";
+    if (list.length < 2) {
+      host.hidden = true;
+      return;
+    }
+    host.hidden = false;
+    list.forEach(function (t, i) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "box2-reply-tab";
+      btn.textContent = (t.role || "turn") + " " + (i + 1);
+      btn.addEventListener("click", function () {
+        if (typeof setBox2 === "function") {
+          setBox2(String((t.role || "") + ":\n" + (t.text || "")));
+        }
+        host.querySelectorAll(".box2-reply-tab").forEach(function (el) {
+          el.classList.toggle("is-on", el === btn);
+        });
+      });
+      host.appendChild(btn);
+    });
+  }
+
   /**
    * Dynamic presentation inside a box/panel:
    * HTML → live preview (+ Source), code fence → code view, JSON → pretty, else text.
@@ -403,6 +430,74 @@
           keepWorkerToPersonalWs(out, idx);
         })
       );
+    }
+    const prev = document.getElementById("box3-btn-prev");
+    if (prev && !prev._bound) {
+      prev._bound = true;
+      prev.addEventListener("click", function () {
+        if (typeof focusBox3WorkerResult === "function") {
+          focusBox3WorkerResult(Math.max(0, (box3FocusIdx || 0) - 1));
+        }
+      });
+    }
+    const next = document.getElementById("box3-btn-next");
+    if (next && !next._bound) {
+      next._bound = true;
+      next.addEventListener("click", function () {
+        const n = (lastWorkerOutputs && lastWorkerOutputs.length) || 0;
+        if (typeof focusBox3WorkerResult === "function") {
+          focusBox3WorkerResult(Math.min(n - 1, (box3FocusIdx || 0) + 1));
+        }
+      });
+    }
+    const away = document.getElementById("box3-btn-away");
+    if (away && !away._bound) {
+      away._bound = true;
+      away.addEventListener("click", function () {
+        const i = box3FocusIdx || 0;
+        if (!lastWorkerOutputs || !lastWorkerOutputs[i]) return;
+        const gone = lastWorkerOutputs[i];
+        resultTrash.unshift(gone);
+        lastWorkerOutputs.splice(i, 1);
+        const tname =
+          ((gone && (gone.worker || gone.name)) || "result")
+            .toString()
+            .replace(/[^\w.-]+/g, "_") + ".txt";
+        if (typeof api === "function") {
+          api("POST", "/api/workspace/write", {
+            zone: "trash",
+            name: tname,
+            content: (gone && gone.result) || "",
+          }).catch(function () {
+            /* keep in-memory trash */
+          });
+        }
+        toast("Weg — im Papierkorb, wiederherstellbar", "info");
+        if (lastWorkerOutputs.length) {
+          focusBox3WorkerResult(Math.min(i, lastWorkerOutputs.length - 1));
+        } else {
+          const stage = document.getElementById("box3-result-stage");
+          if (stage) stage.hidden = true;
+        }
+      });
+    }
+    const neu = document.getElementById("box3-btn-new");
+    if (neu && !neu._bound) {
+      neu._bound = true;
+      neu.addEventListener("click", function () {
+        const i = box3FocusIdx || 0;
+        const src = lastWorkerOutputs && lastWorkerOutputs[i];
+        if (!src) return;
+        const copy = {};
+        Object.keys(src).forEach(function (k) {
+          copy[k] = src[k];
+        });
+        copy.name = (src.name || src.worker || "Ergebnis") + " Variante";
+        copy.variant_of = src.worker || i;
+        lastWorkerOutputs.splice(i + 1, 0, copy);
+        toast("Neu — Original bleibt, Variante daneben", "ok");
+        focusBox3WorkerResult(i + 1);
+      });
     }
     const temp = document.getElementById("box3-btn-temp");
     if (temp && !temp._bound) {
@@ -971,6 +1066,7 @@
         ? lastWorkerOutputs[box3FocusIdx].worker
         : null;
     lastWorkerOutputs = outputs;
+    stageResultsRecovery(outputs);
     updateBox3Toolbar();
     if (pipeline) {
       renderToolStrip(pipeline.tool_log || [], pipeline.quality_notes || "");
@@ -1134,34 +1230,78 @@
     }
   }
 
-  /** Save one worker HTML into personal WS (WS-gnom-hub-v1/selected/). */
-  async function keepWorkerToPersonalWs(out, idx) {
+  let lastRecoveryKey = "";
+  function stageResultsRecovery(outputs) {
+    const list = Array.isArray(outputs) ? outputs : [];
+    if (!list.length || typeof api !== "function") return;
+    const key = list
+      .map(function (o) {
+        return String((o && (o.worker || o.name)) || "") + ":" + String((o && o.result) || "").length;
+      })
+      .join("|");
+    if (key === lastRecoveryKey) return;
+    lastRecoveryKey = key;
+    list.forEach(function (o, i) {
+      const raw = (o && o.result) || "";
+      if (!raw) return;
+      const name =
+        ((o && (o.worker || o.name)) || "worker" + (i + 1))
+          .toString()
+          .replace(/[^\w.-]+/g, "_") + ".txt";
+      api("POST", "/api/workspace/write", {
+        zone: "recovery",
+        name: name,
+        content: raw,
+      }).catch(function () {
+        /* recovery is best-effort */
+      });
+    });
+  }
+
+  /** Save one worker result: HTML → selected/, other text → perm/. */
+  async function keepWorkerToPersonalWs(out, idx, overwrite) {
     const raw = (out && out.result) || "";
-    const html = extractHtml(raw);
-    if (!html) {
-      toast("No HTML to keep — only HTML goes to personal WS", "info");
+    if (!String(raw).trim()) {
+      toast("Nichts zum Behalten", "info");
       return;
     }
-    const name =
+    const html = extractHtml(raw);
+    const base =
       ((out && (out.worker || out.name)) || "worker" + (idx + 1))
         .toString()
-        .replace(/[^\w.-]+/g, "_") + ".html";
+        .replace(/[^\w.-]+/g, "_");
+    const name = base + (html ? ".html" : ".txt");
     try {
       const data = await api("POST", "/api/workspace/keep", {
-        content: html,
+        content: html || raw,
         name: name,
         worker: (out && out.worker) || null,
+        overwrite: !!overwrite,
       });
+      if (data && data.ok === false && data.error === "exists") {
+        const go = window.confirm(
+          "Datei existiert schon:\n" +
+            (data.path || name) +
+            "\nÜberschreiben? Abbrechen belässt den Wiederherstellungsspeicher."
+        );
+        if (go) return keepWorkerToPersonalWs(out, idx, true);
+        toast(data.status || "nicht überschrieben", "info");
+        return;
+      }
+      if (!data || data.ok === false) {
+        toast((data && data.status) || "Speichern fehlgeschlagen", "error");
+        return;
+      }
       toast(
-        "Saved → " + (data.path || "personal WS/selected/") + " (Clear won't delete this)",
+        (data.status || "Behalten") +
+          " · " +
+          (data.path || name) +
+          (data.kept_at ? " · " + data.kept_at : "") +
+          (data.result_id ? " · " + data.result_id : ""),
         "ok"
       );
-      // optional clipboard convenience
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(html).catch(function () {});
-      }
     } catch (err) {
-      toast("Keep failed: " + (err.message || err), "error");
+      toast("Speichern fehlgeschlagen: " + (err.message || err), "error");
     }
   }
 
@@ -1170,18 +1310,9 @@
       toast("No worker results to copy", "info");
       return;
     }
-    // Keep each HTML result into personal WS (only chosen outputs that are HTML)
-    let kept = 0;
     lastWorkerOutputs.forEach(function (o, i) {
-      if (extractHtml(o.result || "")) {
-        kept += 1;
-        keepWorkerToPersonalWs(o, i);
-      }
+      keepWorkerToPersonalWs(o, i);
     });
-    if (!kept) {
-      toast("No HTML among worker results to keep", "info");
-      return;
-    }
     const parts = lastWorkerOutputs.map(function (o, i) {
       const label = o.name || "Worker " + (i + 1);
       return "=== " + label + " ===\n" + (o.result || "");
@@ -1191,7 +1322,7 @@
       return navigator.clipboard
         .writeText(text)
         .then(function () {
-          toast("Kept HTML to personal WS + clipboard (" + text.length + " chars)", "ok");
+          toast("Behalten + Zwischenablage (" + text.length + " Zeichen)", "ok");
         })
         .catch(function () {
           toast("Copy failed", "error");

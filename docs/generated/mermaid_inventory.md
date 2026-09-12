@@ -23,7 +23,7 @@ Blocks: **34**
 | `docs/ARCHITECTURE.md` | 8 | 416 | `flowchart` | 0 | 0 |
 | `docs/ARCHITECTURE.md` | 9 | 450 | `flowchart` | 0 | 0 |
 | `docs/DESK_UI_MAP.md` | 1 | 47 | `flowchart` | 0 | 0 |
-| `docs/DESK_UI_MAP.md` | 2 | 280 | `flowchart` | 0 | 0 |
+| `docs/DESK_UI_MAP.md` | 2 | 285 | `flowchart` | 0 | 0 |
 | `docs/LAYERS_FOR_AI.md` | 1 | 67 | `flowchart` | 0 | 0 |
 | `docs/LAYERS_FOR_AI.md` | 2 | 147 | `flowchart` | 0 | 0 |
 | `docs/LAYERS_FOR_AI.md` | 3 | 267 | `flowchart` | 0 | 0 |
