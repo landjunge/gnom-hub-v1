@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=174" />
+  <link rel="stylesheet" href="/static/app.css?v=175" />
   <!-- Tailwind utilities for Chat module (preflight OFF) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -392,13 +392,16 @@
               <button type="button" id="box3-btn-open" class="btn-ws-sm" title="Seite in Box 2+3 (Shift = Browser-Tab)">↗</button>
               <button type="button" id="box3-btn-prev" class="btn-ws-sm" title="Vorheriges Ergebnis">←</button>
               <button type="button" id="box3-btn-next" class="btn-ws-sm" title="Nächstes Ergebnis">→</button>
-              <button type="button" id="box3-btn-away" class="btn-ws-sm" title="Weg — wiederherstellbar in den Papierkorb">Weg</button>
-              <button type="button" id="box3-btn-new" class="btn-ws-sm" title="Neu — Original behalten, Variante">Neu</button>
-              <button type="button" id="box3-btn-keep" class="btn-ws-sm" title="Behalten — dauerhaft in den Workspace">Behalten</button>
               <button type="button" id="box3-btn-temp" class="btn-ws-sm" title="Temporär — Workspace-Entwurf">Temp</button>
               <button type="button" id="box3-btn-perm" class="btn-ws-sm" title="Dauerhaft — Workspace">Dauerhaft</button>
               <button type="button" id="box3-result-fs" class="btn-ws-sm" title="Vollbild in den Boxen">⛶</button>
             </div>
+          </div>
+          <div class="box3-keep-bar" role="toolbar" aria-label="Weg Neu Behalten">
+            <button type="button" id="box3-btn-away" class="btn-ws-sm" title="Weg — wiederherstellbar im Papierkorb">Weg</button>
+            <button type="button" id="box3-btn-new" class="btn-ws-sm" title="Neu — Original bleibt, Variante daneben">Neu</button>
+            <button type="button" id="box3-btn-keep" class="btn-ws-sm" title="Behalten — erst nach bestätigtem Schreiben">Behalten</button>
+            <button type="button" id="box3-btn-restore" class="btn-ws-sm" hidden title="Letztes Weg-Stück zurück in Box 3">Zurück</button>
           </div>
           <div id="box3-tool-strip" class="box3-tool-strip" hidden></div>
           <div id="box3-dod-checklist" class="box3-dod-checklist" hidden></div>
@@ -762,6 +765,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=172"></script>
+  <script src="/static/app.js?v=173"></script>
 </body>
 </html>

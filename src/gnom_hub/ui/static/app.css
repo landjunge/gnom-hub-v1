@@ -3416,6 +3416,33 @@ a:focus-visible {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.box3-keep-bar {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: stretch;
+  gap: 0;
+  width: 100%;
+  flex: 0 0 auto;
+  min-height: var(--btn-h);
+  border-bottom: 1px solid var(--border-strong);
+  background: var(--bg-strip, #15171b);
+}
+.box3-keep-bar .btn-ws-sm {
+  flex: 1 1 0;
+  min-width: 0;
+  height: var(--btn-h);
+  min-height: var(--btn-h);
+  padding: 0 4px;
+  color: #fff;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.box3-keep-bar .btn-ws-sm[hidden] {
+  display: none !important;
+}
 .box3-result-label {
   display: none;
 }
