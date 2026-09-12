@@ -2,28 +2,90 @@
 
   let box3FocusIdx = 0;
   let lastBox3StageKey = "";
+  let box2ReplyAgent = "";
+
+  function box2AgentTabLabel(role) {
+    const id = String(role || "").toLowerCase();
+    if (id === "brainstorm") return "Brainstorm";
+    if (id === "flex") return "Flex";
+    if (id === "coordinator") return "Koordinator";
+    if (id === "memory") return "Memory";
+    const wm = /^worker(\d+)$/.exec(id);
+    if (wm) return "Arbeiter " + wm[1];
+    return "Antwort";
+  }
+
+  function showBox2ReplyLayer(agentId) {
+    const stack = document.getElementById("box2-layers");
+    if (!stack) return;
+    const aid = String(agentId || "brainstorm").toLowerCase();
+    stack.querySelectorAll(".agent-layer").forEach(function (layer) {
+      const on = layer.getAttribute("data-agent") === aid;
+      layer.classList.toggle("is-active", on);
+      layer.hidden = !on;
+    });
+  }
 
   function renderBox2ReplyTabs(turns) {
     const host = document.getElementById("box2-reply-tabs");
     if (!host) return;
-    const list = Array.isArray(turns) ? turns : [];
+    const answers = [];
+    const seen = {};
+    function addAnswer(role) {
+      const id = String(role || "").toLowerCase();
+      if (!id || id === "user" || id === "you" || id === "du") return;
+      if (seen[id]) return;
+      seen[id] = true;
+      answers.push(id);
+    }
+    (Array.isArray(turns) ? turns : []).forEach(function (t) {
+      addAnswer(t && t.role);
+    });
+    const pipe =
+      (typeof lastSnapshot !== "undefined" &&
+        lastSnapshot &&
+        lastSnapshot.pipeline) ||
+      {};
+    if (pipe.flex_notes) addAnswer("flex");
+    if (pipe.distilled_requirements && pipe.distilled_requirements.length) {
+      addAnswer("coordinator");
+    }
+    const box = document.getElementById("box2");
     host.textContent = "";
-    if (list.length < 2) {
+    if (!answers.length) {
       host.hidden = true;
+      box2ReplyAgent = "";
+      if (box) box.classList.remove("box2-has-tabs");
       return;
     }
     host.hidden = false;
-    list.forEach(function (t, i) {
+    if (box) box.classList.add("box2-has-tabs");
+    const pick =
+      box2ReplyAgent && seen[box2ReplyAgent] ? box2ReplyAgent : answers[0];
+    if (box2ReplyAgent) showBox2ReplyLayer(pick);
+    answers.forEach(function (role) {
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "box2-reply-tab";
-      btn.textContent = (t.role || "turn") + " " + (i + 1);
+      btn.className = "box2-reply-tab" + (role === pick ? " is-on" : "");
+      btn.setAttribute("role", "tab");
+      btn.setAttribute("aria-selected", role === pick ? "true" : "false");
+      btn.textContent = box2AgentTabLabel(role);
+      if (typeof markOwner === "function") {
+        markOwner(btn, role);
+      } else if (typeof COLOR_HEX !== "undefined" && COLOR_HEX[role]) {
+        btn.style.setProperty("--owner-color", COLOR_HEX[role]);
+      }
       btn.addEventListener("click", function () {
-        if (typeof setBox2 === "function") {
-          setBox2(String((t.role || "") + ":\n" + (t.text || "")));
+        box2ReplyAgent = role;
+        const stage = document.getElementById("box2-page-stage");
+        if (stage && !stage.hidden && typeof closeBox2Page === "function") {
+          closeBox2Page();
         }
+        showBox2ReplyLayer(role);
         host.querySelectorAll(".box2-reply-tab").forEach(function (el) {
-          el.classList.toggle("is-on", el === btn);
+          const on = el === btn;
+          el.classList.toggle("is-on", on);
+          el.setAttribute("aria-selected", on ? "true" : "false");
         });
       });
       host.appendChild(btn);
@@ -55,12 +117,12 @@
       const btnPrev = document.createElement("button");
       btnPrev.type = "button";
       btnPrev.className = "worker-mode-btn is-active";
-      btnPrev.textContent = "Preview";
+      btnPrev.textContent = "Vorschau";
       btnPrev.dataset.mode = "preview";
       const btnSrc = document.createElement("button");
       btnSrc.type = "button";
       btnSrc.className = "worker-mode-btn";
-      btnSrc.textContent = "Source";
+      btnSrc.textContent = "Quelle";
       btnSrc.dataset.mode = "source";
       modes.appendChild(btnPrev);
       modes.appendChild(btnSrc);
@@ -75,7 +137,7 @@
         "sandbox",
         "allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
       );
-      frame.setAttribute("title", opts.title || "preview");
+      frame.setAttribute("title", opts.title || "Vorschau");
       frame.srcdoc = wrapHtmlDocument(html);
       const pre = document.createElement("pre");
       pre.className = "result-block worker-source dyn-source";
@@ -213,6 +275,7 @@
   }
 
   function closeBox2Page() {
+    /* Overlay off → answer in Box 2. Chat is untouched. */
     const stage = document.getElementById("box2-page-stage");
     const body = document.getElementById("box2-page-body");
     if (body) {
