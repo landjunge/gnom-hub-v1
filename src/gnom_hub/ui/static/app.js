@@ -9853,7 +9853,8 @@
   function hideScrollbarCss() {
     return (
       "*{scrollbar-width:none;-ms-overflow-style:none}" +
-      "*::-webkit-scrollbar{width:0;height:0;display:none}"
+      "*::-webkit-scrollbar{width:0;height:0}" +
+      "html,body{overflow:auto}"
     );
   }
 
@@ -9883,7 +9884,7 @@
       "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
       "<style>" +
       "html,body{margin:0;min-height:100%;background:#111;color:#e8eaed;" +
-      "font-family:system-ui,sans-serif;}" +
+      "font-family:system-ui,sans-serif;overflow:auto;}" +
       "body{padding:12px;box-sizing:border-box;}" +
       "a{color:#7db7ff;}" +
       hideScrollbarCss() +

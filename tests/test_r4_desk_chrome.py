@@ -149,12 +149,27 @@ def test_all_scrollbars_hidden_globally_still_overflow():
     """Desk: no visible bars; overflow auto/scroll still there."""
     assert re.search(r"\*\s*\{[^}]*scrollbar-width:\s*none", CSS, re.DOTALL)
     assert "*::-webkit-scrollbar" in CSS
-    assert "display: none" in CSS.split("*::-webkit-scrollbar", 1)[1][:160]
+    webkit = CSS.split("*::-webkit-scrollbar", 1)[1][:160]
+    assert "width: 0" in webkit
     assert "overflow-y: auto" in CSS or "overflow: auto" in CSS
     assert "function hideScrollbarCss" in BOXES_JS
     assert "function withHiddenScrollbars" in BOXES_JS
     assert "scrollbar-width:none" in BOXES_JS
     assert "::-webkit-scrollbar" in BOXES_JS
+
+
+def test_box2_dyn_content_can_scroll():
+    """Box 2 text/HTML must overflow-y auto, not clip with overflow hidden."""
+    stage = "\n".join(_css_rules_for(".dyn-stage"))
+    assert "overflow-y: auto" in stage, ".dyn-stage must scroll"
+    assert not re.search(r"overflow\s*:\s*hidden", stage), (
+        ".dyn-stage must not clip with overflow: hidden"
+    )
+    src = "\n".join(_css_rules_for(".dyn-source"))
+    assert "overflow-y: auto" in src, ".dyn-source must scroll"
+    assert "#box2 .dyn-stage" in CSS
+    box2_src = CSS.split("#box2 .dyn-stage", 1)[1][:400]
+    assert "overflow-y: auto" in box2_src
 
 
 def test_overlay_titles_german_chrome():

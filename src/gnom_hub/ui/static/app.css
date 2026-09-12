@@ -57,7 +57,6 @@
 *::-webkit-scrollbar {
   width: 0;
   height: 0;
-  display: none;
 }
 
 html, body {
@@ -1344,7 +1343,9 @@ html, body {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* pure box — no scroll */
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .dyn-frame,
@@ -1364,14 +1365,16 @@ html, body {
 }
 
 .dyn-source {
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   margin: 0;
   padding: 6px;
   font-size: 11px;
   line-height: 1.35;
   white-space: pre-wrap;
   word-break: break-word;
-  max-height: none;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .dyn-code {
@@ -2273,7 +2276,9 @@ body.worker-fs-open {
 
 #box2 .agent-layer-body,
 #box2-content {
-  overflow-y: scroll;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .chat-input-row {
@@ -4005,6 +4010,13 @@ a:focus-visible {
   line-height: 1;
   color: #fff;
   text-align: center;
+}
+#box2 .dyn-stage,
+#box2 .dyn-source,
+#box2 .dyn-frame {
+  overflow-x: hidden;
+  overflow-y: auto;
+  min-height: 0;
 }
 #box2 .dyn-source {
   font-size: 12px;
