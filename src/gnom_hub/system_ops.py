@@ -91,16 +91,16 @@ class SystemOpsMixin:
         return {
             "title": "Gnom-Hub help",
             "how_to": (
-                "1) Send / Enter = brainstorm turn. "
-                "2) Execute / Ctrl+Enter = distill + workers. "
-                "3) Send+Execute = one shot after typing. "
+                "1) Send / Enter = reden, keine Ausführung. "
+                "2) Arbeit starten / Ctrl+Enter = Distill + Worker. "
+                "3) Ja nur auf die sichtbare START-ID in Box 1. "
                 "4) Ctrl/⌘+S = save HOT + agents. "
                 "5) Esc = close fullscreen or cancel job. "
                 "6) Box 3: Copy/DL/Tab/WS/↑perm/fullscreen; toolbar Copy all + Diff + History. "
                 "7) Cost badge + Compact density; job timer while busy. "
                 "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat/history/workspace/ui_prefs/notes; list filter). 10) History Re-Exec. 11) Telegram: /hot /tools /fetch /ws /jobs /usage /backup …"
             ),
-            "example": "Type idea → Execute → Pack ↓ (USB) → History Re-Exec → Diff.",
+            "example": "Idee senden → Arbeit starten → Pack ↓ (USB) → History Re-Exec → Diff.",
             "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",
             "keys": (
                 "Keyboard: Enter send · Ctrl/⌘+Enter execute · Ctrl/⌘+S save · Esc cancel/close overlay. "

@@ -639,8 +639,18 @@ def create_app() -> FastAPI:
                         "hint": "Cancel the running job then retry.",
                     },
                 )
-            return get_hub().chat_sync(text, full=full, target=body.target)
-        out = get_hub().chat_async(text, full=full, target=body.target)
+            try:
+                return get_hub().chat_sync(text, full=full, target=body.target)
+            except ValueError as e:
+                if str(e).startswith("invalid send target"):
+                    raise HTTPException(status_code=400, detail=str(e)) from e
+                raise
+        try:
+            out = get_hub().chat_async(text, full=full, target=body.target)
+        except ValueError as e:
+            if str(e).startswith("invalid send target"):
+                raise HTTPException(status_code=400, detail=str(e)) from e
+            raise
         if out.get("busy") or out.get("status") == "busy":
             raise HTTPException(
                 status_code=409,

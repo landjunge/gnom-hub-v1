@@ -374,8 +374,14 @@ class JobsMixin:
         self, text: str, *, full: bool = False, target: str = "brainstorm"
     ) -> dict[str, Any]:
         """Async: target route by default; full=True runs entire pipeline."""
-        self.memory.set_query_hint(text)
+        from gnom_hub.pipeline.orchestrator import ALLOWED_SEND_TARGETS
+
         route = (target or "brainstorm").strip().lower() or "brainstorm"
+        # Raise before _start_job so /api/chat can map invalid target → HTTP 400.
+        # chat_turn ValueError inside the job thread would be swallowed as job.error.
+        if not full and route not in ALLOWED_SEND_TARGETS:
+            raise ValueError(f"invalid send target: {route}")
+        self.memory.set_query_hint(text)
 
         def _runner() -> None:
             self.pipeline.plan_mode = getattr(self, "plan_mode", "default") or "default"

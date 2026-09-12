@@ -50,6 +50,7 @@ class SessionOpsMixin:
                 "flex_wait_remaining": list(getattr(st, "flex_wait_remaining", None) or []),
                 "send_target": getattr(st, "send_target", "") or "brainstorm",
                 "result_status": getattr(st, "result_status", "") or "",
+                "messages": list(getattr(st, "messages", None) or []),
             }
             self._checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
             atomic_write_text(
@@ -111,6 +112,7 @@ class SessionOpsMixin:
                 ],
                 send_target=str(data.get("send_target") or "brainstorm"),
                 result_status=str(data.get("result_status") or ""),
+                messages=[d for d in (data.get("messages") or []) if isinstance(d, dict)],
             )
             restore = getattr(self.pipeline, "restore_flex_from_state", None)
             if callable(restore):
