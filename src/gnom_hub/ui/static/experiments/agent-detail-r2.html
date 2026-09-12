@@ -34,7 +34,7 @@
       --t-app: 16px;
       --radius: 0;
       --btn-h: 28px;
-      --tab-h: 24px;
+      --tab-h: 32px;
     }
 
     *, *::before, *::after {
@@ -326,12 +326,14 @@
 
     .tab {
       height: var(--tab-h);
-      padding: 0 10px;
-      border: 1px solid transparent;
+      min-height: 32px;
+      padding: 0 12px;
+      border: 1px solid var(--border-strong);
       border-right: 1px solid var(--border-strong);
-      background: transparent;
-      color: var(--text-muted);
+      background: var(--bg-card);
+      color: var(--text);
       font-size: var(--t-body);
+      cursor: pointer;
     }
 
     .tab:hover:not(:disabled) {
@@ -359,7 +361,9 @@
     }
 
     .panel { display: none; flex-direction: column; gap: 10px; }
-    .panel.is-on { display: flex; }
+    .panel.is-on { display: flex !important; }
+    .panel[hidden] { display: none !important; }
+    .panel.is-on[hidden] { display: flex !important; }
 
     h2 {
       margin: 0;
@@ -665,18 +669,18 @@
     </div>
     <div class="proto-row">
       <span class="proto-label">Zustand</span>
-      <button type="button" class="state-btn" data-state="laedt">lädt</button>
-      <button type="button" class="state-btn" data-state="wartet">wartet</button>
-      <button type="button" class="state-btn is-on" data-state="aktiv">aktiv</button>
-      <button type="button" class="state-btn" data-state="fragt">fragt</button>
-      <button type="button" class="state-btn" data-state="blockiert">blockiert</button>
-      <button type="button" class="state-btn" data-state="fehler">Fehler</button>
-      <button type="button" class="state-btn" data-state="fertig">fertig</button>
-      <button type="button" class="state-btn" data-state="offline">offline</button>
-      <button type="button" class="state-btn" data-state="leer">keine Daten</button>
+      <button type="button" class="state-btn" data-state="laedt" onclick="r2State('laedt')">lädt</button>
+      <button type="button" class="state-btn" data-state="wartet" onclick="r2State('wartet')">wartet</button>
+      <button type="button" class="state-btn is-on" data-state="aktiv" onclick="r2State('aktiv')">aktiv</button>
+      <button type="button" class="state-btn" data-state="fragt" onclick="r2State('fragt')">fragt</button>
+      <button type="button" class="state-btn" data-state="blockiert" onclick="r2State('blockiert')">blockiert</button>
+      <button type="button" class="state-btn" data-state="fehler" onclick="r2State('fehler')">Fehler</button>
+      <button type="button" class="state-btn" data-state="fertig" onclick="r2State('fertig')">fertig</button>
+      <button type="button" class="state-btn" data-state="offline" onclick="r2State('offline')">offline</button>
+      <button type="button" class="state-btn" data-state="leer" onclick="r2State('leer')">keine Daten</button>
     </div>
     <div class="proto-row">
-      <button type="button" id="btn-narrow" aria-pressed="false">Kleines Fenster (~360 px)</button>
+      <button type="button" id="btn-narrow" aria-pressed="false" onclick="r2Narrow()">Kleines Fenster (~360 px)</button>
       <p>
         Tastatur: <kbd>Tab</kbd> Fokus ·
         <kbd>←</kbd><kbd>→</kbd> Reiter ·
@@ -694,7 +698,7 @@
       </div>
 
       <header class="bar">
-        <button type="button" id="btn-back">Zurück zum Desk</button>
+        <button type="button" id="btn-back" onclick="r2Back()">Zurück zum Desk</button>
         <span class="agent-mark" title="Arbeiter 1">
           <span class="agent-swatch" aria-hidden="true"></span>
           <span class="agent-glyph" aria-hidden="true">1</span>
@@ -715,18 +719,18 @@
           ·
           <b id="run-cost">0,018 $</b>
         </span>
-        <button type="button" class="push" id="btn-target">Als Empfänger wählen</button>
+        <button type="button" class="push" id="btn-target" onclick="r2Target()">Als Empfänger wählen</button>
       </header>
 
       <nav class="tabs" id="tabs" role="tablist" aria-label="Agentendetail">
-        <button type="button" class="tab" role="tab" id="tab-jetzt" aria-controls="panel-jetzt" aria-selected="true" tabindex="0" data-tab="jetzt">Jetzt</button>
-        <button type="button" class="tab" role="tab" id="tab-auftrag" aria-controls="panel-auftrag" aria-selected="false" tabindex="-1" data-tab="auftrag">Auftrag</button>
-        <button type="button" class="tab" role="tab" id="tab-verlauf" aria-controls="panel-verlauf" aria-selected="false" tabindex="-1" data-tab="verlauf">Verlauf</button>
-        <button type="button" class="tab" role="tab" id="tab-werkzeuge" aria-controls="panel-werkzeuge" aria-selected="false" tabindex="-1" data-tab="werkzeuge">Werkzeuge</button>
-        <button type="button" class="tab" role="tab" id="tab-dateien" aria-controls="panel-dateien" aria-selected="false" tabindex="-1" data-tab="dateien">Dateien</button>
-        <button type="button" class="tab" role="tab" id="tab-memory" aria-controls="panel-memory" aria-selected="false" tabindex="-1" data-tab="memory">Memory</button>
-        <button type="button" class="tab" role="tab" id="tab-ergebnis" aria-controls="panel-ergebnis" aria-selected="false" tabindex="-1" data-tab="ergebnis">Ergebnis</button>
-        <button type="button" class="tab" role="tab" id="tab-einstellungen" aria-controls="panel-einstellungen" aria-selected="false" tabindex="-1" data-tab="einstellungen">Einstellungen</button>
+        <button type="button" class="tab" role="tab" id="tab-jetzt" aria-controls="panel-jetzt" aria-selected="true" tabindex="0" data-tab="jetzt" onclick="r2Tab('jetzt')">Jetzt</button>
+        <button type="button" class="tab" role="tab" id="tab-auftrag" aria-controls="panel-auftrag" aria-selected="false" tabindex="-1" data-tab="auftrag" onclick="r2Tab('auftrag')">Auftrag</button>
+        <button type="button" class="tab" role="tab" id="tab-verlauf" aria-controls="panel-verlauf" aria-selected="false" tabindex="-1" data-tab="verlauf" onclick="r2Tab('verlauf')">Verlauf</button>
+        <button type="button" class="tab" role="tab" id="tab-werkzeuge" aria-controls="panel-werkzeuge" aria-selected="false" tabindex="-1" data-tab="werkzeuge" onclick="r2Tab('werkzeuge')">Werkzeuge</button>
+        <button type="button" class="tab" role="tab" id="tab-dateien" aria-controls="panel-dateien" aria-selected="false" tabindex="-1" data-tab="dateien" onclick="r2Tab('dateien')">Dateien</button>
+        <button type="button" class="tab" role="tab" id="tab-memory" aria-controls="panel-memory" aria-selected="false" tabindex="-1" data-tab="memory" onclick="r2Tab('memory')">Memory</button>
+        <button type="button" class="tab" role="tab" id="tab-ergebnis" aria-controls="panel-ergebnis" aria-selected="false" tabindex="-1" data-tab="ergebnis" onclick="r2Tab('ergebnis')">Ergebnis</button>
+        <button type="button" class="tab" role="tab" id="tab-einstellungen" aria-controls="panel-einstellungen" aria-selected="false" tabindex="-1" data-tab="einstellungen" onclick="r2Tab('einstellungen')">Einstellungen</button>
       </nav>
 
       <div class="body">
@@ -1483,35 +1487,29 @@ Kein Shop. Deutsch.</pre>
         }
       }
 
-      document.querySelectorAll(".state-btn").forEach(function (b) {
-        b.addEventListener("click", function () {
-          applyState(b.getAttribute("data-state"));
-        });
-      });
-
-      $("btn-narrow").addEventListener("click", function () {
+      function toggleNarrow() {
         var on = document.body.classList.toggle("is-narrow");
         $("btn-narrow").setAttribute("aria-pressed", on ? "true" : "false");
         $("btn-narrow").textContent = on
           ? "Großes Fenster"
           : "Kleines Fenster (~360 px)";
-      });
+      }
 
-      $("btn-back").addEventListener("click", function () {
+      function goBack() {
         setRecipient(false);
         toast("Prototyp: würde zum Desk zurückkehren. Empfänger unverändert.");
-      });
+      }
 
-      $("btn-target").addEventListener("click", function () {
+      function chooseTarget() {
         setRecipient(true);
         toast("Empfänger ist jetzt Arbeiter 1. Vorher war die Ansicht nur geöffnet.");
-      });
+      }
 
-      document.querySelectorAll(".tab").forEach(function (tab) {
-        tab.addEventListener("click", function () {
-          showTab(tab.getAttribute("data-tab"), false);
-        });
-      });
+      window.r2Tab = function (name) { showTab(name, false); };
+      window.r2State = function (name) { applyState(name); };
+      window.r2Narrow = toggleNarrow;
+      window.r2Back = goBack;
+      window.r2Target = chooseTarget;
 
       $("tabs").addEventListener("keydown", function (ev) {
         var i = TAB_IDS.indexOf(document.querySelector('.tab[aria-selected="true"]').getAttribute("data-tab"));
@@ -1534,13 +1532,13 @@ Kein Shop. Deutsch.</pre>
         var tag = (ev.target && ev.target.tagName) || "";
         var typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
         if (ev.key === "Escape") {
-          $("btn-back").click();
+          goBack();
           $("btn-back").focus();
           return;
         }
         if (ev.altKey && (ev.key === "e" || ev.key === "E")) {
           ev.preventDefault();
-          $("btn-target").click();
+          chooseTarget();
           $("btn-target").focus();
         }
         if (typing) return;
