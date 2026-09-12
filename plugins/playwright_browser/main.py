@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-DEFAULT_URL = "https://www.kleinanzeigen.de"
-
 
 def pw_goto(url: str = "", headless: bool = False) -> dict[str, Any]:
-    target = (url or "").strip() or DEFAULT_URL
+    target = (url or "").strip()
+    if not target:
+        return {"ok": False, "error": "url required — no default site"}
     try:
         from gnom_hub.tools.playwright_tools import browser_goto
 

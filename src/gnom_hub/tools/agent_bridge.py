@@ -104,15 +104,32 @@ def is_live_browser_task(text: str) -> bool:
         return True
     if not any(v in low for v in _NAV_VERBS):
         return False
-    return bool(extract_urls(t) or _guess_domain(t))
+    return bool(extract_urls(t) or _guess_domain(t) or any(brand in low for brand in _BRAND_SITES))
+
+
+_BRAND_SITES = {
+    "kleinanzeigen": "https://www.kleinanzeigen.de",
+}
 
 
 def resolve_browser_url(text: str) -> str:
+    """Resolve a URL only from an explicit URL/domain, or brand+nav-verb.
+
+    Bare 'kleinanzeigen' without a navigate verb must not open a site.
+    """
     urls = extract_urls(text or "")
     if urls:
         return urls[0]
     dom = _guess_domain(text or "")
-    return normalize_url(dom) if dom else ""
+    if dom:
+        return normalize_url(dom)
+    low = (text or "").lower()
+    if not any(v in low for v in _NAV_VERBS):
+        return ""
+    for brand, url in _BRAND_SITES.items():
+        if brand in low:
+            return url
+    return ""
 
 
 def _guess_domain(text: str) -> str:

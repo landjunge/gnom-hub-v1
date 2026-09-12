@@ -203,7 +203,10 @@ def test_s1_browser_uses_install_and_pw_or_goto():
     used = set(out.get("tools_used") or [])
     assert "install_tool" in used
     assert "pw_goto" in used or "browser_goto" in used
-    assert "kleinanzeigen" in (out.get("summary") or "").lower() or out.get("live_site")
+    assert (
+        "example.org" in (out.get("live_site") or "")
+        or "example.org" in (out.get("summary") or "").lower()
+    )
 
 
 def test_orchestrator_short_circuit_tool_drill(tmp_path, monkeypatch):
@@ -239,7 +242,7 @@ def test_s7_killer_writes_probe_file():
     assert "install_tool" in used
     assert "pw_goto" in used or "browser_goto" in used
     assert "file_write" in used
-    assert "kleinanzeigen" in (out.get("summary") or "").lower()
+    assert "example.org" in (out.get("live_site") or out.get("summary") or "").lower()
     assert "<!DOCTYPE html>" not in (out.get("summary") or "")
 
 
@@ -248,7 +251,8 @@ def test_bare_kleinanzeigen_is_not_browser_nav():
 
     assert not is_live_browser_task("kleinanzeigen")
     assert is_live_browser_task("öffne kleinanzeigen")
-    assert "kleinanzeigen" in resolve_browser_url("kleinanzeigen")
+    assert resolve_browser_url("kleinanzeigen") == ""
+    assert "kleinanzeigen" in resolve_browser_url("öffne kleinanzeigen")
     assert detect_scenario_id("kleinanzeigen screenshot speichern") == "S7_killer"
 
 

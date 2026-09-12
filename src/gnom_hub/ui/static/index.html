@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=163" />
+  <link rel="stylesheet" href="/static/app.css?v=165" />
   <!-- Tailwind utilities for Chat module (preflight OFF) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -94,13 +94,36 @@
     <section class="boxes" aria-label="Main panels">
       <div id="agent-page" class="agent-page" hidden>
         <div class="agent-page-bar">
+          <button type="button" id="agent-page-back" class="btn-ws-sm">Zurück zum Desk</button>
+          <span id="agent-page-swatch" class="agent-page-swatch" aria-hidden="true"></span>
           <span id="agent-page-title" class="agent-page-title">Agent</span>
-          <div class="agent-page-bar-actions">
-            <button type="button" id="agent-page-expert" class="btn-ws-sm">Expertenansicht</button>
-            <button type="button" id="agent-page-back" class="btn-ws-sm">Zurück zum Desk</button>
-          </div>
+          <span id="agent-page-role" class="agent-page-role"></span>
+          <span id="agent-page-live" class="agent-page-live" data-status="wartet">wartet</span>
+          <span id="agent-page-model" class="agent-page-model"></span>
+          <span id="agent-page-cost" class="agent-page-cost"></span>
+          <button type="button" id="agent-page-set-target" class="btn-ws-sm">Als Empfänger wählen</button>
+          <button type="button" id="agent-page-expert" class="btn-ws-sm">Expertenansicht</button>
         </div>
-        <div id="agent-page-body" class="agent-page-body"></div>
+        <nav id="agent-page-tabs" class="agent-page-tabs" role="tablist">
+          <button type="button" class="agent-page-tab is-on" data-tab="jetzt" role="tab">Jetzt</button>
+          <button type="button" class="agent-page-tab" data-tab="auftrag" role="tab">Auftrag</button>
+          <button type="button" class="agent-page-tab" data-tab="verlauf" role="tab">Verlauf</button>
+          <button type="button" class="agent-page-tab" data-tab="werkzeuge" role="tab">Werkzeuge</button>
+          <button type="button" class="agent-page-tab" data-tab="dateien" role="tab">Dateien</button>
+          <button type="button" class="agent-page-tab" data-tab="memory" role="tab">Memory</button>
+          <button type="button" class="agent-page-tab" data-tab="ergebnis" role="tab">Ergebnis</button>
+          <button type="button" class="agent-page-tab" data-tab="einstellungen" role="tab">Einstellungen</button>
+        </nav>
+        <div id="agent-page-body" class="agent-page-body">
+          <section id="agent-page-panel-jetzt" class="agent-page-panel is-on" data-tab="jetzt"></section>
+          <section id="agent-page-panel-auftrag" class="agent-page-panel" data-tab="auftrag" hidden></section>
+          <section id="agent-page-panel-verlauf" class="agent-page-panel" data-tab="verlauf" hidden></section>
+          <section id="agent-page-panel-werkzeuge" class="agent-page-panel" data-tab="werkzeuge" hidden></section>
+          <section id="agent-page-panel-dateien" class="agent-page-panel" data-tab="dateien" hidden></section>
+          <section id="agent-page-panel-memory" class="agent-page-panel" data-tab="memory" hidden></section>
+          <section id="agent-page-panel-ergebnis" class="agent-page-panel" data-tab="ergebnis" hidden></section>
+          <section id="agent-page-panel-einstellungen" class="agent-page-panel" data-tab="einstellungen" hidden></section>
+        </div>
       </div>
       <div id="mobile-box-tabs" class="mobile-box-tabs" hidden role="tablist" aria-label="Boxes">
         <button type="button" class="mobile-box-tab is-active" data-box-tab="1" role="tab">Box 1</button>
@@ -717,6 +740,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=163"></script>
+  <script src="/static/app.js?v=165"></script>
 </body>
 </html>
