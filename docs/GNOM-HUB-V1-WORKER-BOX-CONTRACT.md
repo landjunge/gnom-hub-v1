@@ -64,7 +64,7 @@ Workers run **sequentially**, not in parallel. `full_page_html` → one worker. 
 
 ## God-Mode / Dry-Run
 
-Default **off**. Only `POST /api/god-mode` or `GNOM_GOD_MODE_AUTO=1`. Agents cannot enable it via LLM. Computer-use click/type/shell are dry-run until God is on. Inspect/OCR blocked without God. Flag is process-global, not per-job; it does **not** persist across restart.
+Default **off**. Only the user switch (`POST /api/god-mode` with reason user). `GNOM_GOD_MODE_AUTO` is ignored. Agents cannot enable it via LLM. Bound to an assignment_id. Auto-off after done/error. Computer-use click/type/shell are dry-run until God is on. Inspect/OCR blocked without God.
 
 ## Known code/doc contradictions
 

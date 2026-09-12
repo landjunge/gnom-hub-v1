@@ -26,6 +26,18 @@ from gnom_hub.core.event_bus import EventBus
 from gnom_hub.flex_desk import FlexDesk, parse_flex_ask
 from gnom_hub.pipeline.models import PipelineStage, PipelineState
 
+ALLOWED_SEND_TARGETS = frozenset(
+    {
+        "brainstorm",
+        "coordinator",
+        "flex",
+        "worker1",
+        "worker2",
+        "worker3",
+        "worker4",
+    }
+)
+
 
 class PipelineCancelled(Exception):
     """Raised when cooperative soft-cancel aborts a pipeline mid-run."""
@@ -95,20 +107,25 @@ class Orchestrator:
             },
         )
 
-    def _offer_start_work(self, *, reason: str) -> None:
+    def _offer_start_work(self, *, reason: str, workers: str = "") -> None:
         """Ask in Box 1. Never starts Execute — Hub/API execute is the authority."""
         self._ensure_flex_job()
-        asked = self.flex_desk.offer_start_work(task_id="plan")
+        asked = self.flex_desk.offer_start_work(task_id="plan", workers=workers)
         self._sync_flex_state()
         self.bus.emit(
             "pipeline.flex_ask",
             {
                 "reason": reason,
                 "question_id": asked.get("question_id"),
+                "assignment_id": asked.get("assignment_id"),
                 "component": "start_work",
             },
         )
-        line = "Flex: Der Plan ist bereit. Möchtest du die Arbeit jetzt starten?"
+        aid = asked.get("assignment_id") or ""
+        line = (
+            f"Flex: START-{aid} — Auftrag {aid} ist ausführbar. "
+            "Soll genau dieser Auftrag jetzt starten?"
+        )
         if not any(str(t.get("text") or "") == line for t in (self._state.brainstorm_turns or [])):
             self._state.brainstorm_turns.append({"role": "flex", "text": line})
             self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
@@ -245,8 +262,93 @@ class Orchestrator:
             self._fail(str(exc))
         return self._state
 
+    def chat_turn(self, user_text: str, *, target: str = "brainstorm") -> PipelineState:
+        """Send to an explicit target. Never starts Execute."""
+        t = str(target or "brainstorm").strip().lower()
+        if t not in ALLOWED_SEND_TARGETS:
+            t = "brainstorm"
+        self._state.send_target = t
+        if t == "coordinator":
+            return self.coordinator_intake(user_text)
+        if t == "flex":
+            return self.flex_intake(user_text)
+        if t.startswith("worker"):
+            return self.worker_intake(user_text, worker_id=t)
+        return self.brainstorm_turn(user_text)
+
+    def coordinator_intake(self, user_text: str) -> PipelineState:
+        text = (user_text or "").strip()
+        if not text:
+            self._fail("Empty user text")
+            return self._state
+        self._state.send_target = "coordinator"
+        self._state.user_text = text
+        self._state.mode = "brainstorm"
+        self._state.error = None
+        mem = self.memory.recall(text)
+        self._state.memory_context = mem
+        reqs, question = self.coordinator.distill(text, text, mem)
+        self._state.distilled_requirements = reqs
+        self.bus.emit("pipeline.distill", {"requirements": list(reqs)})
+        if question is not None:
+            self._post_coordinator_clarify(question)
+            return self._state
+        self._offer_start_work(reason="coordinator_ready")
+        self._set_stage(PipelineStage.brainstorm)
+        return self._state
+
+    def flex_intake(self, user_text: str) -> PipelineState:
+        text = (user_text or "").strip()
+        if not text:
+            self._fail("Empty user text")
+            return self._state
+        self._state.send_target = "flex"
+        self._state.user_text = text
+        if getattr(self.flex, "enabled", False):
+            try:
+                self.flex.absorb(text, self._state.memory_context or "")
+            except Exception:  # noqa: BLE001
+                pass
+        self._ensure_flex_job()
+        self.flex_desk.ask(
+            agent_id="flex",
+            text=text[:400],
+            component="free_text",
+            entry_type="entscheidung",
+        )
+        self._sync_flex_state()
+        self._set_stage(PipelineStage.brainstorm)
+        return self._state
+
+    def worker_intake(self, user_text: str, *, worker_id: str) -> PipelineState:
+        text = (user_text or "").strip()
+        if not text:
+            self._fail("Empty user text")
+            return self._state
+        self._state.send_target = worker_id
+        self._state.user_text = text
+        self._ensure_flex_job()
+        if _worker_direct_too_big(text):
+            self.flex_desk.ask(
+                agent_id="flex",
+                text=(
+                    "Dieser Auftrag braucht Planung durch den Coordinator. "
+                    "Soll er dorthin übergeben werden?"
+                ),
+                component="yes_no",
+                options=["Ja, an Coordinator", "Nein"],
+                entry_type="entscheidung",
+            )
+            self._sync_flex_state()
+            self._set_stage(PipelineStage.clarify)
+            return self._state
+        self._offer_start_work(reason="worker_direct", workers=worker_id)
+        self._set_stage(PipelineStage.brainstorm)
+        return self._state
+
     def brainstorm_turn(self, user_text: str) -> PipelineState:
         text = user_text.strip()
+        self._state.send_target = getattr(self._state, "send_target", "") or "brainstorm"
         try:
             if not text:
                 self._fail("Empty user text")
@@ -256,29 +358,27 @@ class Orchestrator:
             from gnom_hub.tools.agent_bridge import is_live_browser_task
             from gnom_hub.tools.tool_scenarios import is_tool_drill_task
 
-            if (
-                is_tool_drill_task(text)
-                and self.tools is not None
-                and self._try_tool_drill_short_circuit(text)
-            ):
+            if is_tool_drill_task(text) and self.tools is not None:
+                self._state.user_text = text
+                self._state.send_target = getattr(self._state, "send_target", "") or "brainstorm"
+                self._offer_start_work(reason="tool_drill")
+                self._set_stage(PipelineStage.brainstorm)
                 return self._state
 
-            # Live browser nav: skip brainstorm LLM chatter — open the URL now
+            # Live browser: Send still does not run tools — Box 1 START-ID only.
             if is_live_browser_task(text) and self.tools is not None:
-                self._state = PipelineState(user_text=text, mode="execute")
+                self._state.user_text = text
                 self._state.brainstorm_turns = [
                     {"role": "user", "text": text},
                     {
                         "role": "brainstorm",
-                        "text": "Live-Browser-Auftrag erkannt — öffne die URL mit Tools.",
+                        "text": "Live-Browser erkannt — Start nur nach Freigabe in Box 1.",
                     },
                 ]
                 self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
-                self.bus.emit(
-                    "pipeline.auto_execute",
-                    {"reason": "browser_nav", "text": text[:120]},
-                )
-                return self.execute()
+                self._offer_start_work(reason="browser_nav")
+                self._set_stage(PipelineStage.brainstorm)
+                return self._state
 
             continuing = (
                 self._state.mode == "brainstorm"
@@ -293,8 +393,10 @@ class Orchestrator:
                 prev_notes = self._state.brainstorm_notes or ""
                 prev_task = (self._state.user_text or "").strip()
                 prev_flex_job = self._state.flex_job_id
+                prev_target = getattr(self._state, "send_target", "") or "brainstorm"
                 self._state = PipelineState(user_text=text, mode="brainstorm")
                 self._state.flex_job_id = prev_flex_job
+                self._state.send_target = prev_target
                 self._sync_flex_state()
                 if _exec_only and prev_turns:
                     # Resolve last real task (browser/HTML/long), not the go-phrase
@@ -1488,6 +1590,16 @@ class Orchestrator:
             results=list(self._state.worker_results),
         )
         self._state.error = None
+        outputs = list(self._state.worker_outputs or [])
+        any_ok = any(
+            isinstance(o, dict) and (o.get("validation") or {}).get("ok") is True for o in outputs
+        )
+        if self._state.worker_results and any_ok:
+            self._state.result_status = "GELIEFERT"
+        elif self._state.worker_results:
+            self._state.result_status = "UNGEPRÜFT"
+        else:
+            self._state.result_status = "FEHLER"
         self._set_stage(PipelineStage.done)
         total_ms = round(sum(self._state.stage_timings.values()), 1)
         self.bus.emit(
@@ -1533,6 +1645,7 @@ class Orchestrator:
         self._close_stage_timing()
         self._state.stage = PipelineStage.error
         self._state.error = message
+        self._state.result_status = "FEHLER"
         self.bus.emit("pipeline.stage", {"stage": PipelineStage.error.value})
         self.bus.emit(
             "pipeline.error",
@@ -1541,6 +1654,22 @@ class Orchestrator:
                 "stage_timings": dict(self._state.stage_timings),
             },
         )
+
+
+def _worker_direct_too_big(text: str) -> bool:
+    t = (text or "").strip()
+    low = t.lower()
+    if len(t) > 360:
+        return True
+    keys = (
+        "ganzes projekt",
+        "alle dateien",
+        "alle worker",
+        "koordinier",
+        "mehrere dateien",
+        "umbauen",
+    )
+    return any(k in low for k in keys)
 
 
 def _is_go_only(text: str) -> bool:

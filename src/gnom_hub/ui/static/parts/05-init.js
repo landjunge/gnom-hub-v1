@@ -32,8 +32,7 @@
 
     els.btnSend.addEventListener("click", sendChat);
     if (els.btnExecute) els.btnExecute.addEventListener("click", runExecute);
-    const btnSendExec = document.getElementById("btn-send-exec");
-    if (btnSendExec) btnSendExec.addEventListener("click", sendAndExecute);
+    if (typeof bindSendTargets === "function") bindSendTargets();
     const btnCancel = document.getElementById("btn-cancel");
     if (btnCancel) btnCancel.addEventListener("click", cancelCurrentJob);
     const btnCancelBusy = document.getElementById("btn-cancel-busy");

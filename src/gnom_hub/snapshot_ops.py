@@ -169,6 +169,8 @@ class SnapshotOpsMixin:
             "deliverable_ok": _deliverable_ok(st),
             "flex_job_id": getattr(st, "flex_job_id", "") or "",
             "flex_questions": list(getattr(st, "flex_questions", None) or []),
+            "send_target": getattr(st, "send_target", "") or "brainstorm",
+            "result_status": getattr(st, "result_status", "") or "",
         }
 
     def memory_dict(self) -> dict[str, Any]:

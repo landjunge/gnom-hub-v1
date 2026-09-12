@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=160" />
+  <link rel="stylesheet" href="/static/app.css?v=161" />
   <!-- Tailwind utilities for Chat module (preflight OFF) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -285,13 +285,6 @@
             >Arbeit starten</button>
             <button
               type="button"
-              id="btn-send-exec"
-              class="btn-send-exec h-8 shrink-0 rounded-md border border-gnom-accent/40 bg-gnom-card px-2.5 text-xs font-medium text-gnom-text transition hover:border-gnom-accent hover:text-gnom-accent"
-              title="Send — Arbeit erst nach Ja in Box 1 oder Arbeit starten"
-              hidden
-            >Send+Exec</button>
-            <button
-              type="button"
               id="btn-cancel"
               class="btn-cancel h-8 shrink-0 rounded-md border border-red-500/50 bg-red-950/40 px-2.5 text-xs font-medium text-red-300 transition hover:bg-red-900/50"
               title="Cancel running job (Esc)"
@@ -299,6 +292,14 @@
             >Cancel</button>
           </div>
 
+          <div
+            id="chat-targets"
+            class="chat-targets flex shrink-0 flex-wrap items-center gap-1.5 border-t border-gnom-border/60 bg-gnom-bg/40 px-2 py-1"
+            role="radiogroup"
+            aria-label="Send-Ziel"
+          >
+            <span class="chat-flags-label text-2xs uppercase tracking-wide text-gnom-muted">An</span>
+          </div>
           <div
             id="chat-flags"
             class="chat-flags flex shrink-0 flex-wrap items-center gap-1.5 border-t border-gnom-border/60 bg-gnom-bg/40 px-2 py-1"
@@ -691,6 +692,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=160"></script>
+  <script src="/static/app.js?v=161"></script>
 </body>
 </html>

@@ -1987,6 +1987,50 @@
     el.style.height = next + "px";
   }
 
+  function bindSendTargets() {
+    const root = document.getElementById("chat-targets");
+    if (!root || root.dataset.bound) return;
+    root.dataset.bound = "1";
+    const ids = [
+      "brainstorm",
+      "coordinator",
+      "flex",
+      "worker1",
+      "worker2",
+      "worker3",
+      "worker4",
+    ];
+    ids.forEach(function (id) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "chat-target" + (id === sendTarget ? " is-on" : "");
+      btn.dataset.target = id;
+      btn.setAttribute("role", "radio");
+      btn.setAttribute("aria-checked", id === sendTarget ? "true" : "false");
+      btn.textContent =
+        id === "brainstorm"
+          ? "BS"
+          : id === "coordinator"
+            ? "Co"
+            : id === "flex"
+              ? "Flex"
+              : id.replace("worker", "W");
+      btn.title = "Send an " + id;
+      if (typeof COLOR_HEX !== "undefined" && COLOR_HEX[id]) {
+        btn.style.setProperty("--owner-color", COLOR_HEX[id]);
+      }
+      btn.addEventListener("click", function () {
+        sendTarget = id;
+        root.querySelectorAll(".chat-target").forEach(function (el) {
+          const on = el.dataset.target === sendTarget;
+          el.classList.toggle("is-on", on);
+          el.setAttribute("aria-checked", on ? "true" : "false");
+        });
+      });
+      root.appendChild(btn);
+    });
+  }
+
   async function sendChat() {
 
     const raw = (els.chatInput.value || "").trim();
@@ -2004,11 +2048,12 @@
     setChatBusy(true);
     // Prefer long poll always for async jobs (badge may lag bootstrap)
     const pollMs = 180000;
-    appendChat("system", "Brainstorm turn…");
-    toast("Brainstorming…", "info");
+    const target = sendTarget || "brainstorm";
+    appendChat("system", "Send → " + target + "…");
+    toast("Send = " + target + " · keine Ausführung", "info");
 
     try {
-      const start = await api("POST", "/api/chat", { text: text });
+      const start = await api("POST", "/api/chat", { text: text, target: target });
       let snap = start;
       // Pipeline already busy — do not poll forever
       if (start.busy || start.status === "busy") {
@@ -2167,20 +2212,6 @@
       setChatBusy(false);
       currentJobId = null;
     }
-  }
-
-  async function sendAndExecute() {
-    const text = (els.chatInput.value || "").trim();
-    if (chatBusy) return;
-    if (text) {
-      await sendChat();
-    }
-    toast(
-      uiLang === "de"
-        ? "Send fertig. Arbeit starten oder Ja in Box 1."
-        : "Send done. Press Arbeit starten or Yes in Box 1.",
-      "ok"
-    );
   }
 
   function appendChat(who, text) {

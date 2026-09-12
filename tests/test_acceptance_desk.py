@@ -88,17 +88,10 @@ def test_chat_lives_under_box2_half_height():
     assert ".box2-stack > #chat-mod" in css
 
 
-def test_send_plus_exec_does_not_auto_run_execute():
-    part = Path("src/gnom_hub/ui/static/parts/03-chat-jobs-ops.js").read_text(encoding="utf-8")
-    app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
+def test_send_plus_exec_button_removed():
     html = Path("src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
-    for src in (part, app):
-        body = src.split("async function sendAndExecute()", 1)[1].split("function appendChat", 1)[0]
-        assert "await sendChat()" in body
-        assert "await runExecute()" not in body
-        assert "Arbeit starten oder Ja in Box 1" in body
-    assert 'id="btn-send-exec"' in html
-    assert "hidden" in html.split('id="btn-send-exec"', 1)[1][:400]
+    assert 'id="btn-send-exec"' not in html
+    assert 'id="chat-targets"' in html
 
 
 def test_box1_flex_review_hidden_until_active():
@@ -273,9 +266,10 @@ def test_api_tool_drill_and_busy_409(tmp_path, monkeypatch):
         r = c.post("/api/chat?sync=1", json={"text": "Tool drill S6 plugins"})
         assert r.status_code == 200
         p = r.json().get("pipeline") or {}
-        assert p.get("stage") == "done"
-        assert (
-            len(p.get("tool_log") or []) >= 1 or "tool" in str(p.get("quality_notes") or "").lower()
+        assert p.get("stage") != "done"
+        qs = p.get("flex_questions") or []
+        assert any(
+            (q.get("component") == "start_work") or "START-" in str(q.get("text") or "") for q in qs
         )
 
         # async job → second chat should 409 while busy (or finish instantly)

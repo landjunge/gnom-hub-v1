@@ -370,19 +370,21 @@ class JobsMixin:
             "message": f"{name} started — poll /api/jobs/{{id}}",
         }
 
-    def chat_async(self, text: str, *, full: bool = False) -> dict[str, Any]:
-        """Async: brainstorm turn by default; full=True runs entire pipeline."""
+    def chat_async(
+        self, text: str, *, full: bool = False, target: str = "brainstorm"
+    ) -> dict[str, Any]:
+        """Async: target route by default; full=True runs entire pipeline."""
         self.memory.set_query_hint(text)
+        route = (target or "brainstorm").strip().lower() or "brainstorm"
 
         def _runner() -> None:
             self.pipeline.plan_mode = getattr(self, "plan_mode", "default") or "default"
             if full:
                 self.pipeline.start(text)
             else:
-                # brainstorm_turn: Flex may ask start_work; does not Execute
-                self.pipeline.brainstorm_turn(text)
+                self.pipeline.chat_turn(text, target=route)
 
-        return self._start_job("brainstorm" if not full else "pipeline", _runner)
+        return self._start_job(route if not full else "pipeline", _runner)
 
     def execute_async(self) -> dict[str, Any]:
         """Async execute after brainstorm."""

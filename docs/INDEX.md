@@ -35,7 +35,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 | [LAYERS_FOR_AI.md](LAYERS_FOR_AI.md) | hub, layers, user, hot, ai, gnom, selected, warm, worker1, brainstorm |
 | [MCP_ARCHITECTURE.md](MCP_ARCHITECTURE.md) | mcp, api, tools, core, hub, call, stroke, architecture, reg, plugins |
 | [ORCHESTRATION.md](ORCHESTRATION.md) | skills, orchestration, flex, coordinator, user, worker, agent, api, brainstorm, plan |
-| [UI-STATE-CONTRACT.md](UI-STATE-CONTRACT.md) | box, execute, flex, nicht, worker, kein, hub, api, arbeit, clarify |
+| [UI-STATE-CONTRACT.md](UI-STATE-CONTRACT.md) | box, execute, flex, worker, nicht, kein, coordinator, hub, api, clarify |
 | [WORKFLOWS_AND_PRESETS.md](WORKFLOWS_AND_PRESETS.md) | presets, plan_mode, workflow, workflows, api, skills, team, plan, worker, agent |
 
 ### Skills & plugins

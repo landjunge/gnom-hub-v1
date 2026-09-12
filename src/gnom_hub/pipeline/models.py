@@ -72,3 +72,5 @@ class PipelineState:
     flex_wait_agent: str = ""
     flex_wait_task: str = ""
     flex_wait_remaining: list[dict] = field(default_factory=list)
+    send_target: str = "brainstorm"
+    result_status: str = ""

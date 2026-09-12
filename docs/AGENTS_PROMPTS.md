@@ -148,7 +148,7 @@ Kein HTML/JS (`sanitize_box1_text`). Kein God-Mode, keine Tools, kein `stage=don
 
 start_work-Text:
 
-> Der Plan ist bereit. Möchtest du die Arbeit jetzt starten?
+> START-C1 — Auftrag C1 ist ausführbar. Soll genau dieser Auftrag jetzt starten?
 
 Ja-Wörter: ja, yes, y, ok, start, arbeit starten, …
 
@@ -235,10 +235,10 @@ Prefetch macht der **Hub** vor `run` (Workers rufen Tools nicht mitten im Turn, 
 ## 6. Pipeline
 
 ```
-Send     → Memory recall → Brainstorm.run → Flex.absorb
-           (Flex-Chat nur bei Wish)
-           Ausnahme im Orchestrator: tool-drill / live-browser / go-only
-           können Arbeit starten — das ist nicht Flex.
+Send     → Ziel-Flag (default Brainstorm). Nie Execute.
+           Coordinator-Send: Distill + START-ID in Box 1.
+           Worker-Send: klein = START-ID; zu groß = Flex-Eskalation.
+           Tool-Drill / Live-Browser / Go-only = sichtbare START-ID, kein Short-Circuit.
 
 Execute  → distill → optional Clarify in L → Flex wishes in Plan
            → Worker nacheinander → Box 3

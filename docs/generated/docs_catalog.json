@@ -23,7 +23,7 @@
         "default",
         "memory"
       ],
-      "chars": 8615,
+      "chars": 8635,
       "lines": 208
     },
     {
@@ -47,7 +47,7 @@
         "nicht",
         "user"
       ],
-      "chars": 10377,
+      "chars": 10449,
       "lines": 271
     },
     {
@@ -215,7 +215,7 @@
         "top",
         "ui"
       ],
-      "chars": 11539,
+      "chars": 11586,
       "lines": 311
     },
     {
@@ -1139,20 +1139,20 @@
         "box",
         "execute",
         "flex",
-        "nicht",
         "worker",
+        "nicht",
         "kein",
+        "coordinator",
         "hub",
         "api",
-        "arbeit",
         "clarify",
-        "coordinator",
-        "start_work",
         "keine",
-        "pipeline"
+        "oder",
+        "pipeline",
+        "start"
       ],
-      "chars": 4023,
-      "lines": 67
+      "chars": 4315,
+      "lines": 69
     },
     {
       "file": "UI_ERROR_LAYER.md",

@@ -41,11 +41,11 @@ def test_god_mode_paths():
     # M7: traversal must lose even under data/ prefix
     assert not gm.allow_path("data/../../../etc/passwd")
     assert not gm.allow_path("data/hot/../../secret")
-    gm.enable("test")
+    gm.enable("user")
     # God mode still rejects .. (path jail is separate from elevation)
     assert not gm.allow_path("data/../../../etc/passwd")
     assert gm.allow_path("/etc/passwd")
-    gm.disable("test")
+    gm.disable("user")
     assert not gm.allow_path("/etc/passwd")
 
 
