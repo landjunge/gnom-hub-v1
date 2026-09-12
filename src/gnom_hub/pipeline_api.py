@@ -10,9 +10,9 @@ from gnom_hub.pipeline.models import PipelineStage, PipelineState
 class PipelineApiMixin:
     """Mixin extracted from Hub — pure move."""
 
-    def chat(self, text: str, *, full: bool = False) -> dict[str, Any]:
+    def chat(self, text: str, *, full: bool = False, target: str = "brainstorm") -> dict[str, Any]:
         """Synchronous chat. Default: brainstorm turn. full=True: whole pipeline."""
-        return self.chat_sync(text, full=full)
+        return self.chat_sync(text, full=full, target=target)
 
     def _pipeline_lock_obj(self) -> Any:
         import threading
@@ -21,7 +21,9 @@ class PipelineApiMixin:
             self._pipeline_lock = threading.Lock()
         return self._pipeline_lock
 
-    def chat_sync(self, text: str, *, full: bool = False) -> dict[str, Any]:
+    def chat_sync(
+        self, text: str, *, full: bool = False, target: str = "brainstorm"
+    ) -> dict[str, Any]:
         self.last_error = None
         self.memory.set_query_hint(text)
         with self._pipeline_lock_obj():
@@ -29,9 +31,9 @@ class PipelineApiMixin:
                 self.pipeline.plan_mode = getattr(self, "plan_mode", "default") or "default"
                 self.pipeline.start(text)
             else:
-                # Send = brainstorm + Flex Box 1. Execute only via execute() / start_work yes.
+                # Send = target route + Flex Box 1. Execute only via execute() / start_work yes.
                 self.pipeline.plan_mode = getattr(self, "plan_mode", "default") or "default"
-                self.pipeline.brainstorm_turn(text)
+                self.pipeline.chat_turn(text, target=target)
             if self.pipeline.state.error:
                 self.last_error = self.pipeline.state.error
             elif self.pipeline.state.stage.value == "done":
@@ -54,6 +56,11 @@ class PipelineApiMixin:
                 self._capture_workspace_outputs()
                 self._remember_execute_export()
                 self.maybe_auto_pack()
+            if self.pipeline.state.stage.value in ("done", "error"):
+                try:
+                    self.set_god_mode(False, reason="user:job_end")
+                except Exception:  # noqa: BLE001
+                    pass
             return self.snapshot()
 
     def rerun_worker_sync(self, worker_id: str) -> dict[str, Any]:

@@ -35,7 +35,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 | [LAYERS_FOR_AI.md](LAYERS_FOR_AI.md) | hub, layers, user, hot, ai, gnom, selected, warm, worker1, brainstorm |
 | [MCP_ARCHITECTURE.md](MCP_ARCHITECTURE.md) | mcp, api, tools, core, hub, call, stroke, architecture, reg, plugins |
 | [ORCHESTRATION.md](ORCHESTRATION.md) | skills, orchestration, flex, coordinator, user, worker, agent, api, brainstorm, plan |
-| [UI-STATE-CONTRACT.md](UI-STATE-CONTRACT.md) | box, execute, flex, nicht, worker, kein, hub, api, arbeit, clarify |
+| [UI-STATE-CONTRACT.md](UI-STATE-CONTRACT.md) | box, execute, flex, worker, nicht, kein, coordinator, hub, api, clarify |
 | [WORKFLOWS_AND_PRESETS.md](WORKFLOWS_AND_PRESETS.md) | presets, plan_mode, workflow, workflows, api, skills, team, plan, worker, agent |
 
 ### Skills & plugins
@@ -94,7 +94,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 |-----|----------|
 | [BUG_HUNT_TEAM.md](BUG_HUNT_TEAM.md) | orchestrator, cancel, team, bug, hunt, can, god, jobs, mode, telegram |
 | [GNOM-HUB-V1-HUMAN-UI-AUDIT.md](GNOM-HUB-V1-HUMAN-UI-AUDIT.md) | audit, execute, pass, human, send, box, assets, png, tollgate, brainstorm |
-| [GNOM-HUB-V1-WORKER-BOX-CONTRACT.md](GNOM-HUB-V1-WORKER-BOX-CONTRACT.md) | box, flex, worker, api, workers, execute, job, after, chat, brainstorm |
+| [GNOM-HUB-V1-WORKER-BOX-CONTRACT.md](GNOM-HUB-V1-WORKER-BOX-CONTRACT.md) | box, flex, worker, api, workers, after, execute, chat, job, brainstorm |
 | [GSC_CHECKLIST.md](GSC_CHECKLIST.md) | github, https, landjunge, tollgate, html, gnom, hub, checklist, gsc, sitemap |
 | [MEMORY_FRESHNESS.md](MEMORY_FRESHNESS.md) | freshness, memory, sync, vector, warm, hot, write, fact, hit, index |
 | [PIPELINE_RELIABILITY.md](PIPELINE_RELIABILITY.md) | pipeline, reliability, clarify, timeout, cancel, later, busy, prefetch, tests, tool |

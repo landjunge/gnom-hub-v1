@@ -135,6 +135,8 @@
   let tuneAgentId = null;
   /** Agent id last clicked — box module 1px border color */
   let lastClickedAgentId = null;
+  /** Recipient of the next Send — independent of card click / layer. */
+  let sendTarget = "brainstorm";
   let clickTimer = null;
   let recognition = null;
   let listening = false;

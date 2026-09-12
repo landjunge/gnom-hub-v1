@@ -23,6 +23,7 @@ STATIC_DIR = Path(__file__).resolve().parents[1] / "ui" / "static"
 
 class ChatBody(BaseModel):
     text: str = Field(min_length=1)
+    target: str = "brainstorm"
 
 
 class ClarifyBody(BaseModel):
@@ -127,7 +128,8 @@ class FlexAnswerBody(BaseModel):
 
 class GodModeBody(BaseModel):
     enabled: bool
-    reason: str = "api"
+    reason: str = "user"
+    assignment_id: str = ""
 
 
 class VectorAddBody(BaseModel):
@@ -636,8 +638,8 @@ def create_app() -> FastAPI:
                         "hint": "Cancel the running job then retry.",
                     },
                 )
-            return get_hub().chat_sync(text, full=full)
-        out = get_hub().chat_async(text, full=full)
+            return get_hub().chat_sync(text, full=full, target=body.target)
+        out = get_hub().chat_async(text, full=full, target=body.target)
         if out.get("busy") or out.get("status") == "busy":
             raise HTTPException(
                 status_code=409,
@@ -1194,7 +1196,7 @@ def create_app() -> FastAPI:
 
     @app.post("/api/god-mode")
     def god_mode(body: GodModeBody) -> dict[str, Any]:
-        return get_hub().set_god_mode(body.enabled, reason=body.reason)
+        return get_hub().set_god_mode(body.enabled, reason="user", assignment_id=body.assignment_id)
 
     @app.get("/api/god-mode")
     def god_mode_get() -> dict[str, Any]:

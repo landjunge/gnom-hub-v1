@@ -52,4 +52,4 @@ def test_agents_prompts_cover_eight_slots():
         assert name in PROMPTS
     assert "maybe_request_execute" in PROMPTS
     assert "#f0c000" in PROMPTS
-    assert "Der Plan ist bereit" in PROMPTS
+    assert "START-C1" in PROMPTS or "Auftrag C1" in PROMPTS

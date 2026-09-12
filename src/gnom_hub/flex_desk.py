@@ -19,6 +19,17 @@ ALLOWED_COMPONENTS = frozenset(
     }
 )
 ALLOWED_AGENTS = frozenset({"coordinator", "flex", "worker1", "worker2", "worker3", "worker4"})
+ALLOWED_ENTRY_TYPES = frozenset(
+    {
+        "entscheidung",
+        "freigabe",
+        "information",
+        "nachbesserung",
+        "blockiert",
+        "fehler",
+    }
+)
+_START_ID_RE = re.compile(r"START-([A-Z]\d+)", re.IGNORECASE)
 _START_YES = frozenset(
     {
         "ja",
@@ -123,6 +134,8 @@ class FlexQuestion:
     options: list[str] = field(default_factory=list)
     status: str = "open"
     answer: Any = None
+    assignment_id: str = ""
+    entry_type: str = "entscheidung"
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
@@ -135,6 +148,7 @@ class FlexDesk:
     def __init__(self, *, job_id: str = "") -> None:
         self.job_id = (job_id or "").strip()
         self._questions: dict[str, FlexQuestion] = {}
+        self._assignment_seq = 0
 
     def bind_job(self, job_id: str, *, reset: bool = False) -> str:
         jid = (job_id or "").strip()
@@ -157,6 +171,8 @@ class FlexDesk:
         task_id: str = "",
         component: str = "yes_no",
         options: list[str] | None = None,
+        assignment_id: str = "",
+        entry_type: str = "entscheidung",
     ) -> dict[str, Any]:
         aid = str(agent_id or "").strip().lower()
         if aid not in ALLOWED_AGENTS:
@@ -180,6 +196,9 @@ class FlexDesk:
         for q in self._questions.values():
             if q.status == "open" and (q.job_id, q.agent_id, q.task_id, q.text.lower()) == key:
                 return {"ok": True, "merged": True, **q.to_dict()}
+        et = str(entry_type or "entscheidung").strip().lower()
+        if et not in ALLOWED_ENTRY_TYPES:
+            et = "entscheidung"
         q = FlexQuestion(
             question_id=_new_id("q"),
             job_id=jid,
@@ -188,17 +207,41 @@ class FlexDesk:
             component=comp,
             text=clean,
             options=opts,
+            assignment_id=str(assignment_id or "").strip(),
+            entry_type=et if comp != "start_work" else "freigabe",
         )
         self._questions[q.question_id] = q
         return {"ok": True, "merged": False, **q.to_dict()}
 
-    def offer_start_work(self, *, job_id: str = "", task_id: str = "plan") -> dict[str, Any]:
+    def next_assignment_id(self, prefix: str = "C") -> str:
+        self._assignment_seq += 1
+        return f"{prefix}{self._assignment_seq}"
+
+    def offer_start_work(
+        self,
+        *,
+        job_id: str = "",
+        task_id: str = "plan",
+        workers: str = "",
+        effect: str = "Code und Tests ändern",
+    ) -> dict[str, Any]:
+        aid = self.next_assignment_id("C")
+        who = (workers or "laut Plan").strip()
+        text = (
+            f"START-{aid} — Auftrag {aid} ist ausführbar. "
+            f"Vorgesehen: {who}. "
+            f"Wirkung: {effect}. "
+            f"Soll genau dieser Auftrag jetzt starten?"
+        )
         return self.ask(
             agent_id="flex",
             job_id=job_id or self.job_id,
             task_id=task_id,
             component="start_work",
-            text="Der Plan ist bereit. Möchtest du die Arbeit jetzt starten?",
+            text=text,
+            options=[f"Ja, START-{aid} starten", "Später"],
+            assignment_id=aid,
+            entry_type="freigabe",
         )
 
     def answer(
@@ -207,6 +250,7 @@ class FlexDesk:
         value: Any,
         *,
         job_id: str = "",
+        assignment_id: str = "",
     ) -> dict[str, Any]:
         q = self._questions.get(str(question_id or "").strip())
         if q is None or q.status != "open":
@@ -218,12 +262,32 @@ class FlexDesk:
             raw = [sanitize_box1_text(str(v), limit=200) for v in value]
         else:
             raw = sanitize_box1_text(str(value), limit=200) if value is not None else ""
+        token = raw if isinstance(raw, str) else ""
+        low = token.lower().strip(" !.。")
+        extracted = ""
+        m = _START_ID_RE.search(token)
+        if m:
+            extracted = m.group(1).upper()
+        want_id = str(assignment_id or extracted or "").strip().upper()
+        open_n = len(self.open_questions())
+        bare_yes = low in _START_YES
+        if q.component == "start_work" and bare_yes and (open_n > 1 or q.assignment_id):
+            return {"ok": False, "error": "unbound_yes"}
+        if (
+            q.component == "start_work"
+            and want_id
+            and q.assignment_id
+            and want_id != q.assignment_id.upper()
+        ):
+            return {"ok": False, "error": "assignment_mismatch"}
         q.status = "answered"
         q.answer = raw
         wants_start = False
         if q.component == "start_work":
-            token = raw if isinstance(raw, str) else ""
-            wants_start = token.lower().strip(" !.。") in _START_YES
+            if extracted:
+                wants_start = extracted == (q.assignment_id or "").upper()
+            else:
+                wants_start = bare_yes and open_n <= 1
         return {
             "ok": True,
             "question_id": q.question_id,
@@ -231,6 +295,8 @@ class FlexDesk:
             "task_id": q.task_id,
             "agent_id": q.agent_id,
             "component": q.component,
+            "assignment_id": q.assignment_id,
+            "entry_type": q.entry_type,
             "value": raw,
             "wants_start_work": wants_start,
         }
@@ -282,6 +348,8 @@ class FlexDesk:
                 ],
                 status=str(row.get("status") or "open"),
                 answer=row.get("answer"),
+                assignment_id=str(row.get("assignment_id") or ""),
+                entry_type=str(row.get("entry_type") or "entscheidung"),
             )
             if not desk.job_id and q.job_id:
                 desk.job_id = q.job_id

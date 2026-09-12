@@ -77,7 +77,9 @@ def test_send_does_not_execute_via_flex_or_build_language():
     qs = pipe.flex_desk.open_questions()
     assert any(q.component == "start_work" for q in qs)
     start = next(q for q in qs if q.component == "start_work")
-    assert "Arbeit jetzt starten" in start.text
+    assert "START-" in start.text
+    assert start.assignment_id
+    assert start.entry_type == "freigabe"
 
 
 def test_start_work_yes_calls_hub_execute_not_flex(tmp_path, monkeypatch):
@@ -100,7 +102,8 @@ def test_start_work_yes_calls_hub_execute_not_flex(tmp_path, monkeypatch):
         called: list[str] = []
         hub.execute_sync = lambda: called.append("sync") or {"ok": True}  # type: ignore[method-assign]
         hub.execute_async = lambda: called.append("async") or {"ok": True}  # type: ignore[method-assign]
-        out = hub.flex_answer(start.question_id, "Ja", job_id=start.job_id, sync=True)
+        yes = f"Ja, START-{start.assignment_id} starten"
+        out = hub.flex_answer(start.question_id, yes, job_id=start.job_id, sync=True)
         assert called == ["sync"]
         assert out["flex_answer"]["wants_start_work"] is True
         with pytest.raises(PermissionError):

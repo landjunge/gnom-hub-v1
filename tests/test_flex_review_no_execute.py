@@ -81,7 +81,7 @@ def test_rebuild_does_not_call_execute(tmp_path, monkeypatch):
         desk_qs, snap_qs = _start_work_questions(hub, out.get("snapshot"))
         assert desk_qs, "rebuild must offer_start_work on FlexDesk"
         assert snap_qs, "snapshot must show Box 1 start_work confirmation"
-        assert "Arbeit jetzt starten" in desk_qs[0].text
+        assert "START-" in desk_qs[0].text
         with pytest.raises(PermissionError):
             hub.pipeline.flex_desk.start_execute()
     finally:

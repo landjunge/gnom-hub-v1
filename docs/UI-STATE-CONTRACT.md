@@ -29,16 +29,18 @@ Unbekannt → `text`. Markup/JS weg (`sanitize_box1_text`). UI nur `textContent`
 
 ## Send vs Arbeit starten
 
-- **Send** (`POST /api/chat`) = Brainstorm. Flex darf `start_work` **fragen**. Startet keine Worker (Ausnahme: Tool-Drill / Live-Browser im Orchestrator, nicht Flex).
-- Desk-Toast nach Brainstorm: `Send = sprechen · Arbeit starten / Ja in Box 1 = Arbeit`. Kein Auto-Execute-Claim.
-- **Arbeit starten** (`#btn-execute` → `POST /api/execute`) = Nutzerbestätigung. Zentrale Gate.
+- **Send** (`POST /api/chat` + `target`) geht an Brainstorm (default), Coordinator, Flex oder einen Worker. **Keine Route startet Worker.** Tool-Drill / Live-Browser / Go-only werden sichtbare START-IDs, kein Short-Circuit.
+- Farbe/Flag = Orientierung für das Ziel, keine Rechte.
+- **Arbeit starten** (`#btn-execute` → `POST /api/execute`) oder Ja auf die **sichtbare START-ID** = Nutzerbestätigung.
 - `execute()` setzt offene Box-1-`start_work`-Fragen auf `stale`. Ein späteres Ja darf Execute nicht erneut feuern (`stale_question`).
+- Nacktes Ja bei mehreren offenen Fragen → `unbound_yes`. Falsche START-ID → `assignment_mismatch`.
 - Ja auf `start_work` → Hub `execute()`, nicht `FlexDesk.start_execute()` (wirft).
 - UI pollt den `start_work`-Job wie Execute (`pollJob`). Die Envelope `{job_id}` ohne `flex_box1` darf Box 1 nicht leeren.
+- Box 3 `result_status` ist GELIEFERT/FEHLER/UNGEPRÜFT — nie von allein ABGENOMMEN.
 
-Start-work-Text (fest):
+Start-work-Text (mit Auftrag-ID):
 
-> Der Plan ist bereit. Möchtest du die Arbeit jetzt starten?
+> START-C1 — Auftrag C1 ist ausführbar. Vorgesehen: laut Plan. Wirkung: Code und Tests ändern. Soll genau dieser Auftrag jetzt starten?
 
 ## Flex-Review nach `done`
 

@@ -217,6 +217,8 @@ class SessionPackMixin:
             "flex_wait_agent": getattr(st, "flex_wait_agent", "") or "",
             "flex_wait_task": getattr(st, "flex_wait_task", "") or "",
             "flex_wait_remaining": deepcopy(list(getattr(st, "flex_wait_remaining", None) or [])),
+            "send_target": getattr(st, "send_target", "") or "brainstorm",
+            "result_status": getattr(st, "result_status", "") or "",
             "worker_results": deepcopy(list(st.worker_results)),
             "worker_outputs": deepcopy(list(st.worker_outputs or [])),
             "quality_notes": getattr(st, "quality_notes", "") or "",
@@ -588,6 +590,8 @@ class SessionPackMixin:
                 quality_notes=str(data.get("quality_notes") or ""),
                 warnings=list(data.get("warnings") or []),
                 error=data.get("error"),
+                send_target=str(data.get("send_target") or "brainstorm"),
+                result_status=str(data.get("result_status") or ""),
                 resolved_plan_mode=str(data.get("resolved_plan_mode") or ""),
                 plan_html_score=(
                     int(data["plan_html_score"])

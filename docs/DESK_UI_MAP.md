@@ -199,7 +199,7 @@ Ja auf start_work oder Klick **Arbeit starten** (M2) startet Worker. Flex selbst
 
 Start-Text (fest):
 
-> Der Plan ist bereit. Möchtest du die Arbeit jetzt starten?
+> START-C1 — Auftrag C1 ist ausführbar. Soll genau dieser Auftrag jetzt starten?
 
 Choice-Karten in L sind **nicht** Flex, wenn Brainstorm eine Liste (`1.` / `-`) geschrieben hat. Kleine Farbmarke + linker Streifen sagt wer.
 
@@ -225,9 +225,9 @@ Steht **in** `#box2-stack` unter M1, nicht unter allen drei Boxen.
 | `#btn-mic` | Mic | Browser-STT in die Eingabe |
 | `#btn-td` | TD | ThreadDesk-Paket in die Eingabe, **kein** Send |
 | `#chat-input` | Textarea | Enter = Send, Shift+Enter = Zeile, Ctrl/Cmd+Enter = Arbeit starten. Scrollbar unsichtbar |
-| `#btn-send` | Send | `POST /api/chat` = Brainstorm. **Kein Execute** |
+| `#btn-send` | Send | `POST /api/chat` + Ziel-Flag. **Kein Execute** |
 | `#btn-execute` | Arbeit starten | `POST /api/execute` = Distill + Worker. Default disabled bis bereit |
-| `#btn-send-exec` | Send+Exec | **hidden** — nicht mehr Auto-Execute |
+| `#chat-targets` | An BS/Co/Flex/Wn | Empfänger der nächsten Nachricht, getrennt vom Kartenklick |
 | `#btn-cancel` | Cancel | hidden bis Job läuft; Esc |
 | `#chat-flags` | Flags | stehende Wünsche an die nächste Zeile |
 

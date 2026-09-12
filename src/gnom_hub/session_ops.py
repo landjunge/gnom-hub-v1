@@ -48,6 +48,8 @@ class SessionOpsMixin:
                 "flex_wait_agent": getattr(st, "flex_wait_agent", "") or "",
                 "flex_wait_task": getattr(st, "flex_wait_task", "") or "",
                 "flex_wait_remaining": list(getattr(st, "flex_wait_remaining", None) or []),
+                "send_target": getattr(st, "send_target", "") or "brainstorm",
+                "result_status": getattr(st, "result_status", "") or "",
             }
             self._checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
             atomic_write_text(
@@ -107,6 +109,8 @@ class SessionOpsMixin:
                 flex_wait_remaining=[
                     d for d in (data.get("flex_wait_remaining") or []) if isinstance(d, dict)
                 ],
+                send_target=str(data.get("send_target") or "brainstorm"),
+                result_status=str(data.get("result_status") or ""),
             )
             restore = getattr(self.pipeline, "restore_flex_from_state", None)
             if callable(restore):

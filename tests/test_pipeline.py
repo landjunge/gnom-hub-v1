@@ -642,7 +642,7 @@ def test_flex_execute_line_not_double_with_contribute():
     st = pipe.brainstorm_turn("execute")
     flex_turns = [t for t in st.brainstorm_turns if t.get("role") == "flex"]
     assert flex_turns
-    assert any("Arbeit jetzt starten" in str(t.get("text") or "") for t in flex_turns)
+    assert any("START-" in str(t.get("text") or "") for t in flex_turns)
 
 
 def test_flex_pipeline_injects_wishes_into_requirements():

@@ -126,7 +126,7 @@ If no DeepSeek key but Ollama is up, manager may auto-route to Ollama.
 | `GNOM_TELEGRAM_POLL` | Auto bot poll |
 | `TELEGRAM_ALLOWED_CHAT_IDS` | Comma-separated chat ids; empty = only test hook (no chat_id) |
 | `GNOM_WEB_ALLOW_LOCAL` | web_fetch private hosts |
-| `GNOM_GOD_MODE_AUTO` | Start with God-Mode on (Inspect/shell real) |
+| `GNOM_GOD_MODE_AUTO` | **ignored** — God-Mode only via user switch, per assignment |
 
 ---
 

@@ -11,11 +11,13 @@ from gnom_hub.ui.tooltips import TOOLTIPS
 class SystemOpsMixin:
     """Mixin extracted from Hub — pure move."""
 
-    def set_god_mode(self, enabled: bool, reason: str = "api") -> dict[str, Any]:
+    def set_god_mode(
+        self, enabled: bool, reason: str = "user", assignment_id: str = ""
+    ) -> dict[str, Any]:
         if enabled:
-            self.god_mode.enable(reason)
+            self.god_mode.enable("user", assignment_id=assignment_id)
         else:
-            self.god_mode.disable(reason)
+            self.god_mode.disable(reason or "user")
         self.computer.set_god_mode(self.god_mode.enabled)
         return self.god_mode.snapshot()
 

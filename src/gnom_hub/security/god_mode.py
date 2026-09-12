@@ -18,18 +18,24 @@ class GodMode:
     enabled: bool = False
     enabled_at: str | None = None
     reason: str = ""
+    assignment_id: str = ""
     audit: list[dict] = field(default_factory=list)
 
-    def enable(self, reason: str = "user") -> None:
+    def enable(self, reason: str = "user", assignment_id: str = "") -> None:
+        why = str(reason or "").strip() or "user"
+        if why != "user" and not why.startswith("user:") and why != "api":
+            raise PermissionError("God-Mode can only be enabled by the user switch")
         self.enabled = True
         self.enabled_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-        self.reason = reason
-        self._log("enable", reason)
+        self.reason = why
+        self.assignment_id = str(assignment_id or "").strip()
+        self._log("enable", why)
 
     def disable(self, reason: str = "user") -> None:
         self.enabled = False
         self.enabled_at = None
         self.reason = ""
+        self.assignment_id = ""
         self._log("disable", reason)
 
     def allow_path(self, path: str) -> bool:
@@ -50,6 +56,7 @@ class GodMode:
             "enabled": self.enabled,
             "enabled_at": self.enabled_at,
             "reason": self.reason,
+            "assignment_id": self.assignment_id,
             "audit_tail": self.audit[-10:],
         }
 
@@ -66,7 +73,6 @@ class GodMode:
 
 
 def god_mode_from_env() -> GodMode:
-    gm = GodMode()
-    if os.getenv("GNOM_GOD_MODE_AUTO", "").strip().lower() in ("1", "true", "yes"):
-        gm.enable("env:GNOM_GOD_MODE_AUTO")
-    return gm
+    """Always start off. Env cannot arm God-Mode (user switch only)."""
+    _ = os.getenv("GNOM_GOD_MODE_AUTO", "")
+    return GodMode()
