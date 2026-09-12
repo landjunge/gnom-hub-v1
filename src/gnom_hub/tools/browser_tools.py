@@ -36,6 +36,9 @@ def extract_urls(text: str) -> list[str]:
         )
         if m:
             out.append(normalize_url(m.group(1)))
+    # brand without TLD
+    if not out and "kleinanzeigen" in (text or "").lower():
+        out.append(normalize_url("https://www.kleinanzeigen.de"))
     return out
 
 
