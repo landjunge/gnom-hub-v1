@@ -33,6 +33,10 @@ def test_help_topics_are_german_and_short():
     assert "God geht nur über den roten Badge" in OPS
     assert "Telegram: /hot" not in OPS
     assert "Cost badge + Compact" not in OPS
+    assert '"points"' in OPS
+    assert "help-list" in CHAT_JS
+    assert "help-nicht" in CHAT_JS
+    assert "pick.body" in CHAT_JS
 
 
 def test_help_tabs_equal_flex_white():

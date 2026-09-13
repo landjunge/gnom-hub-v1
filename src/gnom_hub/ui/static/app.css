@@ -4364,6 +4364,7 @@ a:focus-visible {
 #workspace-modal,
 #system-modal,
 #tools-modal,
+#help-modal,
 .boxes .modal.in-boxes,
 .boxes .modal.in-boxes .modal-panel,
 .boxes .modal.in-boxes * {
@@ -4372,13 +4373,15 @@ a:focus-visible {
 #workspace-modal.modal,
 #system-modal.modal,
 #tools-modal.modal,
+#help-modal.modal,
 .boxes .modal.in-boxes {
   padding: 0;
 }
 .boxes .modal.in-boxes .modal-panel,
 #workspace-modal .modal-panel,
 #system-modal .modal-panel,
-#tools-modal .modal-panel {
+#tools-modal .modal-panel,
+#help-modal .modal-panel {
   max-width: none;
   max-height: none;
   width: 100%;
@@ -4416,6 +4419,7 @@ a:focus-visible {
   flex-wrap: nowrap;
   width: 100%;
   gap: 0;
+  flex: 0 0 auto;
   min-height: var(--tab-h);
   border-bottom: 1px solid var(--border-strong);
 }
@@ -4442,12 +4446,29 @@ a:focus-visible {
 }
 .help-body {
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: 120px;
   overflow: auto;
-  padding: 16px;
-  font-size: 12px;
-  line-height: 1.45;
+  padding: 20px 24px 28px;
+  font-size: 14px;
+  line-height: 1.5;
   color: var(--text);
+}
+.help-h {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 700;
+}
+.help-list {
+  margin: 0;
+  padding: 0 0 0 1.2em;
+}
+.help-list li {
+  margin: 0 0 10px;
+}
+.help-nicht {
+  margin: 18px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
 }
 #help-modal .modal-close {
   height: var(--btn-h);

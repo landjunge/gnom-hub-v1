@@ -2291,32 +2291,65 @@
     {
       id: "senden",
       label: "Senden",
-      body: "Senden und Enter bedeuten nur reden. Kein Worker, kein Werkzeug, keine Dateiänderung. Die Antwort erscheint in Box 2.",
+      points: [
+        "Senden und Enter bedeuten nur reden.",
+        "Die Nachricht geht an den Empfänger mit dem Flag.",
+        "Die Antwort erscheint in Box 2.",
+        "Kartenklick ändert das Sendeziel nicht.",
+      ],
+      nicht: "Senden startet keine Worker, keine Werkzeuge und keine Dateiänderung.",
     },
     {
       id: "arbeit",
       label: "Arbeit",
-      body: "Arbeit starten oder Ctrl/⌘+Enter startet Distill und Worker. Ja gilt nur für die sichtbare Frage in Box 1. Send startet keine Arbeit.",
+      points: [
+        "Arbeit starten oder Ctrl/⌘+Enter startet Distill und die Worker.",
+        "Ja gilt nur für die sichtbare Frage in Box 1.",
+        "Ergebnisse landen in Box 3.",
+        "Esc oder Abbrechen stoppt einen laufenden Job.",
+      ],
+      nicht: "Send und Enter starten keine Arbeit.",
     },
     {
       id: "boxen",
       label: "Boxen",
-      body: "Box 1: Rückfragen. Box 2: Antworten. Box 3: Worker-Seiten. Sicht ist die Seite, Code der Text.",
+      points: [
+        "Box 1: Rückfragen und Entscheidungen.",
+        "Box 2: Antworten (Brain, Flex, Coord, Mem, A1–A4).",
+        "Box 3: Worker-Seiten. Sicht = Seite, Code = Text.",
+        "Weg, Neu, Behalten stehen in Box 3.",
+      ],
+      nicht: "Eine Box ist keine Textwand und kein JSON.",
     },
     {
       id: "god",
       label: "God",
-      body: "God geht nur über den roten Badge oben. Aus = Trockenlauf. An = echte Steuerung. Kein God-Schalter im System.",
+      points: [
+        "God geht nur über den roten Badge oben rechts.",
+        "Aus = Trockenlauf. An = echte Desktop-Aktionen, nach Nachfrage.",
+        "Werkzeuge ohne God bleiben Trockenlauf.",
+      ],
+      nicht: "Im System-Fenster gibt es keinen God-Schalter.",
     },
     {
       id: "dateien",
       label: "Dateien",
-      body: "Behalten erst nach Rücklesen. Workspace: Temp, Dauerhaft, Behalten. Persönliches liegt nicht im Git.",
+      points: [
+        "Behalten schreibt erst nach bestätigtem Rücklesen.",
+        "Workspace: Temp, Dauerhaft, Behalten.",
+        "HTML zuerst als Sicht, daneben Code.",
+      ],
+      nicht: "Persönliche Dateien liegen nicht im Git.",
     },
     {
       id: "tastatur",
       label: "Tastatur",
-      body: "Enter = senden. Ctrl/⌘+Enter = Arbeit starten. Ctrl/⌘+S = speichern. Esc = zu. Mikrofon sendet nicht.",
+      points: [
+        "Enter = senden. Ctrl/⌘+Enter = Arbeit starten.",
+        "Ctrl/⌘+S = speichern. Esc = Overlay zu oder Job abbrechen.",
+        "Mikrofon füllt die Zeile und bleibt an, bis du es ausklickst.",
+      ],
+      nicht: "Mikrofon und Sprache senden nicht von allein.",
     },
   ];
 
@@ -2350,7 +2383,32 @@
         tabs.appendChild(btn);
       });
     }
-    if (body) body.textContent = pick.body || "";
+    if (body) {
+      body.innerHTML = "";
+      const h = document.createElement("h3");
+      h.className = "help-h";
+      h.textContent = pick.label || "";
+      body.appendChild(h);
+      const ul = document.createElement("ul");
+      ul.className = "help-list";
+      (pick.points || []).forEach(function (line) {
+        const li = document.createElement("li");
+        li.textContent = line;
+        ul.appendChild(li);
+      });
+      if (ul.childNodes.length) body.appendChild(ul);
+      else if (pick.body) {
+        const p = document.createElement("p");
+        p.textContent = pick.body;
+        body.appendChild(p);
+      }
+      if (pick.nicht) {
+        const n = document.createElement("p");
+        n.className = "help-nicht";
+        n.textContent = "Nicht: " + pick.nicht;
+        body.appendChild(n);
+      }
+    }
   }
 
   async function onHelp() {
