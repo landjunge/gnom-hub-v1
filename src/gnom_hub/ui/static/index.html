@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=176" />
+  <link rel="stylesheet" href="/static/app.css?v=177" />
   <!-- Tailwind utilities for Chat module (preflight OFF) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -60,7 +60,7 @@
             <option value="personal" selected>Personal (fixed)</option>
           </select>
         </label>
-        <button type="button" id="btn-workspace" class="btn-workspace" data-tooltip-id="workspace" title="Temp / permanent workspace">
+        <button type="button" id="btn-workspace" class="btn-workspace" data-tooltip-id="workspace" title="Temp, Dauerhaft und behaltene Dateien">
           Workspace
         </button>
         <button type="button" id="btn-tools" class="btn-workspace" title="Werkzeuge listen und ausführen">
@@ -478,7 +478,7 @@
       <div class="workspace-grid">
         <div class="workspace-col">
           <div class="workspace-col-head">
-            <h3>Temp (Entwurf)</h3>
+            <h3>Temp</h3>
             <button type="button" id="ws-clear-temp" class="btn-ws-sm">Temp leeren</button>
             <button type="button" id="ws-dl-temp" class="btn-ws-sm" title="Temp als Zip herunterladen">↓ zip</button>
           </div>
@@ -488,15 +488,27 @@
           <div class="workspace-col-head">
             <h3>Dauerhaft</h3>
             <button type="button" id="ws-dl-perm" class="btn-ws-sm" title="Dauerhaft als Zip herunterladen">↓ zip</button>
-            <button type="button" id="ws-dl-all" class="btn-ws-sm" title="Temp + Dauerhaft als Zip">↓ alle</button>
+            <button type="button" id="ws-dl-all" class="btn-ws-sm" title="Temp, Dauerhaft und Behalten als Zip">↓ alle</button>
           </div>
           <ul id="ws-perm-list" class="ws-list"></ul>
+        </div>
+        <div class="workspace-col">
+          <div class="workspace-col-head">
+            <h3>Behalten</h3>
+            <button type="button" id="ws-dl-selected" class="btn-ws-sm" title="Behaltene Dateien als Zip">↓ zip</button>
+          </div>
+          <ul id="ws-selected-list" class="ws-list"></ul>
         </div>
       </div>
       <div class="workspace-preview-wrap">
         <div class="workspace-col-head">
-          <h3 id="ws-preview-title">Vorschau</h3>
+          <h3 id="ws-preview-title">Sicht</h3>
+          <div class="tools-result-modes" role="tablist" aria-label="Vorschau">
+            <button type="button" id="ws-preview-sicht" class="btn-ws-sm is-on">Sicht</button>
+            <button type="button" id="ws-preview-code" class="btn-ws-sm">Code</button>
+          </div>
         </div>
+        <iframe id="ws-preview-frame" class="ws-preview-frame" hidden title="Datei-Sicht"></iframe>
         <pre id="ws-preview" class="ws-preview muted">Datei wählen zum Ansehen.</pre>
       </div>
     </div>
@@ -769,6 +781,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=174"></script>
+  <script src="/static/app.js?v=175"></script>
 </body>
 </html>

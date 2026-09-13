@@ -1558,7 +1558,7 @@
       const snap = await api("GET", "/api/workspace");
       renderWorkspaceLists(snap);
     } catch (err) {
-      toast("Workspace load failed: " + err.message, "error");
+      toast("Workspace laden fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -1568,26 +1568,33 @@
         "POST",
         "/api/workspace/export?zone=" + encodeURIComponent(zone || "all")
       );
-      if (!data.name) {
-        toast("Export failed", "error");
+      if (!data || data.ok === false || !data.name) {
+        toast("Zip fehlgeschlagen", "error");
         return;
       }
       window.location.href =
         "/api/workspace/exports/" + encodeURIComponent(data.name);
       toast(
-        "Workspace zip ready (" +
-          (data.bytes != null ? Math.round(data.bytes / 1024) + " KB" : data.name) +
-          ")",
+        "Zip bereit" +
+          (data.bytes != null ? " · " + Math.round(data.bytes / 1024) + " KB" : ""),
         "ok"
       );
     } catch (err) {
-      toast("Workspace export failed: " + err.message, "error");
+      toast("Zip fehlgeschlagen: " + err.message, "error");
     }
+  }
+
+  function wsEmpty(text) {
+    const li = document.createElement("li");
+    li.className = "muted";
+    li.textContent = text;
+    return li;
   }
 
   function renderWorkspaceLists(snap) {
     const tempUl = document.getElementById("ws-temp-list");
     const permUl = document.getElementById("ws-perm-list");
+    const selUl = document.getElementById("ws-selected-list");
     if (!tempUl || !permUl) return;
     tempUl.innerHTML = "";
     permUl.innerHTML = "";
@@ -1598,16 +1605,19 @@
       permUl.appendChild(wsListItem(f, "perm"));
     });
     if (!(snap.temp || []).length) {
-      const li = document.createElement("li");
-      li.className = "muted";
-      li.textContent = "(leer — Arbeit starten füllt Temp)";
-      tempUl.appendChild(li);
+      tempUl.appendChild(wsEmpty("(leer — Arbeit starten füllt Temp)"));
     }
     if (!(snap.perm || []).length) {
-      const li = document.createElement("li");
-      li.className = "muted";
-      li.textContent = "(leer — aus Temp übernehmen)";
-      permUl.appendChild(li);
+      permUl.appendChild(wsEmpty("(leer — aus Temp übernehmen)"));
+    }
+    if (selUl) {
+      selUl.innerHTML = "";
+      (snap.selected || []).forEach(function (f) {
+        selUl.appendChild(wsListItem(f, "selected"));
+      });
+      if (!(snap.selected || []).length) {
+        selUl.appendChild(wsEmpty("(leer — Behalten in Box 3)"));
+      }
     }
   }
 
@@ -1654,10 +1664,36 @@
     return li;
   }
 
+  function wsZoneLabel(zone) {
+    if (zone === "perm") return "Dauerhaft";
+    if (zone === "selected") return "Behalten";
+    return "Temp";
+  }
+
+  function paintWsPreview() {
+    const pre = document.getElementById("ws-preview");
+    const frame = document.getElementById("ws-preview-frame");
+    const btnS = document.getElementById("ws-preview-sicht");
+    const btnC = document.getElementById("ws-preview-code");
+    if (btnS) btnS.classList.toggle("is-on", wsPreviewMode !== "source");
+    if (btnC) btnC.classList.toggle("is-on", wsPreviewMode === "source");
+    const showPage = wsPreviewIsHtml && wsPreviewMode !== "source";
+    if (frame) {
+      frame.hidden = !showPage;
+      if (showPage && typeof wrapHtmlDocument === "function") {
+        frame.srcdoc = wrapHtmlDocument(wsPreviewCode);
+      }
+    }
+    if (pre) {
+      pre.hidden = showPage;
+      if (!showPage) pre.textContent = wsPreviewCode || "(leer)";
+    }
+  }
+
   async function previewWs(zone, name) {
     const title = document.getElementById("ws-preview-title");
     const pre = document.getElementById("ws-preview");
-    if (title) title.textContent = zone + " / " + name;
+    if (title) title.textContent = wsZoneLabel(zone) + " / " + name;
     try {
       const data = await api(
         "GET",
@@ -1666,9 +1702,19 @@
           "&name=" +
           encodeURIComponent(name)
       );
-      if (pre) pre.textContent = data.content || "(leer)";
+      const raw = data.content || "";
+      const html =
+        typeof extractHtml === "function" ? extractHtml(raw) : "";
+      wsPreviewIsHtml = !!html;
+      wsPreviewCode = raw;
+      wsPreviewMode = "preview";
+      paintWsPreview();
     } catch (err) {
-      if (pre) pre.textContent = "Vorschau fehlgeschlagen: " + err.message;
+      wsPreviewIsHtml = false;
+      wsPreviewCode = "Vorschau fehlgeschlagen: " + err.message;
+      wsPreviewMode = "source";
+      paintWsPreview();
+      if (pre) pre.hidden = false;
     }
   }
 
@@ -1678,14 +1724,19 @@
         "POST",
         "/api/workspace/promote/" + encodeURIComponent(name)
       );
+      if (!data || data.ok === false) {
+        toast((data && data.status) || "Übernehmen fehlgeschlagen", "error");
+        return;
+      }
       renderWorkspaceLists(data.workspace || (await api("GET", "/api/workspace")));
-      toast("Promoted " + name, "ok");
+      toast("Nach Dauerhaft übernommen", "ok");
     } catch (err) {
-      toast("Promote failed: " + err.message, "error");
+      toast("Übernehmen fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function deleteWs(zone, name) {
+    if (!window.confirm("Datei löschen: " + name + "?")) return;
     try {
       const data = await api(
         "POST",
@@ -1694,10 +1745,14 @@
           "&name=" +
           encodeURIComponent(name)
       );
+      if (!data || data.ok === false) {
+        toast("Löschen fehlgeschlagen", "error");
+        return;
+      }
       renderWorkspaceLists(data.workspace || (await api("GET", "/api/workspace")));
-      toast("Deleted " + name, "ok");
+      toast("Gelöscht: " + name, "ok");
     } catch (err) {
-      toast("Delete failed: " + err.message, "error");
+      toast("Löschen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -1705,10 +1760,14 @@
     if (!confirm("Alle Temp-Dateien im Workspace leeren?")) return;
     try {
       const data = await api("POST", "/api/workspace/clear-temp");
-      renderWorkspaceLists(data.workspace || { temp: [], perm: [] });
-      toast("Temp cleared (" + (data.removed || 0) + ")", "ok");
+      if (!data || data.ok === false) {
+        toast("Temp leeren fehlgeschlagen", "error");
+        return;
+      }
+      renderWorkspaceLists(data.workspace || { temp: [], perm: [], selected: [] });
+      toast("Temp geleert (" + (data.removed || 0) + ")", "ok");
     } catch (err) {
-      toast("Clear failed: " + err.message, "error");
+      toast("Temp leeren fehlgeschlagen: " + err.message, "error");
     }
   }
 
