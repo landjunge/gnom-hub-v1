@@ -198,8 +198,8 @@
     try {
       const s = await api("GET", "/api/system");
       const parts = [];
-      parts.push(s.deepseek ? "DeepSeek: on" : "DeepSeek: off");
-      parts.push(s.ollama ? "Ollama: on" : "Ollama: off");
+      parts.push(s.deepseek ? "DeepSeek: an" : "DeepSeek: aus");
+      parts.push(s.ollama ? "Ollama: an" : "Ollama: aus");
       if (s.version) parts.push("v" + s.version);
       document.getElementById("system-llm").textContent = parts.join(" · ");
       document.getElementById("sys-free-only").checked = !!s.free_only;
@@ -234,7 +234,7 @@
         " · Tokens " +
         ((s.prompt_tokens || 0) + (s.completion_tokens || 0));
       const langEl = document.getElementById("sys-lang");
-      if (langEl) langEl.value = s.ui_lang || uiLang || "en";
+      if (langEl) langEl.value = s.ui_lang || uiLang || "de";
       const ck = document.getElementById("system-ckpt");
       if (ck) {
         ck.textContent = s.checkpoint_exists
@@ -331,7 +331,7 @@
                 (b.name || "") +
                 " · " +
                 (b.bytes != null ? Math.round(b.bytes / 1024) + " KB" : "");
-              nameSpan.title = "Click to download";
+              nameSpan.title = "Antippen zum Herunterladen";
               nameSpan.addEventListener("click", function () {
                 window.location.href =
                   "/api/backups/" + encodeURIComponent(b.name) + "/download";
@@ -365,7 +365,7 @@
         /* ignore */
       }
     } catch (err) {
-      toast("System load failed: " + err.message, "error");
+      toast("System laden fehlgeschlagen: " + err.message, "error");
     }
     els.systemModal.hidden = false;
   }
@@ -375,7 +375,7 @@
     const agent = document.getElementById("sys-preset-agent");
     const name = sel && sel.value;
     if (!name) {
-      toast("Select a preset", "info");
+      toast("Preset wählen", "info");
       return;
     }
     try {
@@ -384,9 +384,9 @@
         agent_id: (agent && agent.value) || "worker1",
       });
       applyAgentsFromServer([data]);
-      toast("Preset applied to " + ((agent && agent.value) || "worker1"), "ok");
+      toast("Preset übernommen: " + ((agent && agent.value) || "worker1"), "ok");
     } catch (err) {
-      toast("Apply failed: " + err.message, "error");
+      toast("Übernehmen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -394,19 +394,19 @@
     const sel = document.getElementById("sys-preset-select");
     const name = sel && sel.value;
     if (!name) {
-      toast("Select a preset", "info");
+      toast("Preset wählen", "info");
       return;
     }
-    if (!confirm('Delete preset "' + name + '"?')) return;
+    if (!confirm('Preset löschen: "' + name + '"?')) return;
     try {
       await api("POST", "/api/worker-presets/delete", {
         name: name,
         agent_id: "worker1",
       });
-      toast("Preset deleted", "ok");
+      toast("Preset gelöscht", "ok");
       openSystemModal();
     } catch (err) {
-      toast("Delete failed: " + err.message, "error");
+      toast("Löschen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -414,7 +414,7 @@
     const sel = document.getElementById("sys-team-select");
     const name = sel && sel.value;
     if (!name) {
-      toast("Select a team preset", "info");
+      toast("Team wählen", "info");
       return;
     }
     try {
@@ -425,29 +425,29 @@
       if (pm && data.plan_mode) pm.value = data.plan_mode;
       appendChat(
         "system",
-        "Team preset → " + name + " · plan_mode=" + (data.plan_mode || "?")
+        "Team → " + name + " · Plan " + (data.plan_mode || "?")
       );
-      toast("Team applied: " + name, "ok");
+      toast("Team übernommen: " + name, "ok");
       renderCards();
     } catch (err) {
-      toast("Team apply failed: " + err.message, "error");
+      toast("Team übernehmen fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function saveCurrentTeam() {
-    const name = prompt("Team preset name:", "my-team");
+    const name = prompt("Team-Name:", "mein-team");
     if (!name || !String(name).trim()) return;
     try {
       const data = await api("POST", "/api/team-presets", {
         name: String(name).trim(),
       });
       toast(
-        "Team saved: " + ((data.preset && data.preset.name) || name),
+        "Team gespeichert: " + ((data.preset && data.preset.name) || name),
         "ok"
       );
       openSystemModal();
     } catch (err) {
-      toast("Team save failed: " + err.message, "error");
+      toast("Team speichern fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -455,16 +455,16 @@
     const sel = document.getElementById("sys-team-select");
     const name = sel && sel.value;
     if (!name) {
-      toast("Select a team preset", "info");
+      toast("Team wählen", "info");
       return;
     }
-    if (!confirm('Delete team preset "' + name + '"?')) return;
+    if (!confirm('Team löschen: "' + name + '"?')) return;
     try {
       await api("POST", "/api/team-presets/delete", { name: name });
-      toast("Team deleted", "ok");
+      toast("Team gelöscht", "ok");
       openSystemModal();
     } catch (err) {
-      toast("Team delete failed: " + err.message, "error");
+      toast("Team löschen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -474,9 +474,9 @@
     if (!mode) return;
     try {
       const data = await api("POST", "/api/plan-mode", { plan_mode: mode });
-      toast("plan_mode → " + (data.plan_mode || mode), "ok");
+      toast("Plan → " + (data.plan_mode || mode), "ok");
     } catch (err) {
-      toast("plan_mode failed: " + err.message, "error");
+      toast("Plan fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -492,7 +492,7 @@
       free_only: !!document.getElementById("sys-free-only").checked,
       default_model: document.getElementById("sys-model").value.trim() || "deepseek-chat",
       max_budget_usd: budgetRaw === "" ? null : Number(budgetRaw),
-      ui_lang: langEl ? langEl.value : "en",
+      ui_lang: langEl ? langEl.value : "de",
       auto_pack_after_execute: apEl ? !!apEl.checked : false,
       pack_max: (function () {
         const el = document.getElementById("sys-pack-max");
@@ -502,14 +502,18 @@
       })(),
     };
     try {
-      await api("POST", "/api/system", body);
+      const data = await api("POST", "/api/system", body);
+      if (data && data.ok === false) {
+        toast((data.status || "System nicht übernommen"), "error");
+        return;
+      }
       if (body.ui_lang) await loadTooltips(body.ui_lang);
       closeSystemModal();
-      toast("System settings applied", "ok");
+      toast("System übernommen", "ok");
       const snap = await api("GET", "/api/state");
       applySnapshot(snap);
     } catch (err) {
-      toast("System save failed: " + err.message, "error");
+      toast("System speichern fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -1468,11 +1472,11 @@
   async function saveCheckpoint() {
     try {
       const data = await api("POST", "/api/checkpoint/save");
-      toast("Checkpoint saved", "ok");
+      toast("Checkpoint gespeichert", "ok");
       const ck = document.getElementById("system-ckpt");
-      if (ck) ck.textContent = "Checkpoint: " + (data.path || "saved");
+      if (ck) ck.textContent = "Checkpoint: " + (data.path || "gespeichert");
     } catch (err) {
-      toast("Checkpoint save failed: " + err.message, "error");
+      toast("Checkpoint speichern fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -1480,17 +1484,17 @@
     try {
       const snap = await api("POST", "/api/checkpoint/load");
       applySnapshot(snap);
-      toast("Checkpoint loaded", "ok");
+      toast("Checkpoint geladen", "ok");
       closeSystemModal();
     } catch (err) {
-      toast("Checkpoint load failed: " + err.message, "error");
+      toast("Checkpoint laden fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function runCleanState() {
     if (
       !confirm(
-        "Clean state: clear HOT session, temp workspace, pipeline & checkpoint. WARM facts stay. Continue?"
+        "Zustand leeren: HOT, Temp-Workspace, Pipeline und Checkpoint. WARM bleibt. Weiter?"
       )
     ) {
       return;
@@ -1499,23 +1503,27 @@
       const snap = await api("POST", "/api/clean");
       applySnapshot(snap);
       toast(
-        "Clean done (temp removed: " +
+        "Zustand geleert (Temp: " +
           ((snap.clean && snap.clean.temp_removed) || 0) +
           ")",
         "ok"
       );
     } catch (err) {
-      toast("Clean failed: " + err.message, "error");
+      toast("Leeren fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function runBackup() {
     try {
       const data = await api("POST", "/api/backup");
-      toast("Backup: " + (data.path || "ok"), "ok");
-      appendChat("system", "Backup saved: " + (data.path || ""));
+      if (!data || data.ok === false) {
+        toast("Backup fehlgeschlagen", "error");
+        return;
+      }
+      toast("Backup gespeichert", "ok");
+      appendChat("system", "Backup gespeichert: " + (data.path || ""));
     } catch (err) {
-      toast("Backup failed: " + err.message, "error");
+      toast("Backup fehlgeschlagen: " + err.message, "error");
     }
   }
 
