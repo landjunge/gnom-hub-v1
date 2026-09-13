@@ -1174,17 +1174,17 @@
           ? Number(usage.max_budget_usd)
           : null;
       const lines = [
-        "spent: $" + spent.toFixed(4),
-        "tokens: " + pt + " prompt + " + ct + " completion",
-        "budget: " + (budget != null && !isNaN(budget) ? "$" + budget.toFixed(2) : "none"),
-        "free_only: " + !!usage.free_only,
+        "Ausgegeben: $" + spent.toFixed(4),
+        "Tokens: " + pt + " Prompt + " + ct + " Antwort",
+        "Budget: " + (budget != null && !isNaN(budget) ? "$" + budget.toFixed(2) : "keins"),
+        "Nur kostenlos: " + (usage.free_only ? "ja" : "nein"),
         "",
-        "by agent:",
+        "Nach Agent:",
       ];
       const by = usage.by_agent || {};
       const keys = Object.keys(by);
       if (!keys.length) {
-        lines.push("(no LLM calls yet)");
+        lines.push("(noch keine LLM-Aufrufe)");
       } else {
         keys.forEach(function (aid) {
           const b = by[aid] || {};
@@ -1208,7 +1208,7 @@
         if (!jobs.length) {
           const li = document.createElement("li");
           li.className = "muted";
-          li.textContent = "(no jobs yet)";
+          li.textContent = "(noch keine Jobs)";
           ul.appendChild(li);
         } else {
           jobs.forEach(function (j) {
@@ -1236,7 +1236,7 @@
               const btn = document.createElement("button");
               btn.type = "button";
               btn.className = "btn-ws-sm";
-              btn.textContent = "Cancel";
+              btn.textContent = "Abbrechen";
               btn.addEventListener("click", function () {
                 cancelJobById(j.id);
               });
@@ -1247,7 +1247,7 @@
         }
       }
     } catch (err) {
-      if (body) body.textContent = "Usage load failed: " + err.message;
+      if (body) body.textContent = "Kosten laden fehlgeschlagen: " + err.message;
     }
   }
 
@@ -1255,18 +1255,18 @@
     if (!id) return;
     try {
       await api("POST", "/api/jobs/" + encodeURIComponent(id) + "/cancel");
-      toast("Cancel requested", "ok");
+      toast("Abbruch angefordert", "ok");
       await refreshUsageModal();
     } catch (err) {
-      toast("Cancel failed: " + err.message, "error");
+      toast("Abbruch fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function resetUsageCounters() {
-    if (!confirm("Reset session usage counters to zero?")) return;
+    if (!confirm("Sitzungszähler auf null setzen?")) return;
     try {
       await api("POST", "/api/usage/reset");
-      toast("Usage reset", "ok");
+      toast("Zähler geleert", "ok");
       await refreshUsageModal();
       // refresh cost badge via state
       try {
@@ -1276,7 +1276,7 @@
         /* ignore */
       }
     } catch (err) {
-      toast("Usage reset failed: " + err.message, "error");
+      toast("Zähler leeren fehlgeschlagen: " + err.message, "error");
     }
   }
 
