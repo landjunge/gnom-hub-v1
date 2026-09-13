@@ -371,7 +371,19 @@
     if (snap.agents) applyAgentsFromServer(snap.agents);
     const p = snap.pipeline || {};
     activeStage = p.stage || "idle";
-    if (els.stageBadge) els.stageBadge.textContent = activeStage;
+    if (els.stageBadge) {
+      const stageDe = {
+        idle: "leer",
+        brainstorm: "Brain",
+        distill: "Distill",
+        execute: "Arbeit",
+        running: "läuft",
+        done: "fertig",
+        error: "Fehler",
+        cancelled: "abgebrochen",
+      };
+      els.stageBadge.textContent = stageDe[activeStage] || activeStage;
+    }
     renderCards();
     updateBoxBorders();
     if (els.flexSelect && snap.agents) {
@@ -525,9 +537,9 @@
       if (els.toolsBadge) {
         els.toolsBadge.textContent = n
           ? nFail
-            ? "Tools: " + n + "·" + nFail + "!"
-            : "Tools: " + n
-          : "Tools: 0";
+            ? "Werkzeuge: " + n + "·" + nFail + "!"
+            : "Werkzeuge: " + n
+          : "Werkzeuge: 0";
         els.toolsBadge.classList.toggle("has-calls", n > 0);
         els.toolsBadge.classList.toggle("has-fail", nFail > 0);
         els.toolsBadge.title =

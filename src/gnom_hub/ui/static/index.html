@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=181" />
+  <link rel="stylesheet" href="/static/app.css?v=182" />
   <!-- Tailwind utilities for Chat module (preflight OFF) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -40,24 +40,24 @@
       <div class="top-bar-head">
         <h1 class="app-title">Gnom-Hub <span id="ver-badge" class="ver-badge">v3.10.1</span></h1>
         <div class="top-meta top-meta-badges">
-          <span id="llm-badge" class="llm-badge" title="LLM key status">LLM: —</span>
-          <span id="cost-badge" class="cost-badge" title="Click: usage & jobs" role="button" tabindex="0">$0.00</span>
-          <span id="mem-badge" class="mem-badge" title="HOT memory">Mem: —</span>
-          <span id="vec-badge" class="vec-badge" title="Open vector store (click)" role="button" tabindex="0">Vec: —</span>
+          <span id="llm-badge" class="llm-badge" title="LLM-Schlüssel">LLM: —</span>
+          <span id="cost-badge" class="cost-badge" title="Kosten und Jobs" role="button" tabindex="0">$0.00</span>
+          <span id="mem-badge" class="mem-badge" title="HOT-Memory dieser Sitzung">Mem: —</span>
+          <span id="vec-badge" class="vec-badge" title="Vektorspeicher öffnen" role="button" tabindex="0">Vec: —</span>
           <span id="god-badge" class="god-badge" title="God aus = Trockenlauf. God an = echte Desktop-Aktionen. Nur dieser rote Knopf schaltet God." role="button" tabindex="0">God: aus</span>
-          <span id="cold-badge" class="cold-badge" title="COLD archives — click to browse" role="button" tabindex="0">Cold: —</span>
-          <span id="docs-badge" class="tools-badge" role="button" tabindex="0" title="Search docs — click">Docs</span>
-          <span id="skills-badge" class="tools-badge" role="button" tabindex="0" title="Playbook skills — click">Skills: —</span>
-          <span id="tools-badge" class="tools-badge" role="button" tabindex="0" title="Tool calls this run — click for history">Tools: 0</span>
-          <span id="stage-badge" class="stage-badge" title="Pipeline stage">idle</span>
+          <span id="cold-badge" class="cold-badge" title="COLD-Archive durchsuchen" role="button" tabindex="0">Cold: —</span>
+          <span id="docs-badge" class="tools-badge" role="button" tabindex="0" title="Hilfe-Dokumente suchen">Docs</span>
+          <span id="skills-badge" class="tools-badge" role="button" tabindex="0" title="Playbooks">Skills: —</span>
+          <span id="tools-badge" class="tools-badge" role="button" tabindex="0" title="Werkzeuge in diesem Lauf">Werkzeuge: 0</span>
+          <span id="stage-badge" class="stage-badge" title="Stand der Arbeit">leer</span>
         </div>
       </div>
       <!-- All header buttons: one module, horizontal, centered under head -->
-      <div class="top-toolbar" role="toolbar" aria-label="Main actions">
-        <label class="flex-preset-label" title="Flex is fixed (personal companion)" data-tooltip-id="flex">
+      <div class="top-toolbar" role="toolbar" aria-label="Hauptaktionen">
+        <label class="flex-preset-label" title="Flex ist fest (persönlicher Begleiter)" data-tooltip-id="flex">
           Flex
-          <select id="flex-preset-select" class="flex-preset-select" aria-label="Flex fixed personal" disabled>
-            <option value="personal" selected>Personal (fixed)</option>
+          <select id="flex-preset-select" class="flex-preset-select" aria-label="Flex fest persönlich" disabled>
+            <option value="personal" selected>Persönlich (fest)</option>
           </select>
         </label>
         <button type="button" id="btn-workspace" class="btn-workspace" data-tooltip-id="workspace" title="Temp, Dauerhaft und behaltene Dateien">
@@ -66,8 +66,8 @@
         <button type="button" id="btn-tools" class="btn-workspace" title="Werkzeuge listen und ausführen">
           Werkzeuge
         </button>
-        <button type="button" id="btn-clear-chat" class="btn-clear-chat" title="Clear chat log (this browser)">
-          Clear chat
+        <button type="button" id="btn-clear-chat" class="btn-clear-chat" title="Chat in diesem Browser leeren">
+          Chat leeren
         </button>
         <button type="button" id="btn-system" class="btn-system" data-tooltip-id="system" title="Systemeinstellungen">
           System
@@ -75,20 +75,20 @@
         <button type="button" id="btn-help" class="btn-help" data-tooltip-id="help" title="Hilfe">
           Hilfe
         </button>
-        <button type="button" id="btn-archive" class="btn-archive" data-tooltip-id="archive" title="Archive HOT to COLD">
-          Archive
+        <button type="button" id="btn-archive" class="btn-archive" data-tooltip-id="archive" title="HOT nach COLD archivieren">
+          Archiv
         </button>
-        <button type="button" id="btn-reset" class="btn-reset" data-tooltip-id="reset" title="Reset session (archives HOT first)">
-          Reset
+        <button type="button" id="btn-reset" class="btn-reset" data-tooltip-id="reset" title="Sitzung neu (HOT zuerst nach COLD)">
+          Neu
         </button>
-        <button type="button" id="btn-save" class="btn-save" data-tooltip-id="save" title="Save">
-          Save
+        <button type="button" id="btn-save" class="btn-save" data-tooltip-id="save" title="Speichern">
+          Speichern
         </button>
       </div>
     </header>
 
     <!-- 8 agent cards: equal width, full row = boxes -->
-    <section id="agent-cards" class="agent-cards" aria-label="Agents"></section>
+    <section id="agent-cards" class="agent-cards" aria-label="Agenten"></section>
 
     <!-- 3 boxes: pro Agent ein Layer (Klick = Layer + 1px Modulrahmen) -->
     <section class="boxes" aria-label="Main panels">
@@ -767,15 +767,15 @@
   <div id="usage-modal" class="modal" hidden>
     <div class="modal-panel trace-panel">
       <div class="modal-head">
-        <h2 class="modal-title">Usage & Jobs</h2>
-        <button type="button" id="usage-close" class="modal-close" title="Close">×</button>
+        <h2 class="modal-title">Kosten und Jobs</h2>
+        <button type="button" id="usage-close" class="modal-close" title="Schließen">×</button>
       </div>
-      <pre id="usage-body" class="trace-body muted">Loading…</pre>
+      <pre id="usage-body" class="trace-body muted">Laden…</pre>
       <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0">
-        <button type="button" id="usage-refresh" class="btn-ws-sm">Refresh</button>
-        <button type="button" id="usage-reset" class="btn-ws-sm" title="Zero session spend counters">Reset usage</button>
+        <button type="button" id="usage-refresh" class="btn-ws-sm">Aktualisieren</button>
+        <button type="button" id="usage-reset" class="btn-ws-sm" title="Sitzungszähler auf null">Zähler leeren</button>
       </div>
-      <p class="system-line muted">Recent jobs</p>
+      <p class="system-line muted">Letzte Jobs</p>
       <ul id="usage-jobs" class="ws-list" style="max-height:160px"></ul>
     </div>
   </div>
@@ -793,6 +793,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=179"></script>
+  <script src="/static/app.js?v=180"></script>
 </body>
 </html>

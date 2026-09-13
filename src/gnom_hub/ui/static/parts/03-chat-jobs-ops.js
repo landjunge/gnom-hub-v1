@@ -378,22 +378,22 @@
     const god = godModeLabel();
     if (txt) {
       txt.textContent = cancelling
-        ? "Pipeline cancel… (" +
+        ? "Abbruch… (" +
           name +
           " @ " +
           stage +
           ") · " +
           god +
           " · warte auf Stage-Ende"
-        : "Pipeline busy: " +
+        : "Arbeit läuft: " +
           name +
           " @ " +
           stage +
-          " · job " +
+          " · Job " +
           id +
           " · " +
           god +
-          (god === "God:aus" ? " (Shell/GUI oft Trockenlauf)" : "");
+          (god === "God:aus" ? " (oft Trockenlauf)" : "");
     }
     ban.hidden = false;
   }
@@ -1551,7 +1551,7 @@
     } catch (_e) {
       /* ignore */
     }
-    toast("Chat log cleared (all agents)", "ok");
+    toast("Chat geleert", "ok");
   }
 
   async function resyncState() {
@@ -1808,7 +1808,7 @@
     const msg =
       (obj && (obj.message || obj.hint)) ||
       (err && err.message) ||
-      "Pipeline busy";
+      "Arbeit läuft";
     if (obj && obj.busy_job_id) {
       busyJobId = obj.busy_job_id;
       showBusyBanner(obj);
@@ -2280,10 +2280,10 @@
     if (typeof cb === "function") cb();
     try {
       const data = await api("POST", "/api/save");
-      appendChat("system", "Saved. " + (data.summary || ""));
-      toast("Saved HOT memory + agent state", "ok");
+      appendChat("system", "Gespeichert. " + (data.summary || ""));
+      toast("Gespeichert", "ok");
     } catch (err) {
-      appendChat("system", "Save failed: " + err.message);
+      appendChat("system", "Speichern fehlgeschlagen: " + err.message);
     }
   }
 
@@ -2474,7 +2474,7 @@
   async function onReset() {
     if (
       !window.confirm(
-        "Reset HOT session? Current HOT is archived to COLD first. WARM facts stay."
+        "Sitzung neu? HOT wird zuerst nach COLD gelegt. WARM bleibt."
       )
     ) {
       return;
@@ -2482,24 +2482,28 @@
     try {
       const snap = await api("POST", "/api/reset");
       applySnapshot(snap);
-      setBox2("Brainstorm thoughts appear here.\n\n(Empty — send a chat message to start.)");
-      setBox3("Worker results appear here.\n\n(Empty — workers fill this after the pipeline.)");
+      setBox2("Noch keine Antwort. Senden = reden.");
+      setBox3("Noch kein Ergebnis. Arbeit starten legt die Worker-Seiten hier ab.");
       hideClarify();
-      appendChat("system", "Session reset (HOT archived to COLD if non-empty).");
-      toast("Session reset", "ok");
+      appendChat("system", "Sitzung neu (HOT nach COLD, wenn nicht leer).");
+      toast("Sitzung neu", "ok");
     } catch (err) {
-      appendChat("system", "Reset failed: " + err.message);
+      appendChat("system", "Neu fehlgeschlagen: " + err.message);
     }
   }
 
   async function onArchive() {
     try {
       const data = await api("POST", "/api/cold/archive", { label: "manual" });
-      toast("Archived to COLD: " + (data.archive && data.archive.id), "ok");
+      if (!data || data.ok === false) {
+        toast("Archiv fehlgeschlagen", "error");
+        return;
+      }
+      toast("Nach COLD archiviert", "ok");
       const snap = await api("GET", "/api/state");
       applySnapshot(snap);
     } catch (err) {
-      toast("Archive failed: " + err.message, "error");
+      toast("Archiv fehlgeschlagen: " + err.message, "error");
     }
   }
 

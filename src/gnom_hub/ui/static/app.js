@@ -2547,7 +2547,19 @@
     if (snap.agents) applyAgentsFromServer(snap.agents);
     const p = snap.pipeline || {};
     activeStage = p.stage || "idle";
-    if (els.stageBadge) els.stageBadge.textContent = activeStage;
+    if (els.stageBadge) {
+      const stageDe = {
+        idle: "leer",
+        brainstorm: "Brain",
+        distill: "Distill",
+        execute: "Arbeit",
+        running: "läuft",
+        done: "fertig",
+        error: "Fehler",
+        cancelled: "abgebrochen",
+      };
+      els.stageBadge.textContent = stageDe[activeStage] || activeStage;
+    }
     renderCards();
     updateBoxBorders();
     if (els.flexSelect && snap.agents) {
@@ -2701,9 +2713,9 @@
       if (els.toolsBadge) {
         els.toolsBadge.textContent = n
           ? nFail
-            ? "Tools: " + n + "·" + nFail + "!"
-            : "Tools: " + n
-          : "Tools: 0";
+            ? "Werkzeuge: " + n + "·" + nFail + "!"
+            : "Werkzeuge: " + n
+          : "Werkzeuge: 0";
         els.toolsBadge.classList.toggle("has-calls", n > 0);
         els.toolsBadge.classList.toggle("has-fail", nFail > 0);
         els.toolsBadge.title =
@@ -4861,17 +4873,17 @@
           ? Number(usage.max_budget_usd)
           : null;
       const lines = [
-        "spent: $" + spent.toFixed(4),
-        "tokens: " + pt + " prompt + " + ct + " completion",
-        "budget: " + (budget != null && !isNaN(budget) ? "$" + budget.toFixed(2) : "none"),
-        "free_only: " + !!usage.free_only,
+        "Ausgegeben: $" + spent.toFixed(4),
+        "Tokens: " + pt + " Prompt + " + ct + " Antwort",
+        "Budget: " + (budget != null && !isNaN(budget) ? "$" + budget.toFixed(2) : "keins"),
+        "Nur kostenlos: " + (usage.free_only ? "ja" : "nein"),
         "",
-        "by agent:",
+        "Nach Agent:",
       ];
       const by = usage.by_agent || {};
       const keys = Object.keys(by);
       if (!keys.length) {
-        lines.push("(no LLM calls yet)");
+        lines.push("(noch keine LLM-Aufrufe)");
       } else {
         keys.forEach(function (aid) {
           const b = by[aid] || {};
@@ -4895,7 +4907,7 @@
         if (!jobs.length) {
           const li = document.createElement("li");
           li.className = "muted";
-          li.textContent = "(no jobs yet)";
+          li.textContent = "(noch keine Jobs)";
           ul.appendChild(li);
         } else {
           jobs.forEach(function (j) {
@@ -4923,7 +4935,7 @@
               const btn = document.createElement("button");
               btn.type = "button";
               btn.className = "btn-ws-sm";
-              btn.textContent = "Cancel";
+              btn.textContent = "Abbrechen";
               btn.addEventListener("click", function () {
                 cancelJobById(j.id);
               });
@@ -4934,7 +4946,7 @@
         }
       }
     } catch (err) {
-      if (body) body.textContent = "Usage load failed: " + err.message;
+      if (body) body.textContent = "Kosten laden fehlgeschlagen: " + err.message;
     }
   }
 
@@ -4942,18 +4954,18 @@
     if (!id) return;
     try {
       await api("POST", "/api/jobs/" + encodeURIComponent(id) + "/cancel");
-      toast("Cancel requested", "ok");
+      toast("Abbruch angefordert", "ok");
       await refreshUsageModal();
     } catch (err) {
-      toast("Cancel failed: " + err.message, "error");
+      toast("Abbruch fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function resetUsageCounters() {
-    if (!confirm("Reset session usage counters to zero?")) return;
+    if (!confirm("Sitzungszähler auf null setzen?")) return;
     try {
       await api("POST", "/api/usage/reset");
-      toast("Usage reset", "ok");
+      toast("Zähler geleert", "ok");
       await refreshUsageModal();
       // refresh cost badge via state
       try {
@@ -4963,7 +4975,7 @@
         /* ignore */
       }
     } catch (err) {
-      toast("Usage reset failed: " + err.message, "error");
+      toast("Zähler leeren fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -6072,22 +6084,22 @@
     const god = godModeLabel();
     if (txt) {
       txt.textContent = cancelling
-        ? "Pipeline cancel… (" +
+        ? "Abbruch… (" +
           name +
           " @ " +
           stage +
           ") · " +
           god +
           " · warte auf Stage-Ende"
-        : "Pipeline busy: " +
+        : "Arbeit läuft: " +
           name +
           " @ " +
           stage +
-          " · job " +
+          " · Job " +
           id +
           " · " +
           god +
-          (god === "God:aus" ? " (Shell/GUI oft Trockenlauf)" : "");
+          (god === "God:aus" ? " (oft Trockenlauf)" : "");
     }
     ban.hidden = false;
   }
@@ -7245,7 +7257,7 @@
     } catch (_e) {
       /* ignore */
     }
-    toast("Chat log cleared (all agents)", "ok");
+    toast("Chat geleert", "ok");
   }
 
   async function resyncState() {
@@ -7502,7 +7514,7 @@
     const msg =
       (obj && (obj.message || obj.hint)) ||
       (err && err.message) ||
-      "Pipeline busy";
+      "Arbeit läuft";
     if (obj && obj.busy_job_id) {
       busyJobId = obj.busy_job_id;
       showBusyBanner(obj);
@@ -7974,10 +7986,10 @@
     if (typeof cb === "function") cb();
     try {
       const data = await api("POST", "/api/save");
-      appendChat("system", "Saved. " + (data.summary || ""));
-      toast("Saved HOT memory + agent state", "ok");
+      appendChat("system", "Gespeichert. " + (data.summary || ""));
+      toast("Gespeichert", "ok");
     } catch (err) {
-      appendChat("system", "Save failed: " + err.message);
+      appendChat("system", "Speichern fehlgeschlagen: " + err.message);
     }
   }
 
@@ -8168,7 +8180,7 @@
   async function onReset() {
     if (
       !window.confirm(
-        "Reset HOT session? Current HOT is archived to COLD first. WARM facts stay."
+        "Sitzung neu? HOT wird zuerst nach COLD gelegt. WARM bleibt."
       )
     ) {
       return;
@@ -8176,24 +8188,28 @@
     try {
       const snap = await api("POST", "/api/reset");
       applySnapshot(snap);
-      setBox2("Brainstorm thoughts appear here.\n\n(Empty — send a chat message to start.)");
-      setBox3("Worker results appear here.\n\n(Empty — workers fill this after the pipeline.)");
+      setBox2("Noch keine Antwort. Senden = reden.");
+      setBox3("Noch kein Ergebnis. Arbeit starten legt die Worker-Seiten hier ab.");
       hideClarify();
-      appendChat("system", "Session reset (HOT archived to COLD if non-empty).");
-      toast("Session reset", "ok");
+      appendChat("system", "Sitzung neu (HOT nach COLD, wenn nicht leer).");
+      toast("Sitzung neu", "ok");
     } catch (err) {
-      appendChat("system", "Reset failed: " + err.message);
+      appendChat("system", "Neu fehlgeschlagen: " + err.message);
     }
   }
 
   async function onArchive() {
     try {
       const data = await api("POST", "/api/cold/archive", { label: "manual" });
-      toast("Archived to COLD: " + (data.archive && data.archive.id), "ok");
+      if (!data || data.ok === false) {
+        toast("Archiv fehlgeschlagen", "error");
+        return;
+      }
+      toast("Nach COLD archiviert", "ok");
       const snap = await api("GET", "/api/state");
       applySnapshot(snap);
     } catch (err) {
-      toast("Archive failed: " + err.message, "error");
+      toast("Archiv fehlgeschlagen: " + err.message, "error");
     }
   }
 
