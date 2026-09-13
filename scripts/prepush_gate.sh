@@ -87,6 +87,22 @@ if [ "${GNOM_PREPUSH_MERMAID:-1}" != "0" ] && [ "${GNOM_PREPUSH_MERMAID:-}" != "
   fi
 fi
 
+# Generated app.css must match css/*.css. Skip with GNOM_PREPUSH_CSS=0
+if [ "${GNOM_PREPUSH_CSS:-1}" != "0" ] && [ "${GNOM_PREPUSH_CSS:-}" != "false" ]; then
+  echo "▸ prepush_gate: build_ui_css.py --check"
+  if [ -x .venv/bin/python ]; then
+    PY=.venv/bin/python
+  else
+    PY=python
+  fi
+  if ! "$PY" scripts/build_ui_css.py --check; then
+    echo "" >&2
+    echo "❌ app.css is stale. Edit css/*.css, then:" >&2
+    echo "  python3 scripts/build_ui_css.py" >&2
+    exit 1
+  fi
+fi
+
 
 # ESLint UI gate (max-warnings 0). Skip with GNOM_PREPUSH_ESLINT=0
 if [ "${GNOM_PREPUSH_ESLINT:-1}" != "0" ] && [ "${GNOM_PREPUSH_ESLINT:-}" != "false" ]; then

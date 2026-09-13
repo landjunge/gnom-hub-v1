@@ -1,0 +1,78 @@
+/* —— Agent cards: 8 equal columns, full width = boxes row —— */
+/* A P A P … — Agent, 20px Platzhalter, Agent, 20px … */
+.agent-cards {
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  justify-content: stretch;
+  width: 100%;
+  flex: 0 0 auto;
+  margin-bottom: 0;
+  height: var(--card-h);
+}
+
+.agent-card {
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  height: 100%;
+  background: var(--bg-card);
+  border: 1px solid var(--card-color, var(--border));
+  border-radius: 4px;
+  padding: 6px 8px;
+  cursor: default;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: var(--text);
+  overflow: hidden;
+}
+
+.agent-card.is-layer-active {
+  outline: 1px solid var(--card-color, var(--border));
+  outline-offset: 1px;
+}
+
+.agent-card[data-enabled="false"] {
+  opacity: 0.45;
+}
+
+.agent-card[data-parked="true"] {
+  opacity: 0.4;
+}
+
+.agent-card .card-name {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--card-color, var(--text));
+}
+
+.agent-card .card-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.agent-card .card-status {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.agent-card[data-enabled="true"] .card-status {
+  color: #69db7c;
+}
+
+.agent-card[data-enabled="false"] .card-status {
+  color: var(--text-muted);
+}
+
+.agent-card.color-brainstorm { --card-color: var(--c-brainstorm); }
+.agent-card.color-memory { --card-color: var(--c-memory); }
+.agent-card.color-flex { --card-color: var(--c-flex); }
+.agent-card.color-coordinator { --card-color: var(--c-coordinator); }
+.agent-card.color-worker1 { --card-color: var(--c-worker1); }
+.agent-card.color-worker2 { --card-color: var(--c-worker2); }
+.agent-card.color-worker3 { --card-color: var(--c-worker3); }
+.agent-card.color-worker4 { --card-color: var(--c-worker4); }
+
