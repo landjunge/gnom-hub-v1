@@ -162,6 +162,9 @@
   let toolsResultMode = "preview";
   let lastToolsSicht = "";
   let lastToolsCode = "";
+  let wsPreviewMode = "preview";
+  let wsPreviewCode = "";
+  let wsPreviewIsHtml = false;
   let lastDryRunKey = ""; // avoid re-toasting dry-run God hint
   let lastPlanKey = ""; // avoid re-toasting resolved plan mode
   let currentJobId = null;

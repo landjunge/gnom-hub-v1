@@ -2557,7 +2557,7 @@ body.worker-fs-open {
 
 .workspace-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 10px;
   padding: 10px 14px 0;
   flex: 0 0 auto;
@@ -2565,9 +2565,9 @@ body.worker-fs-open {
 }
 
 .workspace-col {
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: #1e1f23;
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
+  background: var(--bg-card);
   display: flex;
   flex-direction: column;
   max-height: 220px;
@@ -2596,8 +2596,8 @@ body.worker-fs-open {
   border: 1px solid var(--border-strong);
   border-radius: 0;
   background: #343a40;
-  color: var(--text-muted);
-  font-size: 10px;
+  color: #fff;
+  font-size: 12px;
   cursor: pointer;
 }
 
@@ -2672,12 +2672,37 @@ body.worker-fs-open {
   margin: 0;
   padding: 8px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
+  font-size: 12px;
   white-space: pre-wrap;
   word-break: break-word;
   overflow: auto;
   flex: 1 1 auto;
   color: var(--text);
+}
+.ws-preview-frame {
+  display: block;
+  width: 100%;
+  min-height: 180px;
+  flex: 1 1 auto;
+  border: 0;
+  background: #111;
+}
+.ws-preview-frame[hidden],
+.ws-preview[hidden] {
+  display: none !important;
+}
+#workspace-modal .tools-result-modes {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 0;
+}
+#workspace-modal .tools-result-modes .btn-ws-sm {
+  flex: 1 1 0;
+  color: #fff;
+}
+#workspace-modal .tools-result-modes .btn-ws-sm.is-on {
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--border-strong);
 }
 
 .agent-card .card-online {

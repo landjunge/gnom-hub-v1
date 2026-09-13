@@ -200,8 +200,15 @@ class WorkspaceStore:
         elif z in ("perm", "permanent", "keep"):
             folders = [("perm", self.perm)]
             tag = "perm"
+        elif z in ("selected", "behalten", "personal"):
+            folders = [("selected", self.selected)]
+            tag = "selected"
         elif z in ("all", "both", "*"):
-            folders = [("temp", self.temp), ("perm", self.perm)]
+            folders = [
+                ("temp", self.temp),
+                ("perm", self.perm),
+                ("selected", self.selected),
+            ]
             tag = "all"
         else:
             raise ValueError(f"Unknown workspace zone: {zone!r}")
@@ -234,4 +241,6 @@ class WorkspaceStore:
             return self.recovery
         if w in ("trash", "bin"):
             return self.trash
+        if w in ("selected", "behalten", "personal"):
+            return self.selected
         raise ValueError(f"Unknown workspace zone: {which!r}")

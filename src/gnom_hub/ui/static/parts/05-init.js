@@ -331,6 +331,26 @@
         downloadWorkspaceZip("all");
       });
     }
+    const wsDlSel = document.getElementById("ws-dl-selected");
+    if (wsDlSel) {
+      wsDlSel.addEventListener("click", function () {
+        downloadWorkspaceZip("selected");
+      });
+    }
+    const wsSicht = document.getElementById("ws-preview-sicht");
+    const wsCode = document.getElementById("ws-preview-code");
+    if (wsSicht) {
+      wsSicht.addEventListener("click", function () {
+        wsPreviewMode = "preview";
+        paintWsPreview();
+      });
+    }
+    if (wsCode) {
+      wsCode.addEventListener("click", function () {
+        wsPreviewMode = "source";
+        paintWsPreview();
+      });
+    }
     if (els.workspaceModal) {
       els.workspaceModal.addEventListener("click", function (ev) {
         if (ev.target === els.workspaceModal) closeWorkspaceModal();

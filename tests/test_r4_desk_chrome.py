@@ -174,9 +174,10 @@ def test_box2_dyn_content_can_scroll():
 
 def test_overlay_titles_german_chrome():
     ws = _visible_text(_inner_by_id(HTML, "workspace-modal"))
-    assert "Vorschau" in ws
+    assert "Sicht" in ws
     assert "Temp leeren" in ws
     assert "Dauerhaft" in ws
+    assert "Behalten" in ws
     sys_txt = _visible_text(_inner_by_id(HTML, "system-modal"))
     assert "Übernehmen" in sys_txt
     assert "Löschen" in sys_txt
