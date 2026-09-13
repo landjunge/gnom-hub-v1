@@ -2326,7 +2326,7 @@ body.worker-fs-open {
   border: 1px solid var(--border-strong);
   border-radius: 0;
   background: var(--bg-card);
-  color: var(--text);
+  color: #fff;
   font-size: 12px;
   cursor: pointer;
 }
@@ -4198,7 +4198,7 @@ a:focus-visible {
   min-width: 64px;
   flex: 0 0 auto;
   background: var(--bg-card);
-  color: var(--text);
+  color: #fff;
 }
 
 #btn-execute {
