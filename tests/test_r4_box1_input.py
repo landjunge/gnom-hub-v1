@@ -7,7 +7,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 HTML = (ROOT / "src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
-CSS = (ROOT / "src/gnom_hub/ui/static/app.css").read_text(encoding="utf-8")
+CSS = (ROOT / "src/gnom_hub/ui/static/tokens.css").read_text(encoding="utf-8") + (
+    ROOT / "src/gnom_hub/ui/static/app.css"
+).read_text(encoding="utf-8")
 CHAT_JS = (ROOT / "src/gnom_hub/ui/static/parts/03-chat-jobs-ops.js").read_text(encoding="utf-8")
 
 _OPEN_ID = re.compile(
@@ -208,4 +210,4 @@ def test_send_chat_does_not_start_workers():
 
 def test_border_strong_token_still_in_app_css():
     """R3 prototype token kept for R4 desk chrome."""
-    assert _TOKEN_STRONG.search(CSS), "--border-strong: #5c616a missing in app.css"
+    assert _TOKEN_STRONG.search(CSS), "--border-strong: #5c616a missing in tokens.css"

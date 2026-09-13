@@ -7,7 +7,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 HTML = (ROOT / "src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
-CSS = (ROOT / "src/gnom_hub/ui/static/app.css").read_text(encoding="utf-8")
+CSS = (ROOT / "src/gnom_hub/ui/static/tokens.css").read_text(encoding="utf-8") + (
+    ROOT / "src/gnom_hub/ui/static/app.css"
+).read_text(encoding="utf-8")
 BOXES_JS = (ROOT / "src/gnom_hub/ui/static/parts/04-boxes.js").read_text(encoding="utf-8")
 
 _RADIUS_ZERO = re.compile(r"border-radius\s*:\s*0(px)?\b")
