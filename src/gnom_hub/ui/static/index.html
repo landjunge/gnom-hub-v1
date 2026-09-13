@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=178" />
+  <link rel="stylesheet" href="/static/app.css?v=179" />
   <!-- Tailwind utilities for Chat module (preflight OFF) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -309,9 +309,10 @@
             <button
               type="button"
               id="btn-mic"
-              class="btn-mic h-8 shrink-0 rounded-md border border-gnom-border bg-gnom-card px-2.5 text-xs font-medium text-gnom-text transition hover:border-gnom-accent hover:text-gnom-accent"
-              title="Mikrofon — Spracheingabe (Browser)"
+              class="btn-mic"
+              title="Mikrofon — spricht in die Eingabe, sendet nicht. An bleibt an bis zum Klick."
               aria-label="Mikrofon"
+              aria-pressed="false"
             >Mikrofon</button>
             <button
               type="button"
@@ -446,7 +447,7 @@
                 <input id="tune-pres" type="range" min="0" max="2" step="0.05" value="0" />
               </div>
               <label class="tune-tts-row">
-                <input id="tune-tts" type="checkbox" /> TTS
+                <input id="tune-tts" type="checkbox" /> Sprache
               </label>
             </div>
             <div class="tune-prompt-col">
@@ -781,6 +782,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=176"></script>
+  <script src="/static/app.js?v=177"></script>
 </body>
 </html>

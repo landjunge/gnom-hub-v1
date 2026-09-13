@@ -2031,11 +2031,11 @@
         '">' +
         (online ? "online" : "offline") +
         "</div>" +
-        '<label class="card-tts" data-stop="1">' +
+        '<label class="card-tts" data-stop="1" title="Sprache — Agent hörbar">' +
         '<input type="checkbox" ' +
         (agent.tts ? "checked " : "") +
         (agent.parked ? "disabled " : "") +
-        "/> TTS</label>" +
+        "/> Sprache</label>" +
         presetLine +
         '<div class="card-status">' +
         statusLabel(agent) +
@@ -2052,7 +2052,7 @@
           const on = !!ttsInput.checked;
           // Speak HERE (same user gesture) — short DE only, no EN, no long monologue
           if (on) {
-            speakNow("TTS an: " + (agent.label || agent.id) + ".");
+            speakNow("Sprache an: " + (agent.label || agent.id) + ".");
           } else {
             stopSpeech();
           }
@@ -5742,8 +5742,19 @@
       const err = (ev && ev.error) || "unknown";
       if (err === "no-speech" || err === "aborted") return;
       listening = false;
-      if (els.btnMic) els.btnMic.classList.remove("listening");
-      toast("Mikrofon: " + err, "error");
+      if (els.btnMic) {
+        els.btnMic.classList.remove("listening");
+        els.btnMic.setAttribute("aria-pressed", "false");
+      }
+      const de =
+        err === "not-allowed"
+          ? "keine Berechtigung"
+          : err === "audio-capture"
+            ? "kein Mikrofon"
+            : err === "network"
+              ? "Netz"
+              : err;
+      toast("Mikrofon: " + de, "error");
     };
     recognition.onresult = function (ev) {
       let text = "";
