@@ -28,7 +28,7 @@ def test_html_wave2_surfaces():
 
 
 def test_mic_stays_on_until_click():
-    js = Path("src/gnom_hub/ui/static/parts/03-chat-jobs-ops.js").read_text(encoding="utf-8")
+    js = Path("src/gnom_hub/ui/static/parts/08-chat-jobs.js").read_text(encoding="utf-8")
     assert "recognition.continuous = true" in js
     assert "recognition.start()" in js
     assert "Mikrofon aus" in js
@@ -97,7 +97,7 @@ def test_keep_html_still_selected(tmp_path):
 
 
 def test_agent_page_never_dumps_api_key():
-    js = Path("src/gnom_hub/ui/static/parts/00-preamble.js").read_text(encoding="utf-8")
+    js = Path("src/gnom_hub/ui/static/parts/00-core.js").read_text(encoding="utf-8")
     assert "function openAgentPage" in js
     assert "API-Schlüssel werden nicht angezeigt" in js
     assert "agent.api_key" not in js
@@ -106,14 +106,14 @@ def test_agent_page_never_dumps_api_key():
 
 
 def test_toast_queue_and_hover_pause():
-    js = Path("src/gnom_hub/ui/static/parts/00-preamble.js").read_text(encoding="utf-8")
+    js = Path("src/gnom_hub/ui/static/parts/00-core.js").read_text(encoding="utf-8")
     assert "flushToasts" in js
     assert "mouseenter" in js
     assert "TOAST_MAX" in js
 
 
 def test_keep_ui_accepts_non_html():
-    js = Path("src/gnom_hub/ui/static/parts/04-boxes.js").read_text(encoding="utf-8")
+    js = Path("src/gnom_hub/ui/static/parts/09-boxes.js").read_text(encoding="utf-8")
     assert "Kein HTML — Behalten gilt nur für HTML" not in js
     assert 'zone: "trash"' in js or "zone: 'trash'" in js
     assert "stageResultsRecovery" in js

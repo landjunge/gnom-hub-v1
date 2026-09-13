@@ -1,4 +1,4 @@
-/* part: 03-chat-jobs-ops.js  lines 1950-3681 of app.js — edit parts, run scripts/build_ui_js.py */
+/* part: 08-chat-jobs.js — edit parts, run scripts/build_ui_js.py */
   function toggleMic() {
     const SR =
       window.SpeechRecognition || window.webkitSpeechRecognition || null;

@@ -44,7 +44,7 @@ def test_ui_hosts_include_dod_checklist():
 
 def test_send_toast_does_not_claim_build_auto_executes():
     """Send = talk; Arbeit starten / Ja in Box 1 = work."""
-    part = Path("src/gnom_hub/ui/static/parts/03-chat-jobs-ops.js").read_text(encoding="utf-8")
+    part = Path("src/gnom_hub/ui/static/parts/08-chat-jobs.js").read_text(encoding="utf-8")
     app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
     stale = "harter Bau-Befehl = sofort"
     assert stale not in part
@@ -58,7 +58,10 @@ def test_send_toast_does_not_claim_build_auto_executes():
 
 def test_flex_answer_start_work_polls_job_like_execute():
     """start_work POST returns a job envelope; UI must poll, not wipe Box 1."""
-    part = Path("src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
+    part = "".join(
+        Path("src/gnom_hub/ui/static/parts/" + n).read_text(encoding="utf-8")
+        for n in ("01-core-api.js", "02-speech.js")
+    )
     app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
     for src in (part, app):
         body = src.split("async function answerFlexQuestion", 1)[1].split(
@@ -97,7 +100,10 @@ def test_send_plus_exec_button_removed():
 def test_box1_flex_review_hidden_until_active():
     html = Path("src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
     css = Path("src/gnom_hub/ui/static/app.css").read_text(encoding="utf-8")
-    js = Path("src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
+    js = "".join(
+        Path("src/gnom_hub/ui/static/parts/" + n).read_text(encoding="utf-8")
+        for n in ("01-core-api.js", "02-speech.js")
+    )
     app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
     chunk = html.split('id="flex-review"', 1)[1][:280]
     assert "hidden" in chunk
@@ -111,7 +117,10 @@ def test_box1_flex_review_hidden_until_active():
 
 
 def test_flex_ask_hides_box1_placeholder():
-    part = Path("src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
+    part = "".join(
+        Path("src/gnom_hub/ui/static/parts/" + n).read_text(encoding="utf-8")
+        for n in ("01-core-api.js", "02-speech.js")
+    )
     app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
     for src in (part, app):
         body = src.split("function renderFlexBox1", 1)[1].split("function applySnapshot", 1)[0]
@@ -120,7 +129,10 @@ def test_flex_ask_hides_box1_placeholder():
 
 
 def test_tts_one_voice_per_agent():
-    part = Path("src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
+    part = "".join(
+        Path("src/gnom_hub/ui/static/parts/" + n).read_text(encoding="utf-8")
+        for n in ("01-core-api.js", "02-speech.js")
+    )
     app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
     for src in (part, app):
         assert "function pickVoiceForAgent" in src
@@ -131,7 +143,7 @@ def test_tts_one_voice_per_agent():
 
 
 def test_chat_copy_and_remember_buttons():
-    part = Path("src/gnom_hub/ui/static/parts/03-chat-jobs-ops.js").read_text(encoding="utf-8")
+    part = Path("src/gnom_hub/ui/static/parts/08-chat-jobs.js").read_text(encoding="utf-8")
     app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
     css = Path("src/gnom_hub/ui/static/app.css").read_text(encoding="utf-8")
     for src in (part, app):
@@ -142,14 +154,20 @@ def test_chat_copy_and_remember_buttons():
     assert "overflow-y: scroll" in css
     assert "#box2 .agent-layer-body" in css
     assert ".flex-ask-card" in css
-    flex = Path("src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
+    flex = "".join(
+        Path("src/gnom_hub/ui/static/parts/" + n).read_text(encoding="utf-8")
+        for n in ("01-core-api.js", "02-speech.js")
+    )
     assert "Mehrfachauswahl — antippen, dann Senden" in flex
     assert "Mehrfachauswahl — antippen, dann Senden" in app
 
 
 def test_flex_box1_text_multi_select_later_are_answerable():
     """text/free_text: field+submit; multi_select: pick then send; later without options."""
-    part = Path("src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
+    part = "".join(
+        Path("src/gnom_hub/ui/static/parts/" + n).read_text(encoding="utf-8")
+        for n in ("01-core-api.js", "02-speech.js")
+    )
     app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
     for src in (part, app):
         body = src.split("function renderFlexBox1", 1)[1].split("function applySnapshot", 1)[0]
@@ -168,9 +186,12 @@ def test_box1_choice_cards_are_in_box1_with_owner_color():
     """Pick cards live in Box 1; color mark names the owner (Brainstorm vs Flex)."""
     html = Path("src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
     css = Path("src/gnom_hub/ui/static/app.css").read_text(encoding="utf-8")
-    part = Path("src/gnom_hub/ui/static/parts/03-chat-jobs-ops.js").read_text(encoding="utf-8")
-    pre = Path("src/gnom_hub/ui/static/parts/00-preamble.js").read_text(encoding="utf-8")
-    snap = Path("src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
+    part = Path("src/gnom_hub/ui/static/parts/08-chat-jobs.js").read_text(encoding="utf-8")
+    pre = Path("src/gnom_hub/ui/static/parts/00-core.js").read_text(encoding="utf-8")
+    snap = "".join(
+        Path("src/gnom_hub/ui/static/parts/" + n).read_text(encoding="utf-8")
+        for n in ("01-core-api.js", "02-speech.js")
+    )
     app = Path("src/gnom_hub/ui/static/app.js").read_text(encoding="utf-8")
     box1 = html.split('id="box1"', 1)[1].split('id="box2"', 1)[0]
     rest = html.split('id="box2"', 1)[1]

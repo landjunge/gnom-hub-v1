@@ -10,8 +10,8 @@ HTML = (ROOT / "src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
 CSS = (ROOT / "src/gnom_hub/ui/static/tokens.css").read_text(encoding="utf-8") + (
     ROOT / "src/gnom_hub/ui/static/app.css"
 ).read_text(encoding="utf-8")
-PREAMBLE = (ROOT / "src/gnom_hub/ui/static/parts/00-preamble.js").read_text(encoding="utf-8")
-INIT = (ROOT / "src/gnom_hub/ui/static/parts/05-init.js").read_text(encoding="utf-8")
+PREAMBLE = (ROOT / "src/gnom_hub/ui/static/parts/00-core.js").read_text(encoding="utf-8")
+INIT = (ROOT / "src/gnom_hub/ui/static/parts/10-core-init.js").read_text(encoding="utf-8")
 PROTO = ROOT / "src/gnom_hub/ui/static/experiments/agent-detail-r2.html"
 
 AGENT_PAGE_TABS = (
@@ -210,7 +210,7 @@ def test_close_agent_page_exists():
 
 def test_escape_handler_calls_close_agent_page():
     handlers = _escape_handlers(INIT, PREAMBLE)
-    assert handlers, "Esc handler missing in 05-init.js or 00-preamble.js"
+    assert handlers, "Esc handler missing in 10-core-init.js or 00-core.js"
     assert any("closeAgentPage" in h for h in handlers), "Esc handler must call closeAgentPage"
 
 
