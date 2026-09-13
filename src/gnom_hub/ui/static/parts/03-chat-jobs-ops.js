@@ -351,8 +351,8 @@
 
   function godModeLabel() {
     const b = els.godBadge || document.getElementById("god-badge");
-    if (b && b.classList.contains("on")) return "God:ON";
-    return "God:off";
+    if (b && b.classList.contains("on")) return "God:an";
+    return "God:aus";
   }
 
   function showBusyBanner(info) {
@@ -382,7 +382,7 @@
           id +
           " · " +
           god +
-          (god === "God:off" ? " (Shell/GUI oft dry-run)" : "");
+          (god === "God:aus" ? " (Shell/GUI oft Trockenlauf)" : "");
     }
     ban.hidden = false;
   }
@@ -2382,7 +2382,7 @@
     if (next) {
       if (
         !window.confirm(
-          "Enable God-Mode? Elevated actions (clicks/allowlisted shell) become available."
+          "God einschalten? Klick, Tastatur und erlaubte Shell werden echt."
         )
       ) {
         return;
@@ -2393,13 +2393,17 @@
         enabled: next,
         reason: "ui-toggle",
       });
+      if (!data || data.enabled !== next) {
+        toast("God nicht übernommen", "error");
+        return;
+      }
       if (els.godBadge) {
-        els.godBadge.textContent = data.enabled ? "God: ON" : "God: off";
+        els.godBadge.textContent = data.enabled ? "God: an" : "God: aus";
         els.godBadge.classList.toggle("on", !!data.enabled);
       }
-      toast(data.enabled ? "God-Mode ON" : "God-Mode OFF", data.enabled ? "info" : "ok");
+      toast(data.enabled ? "God an" : "God aus", data.enabled ? "info" : "ok");
     } catch (err) {
-      toast("God-Mode failed: " + err.message, "error");
+      toast("God fehlgeschlagen: " + err.message, "error");
     }
   }
 

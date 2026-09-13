@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=177" />
+  <link rel="stylesheet" href="/static/app.css?v=178" />
   <!-- Tailwind utilities for Chat module (preflight OFF) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -44,7 +44,7 @@
           <span id="cost-badge" class="cost-badge" title="Click: usage & jobs" role="button" tabindex="0">$0.00</span>
           <span id="mem-badge" class="mem-badge" title="HOT memory">Mem: —</span>
           <span id="vec-badge" class="vec-badge" title="Open vector store (click)" role="button" tabindex="0">Vec: —</span>
-          <span id="god-badge" class="god-badge" title="God-Mode: off = Shell/GUI dry-run · on = echte Desktop-Aktionen. Klick zum Umschalten." role="button" tabindex="0">God: off</span>
+          <span id="god-badge" class="god-badge" title="God aus = Trockenlauf. God an = echte Desktop-Aktionen. Nur dieser rote Knopf schaltet God." role="button" tabindex="0">God: aus</span>
           <span id="cold-badge" class="cold-badge" title="COLD archives — click to browse" role="button" tabindex="0">Cold: —</span>
           <span id="docs-badge" class="tools-badge" role="button" tabindex="0" title="Search docs — click">Docs</span>
           <span id="skills-badge" class="tools-badge" role="button" tabindex="0" title="Playbook skills — click">Skills: —</span>
@@ -69,7 +69,7 @@
         <button type="button" id="btn-clear-chat" class="btn-clear-chat" title="Clear chat log (this browser)">
           Clear chat
         </button>
-        <button type="button" id="btn-system" class="btn-system" data-tooltip-id="system" title="System settings">
+        <button type="button" id="btn-system" class="btn-system" data-tooltip-id="system" title="Systemeinstellungen">
           System
         </button>
         <button type="button" id="btn-help" class="btn-help" data-tooltip-id="help" title="Hilfe">
@@ -781,6 +781,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=175"></script>
+  <script src="/static/app.js?v=176"></script>
 </body>
 </html>

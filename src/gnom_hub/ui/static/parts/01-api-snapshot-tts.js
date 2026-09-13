@@ -480,11 +480,11 @@
     }
     if (els.godBadge) {
       const on = !!(snap.god_mode && snap.god_mode.enabled);
-      els.godBadge.textContent = on ? "God: ON · live" : "God: off · dry-run";
+      els.godBadge.textContent = on ? "God: an" : "God: aus";
       els.godBadge.classList.toggle("on", on);
       els.godBadge.title = on
-        ? "God-Mode ON — Shell/GUI/click echt. Klick zum Ausschalten."
-        : "God-Mode off — Shell/GUI dry-run/blocked. Klick zum Einschalten.";
+        ? "God an — echte Desktop-Aktionen. Antippen schaltet aus."
+        : "God aus — nur Trockenlauf. Antippen schaltet an (Nachfrage).";
     }
     if (els.coldBadge && snap.cold) {
       els.coldBadge.textContent = "Cold: " + (snap.cold.count || 0);

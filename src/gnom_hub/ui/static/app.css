@@ -437,9 +437,9 @@ html, body {
 }
 
 .god-badge.on {
-  color: var(--text);
-  border-color: #3f434c;
-  background: #2a2c32;
+  color: #ffcdd2;
+  border-color: #c62828;
+  background: #3b1111;
 }
 
 .god-badge,
@@ -4391,6 +4391,10 @@ a:focus-visible {
 #system-modal .modal-title,
 #tools-modal .modal-title {
   font-size: 14px;
+}
+#system-modal .btn-ws-sm,
+#system-modal .btn-save {
+  color: #fff;
 }
 #tools-modal .tools-result-modes {
   display: flex;
