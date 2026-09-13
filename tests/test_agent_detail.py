@@ -9,7 +9,9 @@ ROOT = Path(__file__).resolve().parents[1]
 HTML = (ROOT / "src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
 PREAMBLE = (ROOT / "src/gnom_hub/ui/static/parts/00-preamble.js").read_text(encoding="utf-8")
 INIT = (ROOT / "src/gnom_hub/ui/static/parts/05-init.js").read_text(encoding="utf-8")
-CSS = (ROOT / "src/gnom_hub/ui/static/app.css").read_text(encoding="utf-8")
+CSS = (ROOT / "src/gnom_hub/ui/static/tokens.css").read_text(encoding="utf-8") + (
+    ROOT / "src/gnom_hub/ui/static/app.css"
+).read_text(encoding="utf-8")
 
 AGENT_PAGE_TABS = (
     "jetzt",

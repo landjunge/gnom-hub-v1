@@ -200,7 +200,9 @@ def test_box1_choice_cards_are_in_box1_with_owner_color():
 
 def test_flex_box1_uses_yellow_not_lilac():
     """Flex agent token is yellow; Box 1 Flex chrome must not fall back to lilac."""
-    css = Path("src/gnom_hub/ui/static/app.css").read_text(encoding="utf-8")
+    css = Path("src/gnom_hub/ui/static/tokens.css").read_text(encoding="utf-8") + Path(
+        "src/gnom_hub/ui/static/app.css"
+    ).read_text(encoding="utf-8")
     html = Path("src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
     assert "--c-flex: #f0c000" in css
     assert "#a78bfa" not in css
