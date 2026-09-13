@@ -107,7 +107,7 @@ def test_api_invalid_target_is_400(tmp_path, monkeypatch):
 
 
 def test_js_chat_uses_send_target_not_clicked_card():
-    js = Path("src/gnom_hub/ui/static/parts/03-chat-jobs-ops.js").read_text(encoding="utf-8")
+    js = Path("src/gnom_hub/ui/static/parts/08-chat-jobs.js").read_text(encoding="utf-8")
     assert "function appendChat(who, text, agentId)" in js or "appendChat(who, text, conv" in js
     assert "syncActiveChatLog(lastClickedAgentId" not in js.split("function appendChat")[1][:500]
     assert "Send+Exec" not in js

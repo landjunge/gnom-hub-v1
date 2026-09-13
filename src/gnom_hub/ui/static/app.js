@@ -1,4 +1,4 @@
-/* part: 00-preamble.js  lines 1-323 of app.js — edit parts, run scripts/build_ui_js.py */
+/* part: 00-core.js — edit parts, run scripts/build_ui_js.py */
 /**
  * Gnom-Hub v1 – desktop UI wired to /api/*
  * Hooks still available: window.GnomHub.onSend / onSave / onToggle / onClarify
@@ -2174,7 +2174,7 @@
     arm();
   }
 
-/* part: 01-api-snapshot-tts.js  lines 324-704 of app.js — edit parts, run scripts/build_ui_js.py */
+/* part: 01-core-api.js — edit parts, run scripts/build_ui_js.py */
   async function api(method, path, body) {
     const opts = { method: method, headers: { "Content-Type": "application/json" } };
     if (body !== undefined) opts.body = JSON.stringify(body);
@@ -3015,6 +3015,7 @@
     }
   }
 
+/* part: 02-speech.js — edit parts, run scripts/build_ui_js.py */
   /** Recent spoken fingerprints — never queue the same text twice. */
   const ttsSpokenFp = {};
   let ttsToastAt = 0;
@@ -3697,7 +3698,7 @@
     }
   }
 
-/* part: 02-modals-tools-ws.js  lines 705-1949 of app.js — edit parts, run scripts/build_ui_js.py */
+/* part: 03-system.js — edit parts, run scripts/build_ui_js.py */
   function dockIntoBoxes(el) {
     const boxes = document.querySelector(".boxes");
     if (!el || !boxes) return;
@@ -4224,6 +4225,7 @@
     if (els.usageModal) els.usageModal.hidden = true;
   }
 
+/* part: 04-tools.js — edit parts, run scripts/build_ui_js.py */
   function closeToolsModal() {
     if (els.toolsModal) els.toolsModal.hidden = true;
   }
@@ -4851,6 +4853,7 @@
   }
 
 
+/* part: 05-system-ops.js — edit parts, run scripts/build_ui_js.py */
   async function openUsageModal() {
     if (!els.usageModal) return;
     els.usageModal.hidden = false;
@@ -5249,6 +5252,7 @@
     }
   }
 
+/* part: 06-workspace.js — edit parts, run scripts/build_ui_js.py */
   async function openWorkspaceModal() {
     if (!els.workspaceModal) return;
     dockIntoBoxes(els.workspaceModal);
@@ -5478,6 +5482,7 @@
     }
   }
 
+/* part: 07-system-skills.js — edit parts, run scripts/build_ui_js.py */
   async function onFlexSelectChange() {
     if (!els.flexSelect) return;
     els.flexSelect.value = "personal";
@@ -5704,7 +5709,7 @@
       toast("Docs search failed: " + err.message, "error");
     }
   }
-/* part: 03-chat-jobs-ops.js  lines 1950-3681 of app.js — edit parts, run scripts/build_ui_js.py */
+/* part: 08-chat-jobs.js — edit parts, run scripts/build_ui_js.py */
   function toggleMic() {
     const SR =
       window.SpeechRecognition || window.webkitSpeechRecognition || null;
@@ -8504,7 +8509,7 @@
       setChatBusy(false);
     }
   }
-/* part: 04-boxes.js  lines 3682-4267 of app.js — edit parts, run scripts/build_ui_js.py */
+/* part: 09-boxes.js — edit parts, run scripts/build_ui_js.py */
 
   let box3FocusIdx = 0;
   let lastBox3StageKey = "";
@@ -10464,7 +10469,7 @@
     }
   }
 
-/* part: 05-init.js  lines 4268-4656 of app.js — edit parts, run scripts/build_ui_js.py */
+/* part: 10-core-init.js — edit parts, run scripts/build_ui_js.py */
   async function refreshBusyFromServer() {
     try {
       const b = await api("GET", "/api/jobs/busy");

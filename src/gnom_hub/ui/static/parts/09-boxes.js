@@ -1,4 +1,4 @@
-/* part: 04-boxes.js  lines 3682-4267 of app.js — edit parts, run scripts/build_ui_js.py */
+/* part: 09-boxes.js — edit parts, run scripts/build_ui_js.py */
 
   let box3FocusIdx = 0;
   let lastBox3StageKey = "";

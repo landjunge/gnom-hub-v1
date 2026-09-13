@@ -7,8 +7,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 HTML = (ROOT / "src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
-TOOLS_JS = (ROOT / "src/gnom_hub/ui/static/parts/02-modals-tools-ws.js").read_text(encoding="utf-8")
-INIT_JS = (ROOT / "src/gnom_hub/ui/static/parts/05-init.js").read_text(encoding="utf-8")
+TOOLS_JS = "".join(
+    (ROOT / "src/gnom_hub/ui/static/parts" / n).read_text(encoding="utf-8")
+    for n in (
+        "03-system.js",
+        "04-tools.js",
+        "05-system-ops.js",
+        "06-workspace.js",
+        "07-system-skills.js",
+    )
+)
+INIT_JS = (ROOT / "src/gnom_hub/ui/static/parts/10-core-init.js").read_text(encoding="utf-8")
 
 
 def _tools_html() -> str:

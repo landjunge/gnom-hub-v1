@@ -9,9 +9,12 @@ ROOT = Path(__file__).resolve().parents[1]
 CSS = (ROOT / "src/gnom_hub/ui/static/tokens.css").read_text(encoding="utf-8") + (
     ROOT / "src/gnom_hub/ui/static/app.css"
 ).read_text(encoding="utf-8")
-BOXES_JS = (ROOT / "src/gnom_hub/ui/static/parts/04-boxes.js").read_text(encoding="utf-8")
-SNAP_JS = (ROOT / "src/gnom_hub/ui/static/parts/01-api-snapshot-tts.js").read_text(encoding="utf-8")
-CHAT_JS = (ROOT / "src/gnom_hub/ui/static/parts/03-chat-jobs-ops.js").read_text(encoding="utf-8")
+BOXES_JS = (ROOT / "src/gnom_hub/ui/static/parts/09-boxes.js").read_text(encoding="utf-8")
+SNAP_JS = "".join(
+    (ROOT / "src/gnom_hub/ui/static/parts" / n).read_text(encoding="utf-8")
+    for n in ("01-core-api.js", "02-speech.js")
+)
+CHAT_JS = (ROOT / "src/gnom_hub/ui/static/parts/08-chat-jobs.js").read_text(encoding="utf-8")
 
 _RADIUS_ZERO = re.compile(r"border-radius\s*:\s*0(px)?\b")
 _RADIUS_FOUR = re.compile(r"border-radius\s*:\s*4px\b")
@@ -72,7 +75,7 @@ def _idle_set_box2() -> str:
     if idx < 0:
         idx = SNAP_JS.find("p.stage === 'idle'")
     if idx < 0:
-        raise AssertionError("missing idle Box 2 empty copy in 01-api-snapshot-tts.js")
+        raise AssertionError("missing idle Box 2 empty copy in 01-core-api.js")
     return SNAP_JS[idx : idx + 600]
 
 

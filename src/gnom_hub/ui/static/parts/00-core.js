@@ -1,4 +1,4 @@
-/* part: 00-preamble.js  lines 1-323 of app.js — edit parts, run scripts/build_ui_js.py */
+/* part: 00-core.js — edit parts, run scripts/build_ui_js.py */
 /**
  * Gnom-Hub v1 – desktop UI wired to /api/*
  * Hooks still available: window.GnomHub.onSend / onSave / onToggle / onClarify

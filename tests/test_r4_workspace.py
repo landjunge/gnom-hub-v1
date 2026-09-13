@@ -8,7 +8,16 @@ from gnom_hub.memory.workspace import WorkspaceStore
 
 ROOT = Path(__file__).resolve().parents[1]
 HTML = (ROOT / "src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
-WS_JS = (ROOT / "src/gnom_hub/ui/static/parts/02-modals-tools-ws.js").read_text(encoding="utf-8")
+WS_JS = "".join(
+    (ROOT / "src/gnom_hub/ui/static/parts" / n).read_text(encoding="utf-8")
+    for n in (
+        "03-system.js",
+        "04-tools.js",
+        "05-system-ops.js",
+        "06-workspace.js",
+        "07-system-skills.js",
+    )
+)
 
 
 def _modal() -> str:

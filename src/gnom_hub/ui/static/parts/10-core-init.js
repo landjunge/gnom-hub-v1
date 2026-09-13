@@ -1,4 +1,4 @@
-/* part: 05-init.js  lines 4268-4656 of app.js — edit parts, run scripts/build_ui_js.py */
+/* part: 10-core-init.js — edit parts, run scripts/build_ui_js.py */
   async function refreshBusyFromServer() {
     try {
       const b = await api("GET", "/api/jobs/busy");

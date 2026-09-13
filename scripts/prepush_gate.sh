@@ -103,6 +103,22 @@ if [ "${GNOM_PREPUSH_CSS:-1}" != "0" ] && [ "${GNOM_PREPUSH_CSS:-}" != "false" ]
   fi
 fi
 
+# Generated app.js must match parts/*.js. Skip with GNOM_PREPUSH_JS=0
+if [ "${GNOM_PREPUSH_JS:-1}" != "0" ] && [ "${GNOM_PREPUSH_JS:-}" != "false" ]; then
+  echo "▸ prepush_gate: build_ui_js.py --check"
+  if [ -x .venv/bin/python ]; then
+    PY=.venv/bin/python
+  else
+    PY=python
+  fi
+  if ! "$PY" scripts/build_ui_js.py --check; then
+    echo "" >&2
+    echo "❌ app.js is stale. Edit parts/*.js, then:" >&2
+    echo "  python3 scripts/build_ui_js.py" >&2
+    exit 1
+  fi
+fi
+
 
 # ESLint UI gate (max-warnings 0). Skip with GNOM_PREPUSH_ESLINT=0
 if [ "${GNOM_PREPUSH_ESLINT:-1}" != "0" ] && [ "${GNOM_PREPUSH_ESLINT:-}" != "false" ]; then

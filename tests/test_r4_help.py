@@ -6,7 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 HTML = (ROOT / "src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
-CHAT_JS = (ROOT / "src/gnom_hub/ui/static/parts/03-chat-jobs-ops.js").read_text(encoding="utf-8")
+CHAT_JS = (ROOT / "src/gnom_hub/ui/static/parts/08-chat-jobs.js").read_text(encoding="utf-8")
 OPS = (ROOT / "src/gnom_hub/system_ops.py").read_text(encoding="utf-8")
 CSS = (ROOT / "src/gnom_hub/ui/static/app.css").read_text(encoding="utf-8")
 
