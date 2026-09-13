@@ -132,6 +132,7 @@
     btnWorkspace: document.getElementById("btn-workspace"),
     btnTools: document.getElementById("btn-tools"),
     toolsModal: document.getElementById("tools-modal"),
+    helpModal: document.getElementById("help-modal"),
     flexSelect: document.getElementById("flex-preset-select"),
     vectorModal: document.getElementById("vector-modal"),
     skillsModal: document.getElementById("skills-modal"),
@@ -7980,29 +7981,87 @@
     }
   }
 
+  const HELP_TOPICS = [
+    {
+      id: "senden",
+      label: "Senden",
+      body: "Senden und Enter bedeuten nur reden. Kein Worker, kein Werkzeug, keine Dateiänderung. Die Antwort erscheint in Box 2.",
+    },
+    {
+      id: "arbeit",
+      label: "Arbeit",
+      body: "Arbeit starten oder Ctrl/⌘+Enter startet Distill und Worker. Ja gilt nur für die sichtbare Frage in Box 1. Send startet keine Arbeit.",
+    },
+    {
+      id: "boxen",
+      label: "Boxen",
+      body: "Box 1: Rückfragen. Box 2: Antworten. Box 3: Worker-Seiten. Sicht ist die Seite, Code der Text.",
+    },
+    {
+      id: "god",
+      label: "God",
+      body: "God geht nur über den roten Badge oben. Aus = Trockenlauf. An = echte Steuerung. Kein God-Schalter im System.",
+    },
+    {
+      id: "dateien",
+      label: "Dateien",
+      body: "Behalten erst nach Rücklesen. Workspace: Temp, Dauerhaft, Behalten. Persönliches liegt nicht im Git.",
+    },
+    {
+      id: "tastatur",
+      label: "Tastatur",
+      body: "Enter = senden. Ctrl/⌘+Enter = Arbeit starten. Ctrl/⌘+S = speichern. Esc = zu. Mikrofon sendet nicht.",
+    },
+  ];
+
+  let helpTopicId = "senden";
+
+  function closeHelpModal() {
+    const modal = els.helpModal || document.getElementById("help-modal");
+    if (modal) modal.hidden = true;
+  }
+
+  function paintHelpTopic(topics, id) {
+    const list = topics && topics.length ? topics : HELP_TOPICS;
+    const pick = list.filter(function (t) {
+      return t.id === id;
+    })[0] || list[0];
+    helpTopicId = pick.id;
+    const tabs = document.getElementById("help-tabs");
+    const body = document.getElementById("help-body");
+    if (tabs) {
+      tabs.innerHTML = "";
+      list.forEach(function (t) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "help-tab" + (t.id === pick.id ? " is-on" : "");
+        btn.textContent = t.label;
+        btn.setAttribute("role", "tab");
+        btn.setAttribute("aria-selected", t.id === pick.id ? "true" : "false");
+        btn.addEventListener("click", function () {
+          paintHelpTopic(list, t.id);
+        });
+        tabs.appendChild(btn);
+      });
+    }
+    if (body) body.textContent = pick.body || "";
+  }
+
   async function onHelp() {
+    const modal = els.helpModal || document.getElementById("help-modal");
+    if (!modal) return;
+    if (typeof dockIntoBoxes === "function") dockIntoBoxes(modal);
+    let topics = HELP_TOPICS;
     try {
       const h = await api("GET", "/api/help");
-      showTooltip("help");
-      if (els.placeholder) els.placeholder.hidden = true;
-      els.tipRoot.hidden = false;
-      els.tipTitle.textContent = h.title || "Hilfe";
-      els.tipHow.textContent = h.how_to || "";
-      const keys = h.keys ? "\n\n" + h.keys : "";
-      els.tipExample.textContent =
-        (h.pipeline ? h.pipeline + "\n\n" : "") +
-        (h.example || "") +
-        keys;
-    } catch (err) {
-      if (els.placeholder) els.placeholder.hidden = true;
-      els.tipRoot.hidden = false;
-      els.tipTitle.textContent = "Hilfe";
-      els.tipHow.textContent =
-        "Senden = reden. Arbeit starten = Worker.";
-      els.tipExample.textContent =
-        "Tastatur: Enter senden · Ctrl/⌘+Enter Arbeit starten · Ctrl/⌘+S speichern · Esc abbrechen";
-      toast("Hilfe offline: " + err.message, "error");
+      if (h && Array.isArray(h.topics) && h.topics.length) topics = h.topics;
+      const title = document.getElementById("help-title");
+      if (title) title.textContent = h.title || "Hilfe";
+    } catch (_err) {
+      /* built-in topics */
     }
+    paintHelpTopic(topics, helpTopicId || "senden");
+    modal.hidden = false;
   }
 
   async function restoreBackupByName(name) {
@@ -10548,6 +10607,13 @@
     if (btnClearChat) btnClearChat.addEventListener("click", clearChatLog);
     els.btnSave.addEventListener("click", onSave);
     if (els.btnHelp) els.btnHelp.addEventListener("click", onHelp);
+    const helpClose = document.getElementById("help-close");
+    if (helpClose) helpClose.addEventListener("click", closeHelpModal);
+    if (els.helpModal) {
+      els.helpModal.addEventListener("click", function (ev) {
+        if (ev.target === els.helpModal) closeHelpModal();
+      });
+    }
     if (els.btnSystem) els.btnSystem.addEventListener("click", openSystemModal);
     if (els.btnWorkspace) els.btnWorkspace.addEventListener("click", openWorkspaceModal);
     if (els.btnTools) els.btnTools.addEventListener("click", openToolsModal);

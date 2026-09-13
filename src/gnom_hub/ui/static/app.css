@@ -4389,8 +4389,72 @@ a:focus-visible {
 }
 #workspace-modal .modal-title,
 #system-modal .modal-title,
-#tools-modal .modal-title {
+#tools-modal .modal-title,
+#help-modal .modal-title {
   font-size: 14px;
+}
+#help-modal,
+#help-modal .modal-panel,
+#help-modal * {
+  border-radius: 0;
+}
+#help-modal.modal {
+  padding: 0;
+}
+#help-modal .modal-panel {
+  max-width: none;
+  max-height: none;
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--border-strong);
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+}
+.help-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  width: 100%;
+  gap: 0;
+  min-height: var(--tab-h);
+  border-bottom: 1px solid var(--border-strong);
+}
+.help-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  height: var(--tab-h);
+  padding: 0 4px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-card);
+  color: #fff;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.help-tab.is-on {
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--border-strong);
+  background: var(--bg-panel);
+}
+.help-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text);
+}
+#help-modal .modal-close {
+  height: var(--btn-h);
+  width: var(--btn-h);
+  color: #fff;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elev);
 }
 #system-modal .btn-ws-sm,
 #system-modal .btn-save {

@@ -215,6 +215,13 @@
     if (btnClearChat) btnClearChat.addEventListener("click", clearChatLog);
     els.btnSave.addEventListener("click", onSave);
     if (els.btnHelp) els.btnHelp.addEventListener("click", onHelp);
+    const helpClose = document.getElementById("help-close");
+    if (helpClose) helpClose.addEventListener("click", closeHelpModal);
+    if (els.helpModal) {
+      els.helpModal.addEventListener("click", function (ev) {
+        if (ev.target === els.helpModal) closeHelpModal();
+      });
+    }
     if (els.btnSystem) els.btnSystem.addEventListener("click", openSystemModal);
     if (els.btnWorkspace) els.btnWorkspace.addEventListener("click", openWorkspaceModal);
     if (els.btnTools) els.btnTools.addEventListener("click", openToolsModal);

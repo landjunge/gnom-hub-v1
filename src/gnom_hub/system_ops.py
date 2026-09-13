@@ -87,25 +87,69 @@ class SystemOpsMixin:
         }
 
     def help_text(self) -> dict[str, Any]:
-
+        topics = [
+            {
+                "id": "senden",
+                "label": "Senden",
+                "body": (
+                    "Senden und Enter bedeuten nur reden. "
+                    "Kein Worker, kein Werkzeug, keine Dateiänderung. "
+                    "Die Antwort erscheint in Box 2 beim gewählten Empfänger."
+                ),
+            },
+            {
+                "id": "arbeit",
+                "label": "Arbeit",
+                "body": (
+                    "Arbeit starten oder Ctrl/⌘+Enter startet Distill und Worker. "
+                    "Ja gilt nur für die sichtbare Frage in Box 1. "
+                    "Send startet keine Arbeit."
+                ),
+            },
+            {
+                "id": "boxen",
+                "label": "Boxen",
+                "body": (
+                    "Box 1: Rückfragen und Entscheidungen. "
+                    "Box 2: Antworten (Brain, Flex, Coord, Mem, A1–A4). "
+                    "Box 3: Worker-Seiten. Sicht ist die Seite, Code der Text."
+                ),
+            },
+            {
+                "id": "god",
+                "label": "God",
+                "body": (
+                    "God geht nur über den roten Badge oben. "
+                    "Aus = Trockenlauf. An = echte Maus, Tastatur, erlaubte Shell. "
+                    "Im System-Fenster gibt es keinen God-Schalter."
+                ),
+            },
+            {
+                "id": "dateien",
+                "label": "Dateien",
+                "body": (
+                    "Behalten schreibt erst nach bestätigtem Rücklesen. "
+                    "Workspace zeigt Temp, Dauerhaft und Behalten. "
+                    "Persönliche Dateien liegen nicht im Git."
+                ),
+            },
+            {
+                "id": "tastatur",
+                "label": "Tastatur",
+                "body": (
+                    "Enter = senden. Ctrl/⌘+Enter = Arbeit starten. "
+                    "Ctrl/⌘+S = speichern. Esc = Overlay zu oder Job abbrechen. "
+                    "Mikrofon füllt die Zeile und sendet nicht."
+                ),
+            },
+        ]
         return {
             "title": "Hilfe",
-            "how_to": (
-                "1) Send / Enter = reden, keine Ausführung. "
-                "2) Arbeit starten / Ctrl+Enter = Distill + Worker. "
-                "3) Ja nur auf die sichtbare START-ID in Box 1. "
-                "4) Ctrl/⌘+S = save HOT + agents. "
-                "5) Esc = close fullscreen or cancel job. "
-                "6) Box 3: Copy/DL/Tab/WS/↑perm/fullscreen; toolbar Copy all + Diff + History. "
-                "7) Cost badge + Compact density; job timer while busy. "
-                "8) Auto-save + Box 3 focus after successful Execute. 9) Session packs (chat/history/workspace/ui_prefs/notes; list filter). 10) History Re-Exec. 11) Telegram: /hot /tools /fetch /ws /jobs /usage /backup …"
-            ),
-            "example": "Idee senden → Arbeit starten → Pack ↓ (USB) → History Re-Exec → Diff.",
+            "topics": topics,
+            "how_to": topics[0]["body"],
+            "example": "Senden = reden. Arbeit starten = Worker. God nur Badge.",
             "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",
-            "keys": (
-                "Keyboard: Enter send · Ctrl/⌘+Enter execute · Ctrl/⌘+S save · Esc cancel/close overlay. "
-                "DEEPSEEK_API_KEY or Ollama. TELEGRAM optional."
-            ),
+            "keys": "Enter senden · Ctrl/⌘+Enter Arbeit · Ctrl/⌘+S speichern · Esc zu",
         }
 
     def canvas(self) -> dict[str, Any]:
