@@ -31,6 +31,7 @@ HTML landings and general builds still need clear build language / Execute.
 1. **ALWAYS run `ruff format .` before every commit.** No exceptions.
    CI runs `ruff format --check .` and will fail on unformatted files.
    - **UI JS:** edit `src/gnom_hub/ui/static/parts/*.js`, then run `python scripts/build_ui_js.py` (rebuilds `app.js`).
+   - **UI CSS:** edit `src/gnom_hub/ui/static/css/*.css`, then run `python scripts/build_ui_css.py` (rebuilds `app.css`). Do not edit `app.css` by hand.
 2. **After every completed step: commit AND push** to `origin/main`
    (or open a PR when the user asks for a branch/PR).
    - Do not wait for an explicit “push” request unless the user wants a PR workflow.
