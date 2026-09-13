@@ -4364,6 +4364,7 @@ a:focus-visible {
 #workspace-modal,
 #system-modal,
 #tools-modal,
+#help-modal,
 .boxes .modal.in-boxes,
 .boxes .modal.in-boxes .modal-panel,
 .boxes .modal.in-boxes * {
@@ -4372,13 +4373,15 @@ a:focus-visible {
 #workspace-modal.modal,
 #system-modal.modal,
 #tools-modal.modal,
+#help-modal.modal,
 .boxes .modal.in-boxes {
   padding: 0;
 }
 .boxes .modal.in-boxes .modal-panel,
 #workspace-modal .modal-panel,
 #system-modal .modal-panel,
-#tools-modal .modal-panel {
+#tools-modal .modal-panel,
+#help-modal .modal-panel {
   max-width: none;
   max-height: none;
   width: 100%;
@@ -4389,8 +4392,90 @@ a:focus-visible {
 }
 #workspace-modal .modal-title,
 #system-modal .modal-title,
-#tools-modal .modal-title {
+#tools-modal .modal-title,
+#help-modal .modal-title {
   font-size: 14px;
+}
+#help-modal,
+#help-modal .modal-panel,
+#help-modal * {
+  border-radius: 0;
+}
+#help-modal.modal {
+  padding: 0;
+}
+#help-modal .modal-panel {
+  max-width: none;
+  max-height: none;
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--border-strong);
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+}
+.help-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  width: 100%;
+  gap: 0;
+  flex: 0 0 auto;
+  min-height: var(--tab-h);
+  border-bottom: 1px solid var(--border-strong);
+}
+.help-tab {
+  flex: 1 1 0;
+  min-width: 0;
+  height: var(--tab-h);
+  padding: 0 4px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-card);
+  color: #fff;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.help-tab.is-on {
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--border-strong);
+  background: var(--bg-panel);
+}
+.help-body {
+  flex: 1 1 auto;
+  min-height: 120px;
+  overflow: auto;
+  padding: 20px 24px 28px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+}
+.help-h {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 700;
+}
+.help-list {
+  margin: 0;
+  padding: 0 0 0 1.2em;
+}
+.help-list li {
+  margin: 0 0 10px;
+}
+.help-nicht {
+  margin: 18px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+#help-modal .modal-close {
+  height: var(--btn-h);
+  width: var(--btn-h);
+  color: #fff;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elev);
 }
 #system-modal .btn-ws-sm,
 #system-modal .btn-save {

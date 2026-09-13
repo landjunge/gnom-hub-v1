@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=179" />
+  <link rel="stylesheet" href="/static/app.css?v=181" />
   <!-- Tailwind utilities for Chat module (preflight OFF) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -780,8 +780,19 @@
     </div>
   </div>
 
+  <div id="help-modal" class="modal" hidden>
+    <div class="modal-panel help-panel">
+      <div class="modal-head">
+        <h2 class="modal-title" id="help-title">Hilfe</h2>
+        <button type="button" id="help-close" class="modal-close" title="Schließen">×</button>
+      </div>
+      <div id="help-tabs" class="help-tabs" role="tablist" aria-label="Hilfe-Themen"></div>
+      <div id="help-body" class="help-body">Senden = reden. Arbeit starten = Worker.</div>
+    </div>
+  </div>
+
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=177"></script>
+  <script src="/static/app.js?v=179"></script>
 </body>
 </html>

@@ -132,6 +132,7 @@
     btnWorkspace: document.getElementById("btn-workspace"),
     btnTools: document.getElementById("btn-tools"),
     toolsModal: document.getElementById("tools-modal"),
+    helpModal: document.getElementById("help-modal"),
     flexSelect: document.getElementById("flex-preset-select"),
     vectorModal: document.getElementById("vector-modal"),
     skillsModal: document.getElementById("skills-modal"),
