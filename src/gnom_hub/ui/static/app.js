@@ -159,6 +159,9 @@
   let lastSnapshot = null; // latest hub snapshot (tools history etc.)
   let lastToolCalls = []; // pipeline.tool_calls for Tools modal history
   let manualToolCalls = []; // this browser session (Tools Run / Fetch)
+  let toolsResultMode = "preview";
+  let lastToolsSicht = "";
+  let lastToolsCode = "";
   let lastDryRunKey = ""; // avoid re-toasting dry-run God hint
   let lastPlanKey = ""; // avoid re-toasting resolved plan mode
   let currentJobId = null;
@@ -4217,6 +4220,74 @@
   }
 
 
+  function setToolsResult(sicht, codeObj) {
+    lastToolsSicht = String(sicht || "");
+    lastToolsCode =
+      typeof codeObj === "string"
+        ? codeObj
+        : JSON.stringify(codeObj == null ? {} : codeObj, null, 2);
+    paintToolsResult();
+  }
+
+  function paintToolsResult() {
+    const pre = document.getElementById("tools-result");
+    if (!pre) return;
+    pre.textContent =
+      toolsResultMode === "source" ? lastToolsCode || lastToolsSicht : lastToolsSicht || lastToolsCode;
+    const btnS = document.getElementById("tools-result-sicht");
+    const btnC = document.getElementById("tools-result-code");
+    if (btnS) btnS.classList.toggle("is-on", toolsResultMode !== "source");
+    if (btnC) btnC.classList.toggle("is-on", toolsResultMode === "source");
+  }
+
+  function formatToolCallGerman(c) {
+    const name = (c && (c.name || c.tool)) || "Werkzeug";
+    const ok = !c || c.ok !== false;
+    const lines = [ok ? name + " — ok" : name + " — Fehler"];
+    if (c && c.reason) lines.push("Grund: " + c.reason);
+    if (c && c.error) lines.push("Fehler: " + c.error);
+    const args = (c && c.args) || {};
+    Object.keys(args)
+      .slice(0, 6)
+      .forEach(function (k) {
+        lines.push(k + ": " + String(args[k]).slice(0, 120));
+      });
+    const res = (c && c.result) || {};
+    if (typeof res === "string") {
+      lines.push(res.slice(0, 800));
+    } else if (res && typeof res === "object") {
+      if (res.dry_run) lines.push("Trockenlauf — God-Badge oben für echte Steuerung");
+      if (res.url) lines.push("URL: " + res.url);
+      if (res.message) lines.push(String(res.message).slice(0, 400));
+      if (res.package) lines.push("Paket: " + res.package);
+      if (res.hits != null) lines.push("Treffer: " + res.hits);
+      if (res.text_len != null) lines.push("Zeichen: " + res.text_len);
+      if (res.status != null) lines.push("Status: " + res.status);
+      if (res.text) lines.push(String(res.text).slice(0, 600));
+      if (res.detail) lines.push(String(res.detail).slice(0, 400));
+    }
+    return lines.join("\n");
+  }
+
+  function formatCuGerman(data, kind) {
+    if (data == null) return String(kind || "Computer") + " — keine Antwort";
+    if (typeof data === "string") return data;
+    const lines = [];
+    if (data.dry_run) {
+      lines.push("Trockenlauf — God-Badge oben für echte Steuerung");
+    }
+    if (data.ok === false) {
+      lines.push((kind || "Aktion") + " — Fehler");
+      if (data.error) lines.push("Fehler: " + data.error);
+    } else {
+      lines.push((kind || "Aktion") + " — ok");
+    }
+    if (data.detail) lines.push(String(data.detail));
+    if (data.message) lines.push(String(data.message));
+    if (data.capture && data.capture.ok) lines.push("Bildschirm gespeichert");
+    return lines.join("\n");
+  }
+
   function renderToolsDodFail(validation) {
     const host = document.getElementById("tools-dod-fail");
     if (!host) return;
@@ -4234,9 +4305,9 @@
     host.hidden = false;
     host.removeAttribute("hidden");
     host.textContent =
-      "DoD fail" +
-      (v.score != null ? " · score " + v.score : "") +
-      (v.retryable ? " · retryable" : "") +
+      "DoD nicht erfüllt" +
+      (v.score != null ? " · Wert " + v.score : "") +
+      (v.retryable ? " · erneut möglich" : "") +
       (uniq.length ? ": " + uniq.slice(0, 6).join(", ") : "");
   }
 
@@ -4267,7 +4338,7 @@
         " ok / " +
         nFail +
         " Fehler" +
-        (list.length ? " · Zeile klicken für JSON" : "");
+        (list.length ? " · Zeile antippen für Sicht" : "");
     }
     ul.innerHTML = "";
     if (!list.length) {
@@ -4283,7 +4354,7 @@
       const ok = !c || c.ok !== false;
       li.className = ok ? "tool-ok" : "tool-fail";
       li.setAttribute("data-idx", String(i));
-      li.title = "Click to show full JSON in result panel";
+      li.title = "Antippen zeigt Klartext in Sicht";
       const name = (c && (c.name || c.tool)) || "?";
       const why = (c && c.reason) || "";
       const err = (c && c.error) || "";
@@ -4297,20 +4368,20 @@
       let resBit = "";
       if (res.url) resBit = String(res.url).slice(0, 48);
       else if (res.package) resBit = String(res.package);
-      else if (res.hits != null) resBit = res.hits + " hits";
-      else if (res.text_len != null) resBit = res.text_len + " chars";
+      else if (res.hits != null) resBit = res.hits + " Treffer";
+      else if (res.text_len != null) resBit = res.text_len + " Zeichen";
       else if (res.message) resBit = String(res.message).slice(0, 48);
-      else if (res.status != null) resBit = "status " + res.status;
-      const src = c && c._src === "manual" ? "manual" : "auto";
-      const meta = [ok ? "ok" : "fail"]
-        .concat(why ? ["why: " + String(why).slice(0, 80)] : [])
+      else if (res.status != null) resBit = "Status " + res.status;
+      const src = c && c._src === "manual" ? "manuell" : "Lauf";
+      const meta = [ok ? "ok" : "Fehler"]
+        .concat(why ? ["Grund: " + String(why).slice(0, 80)] : [])
         .concat(argBits)
         .concat(resBit ? [resBit] : [])
-        .concat(err ? ["err:" + String(err).slice(0, 60)] : [])
+        .concat(err ? ["Fehler: " + String(err).slice(0, 60)] : [])
         .join(" · ");
       li.title = why
-        ? "Why: " + why + " — click for full JSON"
-        : "Click to show full JSON in result panel";
+        ? "Grund: " + why + " — antippen für Sicht"
+        : "Antippen zeigt Klartext in Sicht";
       // eslint-disable-next-line no-unsanitized/property
       li.innerHTML =
         '<span class="tool-src">[' +
@@ -4328,13 +4399,11 @@
           x.classList.remove("selected");
         });
         li.classList.add("selected");
-        const pre = document.getElementById("tools-result");
-        if (pre) {
-          const clean = Object.assign({}, c);
-          delete clean._src;
-          delete clean._i;
-          pre.textContent = JSON.stringify(clean, null, 2);
-        }
+        const clean = Object.assign({}, c);
+        delete clean._src;
+        delete clean._i;
+        toolsResultMode = "preview";
+        setToolsResult(formatToolCallGerman(c), clean);
         // Prefill run form for re-call
         const sel = document.getElementById("tools-select");
         const argsEl = document.getElementById("tools-args");
@@ -4362,7 +4431,7 @@
     });
     const text = JSON.stringify(list, null, 2);
     function done() {
-      if (typeof toast === "function") toast("Tool history copied (" + list.length + ")", "ok");
+      if (typeof toast === "function") toast("Verlauf kopiert (" + list.length + ")", "ok");
     }
     function fallbackCopy() {
       const ta = document.createElement("textarea");
@@ -4373,7 +4442,7 @@
         document.execCommand("copy");
         done();
       } catch (_e) {
-        if (typeof toast === "function") toast("Copy failed", "error");
+        if (typeof toast === "function") toast("Kopieren fehlgeschlagen", "error");
       }
       document.body.removeChild(ta);
     }
@@ -4382,7 +4451,7 @@
         .writeText(text)
         .then(function () {
           if (typeof toast === "function") {
-            toast("Tool history copied (" + list.length + ")", "ok");
+            toast("Verlauf kopiert (" + list.length + ")", "ok");
           }
         })
         .catch(function () {
@@ -4465,25 +4534,25 @@
     }
   }
 
-  function showCuResult(obj) {
-    const pre = document.getElementById("tools-result");
-    if (!pre) return;
-    pre.textContent =
-      typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
+  function showCuResult(obj, kind) {
+    toolsResultMode = "preview";
+    setToolsResult(formatCuGerman(obj, kind || "Computer"), obj);
   }
 
   async function cuInspect() {
     try {
       const data = await api("POST", "/api/computer-use/inspect");
-      showCuResult(data);
+      showCuResult(data, "Bildschirm");
       toast(
-        data.capture && data.capture.ok
-          ? "Screenshot saved"
-          : "Inspect done (maybe stub capture)",
-        "ok"
+        data.dry_run
+          ? "Trockenlauf — God-Badge oben für echte Steuerung"
+          : data.capture && data.capture.ok
+            ? "Bildschirm gespeichert"
+            : "Bildschirm geprüft",
+        data.dry_run ? "info" : "ok"
       );
     } catch (err) {
-      toast("Inspect failed: " + err.message, "error");
+      toast("Prüfen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -4492,51 +4561,53 @@
     const y = Number((document.getElementById("cu-y") || {}).value || 0);
     try {
       const data = await api("POST", "/api/computer-use/click", { x: x, y: y });
-      showCuResult(data);
+      showCuResult(data, "Klick");
       toast(
         data.dry_run
-          ? "Dry-run click — enable God badge first"
-          : "Clicked " + x + "," + y,
+          ? "Trockenlauf — God-Badge oben für echte Steuerung"
+          : "Klick " + x + "," + y,
         data.dry_run ? "info" : "ok"
       );
     } catch (err) {
-      toast("Click failed: " + err.message, "error");
+      toast("Klick fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function cuType() {
     const text = String((document.getElementById("cu-type") || {}).value || "");
     if (!text.trim()) {
-      toast("Enter text to type", "info");
+      toast("Text zum Tippen fehlt", "info");
       return;
     }
     try {
       const data = await api("POST", "/api/computer-use/type", { text: text });
-      showCuResult(data);
+      showCuResult(data, "Tippen");
       toast(
-        data.dry_run ? "Dry-run type — enable God badge first" : "Typed",
+        data.dry_run ? "Trockenlauf — God-Badge oben für echte Steuerung" : "Getippt",
         data.dry_run ? "info" : "ok"
       );
     } catch (err) {
-      toast("Type failed: " + err.message, "error");
+      toast("Tippen fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function cuShell() {
     const cmd = String((document.getElementById("cu-shell") || {}).value || "");
     if (!cmd.trim()) {
-      toast("Enter shell command", "info");
+      toast("Shell-Befehl fehlt", "info");
       return;
     }
     try {
       const data = await api("POST", "/api/computer-use/shell", { cmd: cmd });
-      showCuResult(data);
+      showCuResult(data, "Shell");
       toast(
-        data.dry_run ? "Dry-run shell — enable God badge first" : data.detail,
+        data.dry_run
+          ? "Trockenlauf — God-Badge oben für echte Steuerung"
+          : data.detail || (data.ok ? "Shell ok" : "Shell Fehler"),
         data.ok || data.dry_run ? "ok" : "error"
       );
     } catch (err) {
-      toast("Shell failed: " + err.message, "error");
+      toast("Shell fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -4555,11 +4626,11 @@
         const errs = data.errors || [];
         const nPlug = data.plugins ? data.plugins.length : 0;
         toast(
-          "Plugins reloaded: " +
+          "Plugins neu: " +
             nPlug +
-            " · tools " +
+            " · Werkzeuge " +
             tools.length +
-            (errs.length ? " · errors " + errs.length : ""),
+            (errs.length ? " · Fehler " + errs.length : ""),
           errs.length ? "info" : "ok"
         );
       }
@@ -4597,9 +4668,9 @@
               st +
               (d.version ? " v" + d.version : "") +
               (d.tool_count != null
-                ? " · " + d.tool_count + " tools"
+                ? " · " + d.tool_count + " Werkzeuge"
                 : d.tool_count_declared != null
-                  ? " · " + d.tool_count_declared + " declared"
+                  ? " · " + d.tool_count_declared + " gemeldet"
                   : "");
             if (d.description) li.title = String(d.description);
             if (d.error) li.title = (li.title ? li.title + " · " : "") + d.error;
@@ -4663,7 +4734,7 @@
         if (prev) sel.value = prev;
       }
     } catch (err) {
-      toast("Tools load failed: " + err.message, "error");
+      toast("Werkzeuge laden fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -4683,17 +4754,16 @@
   async function runSelectedTool() {
     const sel = document.getElementById("tools-select");
     const argsEl = document.getElementById("tools-args");
-    const out = document.getElementById("tools-result");
     const name = sel ? sel.value : "";
     if (!name) {
-      toast("Select a tool", "info");
+      toast("Werkzeug wählen", "info");
       return;
     }
     let argumentsObj = {};
     try {
       argumentsObj = parseToolArgs(name, argsEl ? argsEl.value : "");
     } catch (err) {
-      toast("Invalid args JSON: " + err.message, "error");
+      toast("Args ungültig: " + err.message, "error");
       return;
     }
     try {
@@ -4702,24 +4772,28 @@
         arguments: argumentsObj,
       });
       const result = data.result;
-      const text =
+      const sicht =
         typeof result === "string"
           ? result
-          : JSON.stringify(result, null, 2);
-      if (out) out.textContent = text;
-      toast("Tool " + name + " ok", "ok");
+          : formatToolCallGerman({ name: name, args: argumentsObj, ok: true, result: result });
+      toolsResultMode = "preview";
+      setToolsResult(sicht, result);
+      if (typeof recordManualToolCall === "function") {
+        recordManualToolCall(name, argumentsObj, result);
+      }
+      toast(name + " ok", "ok");
     } catch (err) {
-      if (out) out.textContent = "Error: " + err.message;
-      toast("Tool failed: " + err.message, "error");
+      toolsResultMode = "preview";
+      setToolsResult("Fehler: " + err.message, { error: String(err.message || err) });
+      toast("Werkzeug fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function runQuickFetch() {
     const urlEl = document.getElementById("tools-fetch-url");
-    const out = document.getElementById("tools-result");
     let url = urlEl ? String(urlEl.value || "").trim() : "";
     if (!url) {
-      toast("Enter a URL", "info");
+      toast("URL fehlt", "info");
       return;
     }
     if (url.indexOf("http://") !== 0 && url.indexOf("https://") !== 0) {
@@ -4730,12 +4804,17 @@
         name: "web_fetch",
         arguments: { url: url, max_chars: 6000 },
       });
-      if (out) {
-        out.textContent =
-          typeof data.result === "string"
-            ? data.result
-            : JSON.stringify(data.result, null, 2);
-      }
+      const sicht =
+        typeof data.result === "string"
+          ? data.result
+          : formatToolCallGerman({
+              name: "web_fetch",
+              args: { url: url },
+              ok: true,
+              result: data.result,
+            });
+      toolsResultMode = "preview";
+      setToolsResult(sicht, data.result);
       if (typeof recordManualToolCall === "function") {
         recordManualToolCall(
           "web_fetch",
@@ -4743,10 +4822,11 @@
           data.result
         );
       }
-      toast("Fetch ok", "ok");
+      toast("Holen ok", "ok");
     } catch (err) {
-      if (out) out.textContent = "Fetch error: " + err.message;
-      toast("Fetch failed: " + err.message, "error");
+      toolsResultMode = "preview";
+      setToolsResult("Holen fehlgeschlagen: " + err.message, { error: String(err.message || err) });
+      toast("Holen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -10396,7 +10476,7 @@
             ? lastSnapshot.pipeline.tool_calls
             : lastToolCalls || [];
         renderToolsRunHistory(calls);
-        if (typeof toast === "function") toast("Tool history refreshed", "info");
+        if (typeof toast === "function") toast("Verlauf aktualisiert", "info");
       });
 
     if (els.toolsBadge) {
@@ -10425,6 +10505,20 @@
     }
     const toolsRun = document.getElementById("tools-run");
     if (toolsRun) toolsRun.addEventListener("click", runSelectedTool);
+    const toolsSicht = document.getElementById("tools-result-sicht");
+    const toolsCode = document.getElementById("tools-result-code");
+    if (toolsSicht) {
+      toolsSicht.addEventListener("click", function () {
+        toolsResultMode = "preview";
+        paintToolsResult();
+      });
+    }
+    if (toolsCode) {
+      toolsCode.addEventListener("click", function () {
+        toolsResultMode = "source";
+        paintToolsResult();
+      });
+    }
     const toolsRefresh = document.getElementById("tools-refresh");
     if (toolsRefresh) {
       toolsRefresh.addEventListener("click", function () {

@@ -228,7 +228,7 @@
             ? lastSnapshot.pipeline.tool_calls
             : lastToolCalls || [];
         renderToolsRunHistory(calls);
-        if (typeof toast === "function") toast("Tool history refreshed", "info");
+        if (typeof toast === "function") toast("Verlauf aktualisiert", "info");
       });
 
     if (els.toolsBadge) {
@@ -257,6 +257,20 @@
     }
     const toolsRun = document.getElementById("tools-run");
     if (toolsRun) toolsRun.addEventListener("click", runSelectedTool);
+    const toolsSicht = document.getElementById("tools-result-sicht");
+    const toolsCode = document.getElementById("tools-result-code");
+    if (toolsSicht) {
+      toolsSicht.addEventListener("click", function () {
+        toolsResultMode = "preview";
+        paintToolsResult();
+      });
+    }
+    if (toolsCode) {
+      toolsCode.addEventListener("click", function () {
+        toolsResultMode = "source";
+        paintToolsResult();
+      });
+    }
     const toolsRefresh = document.getElementById("tools-refresh");
     if (toolsRefresh) {
       toolsRefresh.addEventListener("click", function () {
