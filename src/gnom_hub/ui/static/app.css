@@ -4408,15 +4408,30 @@ a:focus-visible {
   color: var(--text);
 }
 .help-h {
-  margin: 0 0 12px;
+  margin: 0 0 8px;
   font-size: 16px;
   font-weight: 700;
 }
-.help-list {
+.help-wozu {
+  margin: 0 0 16px;
+  color: var(--text);
+  font-size: 14px;
+}
+.help-kicker {
+  margin: 14px 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.help-list,
+.help-steps {
   margin: 0;
   padding: 0 0 0 1.2em;
 }
-.help-list li {
+.help-list li,
+.help-steps li {
   margin: 0 0 10px;
 }
 .help-nicht {

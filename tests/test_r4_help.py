@@ -30,13 +30,32 @@ def test_help_opens_modal_not_box1_wall():
 
 def test_help_topics_are_german_and_short():
     assert '"Senden"' in OPS or '"senden"' in OPS
-    assert "God geht nur über den roten Badge" in OPS
+    assert "God geht nur über den roten Badge" in OPS or "roten Nutzer-Badge" in OPS
     assert "Telegram: /hot" not in OPS
     assert "Cost badge + Compact" not in OPS
     assert '"points"' in OPS
+    assert '"steps"' in OPS
+    assert '"wozu"' in OPS
     assert "help-list" in CHAT_JS
+    assert "help-steps" in CHAT_JS
+    assert "help-wozu" in CHAT_JS
     assert "help-nicht" in CHAT_JS
+    assert "So geht's" in CHAT_JS
     assert "pick.body" in CHAT_JS
+
+
+def test_help_each_topic_has_click_path_and_nicht():
+    from gnom_hub.system_ops import SystemOpsMixin
+
+    topics = SystemOpsMixin.help_text(object())["topics"]
+    assert len(topics) >= 6
+    for t in topics:
+        assert t["wozu"]
+        assert len(t["steps"]) >= 4
+        assert len(t["points"]) >= 5
+        assert t["nicht"]
+        assert all(len(s) < 180 for s in t["steps"])
+        assert "Telegram" not in t["wozu"]
 
 
 def test_help_tabs_equal_flex_white():
