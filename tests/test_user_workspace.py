@@ -61,6 +61,36 @@ def test_user_dir_under_personal_ws(tmp_path: Path):
     assert user_dir(tmp_path) == (tmp_path / "User").resolve()
 
 
+def test_migrate_legacy_does_not_overwrite_and_survives_hub_delete(tmp_path: Path):
+    from gnom_hub.config.user_workspace import migrate_legacy_hub_into_ws, restore_user_db
+
+    hub = tmp_path / "hub"
+    ws = tmp_path / "WS-gnom-hub-v1"
+    (hub / "User").mkdir(parents=True)
+    (hub / "data" / "hot").mkdir(parents=True)
+    (hub / "User" / "note.txt").write_text("from-hub", encoding="utf-8")
+    (hub / "data" / "hot" / "session.json").write_text("{}", encoding="utf-8")
+    (ws / "User").mkdir(parents=True)
+    (ws / "User" / "note.txt").write_text("keep-me", encoding="utf-8")
+    (ws / "User" / "user.db").write_text("db", encoding="utf-8")
+    out = migrate_legacy_hub_into_ws(hub, ws, backup_first=False)
+    assert out["ok"] is True
+    assert (ws / "User" / "note.txt").read_text(encoding="utf-8") == "keep-me"
+    assert (ws / "data" / "hot" / "session.json").is_file()
+    assert (hub / "User" / "note.txt").is_file()
+    import shutil
+
+    shutil.rmtree(hub)
+    assert (ws / "User" / "note.txt").read_text(encoding="utf-8") == "keep-me"
+    assert (ws / "data" / "hot" / "session.json").is_file()
+    (ws / "backups").mkdir(parents=True, exist_ok=True)
+    (ws / "backups" / "user.db").write_text("restored", encoding="utf-8")
+    # restore uses personal_workspace(tmp)=tmp for tests — call with ws as root
+    got = restore_user_db(ws)
+    assert got["ok"] is True
+    assert (ws / "User" / "user.db").read_text(encoding="utf-8") == "restored"
+
+
 def test_keep_html_content_to_selected(tmp_path: Path):
     ws = WorkspaceStore(tmp_path)
     html = "<!DOCTYPE html><html><body><h1>Mine</h1></body></html>"
