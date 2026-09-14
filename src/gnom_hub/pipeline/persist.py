@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from gnom_hub.memory.secrets import filter_secrets, looks_like_secret
 from gnom_hub.pipeline.models import PipelineStage
+from gnom_hub.threaddesk_ops import write_handoff
 
 
 class PersistMixin:
@@ -57,6 +58,71 @@ class PersistMixin:
             hot.save()
         self.bus.emit("pipeline.memory_kept", {"facts": kept})
         self._sync_flex_state()
+        if kept:
+            self._offer_td_handoff(kept)
+
+    def _offer_td_handoff(self, facts: list[str]) -> None:
+        """Box 1: Übergeben writes handoff.json. Never a TD database, never Execute."""
+        clean = filter_secrets(facts)[:3]
+        if not clean:
+            self._state.td_handoff_facts = []
+            return
+        self._state.td_handoff_facts = clean
+        self._ensure_flex_job()
+        bullets = "\n".join(f"• {f}" for f in clean)
+        text = (
+            "An ThreadDesk übergeben?\n"
+            f"{bullets}\n"
+            "Nur ein Paket (handoff.json). ThreadDesk startet keine Arbeit."
+        )
+        self.flex_desk.ask(
+            agent_id="memory",
+            text=text,
+            component="td_handoff",
+            options=["Übergeben", "Nicht übergeben"],
+            assignment_id="TD1",
+            entry_type="freigabe",
+            task_id="td_handoff",
+        )
+        self._sync_flex_state()
+        self.bus.emit("pipeline.td_handoff_offer", {"facts": clean})
+
+    def _offer_td_replace(self, existing_title: str) -> None:
+        self._ensure_flex_job()
+        title = (existing_title or "bestehendes Paket").strip() or "bestehendes Paket"
+        text = (
+            f"ThreadDesk hat schon ein Paket ({title}). "
+            "Ersetzen oder bestehendes behalten? Kein stilles Überschreiben."
+        )
+        self.flex_desk.ask(
+            agent_id="memory",
+            text=text,
+            component="td_replace",
+            options=["Ersetzen", "Bestehendes behalten"],
+            assignment_id="TD2",
+            entry_type="freigabe",
+            task_id="td_replace",
+        )
+        self._sync_flex_state()
+        self.bus.emit("pipeline.td_handoff_conflict", {"existing_title": title})
+
+    def apply_td_handoff(self, accept: bool, *, overwrite: bool = False) -> dict:
+        facts = list(self._state.td_handoff_facts or [])
+        if not accept:
+            self._state.td_handoff_facts = []
+            self.bus.emit("pipeline.td_handoff_rejected", {"facts": facts})
+            self._sync_flex_state()
+            return {"ok": True, "wrote": False, "ran": False}
+        run_id = str(getattr(self._state, "flex_job_id", "") or "")
+        out = write_handoff(facts, run_id=run_id, overwrite=overwrite)
+        if not out.get("ok") and out.get("error") == "conflict":
+            self._offer_td_replace(str(out.get("existing_title") or ""))
+            return out
+        if out.get("ok"):
+            self._state.td_handoff_facts = []
+            self.bus.emit("pipeline.td_handoff_written", {"path": out.get("path"), "ran": False})
+        self._sync_flex_state()
+        return out
 
     def _append_prefetch_why_notes(self) -> None:
         try:

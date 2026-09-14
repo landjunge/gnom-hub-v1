@@ -141,6 +141,20 @@ class PipelineApiMixin:
             snap = self.snapshot()
             snap["flex_answer"] = out
             return snap
+        if str(out.get("component") or "") == "td_handoff":
+            td_fn = getattr(self.pipeline, "apply_td_handoff", None)
+            if callable(td_fn):
+                td_fn(bool(out.get("handoff_write")))
+            snap = self.snapshot()
+            snap["flex_answer"] = out
+            return snap
+        if str(out.get("component") or "") == "td_replace":
+            td_fn = getattr(self.pipeline, "apply_td_handoff", None)
+            if callable(td_fn):
+                td_fn(bool(out.get("handoff_replace")), overwrite=True)
+            snap = self.snapshot()
+            snap["flex_answer"] = out
+            return snap
         if out.get("wants_start_work"):
             if sync:
                 snap = self.execute_sync()
