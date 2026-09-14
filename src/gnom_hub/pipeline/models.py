@@ -74,5 +74,7 @@ class PipelineState:
     flex_wait_remaining: list[dict] = field(default_factory=list)
     send_target: str = "brainstorm"
     result_status: str = ""
+    # Durable facts waiting for Box 1 Behalten (WARM). Empty = no proposal.
+    memory_proposals: list[str] = field(default_factory=list)
     # Canonical conversation log (Send contract). localStorage is cache only.
     messages: list[dict] = field(default_factory=list)

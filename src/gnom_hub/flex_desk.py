@@ -16,9 +16,12 @@ ALLOWED_COMPONENTS = frozenset(
         "multi_select",
         "free_text",
         "start_work",
+        "memory_keep",
     }
 )
-ALLOWED_AGENTS = frozenset({"coordinator", "flex", "worker1", "worker2", "worker3", "worker4"})
+ALLOWED_AGENTS = frozenset(
+    {"coordinator", "flex", "memory", "worker1", "worker2", "worker3", "worker4"}
+)
 ALLOWED_ENTRY_TYPES = frozenset(
     {
         "entscheidung",
@@ -190,6 +193,8 @@ class FlexDesk:
         opts = [o for o in opts if o]
         if comp == "start_work" and not opts:
             opts = ["Ja, Arbeit starten", "Später"]
+        if comp == "memory_keep" and not opts:
+            opts = ["Behalten", "Verwerfen"]
         if comp == "yes_no" and not opts:
             opts = ["Ja", "Nein", "Später"]
         key = (jid, aid, tid, clean.lower())
@@ -288,6 +293,16 @@ class FlexDesk:
                 wants_start = extracted == (q.assignment_id or "").upper()
             else:
                 wants_start = bare_yes and open_n <= 1
+        keep_memory = False
+        if q.component == "memory_keep":
+            keep_memory = low in {
+                "behalten",
+                "ja",
+                "yes",
+                "y",
+                "ok",
+                "keep",
+            } or low.startswith("behalten")
         return {
             "ok": True,
             "question_id": q.question_id,
@@ -299,6 +314,7 @@ class FlexDesk:
             "entry_type": q.entry_type,
             "value": raw,
             "wants_start_work": wants_start,
+            "keep_memory": keep_memory,
         }
 
     def open_questions(self) -> list[FlexQuestion]:
