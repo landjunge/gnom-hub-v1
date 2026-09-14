@@ -17,6 +17,8 @@ ALLOWED_COMPONENTS = frozenset(
         "free_text",
         "start_work",
         "memory_keep",
+        "td_handoff",
+        "td_replace",
     }
 )
 ALLOWED_AGENTS = frozenset(
@@ -195,6 +197,10 @@ class FlexDesk:
             opts = ["Ja, Arbeit starten", "Später"]
         if comp == "memory_keep" and not opts:
             opts = ["Behalten", "Verwerfen"]
+        if comp == "td_handoff" and not opts:
+            opts = ["Übergeben", "Nicht übergeben"]
+        if comp == "td_replace" and not opts:
+            opts = ["Ersetzen", "Bestehendes behalten"]
         if comp == "yes_no" and not opts:
             opts = ["Ja", "Nein", "Später"]
         key = (jid, aid, tid, clean.lower())
@@ -303,6 +309,18 @@ class FlexDesk:
                 "ok",
                 "keep",
             } or low.startswith("behalten")
+        handoff_write = False
+        if q.component == "td_handoff":
+            handoff_write = low in {
+                "übergeben",
+                "uebergeben",
+                "ja",
+                "yes",
+                "ok",
+            } or low.startswith(("übergeben", "uebergeben"))
+        handoff_replace = False
+        if q.component == "td_replace":
+            handoff_replace = low.startswith("ersetzen") or low in {"ersetzen", "ja", "yes", "ok"}
         return {
             "ok": True,
             "question_id": q.question_id,
@@ -315,6 +333,8 @@ class FlexDesk:
             "value": raw,
             "wants_start_work": wants_start,
             "keep_memory": keep_memory,
+            "handoff_write": handoff_write,
+            "handoff_replace": handoff_replace,
         }
 
     def open_questions(self) -> list[FlexQuestion]:
