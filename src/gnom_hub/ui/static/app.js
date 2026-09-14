@@ -8002,63 +8002,115 @@
     {
       id: "senden",
       label: "Senden",
+      wozu: "Du redest mit einem Agenten. Sonst passiert nichts.",
+      steps: [
+        "Oben das Flag wählen: Brain, Coord, Flex oder A1–A4. Gelb = Empfänger.",
+        "Text in die Zeile unten schreiben. Mikrofon füllt dieselbe Zeile.",
+        "Senden oder Enter drücken.",
+        "Die Antwort steht in Box 2 beim gewählten Agenten und im Chat darunter.",
+      ],
       points: [
         "Senden und Enter bedeuten nur reden.",
-        "Die Nachricht geht an den Empfänger mit dem Flag.",
-        "Die Antwort erscheint in Box 2.",
-        "Kartenklick ändert das Sendeziel nicht.",
+        "Der Empfänger ist das Flag, nicht die angeklickte Karte.",
+        "Kartenklick öffnet Infos. Das Sendeziel bleibt, wo das Flag steht.",
+        "Brain redet frei. Coord plant. Flex fragt nach. A1–A4 sind Worker.",
+        "Läuft schon eine Antwort, bleibt sie dem Agenten zugeordnet, der sie begonnen hat.",
       ],
       nicht: "Senden startet keine Worker, keine Werkzeuge und keine Dateiänderung.",
     },
     {
       id: "arbeit",
       label: "Arbeit",
-      points: [
-        "Arbeit starten oder Ctrl/⌘+Enter startet Distill und die Worker.",
-        "Ja gilt nur für die sichtbare Frage in Box 1.",
-        "Ergebnisse landen in Box 3.",
-        "Esc oder Abbrechen stoppt einen laufenden Job.",
+      wozu: "Die Worker sollen etwas bauen, prüfen oder liefern.",
+      steps: [
+        "Auftrag in die Zeile schreiben oder nach dem Gespräch stehen lassen.",
+        "Arbeit starten oder Ctrl/⌘+Enter.",
+        "Fragen in Box 1 beantworten. Ja gilt nur für die sichtbare Frage.",
+        "In Box 3 die Reiter A1–A4 öffnen. Sicht = Seite, Code = Text.",
+        "Laufenden Job mit Esc oder Abbrechen stoppen.",
       ],
-      nicht: "Send und Enter starten keine Arbeit.",
+      points: [
+        "Arbeit starten startet Distill und danach die Worker.",
+        "Ohne diesen Knopf (oder Ctrl/⌘+Enter) bleibt es ein Gespräch.",
+        "Offene Entscheidungen stehen in Box 1, nicht im Chat versteckt.",
+        "Ergebnisse gehören nach Box 3, nicht als JSON in Box 2.",
+        "Ein zweites Arbeit starten wartet, bis der laufende Job frei ist, oder du brichst ab.",
+      ],
+      nicht: "Senden und Enter starten keine Arbeit.",
     },
     {
       id: "boxen",
       label: "Boxen",
-      points: [
-        "Box 1: Rückfragen und Entscheidungen.",
-        "Box 2: Antworten (Brain, Flex, Coord, Mem, A1–A4).",
-        "Box 3: Worker-Seiten. Sicht = Seite, Code = Text.",
-        "Weg, Neu, Behalten stehen in Box 3.",
+      wozu: "Drei Orte, drei Aufgaben. Nichts soll sich verstecken.",
+      steps: [
+        "Box 1 links: wenn Gnom fragt, hier klicken oder eine Karte wählen.",
+        "Box 2 Mitte: Reiter Brain, Flex, Coord, Mem, A1–A4 — eine Antwort lesen.",
+        "Box 3 rechts: Worker-Ergebnis. Sicht = echte Seite, Code = der Text dahinter.",
+        "Unter den Worker-Reitern: Weg, Neu, Behalten.",
       ],
-      nicht: "Eine Box ist keine Textwand und kein JSON.",
+      points: [
+        "Box 1 ist Rückfrage und Entscheidung, kein Chat-Verlauf.",
+        "Box 2 ist die Antwort des gewählten Agenten.",
+        "Box 3 ist die Lieferung der Worker nach Arbeit starten.",
+        "Kurze weiße Namen auf den Reitern. Voller Name steht im Hover.",
+        "Scrollen geht, der Balken bleibt unsichtbar.",
+      ],
+      nicht: "Eine Box ist keine Textwand und kein rohes JSON.",
     },
     {
       id: "god",
       label: "God",
+      wozu: "Echter Desktop nur, wenn du das ausdrücklich einschaltest.",
+      steps: [
+        "Den roten Badge oben rechts anklicken.",
+        "God an: nach einer sichtbaren Nachfrage dürfen Maus, Tastatur, Shell wirklich greifen.",
+        "Badge nochmal: God aus, wieder Trockenlauf.",
+        "Im System-Fenster nachsehen: dort gibt es keinen God-Schalter.",
+      ],
       points: [
-        "God geht nur über den roten Badge oben rechts.",
-        "Aus = Trockenlauf. An = echte Desktop-Aktionen, nach Nachfrage.",
-        "Werkzeuge ohne God bleiben Trockenlauf.",
+        "God geht ausschließlich über den roten Nutzer-Badge.",
+        "God aus = Trockenlauf. Klicks und Shell tun so, als würden sie laufen.",
+        "God an = echte Aktionen auf diesem Mac, nicht still im Hintergrund.",
+        "Werkzeuge ohne God bleiben Trockenlauf, auch wenn das Werkzeug-Fenster offen ist.",
+        "God schaltet sich nicht durch Senden, Arbeit oder Kartenklick ein.",
       ],
       nicht: "Im System-Fenster gibt es keinen God-Schalter.",
     },
     {
       id: "dateien",
       label: "Dateien",
-      points: [
-        "Behalten schreibt erst nach bestätigtem Rücklesen.",
-        "Workspace: Temp, Dauerhaft, Behalten.",
-        "HTML zuerst als Sicht, daneben Code.",
+      wozu: "Ergebnisse behalten, ohne sie ins Git zu schieben.",
+      steps: [
+        "In Box 3 den Worker-Reiter wählen, dessen Datei du willst.",
+        "Behalten klicken. Erfolg kommt erst nach bestätigtem Rücklesen.",
+        "Workspace öffnen: drei Spalten Temp, Dauerhaft, Behalten.",
+        "HTML zuerst als Sicht ansehen, daneben Code, wenn du den Text brauchst.",
       ],
-      nicht: "Persönliche Dateien liegen nicht im Git.",
+      points: [
+        "Behalten meldet Erfolg erst, wenn die Datei wirklich geschrieben wurde.",
+        "Weg legt ab, Zurück holt die letzte Weg-Datei.",
+        "Neu leert die aktuelle Lieferung, ohne den Desk zu zerstören.",
+        "Persönlicher Ordner ist WS-gnom-hub-v1, nicht das Git-Repo.",
+        "Löschen fragt nach. Zip gibt es erst, wenn die Datei erzeugt ist.",
+      ],
+      nicht: "Persönliche Dateien liegen nicht im Git und nicht im Repo.",
     },
     {
       id: "tastatur",
       label: "Tastatur",
+      wozu: "Die wichtigsten Taten ohne Menü suchen.",
+      steps: [
+        "Enter: senden, also nur reden.",
+        "Ctrl/⌘+Enter: Arbeit starten.",
+        "Ctrl/⌘+S: speichern. Esc: Overlay zu oder laufenden Job abbrechen.",
+        "Mikrofon: Zeile füllen. Nochmal klicken schaltet es aus.",
+      ],
       points: [
-        "Enter = senden. Ctrl/⌘+Enter = Arbeit starten.",
-        "Ctrl/⌘+S = speichern. Esc = Overlay zu oder Job abbrechen.",
-        "Mikrofon füllt die Zeile und bleibt an, bis du es ausklickst.",
+        "Enter und Senden sind dieselbe Tat: reden.",
+        "Ctrl/⌘+Enter und Arbeit starten sind dieselbe Tat: Worker.",
+        "Das Mikrofon bleibt an, bis du es ausklickst. Es sendet nicht von allein.",
+        "Sprache (Vorlesen) spricht Antworten, startet aber keine Arbeit.",
+        "Kleine Fenster: dieselben Tasten, dieselben drei Boxen.",
       ],
       nicht: "Mikrofon und Sprache senden nicht von allein.",
     },
@@ -8100,15 +8152,32 @@
       h.className = "help-h";
       h.textContent = pick.label || "";
       body.appendChild(h);
-      const ul = document.createElement("ul");
-      ul.className = "help-list";
-      (pick.points || []).forEach(function (line) {
-        const li = document.createElement("li");
-        li.textContent = line;
-        ul.appendChild(li);
-      });
-      if (ul.childNodes.length) body.appendChild(ul);
-      else if (pick.body) {
+      if (pick.wozu) {
+        const w = document.createElement("p");
+        w.className = "help-wozu";
+        w.textContent = pick.wozu;
+        body.appendChild(w);
+      }
+      function addList(tag, cls, title, items) {
+        if (!items || !items.length) return;
+        if (title) {
+          const k = document.createElement("p");
+          k.className = "help-kicker";
+          k.textContent = title;
+          body.appendChild(k);
+        }
+        const listEl = document.createElement(tag);
+        listEl.className = cls;
+        items.forEach(function (line) {
+          const li = document.createElement("li");
+          li.textContent = line;
+          listEl.appendChild(li);
+        });
+        body.appendChild(listEl);
+      }
+      addList("ol", "help-steps", "So geht's", pick.steps);
+      addList("ul", "help-list", "Merken", pick.points);
+      if (!pick.steps && !pick.points && pick.body) {
         const p = document.createElement("p");
         p.textContent = pick.body;
         body.appendChild(p);
