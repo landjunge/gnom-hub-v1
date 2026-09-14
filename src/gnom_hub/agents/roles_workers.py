@@ -464,8 +464,9 @@ class MemoryAgent(BaseAgent):
         brainstorm: str,
         flex_notes: str,
         results: list[str],
-    ) -> None:
+    ) -> list[str]:
         self.emit_active(True)
+        proposed: list[str] = []
         try:
             clean_reqs = [
                 r
@@ -534,10 +535,13 @@ class MemoryAgent(BaseAgent):
                             continue
                         seen.add(key)
                         uniq.append(f)
-                    if uniq:
+                    from gnom_hub.memory.secrets import filter_secrets
+
+                    proposed = filter_secrets(uniq[:3])
+                    if proposed:
                         self.bus.emit(
                             "pipeline.memory_curated",
-                            {"facts": uniq[:3], "user_text": user_text},
+                            {"facts": proposed, "user_text": user_text},
                         )
                 except Exception as exc:  # noqa: BLE001
                     self.bus.emit(
@@ -546,3 +550,4 @@ class MemoryAgent(BaseAgent):
                     )
         finally:
             self.emit_active(False)
+        return proposed

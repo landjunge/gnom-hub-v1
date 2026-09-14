@@ -134,6 +134,13 @@ class PipelineApiMixin:
             snap = self.snapshot()
             snap["flex_answer"] = out
             return snap
+        if str(out.get("component") or "") == "memory_keep":
+            keep_fn = getattr(self.pipeline, "apply_memory_keep", None)
+            if callable(keep_fn):
+                keep_fn(bool(out.get("keep_memory")))
+            snap = self.snapshot()
+            snap["flex_answer"] = out
+            return snap
         if out.get("wants_start_work"):
             if sync:
                 snap = self.execute_sync()

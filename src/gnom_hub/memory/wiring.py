@@ -33,15 +33,7 @@ class MemoryWiringMixin:
                 ):
                     self.hot.add_fact(text)
                     self.vectors.add(text, meta={"source": "requirement"})
-            # Goal lines are durable (WARM)
-            for req in data.get("requirements") or []:
-                text = str(req).strip()
-                low = text.lower()
-                if low.startswith(("ziel:", "goal:")):
-                    if 8 <= len(text) <= 160 and not _is_garbage_fact(text):
-                        self.warm.add_fact(text)
-                        self.vectors.add(text, meta={"source": "goal"})
-                    break
+            # Goal lines stay in HOT until Box 1 Behalten (R6.1). Never silent WARM.
             # Worker outputs: short text notes only — never code/HTML bodies
             for res in (data.get("results") or [])[:2]:
                 snippet = str(res).strip()
@@ -64,17 +56,18 @@ class MemoryWiringMixin:
                 self.last_error = str(data)
 
         def on_memory_curated(data: Any) -> None:
-            """LLM-extracted durable facts from Memory agent → WARM (+ HOT mirror)."""
+            """Session HOT only. WARM waits for Box 1 Behalten (R6.1)."""
             if not isinstance(data, dict):
                 return
             from gnom_hub.agents.roles_helpers import _is_garbage_fact
+            from gnom_hub.memory.secrets import looks_like_secret
 
             for fact in data.get("facts") or []:
                 text = str(fact).strip()
+                if looks_like_secret(text):
+                    continue
                 if 8 <= len(text) <= 200 and not _is_garbage_fact(text):
                     self.hot.add_fact(text)
-                    self.warm.add_fact(text)
-                    self.vectors.add(text, meta={"source": "memory_agent"})
             self.hot.save()
 
         def on_done(_data: Any) -> None:
