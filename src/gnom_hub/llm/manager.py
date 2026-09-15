@@ -115,7 +115,7 @@ class LLMManager:
 
         self.free_only = free_only
         self.max_budget_usd = max_budget_usd
-        # Key.txt / env DEEPSEEK_MODEL overrides default (e.g. deepseek-v4-flash)
+        # Key.txt / env DEEPSEEK_MODEL overrides default (e.g. deepseek-flash)
         env_model = (self._keys.get("DEEPSEEK_MODEL") or os.getenv("DEEPSEEK_MODEL") or "").strip()
         self.default_model = env_model or default_model
         self._spent_usd = 0.0

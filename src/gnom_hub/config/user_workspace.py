@@ -85,7 +85,7 @@ def _ensure_key_file(ud: Path, hub: Path, actions: list[str], warnings: list[str
                 return None
     skeleton = (
         "# Personal keys — never commit\n"
-        "DEEPSEEK_MODEL=deepseek-v4-flash\n"
+        "DEEPSEEK_MODEL=deepseek-flash\n"
         "DEEPSEEK_API_KEY=\n"
         "WORKER_API_KEY=\n"
     )
