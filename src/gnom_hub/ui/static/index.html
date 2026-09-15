@@ -526,6 +526,12 @@
         <p id="system-llm" class="system-line">DeepSeek: —</p>
         <p id="system-setup" class="system-line muted">Einrichtung: —</p>
         <p id="system-updates" class="system-line muted">Update: —</p>
+        <div class="system-row system-row-actions">
+          <button type="button" id="sys-update-check" class="btn-ws-sm">Suchen</button>
+          <button type="button" id="sys-update-details" class="btn-ws-sm">Details</button>
+          <button type="button" id="sys-update-apply" class="btn-ws-sm">Aktualisieren</button>
+          <button type="button" id="sys-update-restore" class="btn-ws-sm">Wiederherstellen</button>
+        </div>
         <label class="system-row">
           <input id="sys-free-only" type="checkbox" /> Nur kostenlose Modelle
         </label>
@@ -795,6 +801,6 @@
 
   <div id="toast-host" class="toast-host" aria-live="polite"></div>
 
-  <script src="/static/app.js?v=183"></script>
+  <script src="/static/app.js?v=184"></script>
 </body>
 </html>

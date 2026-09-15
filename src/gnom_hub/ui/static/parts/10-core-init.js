@@ -312,6 +312,14 @@
     const sysBackup = document.getElementById("sys-backup");
     const sysClean = document.getElementById("sys-clean");
     if (sysBackup) sysBackup.addEventListener("click", runBackup);
+    const updCheck = document.getElementById("sys-update-check");
+    const updDetails = document.getElementById("sys-update-details");
+    const updApply = document.getElementById("sys-update-apply");
+    const updRestore = document.getElementById("sys-update-restore");
+    if (updCheck) updCheck.addEventListener("click", checkUpdates);
+    if (updDetails) updDetails.addEventListener("click", detailsUpdates);
+    if (updApply) updApply.addEventListener("click", applyUpdates);
+    if (updRestore) updRestore.addEventListener("click", restoreUpdates);
     if (sysClean) sysClean.addEventListener("click", runCleanState);
     const tunePreset = document.getElementById("tune-preset-save");
     if (tunePreset) tunePreset.addEventListener("click", saveWorkerPresetFromTune);
