@@ -35,9 +35,10 @@ chmod +x scripts/install.sh scripts/start.sh
 ./scripts/install.sh
 
 echo
-echo "Gnom-Hub is installed at $DEST"
-echo "  1. Put a real key in  User/Key.txt  (DEEPSEEK_API_KEY=sk-…)"
-echo "  2. Start the desk:    cd $DEST && ./scripts/start.sh"
-echo "  3. Open               http://127.0.0.1:8080/"
+echo "Gnom-Hub-V1 steht unter $DEST"
+echo "  Terminal-Schnellinstallation — kein Ein-Klick."
+echo "  1. Echten Key in ../WS-gnom-hub-v1/User/Key.txt  (DEEPSEEK_API_KEY=sk-…)"
+echo "  2. Start:  cd $DEST && ./scripts/start.sh"
+echo "  3. Desk:   http://127.0.0.1:8080/"
 echo
-echo "Send = dialogue. Execute = work. No Docker."
+echo "Senden = reden. Arbeit starten = Worker. Kein Docker."

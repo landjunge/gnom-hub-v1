@@ -16,7 +16,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 ### Install & run
 | Doc | Keywords |
 |-----|----------|
-| [INSTALL_SIMPLE.md](INSTALL_SIMPLE.md) | install, scripts, simple, bash, better, command, desk, install_embeddings, neural, one |
+| [INSTALL_SIMPLE.md](INSTALL_SIMPLE.md) | install, scripts, simple, bash, better, command, desk, gnom, install_embeddings, key |
 | [KEYS_AND_MODELS.md](KEYS_AND_MODELS.md) | deepseek, key, models, txt, keys, api, flash, model, thinking, default |
 | [PYTHON_CACHE.md](PYTHON_CACHE.md) | cache, pip, python, venv, bash, install, local, ruff_cache, caches, dev |
 | [STABILITY.md](STABILITY.md) | stability, scripts, deepseek, empty, execute, json, key, required, worker, bash |
@@ -135,7 +135,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 - [GNOM-HUB-V1-WORKER-BOX-CONTRACT.md](GNOM-HUB-V1-WORKER-BOX-CONTRACT.md) — Gnom-Hub-V1 — Worker / Box contract
 - [GSC_CHECKLIST.md](GSC_CHECKLIST.md) — Google Search Console — Indexing checklist (Tollgate + Gnom-Hub)
 - [HUB_ARCHITECTURE.md](HUB_ARCHITECTURE.md) — Gnom-Hub — exact architecture overview
-- [INSTALL_SIMPLE.md](INSTALL_SIMPLE.md) — Install — keep it simple
+- [INSTALL_SIMPLE.md](INSTALL_SIMPLE.md) — Installation — Terminal-Schnellinstallation
 - [KEYS_AND_MODELS.md](KEYS_AND_MODELS.md) — Keys & Models — single source of truth (for agents & humans)
 - [LAYERS_FOR_AI.md](LAYERS_FOR_AI.md) — Layers — precise map for AI (and humans)
 - [MCP_ARCHITECTURE.md](MCP_ARCHITECTURE.md) — MCP Server Architecture (Gnom-Hub)

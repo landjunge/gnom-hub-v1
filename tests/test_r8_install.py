@@ -17,6 +17,15 @@ def test_install_sh_is_terminal_schnellinstallation():
     assert "Bestehendes .venv bleibt unangetastet" in text
 
 
+def test_get_sh_points_to_personal_ws_and_desk_verbs():
+    text = (ROOT / "scripts/get.sh").read_text(encoding="utf-8")
+    assert "WS-gnom-hub-v1/User/Key.txt" in text
+    assert "kein Ein-Klick" in text
+    assert "Arbeit starten" in text
+    assert "Execute" not in text
+    assert "Senden" in text
+
+
 def test_health_exposes_setup():
     client = TestClient(create_app())
     body = client.get("/api/health").json()

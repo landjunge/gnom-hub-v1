@@ -88,7 +88,7 @@ from gnom_hub.config.user_workspace import ensure_user_workspace, format_user_wo
 st = ensure_user_workspace()
 print(format_user_workspace_report(st))
 if not st.key_has_deepseek:
-    print("  → edit User/Key.txt and set DEEPSEEK_API_KEY=sk-...")
+    print("  → Key in WS-gnom-hub-v1/User/Key.txt: DEEPSEEK_API_KEY=sk-...")
 if not st.ready:
     raise SystemExit(1)
 PY
