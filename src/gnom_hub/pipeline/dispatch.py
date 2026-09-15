@@ -16,6 +16,14 @@ from gnom_hub.pipeline.models import PipelineStage, PipelineState
 
 
 class DispatchMixin:
+    def _worker_ids_for_plan(self) -> list[str]:
+        """Flag (send_target) is the assigned worker. HTML/default no longer always Worker 1."""
+        ids = [wid for wid, w in self._workers.items() if w.enabled]
+        pref = str(getattr(self._state, "send_target", "") or "").strip().lower()
+        if pref in ids:
+            return [pref] + [w for w in ids if w != pref]
+        return ids
+
     def _offer_start_work(self, *, reason: str, workers: str = "") -> None:
         """Ask in Box 1. Never starts Execute — Hub/API execute is the authority."""
         self._ensure_flex_job()
@@ -211,7 +219,7 @@ class DispatchMixin:
             return
 
         self._set_stage(PipelineStage.coordinate)
-        worker_ids = [wid for wid, w in self._workers.items() if w.enabled]
+        worker_ids = self._worker_ids_for_plan()
         tasks = self.coordinator.plan(
             text,
             self._state.distilled_requirements,
