@@ -4,8 +4,12 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-echo "=== Gnom-Hub v1 install ==="
+echo "=== Terminal-Schnellinstallation — kein Ein-Klick ==="
+echo "Gnom-Hub-V1. Persönliche Daten liegen in ../WS-gnom-hub-v1, nicht im Repo."
 echo "Root: $ROOT"
+if [ -d .venv ]; then
+  echo "Bestehendes .venv bleibt unangetastet."
+fi
 
 # OS
 OS_NAME="$(uname -s 2>/dev/null || echo unknown)"

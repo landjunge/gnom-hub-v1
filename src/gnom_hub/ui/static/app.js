@@ -3902,6 +3902,15 @@
       parts.push(s.ollama ? "Ollama: an" : "Ollama: aus");
       if (s.version) parts.push("v" + s.version);
       document.getElementById("system-llm").textContent = parts.join(" · ");
+      const setupEl = document.getElementById("system-setup");
+      if (setupEl) {
+        const su = s.setup || {};
+        const bits = [];
+        bits.push(su.key_ok ? "Key da" : "Key fehlt — in Key.txt oder hier eintragen");
+        bits.push(su.tollgate_ok === false ? (su.tollgate_note || "TollGate fehlt") : "TollGate ok");
+        if (su.personal_ws) bits.push("WS: " + su.personal_ws);
+        setupEl.textContent = bits.join(" · ");
+      }
       document.getElementById("sys-free-only").checked = !!s.free_only;
       document.getElementById("sys-budget").value =
         s.max_budget_usd != null ? s.max_budget_usd : "";

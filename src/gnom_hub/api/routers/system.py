@@ -24,6 +24,18 @@ router = APIRouter()
 @router.get("/api/health")
 def health() -> dict[str, Any]:
     hub = get_hub()
+    from gnom_hub.config.user_workspace import inspect_user_workspace
+    from gnom_hub.stack import via_tollgate
+
+    st = inspect_user_workspace(hub.root)
+    tg_ok = True
+    tg_note = ""
+    if via_tollgate():
+        try:
+            import tollgate  # noqa: F401
+        except ImportError:
+            tg_ok = False
+            tg_note = "TollGate-Paket fehlt. Cloud-Modelle gehen nicht. ./scripts/install.sh oder GNOM_TOLLGATE_LLM=0."
     return {
         "status": "ok",
         "service": "gnom-hub-v1",
@@ -36,6 +48,18 @@ def health() -> dict[str, Any]:
             "auth": (hub.llm.auth_snapshot() if hasattr(hub.llm, "auth_snapshot") else {}),
         },
         "stack": stack_snapshot(),
+        "setup": {
+            "install": "terminal-schnellinstallation",
+            "key_ok": bool(st.key_has_deepseek),
+            "personal_ws": st.personal_ws,
+            "tollgate_ok": tg_ok,
+            "tollgate_note": tg_note,
+            "hint": (
+                "API-Key in System oder in WS-gnom-hub-v1/User/Key.txt."
+                if not st.key_has_deepseek
+                else ""
+            ),
+        },
     }
 
 
