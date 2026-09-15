@@ -29,18 +29,47 @@ class DispatchMixin:
         del reason, workers
 
     def _offer_judgment(self) -> None:
-        """Box 1 after a result: Passt das? Not a second start button."""
+        """Box 1 after a result: one question. Key missing beats Passt das."""
         self._ensure_flex_job()
-        asked = self.flex_desk.offer_judgment()
+        if self._results_missing_key():
+            self.flex_desk.ask(
+                agent_id="flex",
+                job_id=self.flex_desk.job_id,
+                task_id="key_missing",
+                component="yes_no",
+                text=(
+                    "Key fehlt. In System einen echten Schlüssel eintragen, dann Arbeit starten."
+                ),
+                options=["Verstanden"],
+                entry_type="blockiert",
+            )
+        else:
+            self.flex_desk.offer_judgment()
         self._sync_flex_state()
+        vis = self.flex_desk.visible_question()
         self.bus.emit(
             "pipeline.flex_ask",
             {
                 "reason": "judgment",
-                "question_id": asked.get("question_id"),
-                "component": "judgment",
+                "question_id": vis.question_id if vis is not None else None,
+                "component": vis.component if vis is not None else "judgment",
             },
         )
+
+    def _results_missing_key(self) -> bool:
+        marks = (
+            "kein deliverable",
+            "llm/key",
+            "deepseek_api_key",
+            "kein nutzbarer llm",
+        )
+        blobs: list[str] = []
+        for r in list(self._state.worker_results or []):
+            blobs.append(str(r or "").lower())
+        if not blobs:
+            return False
+        hits = sum(1 for b in blobs if any(m in b for m in marks))
+        return hits >= max(1, (len(blobs) + 1) // 2)
 
     def start(self, user_text: str) -> PipelineState:
         text = user_text.strip()

@@ -142,9 +142,11 @@ class FlexQuestion:
     answer: Any = None
     assignment_id: str = ""
     entry_type: str = "entscheidung"
+    seq: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
+        d.pop("seq", None)
         return d
 
 
@@ -155,6 +157,7 @@ class FlexDesk:
         self.job_id = (job_id or "").strip()
         self._questions: dict[str, FlexQuestion] = {}
         self._assignment_seq = 0
+        self._seq = 0
 
     def bind_job(self, job_id: str, *, reset: bool = False) -> str:
         jid = (job_id or "").strip()
@@ -213,6 +216,7 @@ class FlexDesk:
         et = str(entry_type or "entscheidung").strip().lower()
         if et not in ALLOWED_ENTRY_TYPES:
             et = "entscheidung"
+        self._seq += 1
         q = FlexQuestion(
             question_id=_new_id("q"),
             job_id=jid,
@@ -223,9 +227,12 @@ class FlexDesk:
             options=opts,
             assignment_id=str(assignment_id or "").strip(),
             entry_type=et if comp != "start_work" else "freigabe",
+            seq=self._seq,
         )
         self._questions[q.question_id] = q
-        return {"ok": True, "merged": False, **q.to_dict()}
+        self._enforce_one_visible()
+        live = self._questions[q.question_id]
+        return {"ok": True, "merged": False, **live.to_dict()}
 
     def next_assignment_id(self, prefix: str = "C") -> str:
         self._assignment_seq += 1
@@ -340,6 +347,7 @@ class FlexDesk:
         handoff_replace = False
         if q.component == "td_replace":
             handoff_replace = low.startswith("ersetzen") or low in {"ersetzen", "ja", "yes", "ok"}
+        self._enforce_one_visible()
         return {
             "ok": True,
             "question_id": q.question_id,
@@ -359,13 +367,55 @@ class FlexDesk:
     def open_questions(self) -> list[FlexQuestion]:
         return [q for q in self._questions.values() if q.status == "open"]
 
+    def queued_questions(self) -> list[FlexQuestion]:
+        return [q for q in self._questions.values() if q.status == "queued"]
+
+    def visible_question(self) -> FlexQuestion | None:
+        opened = self.open_questions()
+        if not opened:
+            return None
+        return min(opened, key=self._visible_rank)
+
+    @staticmethod
+    def _visible_rank(q: FlexQuestion) -> tuple[int, int]:
+        """Lower wins. Worker pause-asks beat judgment; repair-asks wait. FIFO ties."""
+        aid = str(q.agent_id or "")
+        tid = str(q.task_id or "")
+        seq = int(q.seq or 0)
+        if aid.startswith("worker") and tid != "nachbesserung":
+            return (5, seq)
+        if tid == "key_missing" or q.entry_type == "blockiert":
+            return (8, seq)
+        if q.component == "judgment":
+            return (10, seq)
+        if q.component == "td_replace":
+            return (12, seq)
+        if q.component == "td_handoff":
+            return (25, seq)
+        if q.component == "start_work":
+            return (90, seq)
+        if tid == "nachbesserung":
+            return (40, seq)
+        if q.component == "memory_keep":
+            return (25, seq)
+        return (20, seq)
+
+    def _enforce_one_visible(self) -> None:
+        pending = [q for q in self._questions.values() if q.status in ("open", "queued")]
+        if not pending:
+            return
+        winner = min(pending, key=self._visible_rank)
+        for q in pending:
+            q.status = "open" if q is winner else "queued"
+
     def snapshot(self) -> dict[str, Any]:
-        open_qs = [q.to_dict() for q in self.open_questions()]
+        vis = self.visible_question()
         return {
             "title": "Rückfragen und Entscheidungen",
             "owner": "flex",
             "job_id": self.job_id,
-            "questions": open_qs,
+            "questions": [vis.to_dict()] if vis else [],
+            "queued_n": len(self.queued_questions()),
         }
 
     def to_list(self) -> list[dict[str, Any]]:
@@ -405,10 +455,17 @@ class FlexDesk:
                 answer=row.get("answer"),
                 assignment_id=str(row.get("assignment_id") or ""),
                 entry_type=str(row.get("entry_type") or "entscheidung"),
+                seq=int(row.get("seq") or 0),
             )
+            if not q.seq:
+                desk._seq += 1
+                q.seq = desk._seq
+            else:
+                desk._seq = max(desk._seq, q.seq)
             if not desk.job_id and q.job_id:
                 desk.job_id = q.job_id
             desk._questions[qid] = q
+        desk._enforce_one_visible()
         return desk
 
     def mark_done(self) -> None:

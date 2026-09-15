@@ -25,9 +25,17 @@ def test_execute_does_not_need_start_work_and_asks_judgment():
     pipe.execute()
     assert _open_start_work(pipe) == []
     judge = [q for q in pipe.flex_desk.open_questions() if q.component == "judgment"]
+    vis = pipe.flex_desk.visible_question()
     if pipe.state.worker_results:
-        assert judge
-        assert judge[0].text == "Passt das?"
+        assert vis is not None
+        assert vis.component in ("judgment", "yes_no")
+        assert vis.text in (
+            "Passt das?",
+            "Key fehlt. In System einen echten Schlüssel eintragen, dann Arbeit starten.",
+        )
+        if vis.component == "judgment":
+            assert judge
+            assert judge[0].text == "Passt das?"
 
 
 def test_flex_answer_after_execute_does_not_execute_again(tmp_path, monkeypatch):

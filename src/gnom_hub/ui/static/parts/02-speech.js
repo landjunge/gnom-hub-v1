@@ -513,7 +513,10 @@
 
     const p = panel || {};
     const active = !!p.active;
-    root.hidden = !active;
+    const ask = document.getElementById("flex-ask");
+    const askVisible = !!(ask && !ask.hidden);
+    root.hidden = !active || askVisible;
+    if (askVisible) return;
     if (typeof markOwner === "function") markOwner(root, "flex");
     else root.dataset.agent = "flex";
     root.classList.toggle("is-active", active);

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gnom-Hub</title>
+  <title>Gnom-Hub-V1</title>
   <link rel="stylesheet" href="/static/app.css?v=185" />
   <!-- Tailwind utilities for Chat module (preflight OFF) -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -38,18 +38,10 @@
   <div id="app">
     <header class="top-bar">
       <div class="top-bar-head">
-        <h1 class="app-title">Gnom-Hub <span id="ver-badge" class="ver-badge">v3.10.1</span></h1>
+        <h1 class="app-title">Gnom-Hub-V1 <span id="ver-badge" class="ver-badge">v3.10.1</span></h1>
         <div class="top-meta top-meta-badges">
-          <span id="llm-badge" class="llm-badge" title="LLM-Schlüssel">LLM: —</span>
-          <span id="cost-badge" class="cost-badge" title="Kosten und Jobs" role="button" tabindex="0">$0.00</span>
-          <span id="mem-badge" class="mem-badge" title="HOT-Memory dieser Sitzung">Mem: —</span>
-          <span id="vec-badge" class="vec-badge" title="Vektorspeicher öffnen" role="button" tabindex="0">Vec: —</span>
+          <span id="llm-badge" class="llm-badge" title="Schlüssel" role="button" tabindex="0">LLM: —</span>
           <span id="god-badge" class="god-badge" title="God aus = Trockenlauf. God an = echte Desktop-Aktionen. Nur dieser rote Knopf schaltet God." role="button" tabindex="0">God: aus</span>
-          <span id="cold-badge" class="cold-badge" title="COLD-Archive durchsuchen" role="button" tabindex="0">Cold: —</span>
-          <span id="docs-badge" class="tools-badge" role="button" tabindex="0" title="Hilfe-Dokumente suchen">Docs</span>
-          <span id="skills-badge" class="tools-badge" role="button" tabindex="0" title="Playbooks">Skills: —</span>
-          <span id="tools-badge" class="tools-badge" role="button" tabindex="0" title="Werkzeuge in diesem Lauf">Werkzeuge: 0</span>
-          <span id="stage-badge" class="stage-badge" title="Stand der Arbeit">leer</span>
         </div>
       </div>
       <!-- All header buttons: one module, horizontal, centered under head -->
@@ -526,6 +518,16 @@
         <p id="system-llm" class="system-line">DeepSeek: —</p>
         <p id="system-setup" class="system-line muted">Einrichtung: —</p>
         <p id="system-updates" class="system-line muted">Update: —</p>
+        <div class="system-row system-quiet-stats" aria-label="Stand">
+          <span id="cost-badge" class="cost-badge" title="Kosten und Jobs" role="button" tabindex="0">$0.00</span>
+          <span id="mem-badge" class="mem-badge" title="HOT-Memory dieser Sitzung">Mem: —</span>
+          <span id="vec-badge" class="vec-badge" title="Vektorspeicher öffnen" role="button" tabindex="0">Vec: —</span>
+          <span id="cold-badge" class="cold-badge" title="COLD-Archive durchsuchen" role="button" tabindex="0">Cold: —</span>
+          <span id="docs-badge" class="tools-badge" role="button" tabindex="0" title="Hilfe-Dokumente suchen">Docs</span>
+          <span id="skills-badge" class="tools-badge" role="button" tabindex="0" title="Playbooks">Skills: —</span>
+          <span id="tools-badge" class="tools-badge" role="button" tabindex="0" title="Werkzeuge in diesem Lauf">Werkzeuge: 0</span>
+          <span id="stage-badge" class="stage-badge" title="Stand der Arbeit">leer</span>
+        </div>
         <div class="system-row system-row-actions">
           <button type="button" id="sys-update-check" class="btn-ws-sm">Suchen</button>
           <button type="button" id="sys-update-details" class="btn-ws-sm">Details</button>

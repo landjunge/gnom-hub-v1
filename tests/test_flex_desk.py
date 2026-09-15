@@ -62,7 +62,11 @@ def test_two_workers_questions_stay_separated():
     a = desk.ask(agent_id="worker1", job_id="job-a", task_id="hero", text="Hero mit Foto?")
     b = desk.ask(agent_id="worker2", job_id="job-a", task_id="footer", text="Hero mit Foto?")
     assert a["question_id"] != b["question_id"]
-    ids = {q.agent_id: q.task_id for q in desk.open_questions()}
+    opened = desk.open_questions()
+    queued = desk.queued_questions()
+    assert len(opened) == 1
+    assert len(queued) == 1
+    ids = {q.agent_id: q.task_id for q in opened + queued}
     assert ids["worker1"] == "hero"
     assert ids["worker2"] == "footer"
 
@@ -221,14 +225,6 @@ def test_coordinator_clarify_answer_routes_only_to_coordinator(tmp_path, monkeyp
         assert coord.component == "single_select"
         assert coord.options
 
-        hub.pipeline.flex_desk.ask(
-            agent_id="worker1",
-            job_id=coord.job_id,
-            task_id="hero",
-            text="Soll der Kopfbereich kürzer sein?",
-        )
-        hub.pipeline._sync_flex_state()
-
         reruns: list[str] = []
         continued: list[str] = []
         executes: list[str] = []
@@ -257,6 +253,14 @@ def test_coordinator_clarify_answer_routes_only_to_coordinator(tmp_path, monkeyp
         assert reruns == []
         assert continued == []
         assert executes == []
+
+        hub.pipeline.flex_desk.ask(
+            agent_id="worker1",
+            job_id=coord.job_id,
+            task_id="hero",
+            text="Soll der Kopfbereich kürzer sein?",
+        )
+        hub.pipeline._sync_flex_state()
         open_agents = {q.agent_id for q in hub.pipeline.flex_desk.open_questions()}
         assert "coordinator" not in open_agents
         assert "worker1" in open_agents
@@ -402,6 +406,13 @@ def test_nudge_posts_box1_nachbesserung():
         {"agent": "worker1", "message": "dunkles Erscheinungsbild fehlt", "reason": "flex_gap"}
     ]
     pipe.execute()
-    qs = [q for q in pipe.flex_desk.open_questions() if q.task_id == "nachbesserung"]
+    pending = list(pipe.flex_desk.open_questions()) + list(pipe.flex_desk.queued_questions())
+    if pipe._results_missing_key():
+        vis = pipe.flex_desk.visible_question()
+        assert vis is not None
+        assert vis.task_id == "key_missing"
+        assert len(pipe.flex_desk.open_questions()) == 1
+        return
+    qs = [q for q in pending if q.task_id == "nachbesserung"]
     assert qs
     assert "fehlt" in qs[0].text.lower()

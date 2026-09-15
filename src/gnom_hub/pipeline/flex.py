@@ -181,12 +181,15 @@ class FlexMixin:
         return self._state
 
     def _offer_nudge_questions(self) -> None:
-        """Forgotten requirements → Box 1 Nachbesserung ask. Flex does not Execute."""
+        """At most one Nachbesserung. Key-miss is handled as the single Box 1 card."""
+        if self._results_missing_key():
+            return
         nudges = list(getattr(self._state, "agent_nudges", None) or [])
         if not nudges:
             return
         self._ensure_flex_job()
-        for n in nudges[:3]:
+        posted = 0
+        for n in nudges:
             if not isinstance(n, dict):
                 continue
             aid = str(n.get("agent") or "flex").strip().lower()
@@ -200,6 +203,9 @@ class FlexMixin:
                 text=f"Etwas fehlt: {msg}. Soll ich nachbessern lassen?",
                 component="yes_no",
             )
+            posted += 1
+            if posted >= 1:
+                break
         self._sync_flex_state()
 
     def _flex_nudge_and_fix(self, text: str, mem: str, dod: str) -> None:
