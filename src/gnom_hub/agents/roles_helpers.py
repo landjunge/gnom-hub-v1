@@ -74,24 +74,12 @@ def _brainstorm_user_payload(user_text: str, hist_block: str) -> str:
 
 
 def _stub_brainstorm(user_text: str, history: list[dict]) -> str:
-    n = len([t for t in history if t.get("role") == "user"]) + 1
-    low = (user_text or "").lower()
-    hard = any(k in low for k in ("baue", "build", "mach mir", "erstelle", "html", "landing"))
-    topic = " ".join((user_text or "").split())[:80]
-    if n <= 1:
-        base = (
-            f"Kurz zu: {topic}\n"
-            "• Ziel in einem Satz\n"
-            "• 2–3 Richtungen (einfach vs. gründlich)\n"
-            "• Was weglassen?\n"
-        )
-        if hard:
-            return base + "→ Wohin zieht's dich zuerst?"
-        return base + "→ Was wäre hier „geil“: optisch, Tempo, Frechheit, Ruhe?"
+    """Honest missing-model line. Never a workshop form pretending to be a partner."""
+    del user_text, history
     return (
-        f"Runde {n}: {topic}\n"
-        "• Eine Richtung weiterspinnen\n"
-        "→ sag, welche Bild-Richtung sitzt — bauen tut Box 1 später."
+        "Kein Modell für Brainstorm. Ohne brauchbaren API-Key gibt es "
+        "keinen Gesprächspartner — kein Formular, kein Fake-Mitdenken. "
+        "Key: WS-gnom-hub-v1/User/Key.txt (DEEPSEEK_API_KEY)."
     )
 
 

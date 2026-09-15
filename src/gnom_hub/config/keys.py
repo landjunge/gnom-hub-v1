@@ -23,7 +23,7 @@ _ALIASES: dict[str, str] = {
     "worker_api_key": "WORKER_API_KEY",
     "workers": "WORKER_API_KEY",
     "deepseek_worker": "WORKER_API_KEY",
-    # Default model id for DeepSeek (e.g. deepseek-v4-flash)
+    # Default model id for DeepSeek (e.g. deepseek-flash)
     "model": "DEEPSEEK_MODEL",
     "deepseek_model": "DEEPSEEK_MODEL",
     "default_model": "DEEPSEEK_MODEL",

@@ -66,7 +66,7 @@ def test_safe_stage_protect_does_not_stub():
         pipe._safe_stage("brainstorm", boom, lambda: "STUB_SHOULD_NOT_RUN")
 
 
-def test_safe_stage_other_error_still_stubs():
+def test_safe_stage_other_error_does_not_stub():
     bus = EventBus()
     llm = MagicMock()
     llm.has_provider = MagicMock(return_value=True)
@@ -75,6 +75,6 @@ def test_safe_stage_other_error_still_stubs():
     def boom():
         raise RuntimeError("connection reset by peer")
 
-    out = pipe._safe_stage("brainstorm", boom, lambda: "stub-ok")
-    assert out == "stub-ok"
-    assert any("used stub" in w for w in pipe.state.warnings)
+    with pytest.raises(RuntimeError, match="Modellfehler"):
+        pipe._safe_stage("brainstorm", boom, lambda: "stub-ok")
+    assert any("Modellfehler" in w for w in pipe.state.warnings)

@@ -12,15 +12,17 @@ from typing import Any
 from gnom_hub.llm.types import AuthError, LLMError, LLMMessage, LLMResult, RateLimitError
 
 DEFAULT_BASE_URL = "https://api.deepseek.com"
-# Official model id (DeepSeek API Docs 2026): deepseek-v4-flash
+# Official cheapest id (DeepSeek API Docs 2026-09): deepseek-flash (V4.1 Flash)
 # https://api-docs.deepseek.com/quick_start/pricing/
-DEFAULT_MODEL = "deepseek-v4-flash"
+# Legacy deepseek-v4-flash still routes here.
+DEFAULT_MODEL = "deepseek-flash"
 
 # Approx. USD per 1M tokens (input, output) — budget guard only, not billing
 _PRICE_PER_M: dict[str, tuple[float, float]] = {
     # USD per 1M tokens (cache-miss input / output) — api-docs.deepseek.com pricing
-    "deepseek-v4-flash": (0.14, 0.28),
-    "deepseek-v4-pro": (0.435, 0.87),
+    "deepseek-flash": (0.15, 0.60),
+    "deepseek-v4-flash": (0.15, 0.60),
+    "deepseek-v4-pro": (0.66, 1.98),
     # Legacy aliases (older docs / compatibility)
     "deepseek-chat": (0.14, 0.28),
     "deepseek-reasoner": (0.55, 2.19),

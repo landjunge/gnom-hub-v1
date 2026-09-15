@@ -48,43 +48,18 @@ def test_reexecute_clears_sticky_error():
 
 def test_stub_full_run_no_llm():
     bus = EventBus()
-    events = _collect(bus)
-    pipe = Pipeline(bus)  # no llm_manager → stubs
+    pipe = Pipeline(bus)  # no llm_manager → honest missing-model, no workshop stub
 
     state = pipe.start("Build a landing page")
 
-    assert state.stage == PipelineStage.done
-    assert state.error is None
-    assert "Build a landing page" in state.brainstorm_notes
-    assert (
-        "Ideen" in state.brainstorm_notes
-        or "Kurz zu" in state.brainstorm_notes
-        or "Richtungen" in state.brainstorm_notes
-    )
-    assert state.distilled_requirements
-    assert state.flex_notes
-    assert state.pending_question is None
-    # Landing/HTML → exactly one worker builds the page
-    assert len(state.worker_results) == 1
-    assert "Worker 1" in state.worker_results[0]
-    assert len(state.worker_outputs) == 1
-    assert state.worker_outputs[0]["worker"] == "worker1"
-    assert state.worker_outputs[0]["result"] == state.worker_results[0]
-
-    names = [n for n, _ in events]
-    assert "pipeline.brainstorm" in names
-    assert "pipeline.distill" in names
-    assert "pipeline.flex" in names
-    assert "pipeline.worker" in names
-    assert "pipeline.memory_hint" in names
-    assert "pipeline.done" in names
-    assert "pipeline.question" not in names
-    stages = [d["stage"] for n, d in events if n == "pipeline.stage"]
-    # memory recall may emit first, then brainstorm
-    assert stages[0] in ("memory", "brainstorm")
-    assert "brainstorm" in stages or "flex" in stages
-    assert "flex" in stages
-    assert stages[-1] == "done"
+    notes = state.brainstorm_notes or ""
+    assert "Ziel in einem Satz" not in notes
+    assert "MVP mit 3" not in notes
+    assert "Kein Modell" in notes or "API-Key" in notes or "Key" in notes
+    blob = " ".join(state.worker_results or [])
+    assert "Stub-Modus" not in blob
+    if state.worker_results:
+        assert "FEHLER" in blob
     assert pipe.state is state
 
 
@@ -315,20 +290,16 @@ class _FailLLM:
         raise RuntimeError("boom")
 
 
-def test_llm_failure_falls_back_to_stub():
+def test_llm_failure_does_not_fall_back_to_stub():
     bus = EventBus()
     events = _collect(bus)
     bus.on("pipeline.warning", lambda d: events.append(("pipeline.warning", d)))
     pipe = Pipeline(bus, llm_manager=_FailLLM())
     state = pipe.start("Build something solid")
-    assert state.stage == PipelineStage.done
-    # FailLLM has provider but chat raises → agents fall back to stubs + warnings
-    assert state.brainstorm_notes
-    assert (
-        "Ideen" in state.brainstorm_notes
-        or "Kurz zu" in state.brainstorm_notes
-        or "Richtungen" in state.brainstorm_notes
-    )
+    blob = (state.brainstorm_notes or "") + (state.error or "")
+    assert "Ideen zu" not in blob
+    assert "Stub-Modus" not in blob
+    assert "Kein Modell" in blob or "API-Key" in blob or "Key" in blob
     assert any(n == "pipeline.warning" for n, _ in events)
 
 
@@ -341,11 +312,9 @@ def test_memory_context_injected_into_stub_brainstorm():
     bus = EventBus()
     pipe = Pipeline(bus, memory=_FakeMemory())
     state = pipe.start("Build a landing page")
-    assert state.stage == PipelineStage.done
     assert "Prefer dark theme" in state.memory_context
-    # stubs always produce useful notes; memory is carried in state for LLM path
-    assert state.brainstorm_notes
-    assert state.distilled_requirements
+    assert "MVP mit 3" not in (state.brainstorm_notes or "")
+    assert "Ziel in einem Satz" not in (state.brainstorm_notes or "")
 
 
 def test_garbage_product_identity_facts_filtered():

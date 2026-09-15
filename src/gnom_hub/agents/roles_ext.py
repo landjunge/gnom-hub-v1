@@ -64,12 +64,13 @@ class CoordinatorAgent(BaseAgent):
                         {"stage": "distill", "error": str(exc)},
                     )
             if not reqs:
-                reqs = [
-                    f"Ziel: {user_text}",
-                    "MVP mit 3 Kernfunktionen",
-                    "Klare Desktop-UI und lesbare Ausgaben",
-                    "Fehler- und Leerzustände behandeln",
-                ]
+                if not self.has_llm():
+                    reqs = [
+                        "FEHLER — Distill ohne Modell. Kein brauchbarer API-Key.",
+                        "Kein Workshop-Formular als Auftrag. Worker liefern erst mit Key.",
+                    ]
+                else:
+                    reqs = [f"Ziel: {user_text}"]
             question = None
             if not coordinator_should_skip_clarify(kind) and _needs_clarify(user_text, brainstorm):
                 # Plain German — Box 1 must be understandable without jargon

@@ -28,7 +28,7 @@ class Pipeline:
     """
     Synchronous pipeline driven by EventBus.
 
-    Without a live LLM key, stages use useful deterministic stubs.
+    Without a live LLM key, stages fail honestly — no workshop stubs as product.
     Disabled agents are skipped (Memory always on via memory_hint).
     """
 
@@ -106,6 +106,12 @@ class Pipeline:
         text = self._state.user_text
         if not text:
             self._fail("Empty user text")
+            return
+        if self._use_stubs():
+            self._fail(
+                "Kein brauchbarer API-Key. Kein Stub-Gespräch, kein Stub-Deliverable. "
+                "Key in WS-gnom-hub-v1/User/Key.txt."
+            )
             return
 
         if self._agent_enabled("brainstorm"):
@@ -235,21 +241,16 @@ class Pipeline:
     # ── stubs (useful demo output) ───────────────────────────────────
 
     def _stub_brainstorm(self, text: str) -> str:
+        del text
         return (
-            f"Ideen zu: {text}\n"
-            f"• Ziel klar formulieren und Nutzerwert in 1 Satz\n"
-            f"• 3 Kernfunktionen priorisieren (MVP)\n"
-            f"• UI: 1 Hauptscene + klare nächste Aktion\n"
-            f"• Daten: lokal speichern, keine unnötigen Secrets\n"
-            f"• Risiken: Scope-Creep, leere States, Fehlerfälle"
+            "Kein Modell für Brainstorm. Ohne brauchbaren API-Key gibt es "
+            "keinen Gesprächspartner — kein Formular, kein Fake-Mitdenken."
         )
 
     def _stub_distill(self, text: str) -> tuple[list[str], DistillQuestion | None]:
         requirements = [
-            f"Ziel: {text}",
-            "MVP mit 3 Kernfunktionen liefern",
-            "Einfache Desktop-UI, lesbare Ausgaben",
-            "Fehler- und Leerzustände anzeigen",
+            "FEHLER — Distill ohne Modell. Kein brauchbarer API-Key.",
+            f"Auftrag: {text}",
         ]
         question: DistillQuestion | None = None
         notes = getattr(self._state, "brainstorm_notes", "") or ""
@@ -307,12 +308,9 @@ class Pipeline:
         lines = [ln.strip() for ln in (task or "").splitlines() if ln.strip()]
         head = lines[0][:120] if lines else "(empty task)"
         return (
-            f"Worker {n} Ergebnis\n"
+            f"Worker {n} FEHLER — kein Deliverable\n"
             f"Aufgabe: {head}\n"
-            f"• Schritt 1: Anforderungen lesen\n"
-            f"• Schritt 2: MVP skizzieren\n"
-            f"• Schritt 3: Nächster sinnvoller Schritt vorschlagen\n"
-            f"(Stub-Modus — mit DeepSeek-Key kommt hier echte LLM-Ausgabe.)"
+            "Kein Stub-Modus. Worker liefern erst mit gültigem Modell."
         )
 
     # ── LLM ──────────────────────────────────────────────────────────
@@ -500,11 +498,12 @@ class Pipeline:
     # ── helpers ──────────────────────────────────────────────────────
 
     def _safe_stage(self, name: str, llm_fn, stub_fn):
+        del stub_fn
         if self._use_stubs():
-            return stub_fn()
+            raise RuntimeError("Kein brauchbarer API-Key. Pipeline erzeugt keine Stub-Lieferung.")
         try:
             return llm_fn()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             # Tollgate Protect / budget: hard fail — never mask with deterministic stubs
             try:
                 from gnom_hub.agents.roles_helpers import (
@@ -519,10 +518,10 @@ class Pipeline:
                 raise
             except Exception:  # noqa: BLE001 — import/helper failure → fall through
                 pass
-            msg = f"{name}: LLM failed ({exc}); used stub"
+            msg = f"{name}: Modellfehler ({exc})"
             self._state.warnings.append(msg)
             self._bus.emit("pipeline.warning", {"stage": name, "error": str(exc)})
-            return stub_fn()
+            raise RuntimeError(msg) from exc
 
     def _flex_preset(self) -> str:
         if self._agents is None:

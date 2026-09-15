@@ -33,7 +33,9 @@ def test_brainstorm_stub_does_not_claim_pipeline_starts():
     _banned(out)
     out2 = _stub_brainstorm("ich will eine geile webseite", [])
     _banned(out2)
-    assert "geil" in out2.lower() or "richtung" in out2.lower() or "optisch" in out2.lower()
+    assert "kein modell" in out.lower() or "api-key" in out.lower()
+    assert "ziel in einem satz" not in out.lower()
+    assert "ziel in einem satz" not in out2.lower()
 
 
 def test_brainstorm_policy_html_does_not_say_hub_executes():
