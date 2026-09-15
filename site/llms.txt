@@ -1,7 +1,7 @@
 # Gnom-Hub (landjunge/gnom-hub-v1)
-> Local multi-agent control hub — brainstorm freely, Execute only on purpose.
+> Local multi-agent desk — Send talks, Arbeit starten runs workers.
 > No Docker. Python + FastAPI. Visible agent cards. Safe computer-use.
-> Brand: landjunge · Not GNOME desktop software.
+> Brand: landjunge · Not GNOME desktop software. Terminal install, not one-click.
 
 
 - Site: https://landjunge.github.io/gnom-hub-v1/
@@ -14,8 +14,8 @@
 - Discussions: https://github.com/landjunge/gnom-hub-v1/discussions
 
 ## Product rules
-- Send / chat = dialogue and planning only
-- Execute = start workers that may spend money or touch files
+- Send / Senden = dialogue and planning only
+- Arbeit starten = start workers that may spend money or touch files
 - Computer-use stays dry-run until deliberate God-Mode
 - Optional Tollgate integration for Protect · Route · Prove
 
