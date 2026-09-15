@@ -48,7 +48,8 @@ class WorkerMixin:
         self._record_reply(
             agent=worker_id,
             text=(
-                f"{worker_id}: verstanden. Send startet keine Arbeit. "
+                f"{worker_id}: zugeteilt. Send startet keine Arbeit. "
+                f"Arbeit starten gibt genau {worker_id} den Auftrag. "
                 f"Freigabe nur über {start} in Box 1 oder Arbeit starten."
             ),
             in_reply_to=user["message_id"],
