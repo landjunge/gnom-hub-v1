@@ -44,9 +44,7 @@ def test_send_coordinator_does_not_execute():
     )
     assert st.stage != PipelineStage.done
     assert not st.worker_results
-    qs = pipe.flex_desk.open_questions()
-    assert not st.worker_results
-    assert qs or st.pending_question is not None
+    assert not any(q.component == "start_work" for q in pipe.flex_desk.open_questions())
 
 
 def test_send_worker_does_not_execute():

@@ -12,7 +12,6 @@ from gnom_hub.pipeline.helpers import (
     _is_go_only,
     _is_topic_switch,
     _pick_execute_task,
-    _wants_auto_execute,
 )
 from gnom_hub.pipeline.models import PipelineStage, PipelineState
 
@@ -103,15 +102,9 @@ class BrainstormMixin:
                 self._state.user_text = text
                 self._state.send_target = getattr(self._state, "send_target", "") or "brainstorm"
                 user = self._record_user(text, "brainstorm")
-                self._offer_start_work(reason="tool_drill")
-                aid = self._open_assignment_id()
-                start = f"START-{aid}" if aid else "die sichtbare START-ID"
                 self._record_reply(
                     agent="brainstorm",
-                    text=(
-                        "Brainstorm: Tool-Drill erkannt. Send startet keine Arbeit. "
-                        f"Freigabe nur über {start} in Box 1 oder Arbeit starten."
-                    ),
+                    text="Erkannt. Arbeit starten liefert das Ergebnis in Box 3.",
                     in_reply_to=user["message_id"],
                     source="live",
                 )
@@ -128,15 +121,9 @@ class BrainstormMixin:
                 ]
                 self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
                 user = self._record_user(text, "brainstorm")
-                self._offer_start_work(reason="browser_nav")
-                aid = self._open_assignment_id()
-                start = f"START-{aid}" if aid else "die sichtbare START-ID"
                 self._record_reply(
                     agent="brainstorm",
-                    text=(
-                        f"{notes} Send startet keine Arbeit. "
-                        f"Freigabe nur über {start} in Box 1 oder Arbeit starten."
-                    ),
+                    text=f"{notes} Arbeit starten liefert in Box 3.",
                     in_reply_to=user["message_id"],
                     source="live",
                 )
@@ -200,15 +187,9 @@ class BrainstormMixin:
                     )
                     self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
                     user = self._record_user(text, "brainstorm")
-                    self._offer_start_work(reason="go_only")
-                    aid = self._open_assignment_id()
-                    start = f"START-{aid}" if aid else "die sichtbare START-ID"
                     self._record_reply(
                         agent="brainstorm",
-                        text=(
-                            f"Brainstorm: Plan liegt vor. Send startet keine Arbeit. "
-                            f"Freigabe nur über {start} in Box 1 oder Arbeit starten."
-                        ),
+                        text="Plan liegt vor. Arbeit starten liefert in Box 3.",
                         in_reply_to=user["message_id"],
                         source="live",
                     )
@@ -252,31 +233,13 @@ class BrainstormMixin:
             )
 
             if self.flex.enabled:
-                absorbed: list[str] = []
                 try:
-                    absorbed = list(self.flex.absorb(text, mem) or [])
+                    self.flex.absorb(text, mem)
                 except Exception as exc:  # noqa: BLE001
                     self.bus.emit(
                         "pipeline.warning",
                         {"stage": "flex_absorb", "error": str(exc)},
                     )
-                flex_line: str | None = None
-                try:
-                    flex_line = self.flex.brainstorm_contribute(
-                        text,
-                        notes,
-                        mem,
-                        absorbed=absorbed,
-                    )
-                except Exception as exc:  # noqa: BLE001
-                    self.bus.emit(
-                        "pipeline.warning",
-                        {"stage": "flex_chat", "error": str(exc)},
-                    )
-                    flex_line = None
-                if flex_line:
-                    self._state.brainstorm_turns.append({"role": "flex", "text": flex_line})
-                    self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
             if not _exec_only:
                 self._state.user_text = text
 
@@ -296,9 +259,7 @@ class BrainstormMixin:
                     "turns": len(self._state.brainstorm_turns),
                 },
             )
-            if _wants_auto_execute(text, self._state.brainstorm_turns):
-                self._offer_start_work(reason="plan_ready")
-                self._sync_flex_state()
+            # Arbeit starten is the button. No START-C1 after Send.
         except PipelineCancelled:
             return self._state
         except Exception as exc:  # noqa: BLE001

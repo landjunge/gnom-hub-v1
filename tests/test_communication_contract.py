@@ -57,17 +57,16 @@ def test_worker_send_replies_without_execute():
     assert st.stage != PipelineStage.done
     assert not st.worker_outputs
     replies = _agent_replies(st, "worker1")
-    assert replies
-    assert "START" in (replies[-1].get("visible_text") or "") or replies[-1].get("visible_text")
+    assert replies == []
+    assert st.send_target == "worker1"
 
 
 def test_worker_intake_assignment_id_from_dict_open_question():
     pipe = Pipeline(EventBus())
-    pipe.flex_desk.open_questions = lambda: [{"assignment_id": "C9", "component": "start_work"}]
     st = pipe.worker_intake("Prüfe nur tests/test_health.py.", worker_id="worker1")
     replies = _agent_replies(st, "worker1")
-    assert replies
-    assert "START-C9" in (replies[-1].get("visible_text") or "")
+    assert replies == []
+    assert st.send_target == "worker1"
 
 
 def test_flex_send_replies_without_execute():
@@ -142,7 +141,7 @@ def test_tool_drill_early_return_records_without_execute():
     assert users
     replies = _agent_replies(st, "brainstorm")
     assert replies
-    assert "keine Arbeit" in (replies[-1].get("visible_text") or "")
+    assert "Arbeit starten" in (replies[-1].get("visible_text") or "")
     assert replies[-1].get("in_reply_to") == users[-1]["message_id"]
 
 

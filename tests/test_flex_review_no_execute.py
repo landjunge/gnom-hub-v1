@@ -1,8 +1,7 @@
 """Flex review rebuild/fix buttons must not start Execute.
 
-Contract: Flex has no execute authority. Gate is #btn-execute or Box 1
-start_work Ja. Review actions may offer_start_work and return a snapshot
-that wants Box 1 confirmation.
+Contract: Flex has no execute authority. Gate is Arbeit starten.
+Review does not mint START-C1.
 """
 
 from __future__ import annotations
@@ -79,9 +78,8 @@ def test_rebuild_does_not_call_execute(tmp_path, monkeypatch):
         job = out.get("job")
         assert not job or not job.get("job_id")
         desk_qs, snap_qs = _start_work_questions(hub, out.get("snapshot"))
-        assert desk_qs, "rebuild must offer_start_work on FlexDesk"
-        assert snap_qs, "snapshot must show Box 1 start_work confirmation"
-        assert "START-" in desk_qs[0].text
+        assert desk_qs == []
+        assert snap_qs == []
         with pytest.raises(PermissionError):
             hub.pipeline.flex_desk.start_execute()
     finally:
@@ -97,8 +95,8 @@ def test_rebuild_without_deliverable_does_not_execute(tmp_path, monkeypatch):
         assert called == []
         assert out.get("ok") is True
         desk_qs, snap_qs = _start_work_questions(hub, out.get("snapshot"))
-        assert desk_qs
-        assert snap_qs
+        assert desk_qs == []
+        assert snap_qs == []
     finally:
         hub_mod._HUB = None
 
@@ -116,8 +114,8 @@ def test_fix_html_does_not_call_execute(tmp_path, monkeypatch):
         assert out.get("ok") is True
         assert out.get("action") != "execute"
         desk_qs, snap_qs = _start_work_questions(hub, out.get("snapshot"))
-        assert desk_qs
-        assert snap_qs
+        assert desk_qs == []
+        assert snap_qs == []
         with pytest.raises(PermissionError):
             hub.pipeline.flex_desk.start_execute()
     finally:
@@ -137,7 +135,7 @@ def test_add_js_does_not_call_execute(tmp_path, monkeypatch):
         assert out.get("ok") is True
         assert out.get("action") != "execute"
         desk_qs, _snap_qs = _start_work_questions(hub, out.get("snapshot"))
-        assert desk_qs
+        assert desk_qs == []
     finally:
         hub_mod._HUB = None
 

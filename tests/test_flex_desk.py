@@ -75,14 +75,12 @@ def test_send_does_not_execute_via_flex_or_build_language():
     assert not st.worker_results
     assert st.mode != "execute" or st.stage == PipelineStage.brainstorm
     qs = pipe.flex_desk.open_questions()
-    assert any(q.component == "start_work" for q in qs)
-    start = next(q for q in qs if q.component == "start_work")
-    assert "START-" in start.text
-    assert start.assignment_id
-    assert start.entry_type == "freigabe"
+    assert not any(q.component == "start_work" for q in qs)
+    blob = " ".join(str(t.get("text") or "") for t in (st.brainstorm_turns or []))
+    assert "START-" not in blob
 
 
-def test_start_work_yes_calls_hub_execute_not_flex(tmp_path, monkeypatch):
+def test_judgment_does_not_start_execute(tmp_path, monkeypatch):
     import gnom_hub.hub as hub_mod
     from gnom_hub.config import paths
     from gnom_hub.hub import Hub
@@ -93,19 +91,14 @@ def test_start_work_yes_calls_hub_execute_not_flex(tmp_path, monkeypatch):
     hub_mod._HUB = None
     hub = Hub()
     try:
-        hub.pipeline.brainstorm_turn(
-            "Build a landing page for Bean Shop. Full HTML with hero and footer."
-        )
-        start = next(
-            q for q in hub.pipeline.flex_desk.open_questions() if q.component == "start_work"
-        )
+        hub.pipeline.brainstorm_turn("nur ideen")
+        asked = hub.pipeline.flex_desk.offer_judgment()
         called: list[str] = []
         hub.execute_sync = lambda: called.append("sync") or {"ok": True}  # type: ignore[method-assign]
         hub.execute_async = lambda: called.append("async") or {"ok": True}  # type: ignore[method-assign]
-        yes = f"Ja, START-{start.assignment_id} starten"
-        out = hub.flex_answer(start.question_id, yes, job_id=start.job_id, sync=True)
-        assert called == ["sync"]
-        assert out["flex_answer"]["wants_start_work"] is True
+        out = hub.flex_answer(asked["question_id"], "Verfeinern", job_id=asked["job_id"], sync=True)
+        assert called == []
+        assert out.get("judgment") == "Verfeinern"
         with pytest.raises(PermissionError):
             hub.pipeline.flex_desk.start_execute()
     finally:

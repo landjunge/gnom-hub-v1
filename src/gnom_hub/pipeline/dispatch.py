@@ -25,27 +25,22 @@ class DispatchMixin:
         return ids
 
     def _offer_start_work(self, *, reason: str, workers: str = "") -> None:
-        """Ask in Box 1. Never starts Execute — Hub/API execute is the authority."""
+        """Legacy no-op. Start is the Arbeit-starten button, never Box 1."""
+        del reason, workers
+
+    def _offer_judgment(self) -> None:
+        """Box 1 after a result: Passt das? Not a second start button."""
         self._ensure_flex_job()
-        asked = self.flex_desk.offer_start_work(task_id="plan", workers=workers)
+        asked = self.flex_desk.offer_judgment()
         self._sync_flex_state()
         self.bus.emit(
             "pipeline.flex_ask",
             {
-                "reason": reason,
+                "reason": "judgment",
                 "question_id": asked.get("question_id"),
-                "assignment_id": asked.get("assignment_id"),
-                "component": "start_work",
+                "component": "judgment",
             },
         )
-        aid = asked.get("assignment_id") or ""
-        line = (
-            f"Flex: START-{aid} — Auftrag {aid} ist ausführbar. "
-            "Soll genau dieser Auftrag jetzt starten?"
-        )
-        if not any(str(t.get("text") or "") == line for t in (self._state.brainstorm_turns or [])):
-            self._state.brainstorm_turns.append({"role": "flex", "text": line})
-            self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
 
     def start(self, user_text: str) -> PipelineState:
         text = user_text.strip()

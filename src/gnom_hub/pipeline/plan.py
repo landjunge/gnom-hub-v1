@@ -31,13 +31,8 @@ class PlanMixin:
                 source=self._reply_source(body),
             )
             return self._state
-        self._offer_start_work(reason="coordinator_ready")
         req_txt = "\n".join(f"- {r}" for r in (reqs or [])[:8]) or "(keine Pakete)"
-        body = (
-            "Coordinator: Auftrag geprüft. Send startet keine Arbeit.\n"
-            f"{req_txt}\n"
-            "Freigabe nur über die sichtbare START-ID in Box 1 oder Arbeit starten."
-        )
+        body = f"Auftrag geprüft.\n{req_txt}\nArbeit starten liefert in Box 3."
         self._record_reply(
             agent="coordinator",
             text=body,
