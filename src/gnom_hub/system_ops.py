@@ -84,6 +84,27 @@ class SystemOpsMixin:
             "packs": self.list_session_packs()[:12],
             "auto_pack_after_execute": self.auto_pack_after_execute,
             "pack_max": self.pack_max,
+            "setup": self._setup_dict(),
+        }
+
+    def _setup_dict(self) -> dict[str, Any]:
+        from gnom_hub.config.user_workspace import inspect_user_workspace
+        from gnom_hub.stack import via_tollgate
+
+        st = inspect_user_workspace(getattr(self, "root", None))
+        tg_ok = True
+        tg_note = ""
+        if via_tollgate():
+            try:
+                import tollgate  # noqa: F401
+            except ImportError:
+                tg_ok = False
+                tg_note = "TollGate fehlt — Cloud-Modelle gehen nicht."
+        return {
+            "key_ok": bool(st.key_has_deepseek),
+            "personal_ws": st.personal_ws,
+            "tollgate_ok": tg_ok,
+            "tollgate_note": tg_note,
         }
 
     def help_text(self) -> dict[str, Any]:
