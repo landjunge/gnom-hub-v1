@@ -63,6 +63,33 @@ def health() -> dict[str, Any]:
     }
 
 
+@router.get("/api/updates")
+def updates_get() -> dict[str, Any]:
+    from gnom_hub.updates import status
+
+    return status()
+
+
+@router.post("/api/updates/check")
+def updates_check() -> dict[str, Any]:
+    from gnom_hub.updates import check
+
+    return check()
+
+
+@router.post("/api/updates/apply")
+def updates_apply() -> dict[str, Any]:
+    from gnom_hub.updates import apply
+
+    hub = get_hub()
+    busy = bool(getattr(hub, "_find_busy_job", lambda: None)())
+    out = apply(busy=busy)
+    if not out.get("ok"):
+        code = 409 if out.get("error") == "busy" else 400
+        raise HTTPException(status_code=code, detail=out.get("message") or out.get("error"))
+    return out
+
+
 @router.get("/api/system")
 def system_get() -> dict[str, Any]:
     return get_hub().system_dict()

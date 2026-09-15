@@ -3892,6 +3892,56 @@
     }
   }
 
+  async function checkUpdates() {
+    try {
+      const u = await api("POST", "/api/updates/check");
+      const el = document.getElementById("system-updates");
+      if (el) {
+        el.textContent =
+          "Installiert v" + (u.installed || "?") + " · " + (u.message || "Suche fertig");
+      }
+      toast(u.message || "Suche fertig", "info");
+    } catch (err) {
+      toast("Update-Suche fehlgeschlagen: " + err.message, "error");
+    }
+  }
+
+  async function applyUpdates() {
+    try {
+      await api("POST", "/api/updates/apply");
+      toast("Update ausgeführt", "ok");
+    } catch (err) {
+      toast(err.message || "Update nicht möglich", "error");
+    }
+  }
+
+  async function detailsUpdates() {
+    try {
+      const u = await api("GET", "/api/updates");
+      const bits = [];
+      bits.push("Installiert v" + (u.installed || "?"));
+      bits.push("Kanal " + (u.channel || "stable"));
+      if (u.last_check) bits.push("Geprüft " + u.last_check);
+      if (u.available && u.available.tag) bits.push("GitHub " + u.available.tag);
+      bits.push(u.notes || u.message || "");
+      bits.push(u.emergency || "Notfall: Backup unten laden.");
+      const el = document.getElementById("system-updates");
+      if (el) el.textContent = bits.join(" · ");
+      toast(bits.join(" · "), "info");
+    } catch (err) {
+      toast("Update-Details fehlen: " + err.message, "error");
+    }
+  }
+
+  function restoreUpdates() {
+    const list = document.getElementById("sys-backup-list");
+    if (list) list.scrollIntoView({ block: "nearest" });
+    toast(
+      "Kein stilles Update-Zurück. Backup in der Liste unten mit Laden zurückspielen.",
+      "info"
+    );
+  }
+
   async function openSystemModal() {
     if (!els.systemModal) return;
     dockIntoBoxes(els.systemModal);
@@ -3910,6 +3960,21 @@
         bits.push(su.tollgate_ok === false ? (su.tollgate_note || "TollGate fehlt") : "TollGate ok");
         if (su.personal_ws) bits.push("WS: " + su.personal_ws);
         setupEl.textContent = bits.join(" · ");
+      }
+      const updEl = document.getElementById("system-updates");
+      if (updEl) {
+        try {
+          const u = await api("GET", "/api/updates");
+          updEl.textContent =
+            "Installiert v" +
+            (u.installed || "?") +
+            " · Kanal " +
+            (u.channel || "stable") +
+            " · " +
+            (u.message || "");
+        } catch (_e) {
+          updEl.textContent = "Update: nicht prüfbar";
+        }
       }
       document.getElementById("sys-free-only").checked = !!s.free_only;
       document.getElementById("sys-budget").value =
@@ -10861,6 +10926,14 @@
     const sysBackup = document.getElementById("sys-backup");
     const sysClean = document.getElementById("sys-clean");
     if (sysBackup) sysBackup.addEventListener("click", runBackup);
+    const updCheck = document.getElementById("sys-update-check");
+    const updDetails = document.getElementById("sys-update-details");
+    const updApply = document.getElementById("sys-update-apply");
+    const updRestore = document.getElementById("sys-update-restore");
+    if (updCheck) updCheck.addEventListener("click", checkUpdates);
+    if (updDetails) updDetails.addEventListener("click", detailsUpdates);
+    if (updApply) updApply.addEventListener("click", applyUpdates);
+    if (updRestore) updRestore.addEventListener("click", restoreUpdates);
     if (sysClean) sysClean.addEventListener("click", runCleanState);
     const tunePreset = document.getElementById("tune-preset-save");
     if (tunePreset) tunePreset.addEventListener("click", saveWorkerPresetFromTune);
