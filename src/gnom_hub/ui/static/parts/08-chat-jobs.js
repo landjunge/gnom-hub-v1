@@ -461,8 +461,8 @@
       els.btnSend.textContent = chatBusy ? "…" : "Senden";
     }
     if (els.btnExecute) {
-      // Must re-apply can_execute when busy ends — applySnapshot often ran while busy=true
-      els.btnExecute.disabled = !lastCanExecute || chatBusy;
+      const hasKey = !!(els.llmBadge && els.llmBadge.classList.contains("has-key"));
+      els.btnExecute.disabled = !lastCanExecute || chatBusy || !hasKey;
     }
     const btnSendExec = document.getElementById("btn-send-exec");
     if (btnSendExec) btnSendExec.disabled = chatBusy;
@@ -476,7 +476,7 @@
     if (els.chatInput) els.chatInput.disabled = chatBusy;
     if (els.stageBadge) {
       if (chatBusy) {
-        els.stageBadge.textContent = "running…";
+        els.stageBadge.textContent = "läuft…";
       } else if (activeStage) {
         // Restore real stage — otherwise badge stays on "running…" and UI feels frozen
         els.stageBadge.textContent = activeStage;
@@ -1480,11 +1480,23 @@
       !isYou && !isSys && typeof ownerColorFor === "function"
         ? ownerColorFor(whoKey)
         : "";
+    const WHO_DE = {
+      you: "Du",
+      system: "System",
+      brainstorm: "Brainstorm",
+      memory: "Memory",
+      flex: "Flex",
+      coordinator: "Koordinator",
+      worker1: "Arbeiter 1",
+      worker2: "Arbeiter 2",
+      worker3: "Arbeiter 3",
+      worker4: "Arbeiter 4",
+    };
     label.className =
-      "chat-who-label mr-1 text-2xs font-semibold uppercase tracking-wide " +
+      "chat-who-label mr-1 text-2xs font-semibold tracking-wide " +
       (isYou ? "text-gnom-accent" : isSys ? "text-gnom-muted" : "");
     if (whoHex) label.style.color = whoHex;
-    label.textContent = who;
+    label.textContent = WHO_DE[whoKey] || who;
     bubble.appendChild(label);
     const body = document.createElement("span");
     body.className = "chat-text whitespace-pre-wrap break-words";
@@ -2176,12 +2188,19 @@
 
   async function runExecute() {
     if (chatBusy) return;
+    const hasKey = !!(els.llmBadge && els.llmBadge.classList.contains("has-key"));
+    if (!hasKey) {
+      toast("Key fehlt. In System eintragen, dann Arbeit starten.", "error");
+      const hint = document.getElementById("execute-hint");
+      if (hint) hint.hidden = false;
+      return;
+    }
     if (els.btnExecute && els.btnExecute.disabled) {
-      toast("Brainstorm first, then Execute", "info");
+      toast("Zuerst senden, dann Arbeit starten", "info");
       return;
     }
     setChatBusy(true);
-    appendChat("system", "Execute started (distill → flex → workers)…");
+    appendChat("system", "Arbeit gestartet…");
     try {
       await persistActiveFlagsAsWishes();
     } catch (_e) {
@@ -2196,14 +2215,14 @@
         const job = await pollJob(start.job_id, 300000);
         snap = job.snapshot || (await api("GET", "/api/state"));
         if (job.status === "error") {
-          appendChat("system", "Execute error: " + (job.error || "?"));
-          toast(job.error || "Execute error", "error");
+          appendChat("system", "Fehler: " + (job.error || "?"));
+          toast(job.error || "Fehler", "error");
           applySnapshot(snap);
           return;
         }
         if (job.status === "cancelled") {
-          appendChat("system", "Execute cancelled.");
-          toast("Cancelled", "info");
+          appendChat("system", "Arbeit abgebrochen.");
+          toast("Abgebrochen", "info");
           applySnapshot(snap);
           return;
         }
@@ -2218,15 +2237,15 @@
         if (okDeliverable) {
           appendChat(
             "system",
-            "Execute done in " + formatDuration(dur) + " — see Box 3."
+            "Fertig in " + formatDuration(dur) + " — siehe Box 3."
           );
-          toast("Execute done · " + formatDuration(dur), "ok");
+          toast("Fertig · " + formatDuration(dur), "ok");
         } else {
           appendChat(
             "system",
-            "Execute finished in "
+            "Lauf zu Ende in "
               + formatDuration(dur)
-              + " without a valid deliverable — see Box 3."
+              + " ohne gültige Lieferung — siehe Box 3."
           );
           toast("Kein Deliverable · " + formatDuration(dur), "error");
         }
@@ -2234,7 +2253,7 @@
         try {
           pushResultHistory(snap.pipeline || {}, {
             label:
-              ((snap.pipeline && snap.pipeline.user_text) || "Execute").slice(
+              ((snap.pipeline && snap.pipeline.user_text) || "Arbeit").slice(
                 0,
                 40
               ) +

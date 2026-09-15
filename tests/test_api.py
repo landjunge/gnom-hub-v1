@@ -72,7 +72,8 @@ def test_ui_static_has_v16_v37_features(client: TestClient):
     assert "dual-layers" in body or "paintWorkerIntoSlot" in body
     assert "exportResultHistory" in body
     assert "rerunWorker" in body
-    assert "card-cost" in body
+    assert "is-target" in body
+    assert "card-name" in body
     assert 'ev.key === "s"' in body or "ev.key === 's'" in body
 
     css = client.get("/static/app.css")

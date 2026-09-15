@@ -438,15 +438,22 @@
 
 .btn-execute {
   flex: 0 0 auto;
-  min-width: 64px;
+  min-width: 88px;
   height: var(--btn-h);
-  border: 1px solid var(--border-strong);
+  border: 1px solid var(--ok);
   border-radius: 0;
-  background: var(--bg-elev);
+  background: color-mix(in srgb, var(--ok) 18%, var(--bg-elev));
   color: var(--text);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
+}
+
+.execute-hint {
+  flex: 1 0 100%;
+  margin: 0;
+  font-size: 11px;
+  color: var(--err);
 }
 
 .btn-execute:hover:not(:disabled) {

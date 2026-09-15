@@ -4,35 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub-V1</title>
-  <link rel="stylesheet" href="/static/app.css?v=185" />
-  <!-- Tailwind utilities for Chat module (preflight OFF) -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      corePlugins: { preflight: false },
-      theme: {
-        extend: {
-          colors: {
-            gnom: {
-              bg: "#121316",
-              panel: "#1a1b1f",
-              card: "#1e1f24",
-              elev: "#22242a",
-              border: "#2c2e34",
-              text: "#d8dbe0",
-              muted: "#7a7f88",
-              flex: "#f0c000",
-              ok: "#3dd68c",
-              accent: "#4dabf7",
-            },
-          },
-          fontSize: {
-            "2xs": ["10px", "1.3"],
-          },
-        },
-      },
-    };
-  </script>
+  <link rel="stylesheet" href="/static/app.css?v=186" />
 </head>
 <body>
   <div id="app">
@@ -46,35 +18,14 @@
       </div>
       <!-- All header buttons: one module, horizontal, centered under head -->
       <div class="top-toolbar" role="toolbar" aria-label="Hauptaktionen">
-        <label class="flex-preset-label" title="Flex ist fest (persönlicher Begleiter)" data-tooltip-id="flex">
-          Flex
-          <select id="flex-preset-select" class="flex-preset-select" aria-label="Flex fest persönlich" disabled>
-            <option value="personal" selected>Persönlich (fest)</option>
-          </select>
-        </label>
         <button type="button" id="btn-workspace" class="btn-workspace" data-tooltip-id="workspace" title="Temp, Dauerhaft und behaltene Dateien">
           Workspace
-        </button>
-        <button type="button" id="btn-tools" class="btn-workspace" title="Werkzeuge listen und ausführen">
-          Werkzeuge
-        </button>
-        <button type="button" id="btn-clear-chat" class="btn-clear-chat" title="Chat in diesem Browser leeren">
-          Chat leeren
         </button>
         <button type="button" id="btn-system" class="btn-system" data-tooltip-id="system" title="Systemeinstellungen">
           System
         </button>
         <button type="button" id="btn-help" class="btn-help" data-tooltip-id="help" title="Hilfe">
           Hilfe
-        </button>
-        <button type="button" id="btn-archive" class="btn-archive" data-tooltip-id="archive" title="HOT nach COLD archivieren">
-          Archiv
-        </button>
-        <button type="button" id="btn-reset" class="btn-reset" data-tooltip-id="reset" title="Sitzung neu (HOT zuerst nach COLD)">
-          Neu
-        </button>
-        <button type="button" id="btn-save" class="btn-save" data-tooltip-id="save" title="Speichern">
-          Speichern
         </button>
       </div>
     </header>
@@ -253,7 +204,7 @@
             </div>
           </div>
           <div class="info-layer" data-info-layer="gnom" id="box1-layer-gnom" hidden>
-            <h2 class="tip-title">Gnom-Hub — Überblick</h2>
+            <h2 class="tip-title">Gnom-Hub-V1 — Überblick</h2>
             <div class="info-gnom-body">
               <p><strong>Pipeline:</strong> Chat → Brainstorm → Distill → Flex → Coordinator → Worker(s) → Memory.</p>
               <p><strong>Agent-Layer:</strong> Jeder Agent hat Layer in Box 1/2/3. Klick → Layer + 1px Rahmenfarbe.</p>
@@ -315,7 +266,7 @@
             <textarea
               id="chat-input"
               class="chat-input min-h-8 max-h-[72px] min-w-[80px] flex-1 rounded-md border border-gnom-border bg-gnom-bg px-2.5 text-[13px] leading-tight text-gnom-text placeholder:text-gnom-muted focus:border-gnom-accent focus:outline-none focus:ring-1 focus:ring-gnom-accent/50"
-              placeholder="An den gewählten Agenten schreiben. Senden = reden."
+              placeholder="Nachricht an Brainstorm"
               autocomplete="off"
               rows="1"
             ></textarea>
@@ -331,6 +282,7 @@
               title="Arbeit starten — Destillieren + Worker (Ctrl+Enter)"
               disabled
             >Arbeit starten</button>
+            <p id="execute-hint" class="execute-hint" hidden>Key fehlt. In System eintragen, dann Arbeit starten.</p>
             <button
               type="button"
               id="btn-cancel"
@@ -527,6 +479,16 @@
           <span id="skills-badge" class="tools-badge" role="button" tabindex="0" title="Playbooks">Skills: —</span>
           <span id="tools-badge" class="tools-badge" role="button" tabindex="0" title="Werkzeuge in diesem Lauf">Werkzeuge: 0</span>
           <span id="stage-badge" class="stage-badge" title="Stand der Arbeit">leer</span>
+        </div>
+        <div class="system-row system-session-actions" aria-label="Sitzung">
+          <button type="button" id="btn-tools" class="btn-ws-sm" title="Werkzeuge listen und ausführen">Werkzeuge</button>
+          <button type="button" id="btn-clear-chat" class="btn-ws-sm" title="Chat in diesem Browser leeren">Chat leeren</button>
+          <button type="button" id="btn-archive" class="btn-ws-sm" data-tooltip-id="archive" title="HOT nach COLD archivieren">Archiv</button>
+          <button type="button" id="btn-reset" class="btn-ws-sm" data-tooltip-id="reset" title="Sitzung neu (HOT zuerst nach COLD)">Neu</button>
+          <button type="button" id="btn-save" class="btn-ws-sm" data-tooltip-id="save" title="Speichern">Speichern</button>
+          <select id="flex-preset-select" class="flex-preset-select" aria-label="Flex fest persönlich" hidden disabled>
+            <option value="personal" selected>Persönlich (fest)</option>
+          </select>
         </div>
         <div class="system-row system-row-actions">
           <button type="button" id="sys-update-check" class="btn-ws-sm">Suchen</button>

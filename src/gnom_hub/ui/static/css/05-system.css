@@ -160,6 +160,13 @@
   align-items: center;
 }
 
+.system-session-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
 .system-line {
   margin: 0;
   font-size: 13px;

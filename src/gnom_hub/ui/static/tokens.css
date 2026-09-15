@@ -26,10 +26,10 @@
   --layout-w: 100%;
   --card-h: clamp(64px, 8.5vh, 96px);
   --chat-h: clamp(160px, 22vh, 280px);
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --shadow-soft: 0 4px 18px rgba(0, 0, 0, 0.28);
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --shadow-soft: none;
   --focus-ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent-hi);
 
   --c-brainstorm: #ef5350;

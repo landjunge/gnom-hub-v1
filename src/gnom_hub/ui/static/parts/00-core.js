@@ -193,8 +193,8 @@
   let chatDraft = "";
 
   function statusLabel(agent) {
-    if (agent.parked) return agent.enabled ? "on · later" : "off / parked";
-    return agent.enabled ? "on" : "off";
+    if (agent.parked) return "wartet";
+    return agent.enabled ? "bereit" : "aus";
   }
 
   function agentIsActive(agent) {
@@ -971,6 +971,20 @@
       el.classList.toggle("is-on", on);
       el.setAttribute("aria-checked", on ? "true" : "false");
     });
+    document.querySelectorAll(".agent-card").forEach(function (card) {
+      const on = card.dataset.agentId === sendTarget;
+      card.classList.toggle("is-target", on);
+      let tag = card.querySelector(".card-target");
+      if (on && !tag) {
+        tag = document.createElement("div");
+        tag.className = "card-target";
+        tag.textContent = "Empfänger";
+        card.appendChild(tag);
+      } else if (!on && tag) {
+        tag.remove();
+      }
+    });
+    if (typeof paintChatPlaceholder === "function") paintChatPlaceholder();
   }
 
   function showAgentPageTab(tabId, fromKeyboard) {
@@ -1225,7 +1239,7 @@
       _agentPageAdd(panel, "h2", "", "Auftrag");
       _agentPageEmpty(
         panel,
-        "Keine Daten. Weder Gespräch noch bestätigtes Execute."
+        "Keine Daten. Weder Gespräch noch bestätigte Arbeit."
       );
       return;
     }
@@ -1233,7 +1247,7 @@
     const split = _agentPageAdd(panel, "div", "agent-page-split", "");
     const talkCard = _agentPageAdd(split, "article", "agent-page-card", "");
     _agentPageTag(talkCard, "Gespräch — nicht ausgeführt");
-    _agentPageAdd(talkCard, "h3", "", "Unterhaltung vor Execute");
+    _agentPageAdd(talkCard, "h3", "", "Unterhaltung vor der Arbeit");
     _agentPageAdd(
       talkCard,
       "p",
@@ -1248,7 +1262,7 @@
       "p",
       "agent-page-meta",
       executed
-        ? "Gespräch bleibt sichtbar. Execute ist bestätigt."
+        ? "Gespräch bleibt sichtbar. Die Arbeit ist bestätigt."
         : "Das ist Brainstorm. Noch kein Auftrag an diesen Agenten."
     );
     const exeCard = _agentPageAdd(
@@ -1257,7 +1271,7 @@
       "agent-page-card" + (executed ? " edge-ok" : ""),
       ""
     );
-    _agentPageTag(exeCard, executed ? "Bestätigtes Execute" : "Noch kein Execute");
+    _agentPageTag(exeCard, executed ? "Bestätigte Arbeit" : "Noch keine Arbeit");
     _agentPageAdd(exeCard, "h3", "", "Originalauftrag");
     _agentPageAdd(exeCard, "p", "", executed ? talk || notes || "—" : "Kein bestätigtes Execute.");
     const targetAgent = findAgent(pipe.send_target || agentId);
@@ -1986,8 +2000,12 @@
     AGENTS.forEach(function (agent) {
       const card = document.createElement("div");
       const isActive = agentIsActive(agent);
+      const isTarget = sendTarget === agent.id;
       card.className =
-        "agent-card color-" + agent.color + (isActive ? " is-active" : "");
+        "agent-card color-" +
+        agent.color +
+        (isActive ? " is-active" : "") +
+        (isTarget ? " is-target" : "");
       card.dataset.agentId = agent.id;
       card.dataset.enabled = agent.enabled ? "true" : "false";
       card.dataset.toggleable = agent.toggleable ? "true" : "false";
@@ -1997,69 +2015,22 @@
       card.setAttribute(
         "aria-label",
         agent.label +
-          " — click: layer+info · click again or Shift+click: tune · double-click: toggle" +
-          (agent.id === "flex" ? " · Shift+double-click: preset" : "")
+          (isTarget ? " — Empfänger" : " — Ansicht") +
+          " — Klick öffnet die Ansicht, ändert den Empfänger nicht"
       );
-      const online = !!agent.online;
-      const presetLine =
-        agent.id === "flex" && agent.preset
-          ? '<div class="card-preset">preset: ' + agent.preset + "</div>"
-          : "";
-      const tok = agent.tokens || 0;
-      const cost =
-        agent.cost_usd != null && !isNaN(agent.cost_usd)
-          ? Number(agent.cost_usd)
-          : 0;
-      const costStr = cost > 0 ? "$" + cost.toFixed(4) : "$0";
       const live =
         typeof agentLiveStatus === "function" ? agentLiveStatus(agent.id) : "";
       if (live) card.dataset.live = live;
+      const status = live || statusLabel(agent);
       // eslint-disable-next-line no-unsanitized/property
       card.innerHTML =
         '<div class="card-name">' +
         agent.label +
         "</div>" +
-        '<div class="card-meta">LLM: ' +
-        (agent.model || "—") +
-        "</div>" +
-        '<div class="card-tokens">tok: ' +
-        tok +
-        ' · <span class="card-cost">' +
-        costStr +
-        "</span></div>" +
-        '<div class="card-online ' +
-        (online ? "on" : "off") +
-        '">' +
-        (online ? "online" : "offline") +
-        "</div>" +
-        '<label class="card-tts" data-stop="1" title="Sprache — Agent hörbar">' +
-        '<input type="checkbox" ' +
-        (agent.tts ? "checked " : "") +
-        (agent.parked ? "disabled " : "") +
-        "/> Sprache</label>" +
-        presetLine +
         '<div class="card-status">' +
-        statusLabel(agent) +
+        status +
         "</div>" +
-        (live ? '<div class="card-live">' + live + "</div>" : "");
-
-      const ttsInput = card.querySelector(".card-tts input");
-      if (ttsInput) {
-        ttsInput.addEventListener("click", function (ev) {
-          ev.stopPropagation();
-        });
-        ttsInput.addEventListener("change", function (ev) {
-          ev.stopPropagation();
-          const on = !!ttsInput.checked;
-          // Speak HERE (same user gesture) — short DE only, no EN, no long monologue
-          if (on) {
-            speakNow("Sprache an: " + (agent.label || agent.id) + ".");
-          } else {
-            stopSpeech();
-          }
-          setAgentTts(agent.id, on);
-        });
-      }
+        (isTarget ? '<div class="card-target">Empfänger</div>' : "");
 
       card.addEventListener("click", function (ev) {
         if (ev.target && ev.target.closest && ev.target.closest("[data-stop]")) {
@@ -2085,7 +2056,7 @@
           clickTimer = null;
         }
         if (agent.id === "flex") {
-          toast("Flex is fixed — always on, personal companion", "info");
+          toast("Flex bleibt an — persönlicher Begleiter", "info");
           return;
         }
         toggleAgent(agent.id);
@@ -2098,6 +2069,13 @@
     });
     updateBoxBorders();
     if (typeof _refreshAgentPageLive === "function") _refreshAgentPageLive();
+  }
+
+  function paintChatPlaceholder() {
+    const inp = document.getElementById("chat-input");
+    if (!inp) return;
+    const agent = findAgent(sendTarget) || {};
+    inp.placeholder = "Nachricht an " + (agent.label || "Brainstorm");
   }
 
   function findAgent(id) {

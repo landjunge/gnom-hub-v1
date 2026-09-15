@@ -1180,7 +1180,16 @@
   }
 
   function renderBox3Workers(pipeline) {
-    const outputs = normalizeWorkerOutputs(pipeline);
+    let outputs = collapseSharedErrors(normalizeWorkerOutputs(pipeline));
+    const stageName = pipeline && pipeline.stage;
+    if (
+      !outputs.length &&
+      lastWorkerOutputs &&
+      lastWorkerOutputs.length &&
+      (stageName === "brainstorm" || stageName === "idle")
+    ) {
+      outputs = lastWorkerOutputs;
+    }
     const prevFocusName =
       lastWorkerOutputs && lastWorkerOutputs[box3FocusIdx]
         ? lastWorkerOutputs[box3FocusIdx].worker
@@ -1192,7 +1201,6 @@
       renderToolStrip(pipeline.tool_log || [], pipeline.quality_notes || "");
     }
 
-    const stageName = pipeline && pipeline.stage;
     const renderKey = box3OutputsKey(outputs, stageName);
     const stageEl = document.getElementById("box3-result-stage");
     /* Poll with unchanged worker output: do not wipe DOM / flash white. */
@@ -1226,9 +1234,9 @@
       const empty = document.createElement("p");
       empty.className = "muted empty-hint";
       if (pipeline && pipeline.stage === "work") {
-        empty.textContent = "Workers laufen…";
+        empty.textContent = "Arbeiter laufen…";
       } else {
-        empty.textContent = wid + " — noch kein Ergebnis";
+        empty.textContent = "Noch kein Ergebnis";
       }
       body.appendChild(empty);
     });
@@ -1601,6 +1609,40 @@
       if (ev.target === overlay) closeDiffOverlay();
     });
     document.body.appendChild(overlay);
+  }
+
+  function collapseSharedErrors(outputs) {
+    const rows = Array.isArray(outputs) ? outputs : [];
+    if (rows.length < 2) return rows;
+    function keyish(s) {
+      const t = String(s || "").toLowerCase();
+      return (
+        t.indexOf("kein deliverable") >= 0 ||
+        t.indexOf("llm/key") >= 0 ||
+        t.indexOf("deepseek_api_key") >= 0 ||
+        t.indexOf("kein nutzbarer llm") >= 0
+      );
+    }
+    const texts = rows.map(function (o) {
+      return String((o && o.result) || "")
+        .replace(/\s+/g, " ")
+        .trim();
+    });
+    const allKey = texts.every(keyish);
+    const allSame = texts.every(function (t) {
+      return t === texts[0];
+    });
+    if (!allKey && !allSame) return rows;
+    return [
+      {
+        worker: "desk",
+        name: "Ergebnis",
+        task: rows[0].task || "",
+        result: rows[0].result,
+        index: 1,
+        validation: rows[0].validation || null,
+      },
+    ];
   }
 
   function normalizeWorkerOutputs(pipeline) {

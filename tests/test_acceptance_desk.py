@@ -227,7 +227,6 @@ def test_flex_box1_uses_yellow_not_lilac():
     html = Path("src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
     assert "--c-flex: #f0c000" in css
     assert "#a78bfa" not in css
-    assert 'flex: "#f0c000"' in html
     assert 'flex: "#a78bfa"' not in html
     flex_ask = css.split(".flex-ask {", 1)[1].split(".flex-ask-list", 1)[0]
     assert "var(--c-flex)" in flex_ask

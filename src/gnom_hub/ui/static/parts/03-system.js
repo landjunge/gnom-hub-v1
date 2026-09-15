@@ -126,6 +126,15 @@
         resetSlider(btn.getAttribute("data-reset"));
       });
     });
+    const tts = document.getElementById("tune-tts");
+    if (tts && !tts._bound) {
+      tts._bound = true;
+      tts.addEventListener("change", function () {
+        if (tuneAgentId && typeof setAgentTts === "function") {
+          setAgentTts(tuneAgentId, !!tts.checked);
+        }
+      });
+    }
   }
 
   async function saveTuneModal() {

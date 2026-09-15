@@ -89,7 +89,7 @@
       if (wantsStart) {
         toast("Arbeit starten", "ok");
         if (typeof appendChat === "function") {
-          appendChat("system", "Execute started (distill → flex → workers)…");
+          appendChat("system", "Arbeit gestartet…");
         }
       }
       let snap = start;
@@ -102,17 +102,17 @@
           snap = job.snapshot || (await api("GET", "/api/state"));
           if (job.status === "error") {
             if (typeof appendChat === "function") {
-              appendChat("system", "Execute error: " + (job.error || "?"));
+              appendChat("system", "Fehler: " + (job.error || "?"));
             }
-            toast(job.error || "Execute error", "error");
+            toast(job.error || "Fehler", "error");
             applySnapshot(snap);
             return;
           }
           if (job.status === "cancelled") {
             if (typeof appendChat === "function") {
-              appendChat("system", "Execute cancelled.");
+              appendChat("system", "Arbeit abgebrochen.");
             }
-            toast("Cancelled", "info");
+            toast("Abgebrochen", "info");
             applySnapshot(snap);
             return;
           }
@@ -710,8 +710,13 @@
     }
 
     lastCanExecute = !!p.can_execute;
+    const hasKey = !!(els.llmBadge && els.llmBadge.classList.contains("has-key"));
     if (els.btnExecute) {
-      els.btnExecute.disabled = !lastCanExecute || chatBusy;
+      els.btnExecute.disabled = !lastCanExecute || chatBusy || !hasKey;
+    }
+    const hint = document.getElementById("execute-hint");
+    if (hint) {
+      hint.hidden = hasKey || !lastCanExecute;
     }
 
     renderBox3Workers(p);

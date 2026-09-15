@@ -677,10 +677,10 @@
       }
       // Do NOT speak after await — gesture is gone (Chrome blocks it)
       renderCards();
-      toast(on ? "TTS on: " + (a.label || id) : "TTS off: " + (a.label || id), on ? "ok" : "info");
+      toast(on ? "Sprache an: " + (a.label || id) : "Sprache aus: " + (a.label || id), on ? "ok" : "info");
     } catch (err) {
-      appendChat("system", "TTS save failed: " + err.message);
-      toast("TTS save failed", "error");
+      appendChat("system", "Sprache speichern fehlgeschlagen: " + err.message);
+      toast("Sprache speichern fehlgeschlagen", "error");
     }
   }
 

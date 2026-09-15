@@ -193,8 +193,8 @@
   let chatDraft = "";
 
   function statusLabel(agent) {
-    if (agent.parked) return agent.enabled ? "on · later" : "off / parked";
-    return agent.enabled ? "on" : "off";
+    if (agent.parked) return "wartet";
+    return agent.enabled ? "bereit" : "aus";
   }
 
   function agentIsActive(agent) {
@@ -971,6 +971,20 @@
       el.classList.toggle("is-on", on);
       el.setAttribute("aria-checked", on ? "true" : "false");
     });
+    document.querySelectorAll(".agent-card").forEach(function (card) {
+      const on = card.dataset.agentId === sendTarget;
+      card.classList.toggle("is-target", on);
+      let tag = card.querySelector(".card-target");
+      if (on && !tag) {
+        tag = document.createElement("div");
+        tag.className = "card-target";
+        tag.textContent = "Empfänger";
+        card.appendChild(tag);
+      } else if (!on && tag) {
+        tag.remove();
+      }
+    });
+    if (typeof paintChatPlaceholder === "function") paintChatPlaceholder();
   }
 
   function showAgentPageTab(tabId, fromKeyboard) {
@@ -1225,7 +1239,7 @@
       _agentPageAdd(panel, "h2", "", "Auftrag");
       _agentPageEmpty(
         panel,
-        "Keine Daten. Weder Gespräch noch bestätigtes Execute."
+        "Keine Daten. Weder Gespräch noch bestätigte Arbeit."
       );
       return;
     }
@@ -1233,7 +1247,7 @@
     const split = _agentPageAdd(panel, "div", "agent-page-split", "");
     const talkCard = _agentPageAdd(split, "article", "agent-page-card", "");
     _agentPageTag(talkCard, "Gespräch — nicht ausgeführt");
-    _agentPageAdd(talkCard, "h3", "", "Unterhaltung vor Execute");
+    _agentPageAdd(talkCard, "h3", "", "Unterhaltung vor der Arbeit");
     _agentPageAdd(
       talkCard,
       "p",
@@ -1248,7 +1262,7 @@
       "p",
       "agent-page-meta",
       executed
-        ? "Gespräch bleibt sichtbar. Execute ist bestätigt."
+        ? "Gespräch bleibt sichtbar. Die Arbeit ist bestätigt."
         : "Das ist Brainstorm. Noch kein Auftrag an diesen Agenten."
     );
     const exeCard = _agentPageAdd(
@@ -1257,7 +1271,7 @@
       "agent-page-card" + (executed ? " edge-ok" : ""),
       ""
     );
-    _agentPageTag(exeCard, executed ? "Bestätigtes Execute" : "Noch kein Execute");
+    _agentPageTag(exeCard, executed ? "Bestätigte Arbeit" : "Noch keine Arbeit");
     _agentPageAdd(exeCard, "h3", "", "Originalauftrag");
     _agentPageAdd(exeCard, "p", "", executed ? talk || notes || "—" : "Kein bestätigtes Execute.");
     const targetAgent = findAgent(pipe.send_target || agentId);
@@ -1986,8 +2000,12 @@
     AGENTS.forEach(function (agent) {
       const card = document.createElement("div");
       const isActive = agentIsActive(agent);
+      const isTarget = sendTarget === agent.id;
       card.className =
-        "agent-card color-" + agent.color + (isActive ? " is-active" : "");
+        "agent-card color-" +
+        agent.color +
+        (isActive ? " is-active" : "") +
+        (isTarget ? " is-target" : "");
       card.dataset.agentId = agent.id;
       card.dataset.enabled = agent.enabled ? "true" : "false";
       card.dataset.toggleable = agent.toggleable ? "true" : "false";
@@ -1997,69 +2015,22 @@
       card.setAttribute(
         "aria-label",
         agent.label +
-          " — click: layer+info · click again or Shift+click: tune · double-click: toggle" +
-          (agent.id === "flex" ? " · Shift+double-click: preset" : "")
+          (isTarget ? " — Empfänger" : " — Ansicht") +
+          " — Klick öffnet die Ansicht, ändert den Empfänger nicht"
       );
-      const online = !!agent.online;
-      const presetLine =
-        agent.id === "flex" && agent.preset
-          ? '<div class="card-preset">preset: ' + agent.preset + "</div>"
-          : "";
-      const tok = agent.tokens || 0;
-      const cost =
-        agent.cost_usd != null && !isNaN(agent.cost_usd)
-          ? Number(agent.cost_usd)
-          : 0;
-      const costStr = cost > 0 ? "$" + cost.toFixed(4) : "$0";
       const live =
         typeof agentLiveStatus === "function" ? agentLiveStatus(agent.id) : "";
       if (live) card.dataset.live = live;
+      const status = live || statusLabel(agent);
       // eslint-disable-next-line no-unsanitized/property
       card.innerHTML =
         '<div class="card-name">' +
         agent.label +
         "</div>" +
-        '<div class="card-meta">LLM: ' +
-        (agent.model || "—") +
-        "</div>" +
-        '<div class="card-tokens">tok: ' +
-        tok +
-        ' · <span class="card-cost">' +
-        costStr +
-        "</span></div>" +
-        '<div class="card-online ' +
-        (online ? "on" : "off") +
-        '">' +
-        (online ? "online" : "offline") +
-        "</div>" +
-        '<label class="card-tts" data-stop="1" title="Sprache — Agent hörbar">' +
-        '<input type="checkbox" ' +
-        (agent.tts ? "checked " : "") +
-        (agent.parked ? "disabled " : "") +
-        "/> Sprache</label>" +
-        presetLine +
         '<div class="card-status">' +
-        statusLabel(agent) +
+        status +
         "</div>" +
-        (live ? '<div class="card-live">' + live + "</div>" : "");
-
-      const ttsInput = card.querySelector(".card-tts input");
-      if (ttsInput) {
-        ttsInput.addEventListener("click", function (ev) {
-          ev.stopPropagation();
-        });
-        ttsInput.addEventListener("change", function (ev) {
-          ev.stopPropagation();
-          const on = !!ttsInput.checked;
-          // Speak HERE (same user gesture) — short DE only, no EN, no long monologue
-          if (on) {
-            speakNow("Sprache an: " + (agent.label || agent.id) + ".");
-          } else {
-            stopSpeech();
-          }
-          setAgentTts(agent.id, on);
-        });
-      }
+        (isTarget ? '<div class="card-target">Empfänger</div>' : "");
 
       card.addEventListener("click", function (ev) {
         if (ev.target && ev.target.closest && ev.target.closest("[data-stop]")) {
@@ -2085,7 +2056,7 @@
           clickTimer = null;
         }
         if (agent.id === "flex") {
-          toast("Flex is fixed — always on, personal companion", "info");
+          toast("Flex bleibt an — persönlicher Begleiter", "info");
           return;
         }
         toggleAgent(agent.id);
@@ -2098,6 +2069,13 @@
     });
     updateBoxBorders();
     if (typeof _refreshAgentPageLive === "function") _refreshAgentPageLive();
+  }
+
+  function paintChatPlaceholder() {
+    const inp = document.getElementById("chat-input");
+    if (!inp) return;
+    const agent = findAgent(sendTarget) || {};
+    inp.placeholder = "Nachricht an " + (agent.label || "Brainstorm");
   }
 
   function findAgent(id) {
@@ -2265,7 +2243,7 @@
       if (wantsStart) {
         toast("Arbeit starten", "ok");
         if (typeof appendChat === "function") {
-          appendChat("system", "Execute started (distill → flex → workers)…");
+          appendChat("system", "Arbeit gestartet…");
         }
       }
       let snap = start;
@@ -2278,17 +2256,17 @@
           snap = job.snapshot || (await api("GET", "/api/state"));
           if (job.status === "error") {
             if (typeof appendChat === "function") {
-              appendChat("system", "Execute error: " + (job.error || "?"));
+              appendChat("system", "Fehler: " + (job.error || "?"));
             }
-            toast(job.error || "Execute error", "error");
+            toast(job.error || "Fehler", "error");
             applySnapshot(snap);
             return;
           }
           if (job.status === "cancelled") {
             if (typeof appendChat === "function") {
-              appendChat("system", "Execute cancelled.");
+              appendChat("system", "Arbeit abgebrochen.");
             }
-            toast("Cancelled", "info");
+            toast("Abgebrochen", "info");
             applySnapshot(snap);
             return;
           }
@@ -2886,8 +2864,13 @@
     }
 
     lastCanExecute = !!p.can_execute;
+    const hasKey = !!(els.llmBadge && els.llmBadge.classList.contains("has-key"));
     if (els.btnExecute) {
-      els.btnExecute.disabled = !lastCanExecute || chatBusy;
+      els.btnExecute.disabled = !lastCanExecute || chatBusy || !hasKey;
+    }
+    const hint = document.getElementById("execute-hint");
+    if (hint) {
+      hint.hidden = hasKey || !lastCanExecute;
     }
 
     renderBox3Workers(p);
@@ -3687,10 +3670,10 @@
       }
       // Do NOT speak after await — gesture is gone (Chrome blocks it)
       renderCards();
-      toast(on ? "TTS on: " + (a.label || id) : "TTS off: " + (a.label || id), on ? "ok" : "info");
+      toast(on ? "Sprache an: " + (a.label || id) : "Sprache aus: " + (a.label || id), on ? "ok" : "info");
     } catch (err) {
-      appendChat("system", "TTS save failed: " + err.message);
-      toast("TTS save failed", "error");
+      appendChat("system", "Sprache speichern fehlgeschlagen: " + err.message);
+      toast("Sprache speichern fehlgeschlagen", "error");
     }
   }
 
@@ -3822,6 +3805,15 @@
         resetSlider(btn.getAttribute("data-reset"));
       });
     });
+    const tts = document.getElementById("tune-tts");
+    if (tts && !tts._bound) {
+      tts._bound = true;
+      tts.addEventListener("change", function () {
+        if (tuneAgentId && typeof setAgentTts === "function") {
+          setAgentTts(tuneAgentId, !!tts.checked);
+        }
+      });
+    }
   }
 
   async function saveTuneModal() {
@@ -6242,8 +6234,8 @@
       els.btnSend.textContent = chatBusy ? "…" : "Senden";
     }
     if (els.btnExecute) {
-      // Must re-apply can_execute when busy ends — applySnapshot often ran while busy=true
-      els.btnExecute.disabled = !lastCanExecute || chatBusy;
+      const hasKey = !!(els.llmBadge && els.llmBadge.classList.contains("has-key"));
+      els.btnExecute.disabled = !lastCanExecute || chatBusy || !hasKey;
     }
     const btnSendExec = document.getElementById("btn-send-exec");
     if (btnSendExec) btnSendExec.disabled = chatBusy;
@@ -6257,7 +6249,7 @@
     if (els.chatInput) els.chatInput.disabled = chatBusy;
     if (els.stageBadge) {
       if (chatBusy) {
-        els.stageBadge.textContent = "running…";
+        els.stageBadge.textContent = "läuft…";
       } else if (activeStage) {
         // Restore real stage — otherwise badge stays on "running…" and UI feels frozen
         els.stageBadge.textContent = activeStage;
@@ -7261,11 +7253,23 @@
       !isYou && !isSys && typeof ownerColorFor === "function"
         ? ownerColorFor(whoKey)
         : "";
+    const WHO_DE = {
+      you: "Du",
+      system: "System",
+      brainstorm: "Brainstorm",
+      memory: "Memory",
+      flex: "Flex",
+      coordinator: "Koordinator",
+      worker1: "Arbeiter 1",
+      worker2: "Arbeiter 2",
+      worker3: "Arbeiter 3",
+      worker4: "Arbeiter 4",
+    };
     label.className =
-      "chat-who-label mr-1 text-2xs font-semibold uppercase tracking-wide " +
+      "chat-who-label mr-1 text-2xs font-semibold tracking-wide " +
       (isYou ? "text-gnom-accent" : isSys ? "text-gnom-muted" : "");
     if (whoHex) label.style.color = whoHex;
-    label.textContent = who;
+    label.textContent = WHO_DE[whoKey] || who;
     bubble.appendChild(label);
     const body = document.createElement("span");
     body.className = "chat-text whitespace-pre-wrap break-words";
@@ -7957,12 +7961,19 @@
 
   async function runExecute() {
     if (chatBusy) return;
+    const hasKey = !!(els.llmBadge && els.llmBadge.classList.contains("has-key"));
+    if (!hasKey) {
+      toast("Key fehlt. In System eintragen, dann Arbeit starten.", "error");
+      const hint = document.getElementById("execute-hint");
+      if (hint) hint.hidden = false;
+      return;
+    }
     if (els.btnExecute && els.btnExecute.disabled) {
-      toast("Brainstorm first, then Execute", "info");
+      toast("Zuerst senden, dann Arbeit starten", "info");
       return;
     }
     setChatBusy(true);
-    appendChat("system", "Execute started (distill → flex → workers)…");
+    appendChat("system", "Arbeit gestartet…");
     try {
       await persistActiveFlagsAsWishes();
     } catch (_e) {
@@ -7977,14 +7988,14 @@
         const job = await pollJob(start.job_id, 300000);
         snap = job.snapshot || (await api("GET", "/api/state"));
         if (job.status === "error") {
-          appendChat("system", "Execute error: " + (job.error || "?"));
-          toast(job.error || "Execute error", "error");
+          appendChat("system", "Fehler: " + (job.error || "?"));
+          toast(job.error || "Fehler", "error");
           applySnapshot(snap);
           return;
         }
         if (job.status === "cancelled") {
-          appendChat("system", "Execute cancelled.");
-          toast("Cancelled", "info");
+          appendChat("system", "Arbeit abgebrochen.");
+          toast("Abgebrochen", "info");
           applySnapshot(snap);
           return;
         }
@@ -7999,15 +8010,15 @@
         if (okDeliverable) {
           appendChat(
             "system",
-            "Execute done in " + formatDuration(dur) + " — see Box 3."
+            "Fertig in " + formatDuration(dur) + " — siehe Box 3."
           );
-          toast("Execute done · " + formatDuration(dur), "ok");
+          toast("Fertig · " + formatDuration(dur), "ok");
         } else {
           appendChat(
             "system",
-            "Execute finished in "
+            "Lauf zu Ende in "
               + formatDuration(dur)
-              + " without a valid deliverable — see Box 3."
+              + " ohne gültige Lieferung — siehe Box 3."
           );
           toast("Kein Deliverable · " + formatDuration(dur), "error");
         }
@@ -8015,7 +8026,7 @@
         try {
           pushResultHistory(snap.pipeline || {}, {
             label:
-              ((snap.pipeline && snap.pipeline.user_text) || "Execute").slice(
+              ((snap.pipeline && snap.pipeline.user_text) || "Arbeit").slice(
                 0,
                 40
               ) +
@@ -9830,7 +9841,16 @@
   }
 
   function renderBox3Workers(pipeline) {
-    const outputs = normalizeWorkerOutputs(pipeline);
+    let outputs = collapseSharedErrors(normalizeWorkerOutputs(pipeline));
+    const stageName = pipeline && pipeline.stage;
+    if (
+      !outputs.length &&
+      lastWorkerOutputs &&
+      lastWorkerOutputs.length &&
+      (stageName === "brainstorm" || stageName === "idle")
+    ) {
+      outputs = lastWorkerOutputs;
+    }
     const prevFocusName =
       lastWorkerOutputs && lastWorkerOutputs[box3FocusIdx]
         ? lastWorkerOutputs[box3FocusIdx].worker
@@ -9842,7 +9862,6 @@
       renderToolStrip(pipeline.tool_log || [], pipeline.quality_notes || "");
     }
 
-    const stageName = pipeline && pipeline.stage;
     const renderKey = box3OutputsKey(outputs, stageName);
     const stageEl = document.getElementById("box3-result-stage");
     /* Poll with unchanged worker output: do not wipe DOM / flash white. */
@@ -9876,9 +9895,9 @@
       const empty = document.createElement("p");
       empty.className = "muted empty-hint";
       if (pipeline && pipeline.stage === "work") {
-        empty.textContent = "Workers laufen…";
+        empty.textContent = "Arbeiter laufen…";
       } else {
-        empty.textContent = wid + " — noch kein Ergebnis";
+        empty.textContent = "Noch kein Ergebnis";
       }
       body.appendChild(empty);
     });
@@ -10251,6 +10270,40 @@
       if (ev.target === overlay) closeDiffOverlay();
     });
     document.body.appendChild(overlay);
+  }
+
+  function collapseSharedErrors(outputs) {
+    const rows = Array.isArray(outputs) ? outputs : [];
+    if (rows.length < 2) return rows;
+    function keyish(s) {
+      const t = String(s || "").toLowerCase();
+      return (
+        t.indexOf("kein deliverable") >= 0 ||
+        t.indexOf("llm/key") >= 0 ||
+        t.indexOf("deepseek_api_key") >= 0 ||
+        t.indexOf("kein nutzbarer llm") >= 0
+      );
+    }
+    const texts = rows.map(function (o) {
+      return String((o && o.result) || "")
+        .replace(/\s+/g, " ")
+        .trim();
+    });
+    const allKey = texts.every(keyish);
+    const allSame = texts.every(function (t) {
+      return t === texts[0];
+    });
+    if (!allKey && !allSame) return rows;
+    return [
+      {
+        worker: "desk",
+        name: "Ergebnis",
+        task: rows[0].task || "",
+        result: rows[0].result,
+        index: 1,
+        validation: rows[0].validation || null,
+      },
+    ];
   }
 
   function normalizeWorkerOutputs(pipeline) {
