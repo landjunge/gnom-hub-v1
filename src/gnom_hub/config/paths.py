@@ -67,6 +67,12 @@ def backups_dir(root: Path | None = None) -> Path:
     return (personal_workspace(root) / "backups").resolve()
 
 
+def session_data_root(root: Path | None = None) -> Path:
+    """HOT/offload files live in the personal WS, not in the git checkout."""
+    hub = Path(root) if root is not None else project_root()
+    return (personal_workspace(hub) / "data").resolve()
+
+
 def pin_gnom_ws_env(hub_root: Path | None = None) -> Path:
     """Pin GNOM_WS in process env for the real hub only (never for tests)."""
     hub = Path(hub_root) if hub_root is not None else project_root()

@@ -21,6 +21,7 @@ from typing import Any
 from gnom_hub.config.keys import is_usable_api_key, parse_key_file
 from gnom_hub.config.paths import (
     backups_dir,
+    is_real_hub_root,
     is_usb_root,
     personal_workspace,
     pin_gnom_ws_env,
@@ -96,6 +97,80 @@ def _ensure_key_file(ud: Path, hub: Path, actions: list[str], warnings: list[str
     except OSError as exc:
         warnings.append(f"Key.txt create failed: {exc}")
         return None
+
+
+def _copy_missing_tree(src: Path, dest: Path) -> list[str]:
+    """Copy files that do not yet exist at dest. Never overwrite."""
+    copied: list[str] = []
+    if not src.is_dir():
+        return copied
+    for f in src.rglob("*"):
+        if not f.is_file():
+            continue
+        rel = f.relative_to(src)
+        target = dest / rel
+        if target.exists():
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(f, target)
+        copied.append(str(rel))
+    return copied
+
+
+def migrate_legacy_hub_into_ws(
+    hub: Path,
+    ws: Path | None = None,
+    *,
+    backup_first: bool = True,
+) -> dict[str, Any]:
+    """
+    Move leftover personal files from the git checkout into WS-gnom-hub-v1.
+
+    Repeatable. Never overwrites WS files. Never deletes the hub copy.
+    """
+    hub_p = Path(hub).resolve()
+    ws_p = Path(ws).resolve() if ws is not None else personal_workspace(hub_p)
+    if hub_p == ws_p:
+        return {"ok": True, "copied": 0, "skipped": "same_root", "actions": []}
+    actions: list[str] = []
+    if backup_first:
+        b = backup_user_db(hub_p)
+        if b:
+            actions.append(f"backup {b}")
+    pairs = (
+        (hub_p / "User", ws_p / "User"),
+        (hub_p / "selected", ws_p / "selected"),
+        (hub_p / "backups", ws_p / "backups"),
+        (hub_p / "data" / "hot", ws_p / "data" / "hot"),
+        (hub_p / "data" / "offload", ws_p / "data" / "offload"),
+        (hub_p / "data" / "warm", ws_p / "data" / "warm"),
+        (hub_p / "data" / "cold", ws_p / "data" / "cold"),
+    )
+    n = 0
+    for src, dest in pairs:
+        got = _copy_missing_tree(src, dest)
+        if got:
+            actions.append(f"migrated {len(got)} from {src.relative_to(hub_p)}")
+            n += len(got)
+    marker = ws_p / ".migrated-from-hub"
+    if n and not marker.is_file():
+        marker.write_text("ok\n", encoding="utf-8")
+    return {"ok": True, "copied": n, "actions": actions, "ws": str(ws_p)}
+
+
+def restore_user_db(root: Path | None = None) -> dict[str, Any]:
+    """Restore User/user.db from backups/user.db after backing up the live file."""
+    r = Path(root) if root is not None else project_root()
+    live = user_dir(r) / "user.db"
+    src = backups_dir(r) / "user.db"
+    if not src.is_file() or src.stat().st_size == 0:
+        return {"ok": False, "error": "no_backup"}
+    live.parent.mkdir(parents=True, exist_ok=True)
+    if live.is_file() and live.stat().st_size > 0:
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        shutil.copy2(live, backups_dir(r) / f"user-before-restore-{stamp}.db")
+    shutil.copy2(src, live)
+    return {"ok": True, "path": str(live), "from": str(src)}
 
 
 def backup_user_db(root: Path | None = None) -> Path | None:
@@ -271,6 +346,10 @@ def ensure_user_workspace(
     sel = selected_dir(hub)
     sel.mkdir(parents=True, exist_ok=True)
     backups_dir(hub).mkdir(parents=True, exist_ok=True)
+
+    if is_real_hub_root(hub):
+        mig = migrate_legacy_hub_into_ws(hub, pws)
+        actions.extend(list(mig.get("actions") or []))
 
     key_path: Path | None = ud / "Key.txt"
     if not key_path.is_file():

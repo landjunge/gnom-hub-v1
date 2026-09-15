@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from gnom_hub.config.paths import project_root
+from gnom_hub.config.paths import project_root, session_data_root
 from gnom_hub.db.sqlite_store import get_db
 from gnom_hub.memory.atomic import atomic_write_text
 from gnom_hub.memory.canvas import MermaidCanvas
@@ -37,8 +37,9 @@ class HotMemory:
     ) -> None:
         self.root = Path(root) if root is not None else project_root()
         self.offload_threshold = offload_threshold
-        self.hot_dir = self.root / "data" / "hot"
-        self.offload_dir = self.root / "data" / "offload"
+        data = session_data_root(self.root)
+        self.hot_dir = data / "hot"
+        self.offload_dir = data / "offload"
         self.session_path = self.hot_dir / "session.json"
         self.canvas_path = self.hot_dir / "mermaid_canvas.mmd"
         self.session: dict[str, Any] = self._empty_session()
