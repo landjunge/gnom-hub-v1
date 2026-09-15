@@ -557,7 +557,7 @@
     {
       "file": "INSTALL_SIMPLE.md",
       "path": "docs/INSTALL_SIMPLE.md",
-      "title": "Install \u2014 keep it simple",
+      "title": "Installation \u2014 Terminal-Schnellinstallation",
       "topic": "Install & run",
       "keywords": [
         "install",
@@ -567,16 +567,16 @@
         "better",
         "command",
         "desk",
+        "gnom",
         "install_embeddings",
+        "key",
         "neural",
         "one",
         "optional",
-        "search",
-        "start",
-        "advanced"
+        "search"
       ],
-      "chars": 837,
-      "lines": 44
+      "chars": 965,
+      "lines": 47
     },
     {
       "file": "KEYS_AND_MODELS.md",
