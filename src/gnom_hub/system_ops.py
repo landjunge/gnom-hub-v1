@@ -224,13 +224,33 @@ class SystemOpsMixin:
                 ],
                 "nicht": "Mikrofon und Sprache senden nicht von allein.",
             },
+            {
+                "id": "update",
+                "label": "Update",
+                "wozu": "Neue Version suchen. Einspielen nur, wenn du klickst.",
+                "steps": [
+                    "System öffnen.",
+                    "Suchen drücken. Danach Details lesen.",
+                    "Vor einem Wechsel Backup anlegen. Die Liste steht im selben Fenster.",
+                    "Aktualisieren nur klicken, wenn ein von Daniel freigegebenes Release da ist.",
+                    "Wiederherstellen spielt ein vorhandenes Backup, kein stilles main.",
+                ],
+                "points": [
+                    "Suche darf GitHub prüfen.",
+                    "Installation nie von allein und nie von main.",
+                    "Laufende Arbeit blockiert das Einspielen.",
+                    "Ohne Nutzer-Release gibt es nichts zum Installieren.",
+                    "Notfallweg: Backup in der Liste mit Laden zurückspielen.",
+                ],
+                "nicht": "Kein stilles Update, kein Einspielen während Arbeit, kein main für normale Nutzer.",
+            },
         ]
         return {
             "title": "Hilfe",
             "topics": topics,
             "how_to": topics[0]["points"][0],
             "example": "Senden = reden. Arbeit starten = Worker. God nur Badge.",
-            "pipeline": "Brainstorm → Execute → Distill → Flex → Workers (1–4) → Quality → Memory",
+            "pipeline": "Brainstorm → Arbeit starten → Distill → Flex → Workers (1–4) → Quality → Memory",
             "keys": "Enter senden · Ctrl/⌘+Enter Arbeit · Ctrl/⌘+S speichern · Esc zu",
         }
 
