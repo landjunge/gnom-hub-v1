@@ -42,19 +42,7 @@ class WorkerMixin:
             )
             self._set_stage(PipelineStage.clarify)
             return self._state
-        self._offer_start_work(reason="worker_direct", workers=worker_id)
-        aid = self._open_assignment_id()
-        start = f"START-{aid}" if aid else "die sichtbare START-ID"
-        self._record_reply(
-            agent=worker_id,
-            text=(
-                f"{worker_id}: zugeteilt. Send startet keine Arbeit. "
-                f"Arbeit starten gibt genau {worker_id} den Auftrag. "
-                f"Freigabe nur über {start} in Box 1 oder Arbeit starten."
-            ),
-            in_reply_to=user["message_id"],
-            source="live",
-        )
+        # Assignment is send_target only. Worker does not talk in Box 2.
         self._set_stage(PipelineStage.brainstorm)
         return self._state
 

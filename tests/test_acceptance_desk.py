@@ -291,7 +291,7 @@ def test_api_tool_drill_and_busy_409(tmp_path, monkeypatch):
         p = r.json().get("pipeline") or {}
         assert p.get("stage") != "done"
         qs = p.get("flex_questions") or []
-        assert any(
+        assert not any(
             (q.get("component") == "start_work") or "START-" in str(q.get("text") or "") for q in qs
         )
 

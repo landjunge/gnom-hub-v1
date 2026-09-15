@@ -169,6 +169,8 @@ class PersistMixin:
             self._state.result_status = "UNGEPRÜFT"
         else:
             self._state.result_status = "FEHLER"
+        if self._state.worker_results:
+            self._offer_judgment()
         self._set_stage(PipelineStage.done)
         total_ms = round(sum(self._state.stage_timings.values()), 1)
         self.bus.emit(

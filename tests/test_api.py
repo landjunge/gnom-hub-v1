@@ -327,7 +327,8 @@ def test_chat_brainstorm_then_execute(client: TestClient):
         or data2["pipeline"].get("flex_questions")
         or []
     )
-    assert any(q.get("component") == "start_work" for q in qs)
+    assert not any(q.get("component") == "start_work" for q in qs)
+    assert data2["pipeline"].get("can_execute") is True
 
 
 def test_manual_execute_still_works(client: TestClient):

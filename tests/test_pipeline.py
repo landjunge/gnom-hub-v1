@@ -571,7 +571,7 @@ def test_flex_execute_on_explicit_command():
     st = pipe.brainstorm_turn("execute")
     assert st.stage == PipelineStage.brainstorm
     assert not st.worker_results
-    assert any(q.component == "start_work" for q in pipe.flex_desk.open_questions())
+    assert not any(q.component == "start_work" for q in pipe.flex_desk.open_questions())
 
 
 def test_flex_execute_refuses_bare_execute_without_task():
@@ -589,7 +589,7 @@ def test_flex_execute_on_hard_build_order():
     st = pipe.brainstorm_turn("Build a landing page for Bean Shop. Full HTML with hero and footer.")
     assert st.stage == PipelineStage.brainstorm
     assert not st.worker_results
-    assert any(q.component == "start_work" for q in pipe.flex_desk.open_questions())
+    assert not any(q.component == "start_work" for q in pipe.flex_desk.open_questions())
 
 
 def test_flex_contributes_each_brainstorm_turn():
@@ -610,8 +610,8 @@ def test_flex_execute_line_not_double_with_contribute():
     pipe.brainstorm_turn("Ideen zu einer Checklisten-App, nur Brainstorm bitte")
     st = pipe.brainstorm_turn("execute")
     flex_turns = [t for t in st.brainstorm_turns if t.get("role") == "flex"]
-    assert flex_turns
-    assert any("START-" in str(t.get("text") or "") for t in flex_turns)
+    assert not flex_turns
+    assert not any("START-" in str(t.get("text") or "") for t in flex_turns)
 
 
 def test_flex_pipeline_injects_wishes_into_requirements():

@@ -35,7 +35,11 @@ def test_worker_intake_keeps_assignment():
     orch = Orchestrator(EventBus())
     st = orch.chat_turn("Baue eine ruhige Abendseite", target="worker3")
     assert st.send_target == "worker3"
-    assert "worker3" in (st.messages[-1].get("visible_text") or "")
-    assert "zugeteilt" in (st.messages[-1].get("visible_text") or "").lower()
     ids = orch._worker_ids_for_plan()
     assert ids[0] == "worker3"
+    worker_talk = [
+        m
+        for m in (st.messages or [])
+        if str(m.get("reply_agent_id") or "") == "worker3" and m.get("role") == "agent"
+    ]
+    assert worker_talk == []

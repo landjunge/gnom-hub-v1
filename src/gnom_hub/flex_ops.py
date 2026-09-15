@@ -227,17 +227,12 @@ class FlexOpsMixin:
             ensure = getattr(self.pipeline, "_ensure_flex_job", None)
             if callable(ensure):
                 ensure()
-            asked = desk.offer_start_work(task_id="plan")
-            sync = getattr(self.pipeline, "_sync_flex_state", None)
-            if callable(sync):
-                sync()
             return {
                 "ok": True,
                 "action": "start_work",
                 "learned": learned,
                 "learn_text": learn if learned else "",
-                "message": f"Flex fragt in Box 1: Arbeit starten? — {message}",
-                "flex_ask": asked,
+                "message": "Arbeit starten liefert. Kein START in Box 1.",
                 "snapshot": self.snapshot(),
             }
 

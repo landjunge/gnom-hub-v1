@@ -155,6 +155,11 @@ class PipelineApiMixin:
             snap = self.snapshot()
             snap["flex_answer"] = out
             return snap
+        if str(out.get("component") or "") == "judgment":
+            snap = self.snapshot()
+            snap["flex_answer"] = out
+            snap["judgment"] = str(out.get("value") or "")
+            return snap
         if out.get("wants_start_work"):
             if sync:
                 snap = self.execute_sync()

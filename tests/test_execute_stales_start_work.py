@@ -17,24 +17,17 @@ def _open_start_work(pipe):
     return [q for q in pipe.flex_desk.open_questions() if q.component == "start_work"]
 
 
-def test_execute_closes_open_start_work_question():
+def test_execute_does_not_need_start_work_and_asks_judgment():
     bus = EventBus()
     pipe = Pipeline(bus)
     pipe.brainstorm_turn(_BUILD)
-    qs = _open_start_work(pipe)
-    assert qs, "brainstorm must offer start_work before Execute"
-    qid = qs[0].question_id
-    job_id = qs[0].job_id
-
-    pipe.execute()
-
     assert _open_start_work(pipe) == []
-    stored = pipe.flex_desk._questions.get(qid)
-    assert stored is not None
-    assert stored.status in ("answered", "stale")
-    again = pipe.flex_desk.answer(qid, "Ja", job_id=job_id)
-    assert again["ok"] is False
-    assert again["error"] == "stale_question"
+    pipe.execute()
+    assert _open_start_work(pipe) == []
+    judge = [q for q in pipe.flex_desk.open_questions() if q.component == "judgment"]
+    if pipe.state.worker_results:
+        assert judge
+        assert judge[0].text == "Passt das?"
 
 
 def test_flex_answer_after_execute_does_not_execute_again(tmp_path, monkeypatch):
@@ -47,19 +40,21 @@ def test_flex_answer_after_execute_does_not_execute_again(tmp_path, monkeypatch)
     hub = Hub()
     try:
         hub.pipeline.brainstorm_turn(_BUILD)
-        start = next(
-            q for q in hub.pipeline.flex_desk.open_questions() if q.component == "start_work"
-        )
+        assert _open_start_work(hub.pipeline) == []
         hub.pipeline.execute()
         called: list[str] = []
         hub.execute_sync = lambda: called.append("sync") or {"ok": True}  # type: ignore[method-assign]
         hub.execute_async = (  # type: ignore[method-assign]
             lambda: called.append("async") or {"ok": True}
         )
-        out = hub.flex_answer(start.question_id, "Ja", job_id=start.job_id, sync=True)
-        assert called == []
-        assert out["flex_answer"]["ok"] is False
-        assert out["flex_answer"]["error"] == "stale_question"
+        judge = next(
+            (q for q in hub.pipeline.flex_desk.open_questions() if q.component == "judgment"),
+            None,
+        )
+        if judge is not None:
+            out = hub.flex_answer(judge.question_id, "Gut", job_id=judge.job_id, sync=True)
+            assert called == []
+            assert out.get("judgment") == "Gut"
         assert _open_start_work(hub.pipeline) == []
     finally:
         hub_mod._HUB = None

@@ -16,6 +16,7 @@ ALLOWED_COMPONENTS = frozenset(
         "multi_select",
         "free_text",
         "start_work",
+        "judgment",
         "memory_keep",
         "td_handoff",
         "td_replace",
@@ -193,6 +194,8 @@ class FlexDesk:
             return {"ok": False, "error": "empty_text"}
         opts = [sanitize_box1_text(o, limit=80) for o in (options or []) if str(o).strip()]
         opts = [o for o in opts if o]
+        if comp == "judgment" and not opts:
+            opts = ["Gut", "Verfeinern", "Fertig"]
         if comp == "start_work" and not opts:
             opts = ["Ja, Arbeit starten", "Später"]
         if comp == "memory_keep" and not opts:
@@ -227,6 +230,22 @@ class FlexDesk:
     def next_assignment_id(self, prefix: str = "C") -> str:
         self._assignment_seq += 1
         return f"{prefix}{self._assignment_seq}"
+
+    def offer_judgment(
+        self,
+        *,
+        job_id: str = "",
+        task_id: str = "result",
+    ) -> dict[str, Any]:
+        return self.ask(
+            agent_id="flex",
+            job_id=job_id or self.job_id,
+            task_id=task_id,
+            component="judgment",
+            text="Passt das?",
+            options=["Gut", "Verfeinern", "Fertig"],
+            entry_type="entscheidung",
+        )
 
     def offer_start_work(
         self,
