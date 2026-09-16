@@ -10,7 +10,7 @@ Kein Ein-Klick. Git und Python 3.10+.
 ```
 
 Browser: `http://127.0.0.1:8080/`. Key in `WS-gnom-hub-v1/User/Key.txt`.
-Senden = reden. Arbeit starten = Worker.
+Senden = reden. Arbeit starten = Arbeiter.
 
 ---
 

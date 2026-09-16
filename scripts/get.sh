@@ -41,4 +41,4 @@ echo "  1. Echten Key in ../WS-gnom-hub-v1/User/Key.txt  (DEEPSEEK_API_KEY=sk-â€
 echo "  2. Start:  cd $DEST && ./scripts/start.sh"
 echo "  3. Desk:   http://127.0.0.1:8080/"
 echo
-echo "Senden = reden. Arbeit starten = Worker. Kein Docker."
+echo "Senden = reden. Arbeit starten = Arbeiter. Kein Docker."
