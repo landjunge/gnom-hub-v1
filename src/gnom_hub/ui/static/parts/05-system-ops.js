@@ -376,7 +376,7 @@
 
   async function saveWorkerPresetFromTune() {
     if (!tuneAgentId || tuneAgentId.indexOf("worker") !== 0) {
-      toast("Open a Worker card to save a worker preset", "info");
+      toast("Arbeiter-Karte öffnen, um ein Preset zu speichern", "info");
       return;
     }
     const name = prompt("Preset name:", tuneAgentId + "-preset");
@@ -393,7 +393,7 @@
         "ok"
       );
     } catch (err) {
-      toast("Preset save failed: " + err.message, "error");
+      toast("Preset speichern fehlgeschlagen: " + err.message, "error");
     }
   }
 

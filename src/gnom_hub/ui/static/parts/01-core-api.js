@@ -6,7 +6,7 @@
     try {
       res = await fetch(API + path, opts);
     } catch (netErr) {
-      toast("Network error: " + netErr.message, "error");
+      toast("Netzwerkfehler: " + netErr.message, "error");
       throw netErr;
     }
     if (!res.ok) {
@@ -42,7 +42,7 @@
     try {
       return await res.json();
     } catch (parseErr) {
-      toast("Bad JSON from server (job/state) — " + (parseErr.message || parseErr), "error");
+      toast("Ungültiges JSON vom Server (Job/Status) — " + (parseErr.message || parseErr), "error");
       throw parseErr;
     }
   }

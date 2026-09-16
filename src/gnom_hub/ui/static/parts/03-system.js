@@ -190,14 +190,14 @@
       );
       applyAgentsFromServer([data]);
       closeTuneModal();
-      toast("Agent tuning saved", "ok");
+      toast("Regler gespeichert", "ok");
       try {
         await api("POST", "/api/save");
       } catch (_e) {
         /* optional */
       }
     } catch (err) {
-      toast("Tune failed: " + err.message, "error");
+      toast("Regler fehlgeschlagen: " + err.message, "error");
     }
   }
 

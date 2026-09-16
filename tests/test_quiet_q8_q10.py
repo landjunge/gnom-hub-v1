@@ -27,6 +27,11 @@ def test_q9_german_card_and_target_labels():
     assert 'label: "Worker 1"' not in CORE
     assert ">Worker 1<" not in HTML
     assert ">Arbeiter 1<" in HTML
+    assert "Worker-Seiten" not in HTML
+    assert "sind Worker" not in CHAT
+    assert "Arbeit starten = Arbeiter" in HTML
+    assert "Arbeit läuft…" in CHAT
+    assert "Executing…" not in CHAT
     assert "Brainstorm-Dialog" in CORE or "Gespräch" in CORE
     assert 'textContent = "Brain"' in CHAT or '"Brain"' in CHAT
     assert "Senden an" in CHAT

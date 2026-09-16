@@ -123,15 +123,15 @@ class SystemOpsMixin:
                     "Senden und Enter bedeuten nur reden.",
                     "Der Empfänger ist das Flag, nicht die angeklickte Karte.",
                     "Kartenklick öffnet Infos. Das Sendeziel bleibt, wo das Flag steht.",
-                    "Brain redet frei. Coord plant. Flex fragt nach. A1–A4 sind Worker.",
+                    "Brain redet frei. Coord plant. Flex fragt nach. A1–A4 sind Arbeiter.",
                     "Läuft schon eine Antwort, bleibt sie dem Agenten zugeordnet, der sie begonnen hat.",
                 ],
-                "nicht": "Senden startet keine Worker, keine Werkzeuge und keine Dateiänderung.",
+                "nicht": "Senden startet keine Arbeiter, keine Werkzeuge und keine Dateiänderung.",
             },
             {
                 "id": "arbeit",
                 "label": "Arbeit",
-                "wozu": "Die Worker sollen etwas bauen, prüfen oder liefern.",
+                "wozu": "Die Arbeiter sollen etwas bauen, prüfen oder liefern.",
                 "steps": [
                     "Auftrag in die Zeile schreiben oder nach dem Gespräch stehen lassen.",
                     "Arbeit starten oder Ctrl/⌘+Enter.",
@@ -140,7 +140,7 @@ class SystemOpsMixin:
                     "Laufenden Job mit Esc oder Abbrechen stoppen.",
                 ],
                 "points": [
-                    "Arbeit starten startet Distill und danach die Worker.",
+                    "Arbeit starten startet Distill und danach die Arbeiter.",
                     "Ohne diesen Knopf (oder Ctrl/⌘+Enter) bleibt es ein Gespräch.",
                     "Offene Entscheidungen stehen in Box 1, nicht im Chat versteckt.",
                     "Ergebnisse gehören nach Box 3, nicht als JSON in Box 2.",
@@ -155,13 +155,13 @@ class SystemOpsMixin:
                 "steps": [
                     "Box 1 links: wenn Gnom fragt, hier klicken oder eine Karte wählen.",
                     "Box 2 Mitte: Reiter Brain, Flex, Coord, Mem, A1–A4 — eine Antwort lesen.",
-                    "Box 3 rechts: Worker-Ergebnis. Sicht = echte Seite, Code = der Text dahinter.",
-                    "Unter den Worker-Reitern: Weg, Neu, Behalten.",
+                    "Box 3 rechts: Ergebnis. Sicht = echte Seite, Code = der Text dahinter.",
+                    "Unter den Reitern: Weg, Neu, Behalten.",
                 ],
                 "points": [
                     "Box 1 ist Rückfrage und Entscheidung, kein Chat-Verlauf.",
                     "Box 2 ist die Antwort des gewählten Agenten.",
-                    "Box 3 ist die Lieferung der Worker nach Arbeit starten.",
+                    "Box 3 ist die Lieferung nach Arbeit starten.",
                     "Kurze weiße Namen auf den Reitern. Voller Name steht im Hover.",
                     "Scrollen geht, der Balken bleibt unsichtbar.",
                 ],
@@ -191,7 +191,7 @@ class SystemOpsMixin:
                 "label": "Dateien",
                 "wozu": "Ergebnisse behalten, ohne sie ins Git zu schieben.",
                 "steps": [
-                    "In Box 3 den Worker-Reiter wählen, dessen Datei du willst.",
+                    "In Box 3 den Reiter wählen, dessen Datei du willst.",
                     "Behalten klicken. Erfolg kommt erst nach bestätigtem Rücklesen.",
                     "Workspace öffnen: drei Spalten Temp, Dauerhaft, Behalten.",
                     "HTML zuerst als Sicht ansehen, daneben Code, wenn du den Text brauchst.",
@@ -217,7 +217,7 @@ class SystemOpsMixin:
                 ],
                 "points": [
                     "Enter und Senden sind dieselbe Tat: reden.",
-                    "Ctrl/⌘+Enter und Arbeit starten sind dieselbe Tat: Worker.",
+                    "Ctrl/⌘+Enter und Arbeit starten sind dieselbe Tat: liefern.",
                     "Das Mikrofon bleibt an, bis du es ausklickst. Es sendet nicht von allein.",
                     "Sprache (Vorlesen) spricht Antworten, startet aber keine Arbeit.",
                     "Kleine Fenster: dieselben Tasten, dieselben drei Boxen.",

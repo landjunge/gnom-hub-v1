@@ -504,10 +504,10 @@
                 toast("Kopiert", "ok");
               })
               .catch(function () {
-                toast("Clipboard failed", "error");
+                toast("Zwischenablage fehlgeschlagen", "error");
               });
           } else {
-            toast("Clipboard not available", "error");
+            toast("Keine Zwischenablage", "error");
           }
         })
       );
@@ -1576,10 +1576,10 @@
         return navigator.clipboard
           .writeText(text)
           .then(function () {
-            toast("Diff copied", "ok");
+            toast("Vergleich kopiert", "ok");
           })
           .catch(function () {
-            toast("Copy failed", "error");
+            toast("Kopieren fehlgeschlagen", "error");
           });
       }
     });
@@ -1829,7 +1829,7 @@
       URL.revokeObjectURL(a.href);
       a.remove();
     }, 500);
-    toast("Downloaded " + a.download, "ok");
+    toast("Gespeichert: " + a.download, "ok");
   }
 
   function openWorkerInTab(html, forceExternal) {
@@ -1889,7 +1889,7 @@
         "Workspace[" + label + "] ← " + name + (data.path ? " (" + data.path + ")" : "")
       );
     } catch (err) {
-      toast("Workspace save failed: " + err.message, "error");
+      toast("Workspace speichern fehlgeschlagen: " + err.message, "error");
     }
   }
 

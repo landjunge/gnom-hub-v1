@@ -2,7 +2,7 @@
   async function onFlexSelectChange() {
     if (!els.flexSelect) return;
     els.flexSelect.value = "personal";
-    toast("Flex is fixed — personal companion only", "info");
+    toast("Flex bleibt an — persönlicher Begleiter", "info");
   }
 
 

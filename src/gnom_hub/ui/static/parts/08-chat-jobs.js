@@ -82,7 +82,7 @@
   }
 
   async function _cycleFlexPreset() {
-    toast("Flex is fixed — personal companion only", "info");
+    toast("Flex bleibt an — persönlicher Begleiter", "info");
   }
 
   async function toggleAgent(id) {
@@ -293,7 +293,7 @@
             hideClarify();
           })
           .catch(function (err) {
-            toast("Clarify failed: " + (err.message || err), "error");
+            toast("Rückfrage fehlgeschlagen: " + (err.message || err), "error");
           });
       }
       return;
@@ -676,14 +676,14 @@
 
   async function _rerunWorker(workerId) {
     if (chatBusy) {
-      toast("Busy — wait for current job", "info");
+      toast("Beschäftigt — warte auf den laufenden Job", "info");
       return;
     }
     const wid = String(workerId || "").toLowerCase();
     if (!wid) return;
     setChatBusy(true);
     appendChat("system", "Re-run " + wid + "…");
-    toast("Re-running " + wid + "…", "info");
+    toast("Nochmal: " + wid + "…", "info");
     try {
       const live =
         els.llmBadge && els.llmBadge.classList.contains("has-key");
@@ -728,7 +728,7 @@
       }
     } catch (err) {
       appendChat("system", "Re-run failed: " + err.message);
-      toast("Re-run failed: " + err.message, "error");
+      toast("Nochmal fehlgeschlagen: " + err.message, "error");
     } finally {
       setChatBusy(false);
       currentJobId = null;
@@ -737,7 +737,7 @@
 
   async function reexecFromHistory() {
     if (chatBusy) {
-      toast("Busy — wait for current job", "info");
+      toast("Beschäftigt — warte auf den laufenden Job", "info");
       return;
     }
     const re = document.getElementById("btn-reexec");
@@ -785,7 +785,7 @@
         } catch (_h) {}
       } else if (snap.pipeline && snap.pipeline.stage === "clarify") {
         appendChat("system", "Clarify needed in Box 1.");
-        toast("Clarify needed", "info");
+        toast("Rückfrage in Box 1", "info");
       }
     } catch (err) {
       appendChat("system", "Re-Exec failed: " + err.message);
@@ -1768,7 +1768,7 @@
       try {
         const r = await api("POST", "/api/jobs/cancel-busy");
         if (r && r.busy) {
-          toast("Cancel requested — warte bis Pipeline frei…", "info");
+          toast("Abbruch angefordert — warte bis die Pipeline frei ist…", "info");
           appendChat("system", "Cancel busy job " + ((r.cancelled && r.cancelled.id) || ""));
           showBusyBanner({
             busy_job_id: (r.cancelled && r.cancelled.id) || "?",
@@ -1783,18 +1783,18 @@
           );
           if (free) appendChat("system", "Pipeline free — ready.");
         } else {
-          toast("No running job", "info");
+          toast("Kein laufender Job", "info");
           hideBusyBanner();
         }
         await resyncState();
       } catch (err) {
-        toast("Cancel failed: " + err.message, "error");
+        toast("Abbrechen fehlgeschlagen: " + err.message, "error");
       }
       return;
     }
     try {
       await api("POST", "/api/jobs/" + encodeURIComponent(jid) + "/cancel");
-      toast("Cancel requested — warte bis Pipeline frei…", "info");
+      toast("Abbruch angefordert — warte bis die Pipeline frei ist…", "info");
       appendChat("system", "Cancel requested for job " + jid);
       showBusyBanner({
         busy_job_id: jid,
@@ -1810,7 +1810,7 @@
       if (free) appendChat("system", "Pipeline free — ready.");
       await resyncState();
     } catch (err) {
-      toast("Cancel failed: " + err.message, "error");
+      toast("Abbrechen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -2144,7 +2144,7 @@
         }
         if (job.status === "cancelled") {
           appendChat("system", "Job cancelled.", target);
-          toast("Cancelled", "info");
+        toast("Abgebrochen", "info");
           hideBusyBanner();
           applySendSnap(snap);
           return;
@@ -2180,17 +2180,17 @@
         focusBox3();
       } else if (stage === "clarify") {
         appendChat("system", "Need a clarify answer in Box 1.", target);
-        toast("Clarify needed in Box 1", "info");
+        toast("Rückfrage in Box 1", "info");
       } else if (stage === "cancelled") {
         appendChat("system", "Job cancelled.", target);
-        toast("Cancelled", "info");
+        toast("Abgebrochen", "info");
       }
     } catch (err) {
       if (err && (err.status === 409 || (err.detail && err.detail.busy))) {
         handleBusyError(err, text);
       } else {
         appendChat("system", "Chat failed: " + err.message, target);
-        toast("Chat failed: " + err.message, "error");
+        toast("Senden fehlgeschlagen: " + err.message, "error");
       }
     } finally {
       setChatBusy(false);
@@ -2219,7 +2219,7 @@
       /* non-fatal */
     }
 
-    toast("Executing…", "info");
+    toast("Arbeit läuft…", "info");
     try {
       const start = await api("POST", "/api/execute");
       let snap = start;
@@ -2283,11 +2283,11 @@
         }
       } else if (stage === "clarify") {
         appendChat("system", "Clarify needed in Box 1 before workers finish.");
-        toast("Clarify needed", "info");
+        toast("Rückfrage in Box 1", "info");
       }
     } catch (err) {
       appendChat("system", "Execute failed: " + err.message);
-      toast("Execute failed: " + err.message, "error");
+      toast("Arbeit fehlgeschlagen: " + err.message, "error");
     } finally {
       setChatBusy(false);
       currentJobId = null;
@@ -2333,15 +2333,15 @@
         "Senden und Enter bedeuten nur reden.",
         "Der Empfänger ist das Flag, nicht die angeklickte Karte.",
         "Kartenklick öffnet Infos. Das Sendeziel bleibt, wo das Flag steht.",
-        "Brain redet frei. Coord plant. Flex fragt nach. A1–A4 sind Worker.",
+        "Brain redet frei. Coord plant. Flex fragt nach. A1–A4 sind Arbeiter.",
         "Läuft schon eine Antwort, bleibt sie dem Agenten zugeordnet, der sie begonnen hat.",
       ],
-      nicht: "Senden startet keine Worker, keine Werkzeuge und keine Dateiänderung.",
+      nicht: "Senden startet keine Arbeiter, keine Werkzeuge und keine Dateiänderung.",
     },
     {
       id: "arbeit",
       label: "Arbeit",
-      wozu: "Die Worker sollen etwas bauen, prüfen oder liefern.",
+      wozu: "Die Arbeiter sollen etwas bauen, prüfen oder liefern.",
       steps: [
         "Auftrag in die Zeile schreiben oder nach dem Gespräch stehen lassen.",
         "Arbeit starten oder Ctrl/⌘+Enter.",
@@ -2350,7 +2350,7 @@
         "Laufenden Job mit Esc oder Abbrechen stoppen.",
       ],
       points: [
-        "Arbeit starten startet Distill und danach die Worker.",
+        "Arbeit starten startet Distill und danach die Arbeiter.",
         "Ohne diesen Knopf (oder Ctrl/⌘+Enter) bleibt es ein Gespräch.",
         "Offene Entscheidungen stehen in Box 1, nicht im Chat versteckt.",
         "Ergebnisse gehören nach Box 3, nicht als JSON in Box 2.",
@@ -2365,13 +2365,13 @@
       steps: [
         "Box 1 links: wenn Gnom fragt, hier klicken oder eine Karte wählen.",
         "Box 2 Mitte: Reiter Brain, Flex, Coord, Mem, A1–A4 — eine Antwort lesen.",
-        "Box 3 rechts: Worker-Ergebnis. Sicht = echte Seite, Code = der Text dahinter.",
-        "Unter den Worker-Reitern: Weg, Neu, Behalten.",
+        "Box 3 rechts: Ergebnis. Sicht = echte Seite, Code = der Text dahinter.",
+        "Unter den Reitern: Weg, Neu, Behalten.",
       ],
       points: [
         "Box 1 ist Rückfrage und Entscheidung, kein Chat-Verlauf.",
         "Box 2 ist die Antwort des gewählten Agenten.",
-        "Box 3 ist die Lieferung der Worker nach Arbeit starten.",
+        "Box 3 ist die Lieferung nach Arbeit starten.",
         "Kurze weiße Namen auf den Reitern. Voller Name steht im Hover.",
         "Scrollen geht, der Balken bleibt unsichtbar.",
       ],
@@ -2401,7 +2401,7 @@
       label: "Dateien",
       wozu: "Ergebnisse behalten, ohne sie ins Git zu schieben.",
       steps: [
-        "In Box 3 den Worker-Reiter wählen, dessen Datei du willst.",
+        "In Box 3 den Reiter wählen, dessen Datei du willst.",
         "Behalten klicken. Erfolg kommt erst nach bestätigtem Rücklesen.",
         "Workspace öffnen: drei Spalten Temp, Dauerhaft, Behalten.",
         "HTML zuerst als Sicht ansehen, daneben Code, wenn du den Text brauchst.",
@@ -2427,7 +2427,7 @@
       ],
       points: [
         "Enter und Senden sind dieselbe Tat: reden.",
-        "Ctrl/⌘+Enter und Arbeit starten sind dieselbe Tat: Worker.",
+        "Ctrl/⌘+Enter und Arbeit starten sind dieselbe Tat: liefern.",
         "Das Mikrofon bleibt an, bis du es ausklickst. Es sendet nicht von allein.",
         "Sprache (Vorlesen) spricht Antworten, startet aber keine Arbeit.",
         "Kleine Fenster: dieselben Tasten, dieselben drei Boxen.",
@@ -2583,7 +2583,7 @@
       const snap = await api("POST", "/api/reset");
       applySnapshot(snap);
       setBox2("Noch keine Antwort. Senden = reden.");
-      setBox3("Noch kein Ergebnis. Arbeit starten legt die Worker-Seiten hier ab.");
+      setBox3("Noch kein Ergebnis. Arbeit starten legt die Seiten hier ab.");
       hideClarify();
       appendChat("system", "Sitzung neu (HOT nach COLD, wenn nicht leer).");
       toast("Sitzung neu", "ok");
@@ -2765,7 +2765,7 @@
 
   async function onClarify(answer) {
     if (chatBusy) {
-      toast("Busy — wait for current job", "info");
+      toast("Beschäftigt — warte auf den laufenden Job", "info");
       return;
     }
     const cb = w.GnomHub.onClarify;
@@ -2876,7 +2876,7 @@
 
   async function resumeDeferredClarify(index) {
     if (chatBusy) {
-      toast("Busy — wait for current job", "info");
+      toast("Beschäftigt — warte auf den laufenden Job", "info");
       return;
     }
     setChatBusy(true);

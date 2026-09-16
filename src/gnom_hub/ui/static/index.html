@@ -206,7 +206,7 @@
           <div class="info-layer" data-info-layer="gnom" id="box1-layer-gnom" hidden>
             <h2 class="tip-title">Gnom-Hub-V1 — Überblick</h2>
             <div class="info-gnom-body">
-              <p><strong>Pipeline:</strong> Chat → Brainstorm → Distill → Flex → Coordinator → Worker(s) → Memory.</p>
+              <p><strong>Pipeline:</strong> Chat → Brainstorm → Distill → Flex → Koordinator → Arbeiter → Memory.</p>
               <p><strong>Agent-Layer:</strong> Jeder Agent hat Layer in Box 1/2/3. Klick → Layer + 1px Rahmenfarbe.</p>
               <p><strong>Memory:</strong> HOT / WARM (user.db) / COLD.</p>
             </div>
@@ -322,13 +322,13 @@
           <div id="box3-content" class="layer-slot layer-slot-a is-front" data-slot="a"></div>
           <div class="layer-slot layer-slot-b" data-slot="b"></div>
         </div>
-        <div id="box3-empty" class="box3-empty">Noch kein Ergebnis. Arbeit starten legt die Worker-Seiten hier ab.</div>
+        <div id="box3-empty" class="box3-empty">Noch kein Ergebnis. Arbeit starten legt die Seiten hier ab.</div>
         <!-- Always-on top: worker deliverable the user must see after Execute -->
         <div id="box3-result-stage" class="box3-result-stage" hidden>
-          <div id="box3-worker-tabs" class="box3-worker-tabs" hidden role="tablist" aria-label="Worker"></div>
+          <div id="box3-worker-tabs" class="box3-worker-tabs" hidden role="tablist" aria-label="Arbeiter"></div>
           <div class="box3-result-bar">
-            <span id="box3-result-label" class="box3-result-label" hidden>Worker-Ergebnis</span>
-            <div class="box3-result-actions" role="toolbar" aria-label="Worker-Aktionen">
+            <span id="box3-result-label" class="box3-result-label" hidden>Ergebnis</span>
+            <div class="box3-result-actions" role="toolbar" aria-label="Aktionen">
               <button type="button" id="box3-btn-copy" class="btn-ws-sm" title="Ergebnis kopieren">Kopieren</button>
               <button type="button" id="box3-btn-dl" class="btn-ws-sm" title="Herunterladen">↓</button>
               <button type="button" id="box3-btn-open" class="btn-ws-sm" title="Seite in Box 2+3 (Shift = Browser-Tab)">↗</button>
@@ -555,7 +555,7 @@
           <ul id="sys-pack-list" class="ws-list" style="max-height:100px"></ul>
         </div>
         <div class="system-row">
-          <span>Worker-Presets</span>
+          <span>Arbeiter-Presets</span>
           <div class="system-row-actions">
             <select id="sys-preset-select" class="tune-input" style="max-width:180px">
               <option value="">— Preset wählen —</option>
@@ -595,7 +595,7 @@
           <span>Backups</span>
           <ul id="sys-backup-list" class="ws-list" style="max-height:100px"></ul>
         </div>
-        <p class="system-hint muted">Keys: Key.txt → DEEPSEEK_API_KEY. Modell ollama/…. Worker 3/4: Doppelklick zum Einschalten. Chat bleibt in diesem Browser.</p>
+        <p class="system-hint muted">Keys: Key.txt → DEEPSEEK_API_KEY. Modell ollama/…. Arbeiter 3/4: Doppelklick zum Einschalten. Chat bleibt in diesem Browser.</p>
       </div>
       <div class="modal-actions">
         <button type="button" id="system-save" class="btn-save">Übernehmen</button>
@@ -756,7 +756,7 @@
         <button type="button" id="help-close" class="modal-close" title="Schließen">×</button>
       </div>
       <div id="help-tabs" class="help-tabs" role="tablist" aria-label="Hilfe-Themen"></div>
-      <div id="help-body" class="help-body">Senden = reden. Arbeit starten = Worker.</div>
+      <div id="help-body" class="help-body">Senden = reden. Arbeit starten = Arbeiter.</div>
     </div>
   </div>
 
