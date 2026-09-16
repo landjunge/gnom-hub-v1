@@ -156,7 +156,7 @@ TOOLTIPS: dict[str, dict[str, TooltipText]] = {
         },
         "de": {
             "title": "Chat",
-            "how_to": "Senden = reden, keine Ausführung. Arbeit starten = Worker. Mikrofon = Spracheingabe.",
+            "how_to": "Senden = reden, keine Ausführung. Arbeit starten = Arbeiter. Mikrofon = Spracheingabe.",
             "example": "Frei brainstormen, dann Arbeit starten.",
         },
     },

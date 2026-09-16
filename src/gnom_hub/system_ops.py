@@ -249,8 +249,8 @@ class SystemOpsMixin:
             "title": "Hilfe",
             "topics": topics,
             "how_to": topics[0]["points"][0],
-            "example": "Senden = reden. Arbeit starten = Worker. God nur Badge.",
-            "pipeline": "Brainstorm → Arbeit starten → Distill → Flex → Workers (1–4) → Quality → Memory",
+            "example": "Senden = reden. Arbeit starten = Arbeiter. God nur Badge.",
+            "pipeline": "Brainstorm → Arbeit starten → Distill → Flex → Arbeiter (1–4) → Quality → Memory",
             "keys": "Enter senden · Ctrl/⌘+Enter Arbeit · Ctrl/⌘+S speichern · Esc zu",
         }
 

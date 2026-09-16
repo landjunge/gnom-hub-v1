@@ -2,5 +2,5 @@
 
 Die aktuelle Anleitung steht in [README.md](README.md).
 
-Senden = reden. Arbeit starten = Worker. God nur über den roten Badge.
+Senden = reden. Arbeit starten = Arbeiter. God nur über den roten Badge.
 Installation ist eine Terminal-Schnellinstallation, kein Ein-Klick.
