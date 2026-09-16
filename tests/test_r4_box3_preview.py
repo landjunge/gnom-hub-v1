@@ -64,7 +64,7 @@ def test_box3_tabs_short_a_labels():
     assert "return base" in body
     render = _function_body(BOXES_JS, "renderBox3WorkerTabs")
     assert "box3WorkerTabLabel" in render
-    assert "outs.length < 2" in render
+    assert "box3TabsWanted" in render
     assert "sendTarget" not in render
 
 

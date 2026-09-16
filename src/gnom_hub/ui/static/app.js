@@ -8736,10 +8736,15 @@
     }
     const box = document.getElementById("box2");
     host.textContent = "";
-    if (!answers.length) {
+    if (answers.length < 2) {
       host.hidden = true;
-      box2ReplyAgent = "";
       if (box) box.classList.remove("box2-has-tabs");
+      if (answers.length === 1) {
+        box2ReplyAgent = answers[0];
+        showBox2ReplyLayer(answers[0]);
+      } else {
+        box2ReplyAgent = "";
+      }
       return;
     }
     host.hidden = false;
@@ -9071,7 +9076,11 @@
   }
 
   function box3WorkerTabTitle(out, i) {
-    return String((out && (out.name || out.worker)) || "Arbeiter " + (i + 1));
+    const raw = String((out && (out.worker || out.name)) || "").toLowerCase();
+    const wm = /worker\s*(\d+)/.exec(raw);
+    if (wm) return "Arbeiter " + wm[1];
+    if (out && out.name) return String(out.name);
+    return "Arbeiter " + (i + 1);
   }
 
   function paintBox3Nav() {
@@ -9088,7 +9097,7 @@
     if (!tabs) return;
     const outs = lastWorkerOutputs || [];
     tabs.innerHTML = "";
-    if (outs.length < 2) {
+    if (!box3TabsWanted(outs)) {
       tabs.hidden = true;
       paintBox3Nav();
       return;
@@ -9811,6 +9820,12 @@
       stage.hidden = true;
       stage.classList.remove("is-open");
     }
+    const tabs = document.getElementById("box3-worker-tabs");
+    if (tabs) {
+      tabs.hidden = true;
+      tabs.innerHTML = "";
+    }
+    paintBox3Nav();
     const strip = document.getElementById("box3-tool-strip");
     if (strip) {
       strip.hidden = true;
@@ -9911,7 +9926,7 @@
     if (!outputs.length) {
       lastBox3RenderKey = renderKey;
       hideBox3ResultStage();
-      paintBox3Nav();
+      renderBox3WorkerTabs();
       return;
     }
 
@@ -10279,13 +10294,27 @@
     document.body.appendChild(overlay);
   }
 
+  function box3TabsWanted(outputs) {
+    return ((outputs && outputs.length) || 0) >= 2;
+  }
+
   function collapseSharedErrors(outputs) {
     const rows = Array.isArray(outputs) ? outputs : [];
     if (rows.length < 2) return rows;
-    function keyish(s) {
+    function failish(s) {
       const t = String(s || "").toLowerCase();
       return (
         t.indexOf("kein deliverable") >= 0 ||
+        t.indexOf("llm/key") >= 0 ||
+        t.indexOf("deepseek_api_key") >= 0 ||
+        t.indexOf("kein nutzbarer llm") >= 0 ||
+        /\bfehler\b/.test(t) ||
+        /\berror\b/.test(t)
+      );
+    }
+    function keyish(s) {
+      const t = String(s || "").toLowerCase();
+      return (
         t.indexOf("llm/key") >= 0 ||
         t.indexOf("deepseek_api_key") >= 0 ||
         t.indexOf("kein nutzbarer llm") >= 0
@@ -10296,6 +10325,7 @@
         .replace(/\s+/g, " ")
         .trim();
     });
+    if (!texts.every(failish)) return rows;
     const allKey = texts.every(keyish);
     const allSame = texts.every(function (t) {
       return t === texts[0];

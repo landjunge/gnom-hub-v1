@@ -13,7 +13,7 @@ CSS_AGENTS = (ROOT / "src/gnom_hub/ui/static/css/01-agents.css").read_text(encod
 
 def test_q8_box3_tabs_only_when_several():
     fn = BOX.split("function renderBox3WorkerTabs", 1)[1].split("function ", 1)[0]
-    assert "outs.length < 2" in fn
+    assert "box3TabsWanted" in fn
     assert "tabs.hidden = true" in fn
     assert "box3-btn-prev" in BOX
     empty = CORE.split("function buildAgentLayers", 1)[1].split(
