@@ -420,10 +420,10 @@
       brainstorm: "Brainstorm",
       memory: "Memory",
       coordinator: de ? "Koordinator" : "Coordinator",
-      worker1: "Worker 1",
-      worker2: "Worker 2",
-      worker3: "Worker 3",
-      worker4: "Worker 4",
+      worker1: de ? "Arbeiter 1" : "Worker 1",
+      worker2: de ? "Arbeiter 2" : "Worker 2",
+      worker3: de ? "Arbeiter 3" : "Worker 3",
+      worker4: de ? "Arbeiter 4" : "Worker 4",
     };
     /* flex omitted on purpose → maybeSpeakFlexSupport */
     const order = [

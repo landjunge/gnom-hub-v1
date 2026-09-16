@@ -71,7 +71,7 @@ TOOLTIPS: dict[str, dict[str, TooltipText]] = {
             "example": "Assigned 'draft HTML' → full page appears in Box 3 + Workspace temp.",
         },
         "de": {
-            "title": "Worker 1",
+            "title": "Arbeiter 1",
             "how_to": "Erster Ausführungs-Slot. Ergebnisse in Box 3; HTML mit Vorschau/Quelle.",
             "example": "Aufgabe „HTML entwerfen“ → Seite in Box 3 + Workspace Temp.",
         },
@@ -83,9 +83,9 @@ TOOLTIPS: dict[str, dict[str, TooltipText]] = {
             "example": "Worker 1 drafts page, Worker 2 adds structure or checklist.",
         },
         "de": {
-            "title": "Worker 2",
-            "how_to": "Zweiter Slot. Parallele Aufgabe vom Coordinator.",
-            "example": "Worker 1 baut die Seite, Worker 2 ergänzt Struktur/Checkliste.",
+            "title": "Arbeiter 2",
+            "how_to": "Zweiter Slot. Parallele Aufgabe vom Koordinator.",
+            "example": "Arbeiter 1 baut die Seite, Arbeiter 2 ergänzt Struktur/Checkliste.",
         },
     },
     "worker3": {
@@ -95,7 +95,7 @@ TOOLTIPS: dict[str, dict[str, TooltipText]] = {
             "example": "Shows as on · later until more workers ship.",
         },
         "de": {
-            "title": "Worker 3 (später)",
+            "title": "Arbeiter 3 (später)",
             "how_to": "Reservierter Slot. v1 nutzt maximal zwei Worker.",
             "example": "Anzeige „on · later“ bis mehr Worker kommen.",
         },
@@ -107,7 +107,7 @@ TOOLTIPS: dict[str, dict[str, TooltipText]] = {
             "example": "Shows as on · later until more workers ship.",
         },
         "de": {
-            "title": "Worker 4 (später)",
+            "title": "Arbeiter 4 (später)",
             "how_to": "Reservierter Slot. v1 nutzt maximal zwei Worker.",
             "example": "Anzeige „on · later“ bis mehr Worker kommen.",
         },

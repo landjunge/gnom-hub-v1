@@ -12,9 +12,7 @@ SNAP_JS = (ROOT / "src/gnom_hub/ui/static/parts/01-core-api.js").read_text(encod
 
 
 def test_q3_cards_are_name_and_status():
-    body = CARDS_JS.split("function renderCards", 1)[1].split(
-        "function paintChatPlaceholder", 1
-    )[0]
+    body = CARDS_JS.split("function renderCards", 1)[1].split("function paintChatPlaceholder", 1)[0]
     assert "card-name" in body
     assert "card-status" in body
     assert "tok:" not in body
@@ -46,7 +44,7 @@ def test_q6_name_german_no_tailwind_cdn_square():
     assert "--radius-md: 0" in TOKENS
     assert "--radius-lg: 0" in TOKENS
     assert "Du" in CHAT_JS
-    assert 'label.textContent = who' not in CHAT_JS or "WHO_DE" in CHAT_JS
+    assert "label.textContent = who" not in CHAT_JS or "WHO_DE" in CHAT_JS
 
 
 def test_q7_toolbar_is_workspace_system_help():

@@ -16,9 +16,7 @@ def test_q8_box3_tabs_only_when_several():
     assert "box3TabsWanted" in fn
     assert "tabs.hidden = true" in fn
     assert "box3-btn-prev" in BOX
-    empty = CORE.split("function buildAgentLayers", 1)[1].split(
-        "function getAgentBoxBody", 1
-    )[0]
+    empty = CORE.split("function buildAgentLayers", 1)[1].split("function getAgentBoxBody", 1)[0]
     assert "Brainstorm dialogue" not in empty
     assert "Noch kein Ergebnis" in HTML
 
@@ -27,6 +25,8 @@ def test_q9_german_card_and_target_labels():
     assert 'label: "Koordinator"' in CORE
     assert 'label: "Arbeiter 1"' in CORE
     assert 'label: "Worker 1"' not in CORE
+    assert ">Worker 1<" not in HTML
+    assert ">Arbeiter 1<" in HTML
     assert "Brainstorm-Dialog" in CORE or "Gespräch" in CORE
     assert 'textContent = "Brain"' in CHAT or '"Brain"' in CHAT
     assert "Senden an" in CHAT
@@ -36,5 +36,5 @@ def test_q9_german_card_and_target_labels():
 
 def test_q10_compact_cards_and_no_operator_hint():
     assert "--card-h: clamp(44px" in TOKENS or "--card-h: clamp(40px" in TOKENS
-    assert "kbd-hint" not in HTML.split('id="chat-mod"', 1)[1].split("id=\"box3\"", 1)[0]
+    assert "kbd-hint" not in HTML.split('id="chat-mod"', 1)[1].split('id="box3"', 1)[0]
     assert "gap: 8px" in CSS_AGENTS.split(".agent-cards {", 1)[1].split("}", 1)[0]

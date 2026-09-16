@@ -972,7 +972,7 @@
       return false;
     }
     if (emptyEl) emptyEl.hidden = true;
-    const name = (out && (out.name || out.worker)) || "Worker";
+    const name = box3WorkerTabTitle(out, idx);
     const html = extractHtml(raw);
     let val = out && out.validation && typeof out.validation === "object" ? out.validation : null;
     if (!val && typeof lastSnapshot !== "undefined" && lastSnapshot && lastSnapshot.pipeline) {
@@ -1540,15 +1540,15 @@
 
   function openWorkerDiff() {
     if (lastWorkerOutputs.length < 2) {
-      toast("Need at least two worker results to diff", "info");
+      toast("Mindestens zwei Ergebnisse zum Vergleichen", "info");
       return;
     }
     closeDiffOverlay();
     closeWorkerFullscreen();
     const a = lastWorkerOutputs[0];
     const b = lastWorkerOutputs[1];
-    const nameA = a.name || "Worker 1";
-    const nameB = b.name || "Worker 2";
+    const nameA = box3WorkerTabTitle(a, 0);
+    const nameB = box3WorkerTabTitle(b, 1);
     const rows = computeLineDiff(a.result || "", b.result || "");
 
     const overlay = document.createElement("div");
@@ -1678,7 +1678,7 @@
       return p.worker_outputs.map(function (o, i) {
         return {
           worker: o.worker || "worker" + (i + 1),
-          name: o.name || "Worker " + (i + 1),
+          name: o.name || "Arbeiter " + (i + 1),
           task: o.task || "",
           result: o.result != null ? String(o.result) : "",
           index: o.index != null ? o.index : i + 1,
@@ -1690,7 +1690,7 @@
       return p.worker_results.map(function (r, i) {
         return {
           worker: "worker" + (i + 1),
-          name: "Worker " + (i + 1),
+          name: "Arbeiter " + (i + 1),
           task: "",
           result: String(r),
           index: i + 1,

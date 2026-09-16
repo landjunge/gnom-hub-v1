@@ -161,9 +161,9 @@ def test_q8_source_uses_shared_rule():
         "function focusBox3WorkerResult", 1
     )[0]
     assert "box3TabsWanted" in render
-    keep = BOX.split("function renderBox3Workers", 1)[1].split(
-        "function stageResultsRecovery", 1
-    )[0]
+    keep = BOX.split("function renderBox3Workers", 1)[1].split("function stageResultsRecovery", 1)[
+        0
+    ]
     assert "box3KeepLast" in keep
     nav = BOX.split("function paintBox3Nav", 1)[1].split("function renderBox3WorkerTabs", 1)[0]
     assert "box3TabsWanted" in nav

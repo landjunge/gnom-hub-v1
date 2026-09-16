@@ -172,7 +172,7 @@ def test_one_enabled_worker():
 
     assert state.stage == PipelineStage.done
     assert len(state.worker_results) == 1
-    assert "Worker 1" in state.worker_results[0]
+    assert "Arbeiter 1" in state.worker_results[0]
 
 
 def test_flex_personal_remembers_user():
