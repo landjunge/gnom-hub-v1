@@ -61,8 +61,8 @@ ruff check .
 # Counts by rule
 ruff check . --statistics
 
-# Format drift (CI fails on this)
-ruff format --check .
+# Format drift (CI fails on this; --diff shows the rewrite)
+ruff format --check --diff .
 ```
 
 ### Auto-fix
@@ -79,7 +79,7 @@ ruff format .
 
 # Must be clean before push
 ruff check .
-ruff format --check .
+ruff format --check --diff .
 ```
 
 ### Full pre-push checklist
@@ -113,7 +113,7 @@ Gate body (`scripts/prepush_gate.sh`) — same as CI lint:
 
 ```text
 ruff check .
-ruff format --check .
+ruff format --check --diff .
 ```
 
 ```bash
