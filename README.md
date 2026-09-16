@@ -3,7 +3,7 @@
 
 <p align="center"><strong>Ein lokaler Arbeitsplatz für die Zusammenarbeit mit KI-Agenten.</strong></p>
 
-Senden heißt reden. Arbeit starten heißt Worker. God nur über den roten Badge.
+Senden heißt reden. Arbeit starten heißt Arbeiter. God nur über den roten Badge.
 
 ---
 
@@ -13,8 +13,8 @@ Gnom-Hub-V1 ist ein persönlicher Multi-Agenten-Desk auf deinem Rechner. Du sieh
 
 Zwei Taten bleiben getrennt:
 
-- **Senden** (Enter) — nur Gespräch. Keine Worker, keine Werkzeuge, keine Dateiänderung.
-- **Arbeit starten** (Ctrl/⌘+Enter) — Distill, dann Worker. Ergebnisse in Box 3.
+- **Senden** (Enter) — nur Gespräch. Keine Arbeiter, keine Werkzeuge, keine Dateiänderung.
+- **Arbeit starten** (Ctrl/⌘+Enter) — Distill, dann Arbeiter. Ergebnisse in Box 3.
 
 Es ist kein Autopilot und keine Cloud-Plattform. Es steuert deinen Mac nicht still bei jeder Nachricht.
 
@@ -26,7 +26,7 @@ Produktseite: [gnom-hub-v1.netzwerkpunkt.de](https://gnom-hub-v1.netzwerkpunkt.d
 
 ![Gnom-Hub-V1 Desk](docs/assets/desk-now.png)
 
-Acht Agentenkarten oben. Drei Boxen darunter: links Fragen (Box 1), Mitte Antworten (Box 2), rechts Worker-Lieferung (Box 3). Unten die Zeile mit **Senden** und **Arbeit starten**.
+Acht Agentenkarten oben. Drei Boxen darunter: links Fragen (Box 1), Mitte Antworten (Box 2), rechts Lieferung (Box 3). Unten die Zeile mit **Senden** und **Arbeit starten**.
 
 ---
 
@@ -70,7 +70,7 @@ DEEPSEEK_API_KEY=sk-...
 DEEPSEEK_MODEL=deepseek-v4-flash
 ```
 
-Platzhalter `sk-your-…` gelten nicht als bereit. Ohne echten Key (und ohne Ollama) sagen die Worker **FEHLER**, sie täuschen keine Lieferung vor.
+Platzhalter `sk-your-…` gelten nicht als bereit. Ohne echten Key (und ohne Ollama) sagen die Arbeiter **FEHLER**, sie täuschen keine Lieferung vor.
 
 System zeigt, wenn der Key fehlt oder TollGate fehlt. TollGate braucht das Paket, sonst Cloud-Modelle nicht.
 
@@ -82,8 +82,8 @@ Nie `Key.txt`, `User/` oder `.env` committen. Details: [docs/KEYS_AND_MODELS.md]
 
 | Tat | Was passiert | Was nicht passiert |
 |-----|----------------|--------------------|
-| **Senden** / Enter | Ein Gesprächszug. Antwort in Box 2 beim gewählten Flag. | Keine Worker, keine Werkzeuge, keine Dateien. |
-| **Arbeit starten** / Ctrl/⌘+Enter | Distill → Flex → Plan → Worker. Lieferung in Box 3. | Startet nicht durch Senden, Kartenklick oder Ja auf eine alte Frage. |
+| **Senden** / Enter | Ein Gesprächszug. Antwort in Box 2 beim gewählten Flag. | Keine Arbeiter, keine Werkzeuge, keine Dateien. |
+| **Arbeit starten** / Ctrl/⌘+Enter | Distill → Flex → Plan → Arbeiter. Lieferung in Box 3. | Startet nicht durch Senden, Kartenklick oder Ja auf eine alte Frage. |
 | **God** | Roter Nutzer-Badge oben rechts. An = echte Maus/Tastatur/Shell nach Nachfrage. | Kein Schalter im System-Fenster. Aus = Trockenlauf. |
 
 Kartenklick öffnet Infos. Das Sendeziel bleibt das gelbe Flag.
@@ -101,8 +101,8 @@ Oben acht Karten. Das Flag wählt den Empfänger, nicht die Karte.
 | Brain | Brainstorm | Freies Gespräch |
 | Mem | Memory | Session und Vorschläge |
 | Flex | Flex | Stehende Wünsche, Rückfragen in Box 1 |
-| Coord | Coordinator | Destilliert und plant Worker |
-| A1–A4 | Worker 1–4 | Lieferung in Box 3 |
+| Coord | Koordinator | Destilliert und plant Arbeiter |
+| A1–A4 | Arbeiter 1–4 | Lieferung in Box 3 |
 
 Kurze weiße Namen auf den Reitern. Voller Name im Hover.
 
@@ -159,8 +159,8 @@ Notfall: Backup in der System-Liste mit **Laden**.
 |---------|---------|
 | Key fehlt | `WS-gnom-hub-v1/User/Key.txt` oder System. Platzhalter zählen nicht. |
 | TollGate fehlt | `./scripts/install.sh` mit Sibling `../tollgate`, oder `GNOM_TOLLGATE_LLM=0`. |
-| Worker sagt FEHLER | Kein Key / kein Modell. Keine Attrappe. |
-| Senden tut „nichts“ | Antwort steht in Box 2 beim Flag, nicht als Worker-Seite. |
+| Arbeiter sagt FEHLER | Kein Key / kein Modell. Keine Attrappe. |
+| Senden tut „nichts“ | Antwort steht in Box 2 beim Flag, nicht als Arbeiter-Seite. |
 | Arbeit startet nicht | Nur **Arbeit starten** oder Ctrl/⌘+Enter. Offene Frage in Box 1 zuerst beantworten. |
 | Update geht nicht | Laufende Arbeit abbrechen, oder es gibt noch kein Nutzer-Release. |
 | God greift nicht | Nur der rote Badge. System-Fenster hat keinen God-Schalter. |
@@ -200,7 +200,7 @@ stateDiagram-v2
 
 ```
 Senden           → nur Gespräch (Flex darf nach Arbeit starten fragen)
-Arbeit starten   → Distill → Flex → Plan → Prefetch → Worker → Nudge
+Arbeit starten   → Distill → Flex → Plan → Prefetch → Arbeiter → Nudge
 ```
 
 API-URLs bleiben stabil. Coding-Regeln: [AGENTS.md](AGENTS.md). Index: [docs/INDEX.md](docs/INDEX.md).
