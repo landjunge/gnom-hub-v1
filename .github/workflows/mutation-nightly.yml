@@ -13,7 +13,7 @@ env:
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
   PYTHONDONTWRITEBYTECODE: "1"
   PIP_CACHE_DIR: ${{ github.workspace }}/.cache/pip
-  CACHE_SEED: v2
+  CACHE_SEED: v4
 
 jobs:
   mutation-and-rank:
@@ -40,7 +40,7 @@ jobs:
         id: verify-venv
         run: |
           set -euo pipefail
-          if [ ! -x .venv/bin/python ]; then
+          if [ ! -x .venv/bin/python ] || ! .venv/bin/python -c "import sys" 2>/dev/null; then
             echo "broken=true" >> "$GITHUB_OUTPUT"
             echo "::warning::venv cache hit but .venv/bin/python missing — reinstalling"
             rm -rf .venv

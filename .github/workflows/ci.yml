@@ -7,6 +7,9 @@ on:
       - "v*"
   pull_request:
     branches: [main, master]
+  schedule:
+    # Nightly tests on default branch. No release, no publish.
+    - cron: "12 3 * * *"
   workflow_dispatch:
 
 concurrency:

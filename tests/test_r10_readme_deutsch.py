@@ -46,4 +46,5 @@ def test_help_and_tooltips_say_arbeiter():
 def test_mutation_nightly_recovers_broken_venv():
     assert "Verify cached venv" in NIGHTLY
     assert ".venv/bin/python" in NIGHTLY
-    assert "steps.verify-venv.outputs.broken" in NIGHTLY
+    assert "CACHE_SEED: v4" in NIGHTLY
+    assert ".venv/bin/python -c" in NIGHTLY
