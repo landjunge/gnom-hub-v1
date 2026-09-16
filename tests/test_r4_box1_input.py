@@ -149,8 +149,8 @@ def test_chat_input_placeholder_reden_or_senden():
     open_tag = _open_tag(HTML, "chat-input")
     ph = _attr(open_tag, "placeholder")
     low = ph.lower()
-    assert "reden" in low or "Senden" in ph, (
-        f"#chat-input placeholder {ph!r} must contain 'reden' or 'Senden'"
+    assert "Nachricht" in ph or "reden" in low or "Senden" in ph, (
+        f"#chat-input placeholder {ph!r} must invite writing"
     )
 
 

@@ -84,11 +84,11 @@
     { id: "brainstorm", label: "Brainstorm", color: "brainstorm", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
     { id: "memory", label: "Memory", color: "memory", enabled: true, toggleable: false, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
     { id: "flex", label: "Flex", color: "flex", enabled: true, toggleable: true, parked: false, model: "—", preset: "personal", tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
-    { id: "coordinator", label: "Coordinator", color: "coordinator", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
-    { id: "worker1", label: "Worker 1", color: "worker1", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
-    { id: "worker2", label: "Worker 2", color: "worker2", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
-    { id: "worker3", label: "Worker 3", color: "worker3", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
-    { id: "worker4", label: "Worker 4", color: "worker4", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
+    { id: "coordinator", label: "Koordinator", color: "coordinator", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
+    { id: "worker1", label: "Arbeiter 1", color: "worker1", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
+    { id: "worker2", label: "Arbeiter 2", color: "worker2", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
+    { id: "worker3", label: "Arbeiter 3", color: "worker3", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
+    { id: "worker4", label: "Arbeiter 4", color: "worker4", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
   ];
 
   const els = {
@@ -193,8 +193,8 @@
   let chatDraft = "";
 
   function statusLabel(agent) {
-    if (agent.parked) return agent.enabled ? "on · later" : "off / parked";
-    return agent.enabled ? "on" : "off";
+    if (agent.parked) return "wartet";
+    return agent.enabled ? "bereit" : "aus";
   }
 
   function agentIsActive(agent) {
@@ -409,14 +409,14 @@
   /** Build 8 agent layers per box (Agent N = Layer N). */
   function buildAgentLayers() {
     const hints = {
-      brainstorm: "Brainstorm dialogue",
-      memory: "Memory notes",
-      flex: "Flex review",
-      coordinator: "Coordinator / plan",
-      worker1: "Worker 1 result",
-      worker2: "Worker 2 result",
-      worker3: "Worker 3 result",
-      worker4: "Worker 4 result",
+      brainstorm: "Gespräch",
+      memory: "Notizen",
+      flex: "Rückfragen",
+      coordinator: "Plan",
+      worker1: "Noch kein Ergebnis",
+      worker2: "Noch kein Ergebnis",
+      worker3: "Noch kein Ergebnis",
+      worker4: "Noch kein Ergebnis",
     };
     [1, 2, 3].forEach(function (n) {
       const stack = document.getElementById("box" + n + "-layers");
@@ -971,6 +971,20 @@
       el.classList.toggle("is-on", on);
       el.setAttribute("aria-checked", on ? "true" : "false");
     });
+    document.querySelectorAll(".agent-card").forEach(function (card) {
+      const on = card.dataset.agentId === sendTarget;
+      card.classList.toggle("is-target", on);
+      let tag = card.querySelector(".card-target");
+      if (on && !tag) {
+        tag = document.createElement("div");
+        tag.className = "card-target";
+        tag.textContent = "Empfänger";
+        card.appendChild(tag);
+      } else if (!on && tag) {
+        tag.remove();
+      }
+    });
+    if (typeof paintChatPlaceholder === "function") paintChatPlaceholder();
   }
 
   function showAgentPageTab(tabId, fromKeyboard) {
@@ -1225,7 +1239,7 @@
       _agentPageAdd(panel, "h2", "", "Auftrag");
       _agentPageEmpty(
         panel,
-        "Keine Daten. Weder Gespräch noch bestätigtes Execute."
+        "Keine Daten. Weder Gespräch noch bestätigte Arbeit."
       );
       return;
     }
@@ -1233,7 +1247,7 @@
     const split = _agentPageAdd(panel, "div", "agent-page-split", "");
     const talkCard = _agentPageAdd(split, "article", "agent-page-card", "");
     _agentPageTag(talkCard, "Gespräch — nicht ausgeführt");
-    _agentPageAdd(talkCard, "h3", "", "Unterhaltung vor Execute");
+    _agentPageAdd(talkCard, "h3", "", "Unterhaltung vor der Arbeit");
     _agentPageAdd(
       talkCard,
       "p",
@@ -1248,7 +1262,7 @@
       "p",
       "agent-page-meta",
       executed
-        ? "Gespräch bleibt sichtbar. Execute ist bestätigt."
+        ? "Gespräch bleibt sichtbar. Die Arbeit ist bestätigt."
         : "Das ist Brainstorm. Noch kein Auftrag an diesen Agenten."
     );
     const exeCard = _agentPageAdd(
@@ -1257,7 +1271,7 @@
       "agent-page-card" + (executed ? " edge-ok" : ""),
       ""
     );
-    _agentPageTag(exeCard, executed ? "Bestätigtes Execute" : "Noch kein Execute");
+    _agentPageTag(exeCard, executed ? "Bestätigte Arbeit" : "Noch keine Arbeit");
     _agentPageAdd(exeCard, "h3", "", "Originalauftrag");
     _agentPageAdd(exeCard, "p", "", executed ? talk || notes || "—" : "Kein bestätigtes Execute.");
     const targetAgent = findAgent(pipe.send_target || agentId);
@@ -1986,8 +2000,12 @@
     AGENTS.forEach(function (agent) {
       const card = document.createElement("div");
       const isActive = agentIsActive(agent);
+      const isTarget = sendTarget === agent.id;
       card.className =
-        "agent-card color-" + agent.color + (isActive ? " is-active" : "");
+        "agent-card color-" +
+        agent.color +
+        (isActive ? " is-active" : "") +
+        (isTarget ? " is-target" : "");
       card.dataset.agentId = agent.id;
       card.dataset.enabled = agent.enabled ? "true" : "false";
       card.dataset.toggleable = agent.toggleable ? "true" : "false";
@@ -1997,69 +2015,22 @@
       card.setAttribute(
         "aria-label",
         agent.label +
-          " — click: layer+info · click again or Shift+click: tune · double-click: toggle" +
-          (agent.id === "flex" ? " · Shift+double-click: preset" : "")
+          (isTarget ? " — Empfänger" : " — Ansicht") +
+          " — Klick öffnet die Ansicht, ändert den Empfänger nicht"
       );
-      const online = !!agent.online;
-      const presetLine =
-        agent.id === "flex" && agent.preset
-          ? '<div class="card-preset">preset: ' + agent.preset + "</div>"
-          : "";
-      const tok = agent.tokens || 0;
-      const cost =
-        agent.cost_usd != null && !isNaN(agent.cost_usd)
-          ? Number(agent.cost_usd)
-          : 0;
-      const costStr = cost > 0 ? "$" + cost.toFixed(4) : "$0";
       const live =
         typeof agentLiveStatus === "function" ? agentLiveStatus(agent.id) : "";
       if (live) card.dataset.live = live;
+      const status = live || statusLabel(agent);
       // eslint-disable-next-line no-unsanitized/property
       card.innerHTML =
         '<div class="card-name">' +
         agent.label +
         "</div>" +
-        '<div class="card-meta">LLM: ' +
-        (agent.model || "—") +
-        "</div>" +
-        '<div class="card-tokens">tok: ' +
-        tok +
-        ' · <span class="card-cost">' +
-        costStr +
-        "</span></div>" +
-        '<div class="card-online ' +
-        (online ? "on" : "off") +
-        '">' +
-        (online ? "online" : "offline") +
-        "</div>" +
-        '<label class="card-tts" data-stop="1" title="Sprache — Agent hörbar">' +
-        '<input type="checkbox" ' +
-        (agent.tts ? "checked " : "") +
-        (agent.parked ? "disabled " : "") +
-        "/> Sprache</label>" +
-        presetLine +
         '<div class="card-status">' +
-        statusLabel(agent) +
+        status +
         "</div>" +
-        (live ? '<div class="card-live">' + live + "</div>" : "");
-
-      const ttsInput = card.querySelector(".card-tts input");
-      if (ttsInput) {
-        ttsInput.addEventListener("click", function (ev) {
-          ev.stopPropagation();
-        });
-        ttsInput.addEventListener("change", function (ev) {
-          ev.stopPropagation();
-          const on = !!ttsInput.checked;
-          // Speak HERE (same user gesture) — short DE only, no EN, no long monologue
-          if (on) {
-            speakNow("Sprache an: " + (agent.label || agent.id) + ".");
-          } else {
-            stopSpeech();
-          }
-          setAgentTts(agent.id, on);
-        });
-      }
+        (isTarget ? '<div class="card-target">Empfänger</div>' : "");
 
       card.addEventListener("click", function (ev) {
         if (ev.target && ev.target.closest && ev.target.closest("[data-stop]")) {
@@ -2085,7 +2056,7 @@
           clickTimer = null;
         }
         if (agent.id === "flex") {
-          toast("Flex is fixed — always on, personal companion", "info");
+          toast("Flex bleibt an — persönlicher Begleiter", "info");
           return;
         }
         toggleAgent(agent.id);
@@ -2098,6 +2069,13 @@
     });
     updateBoxBorders();
     if (typeof _refreshAgentPageLive === "function") _refreshAgentPageLive();
+  }
+
+  function paintChatPlaceholder() {
+    const inp = document.getElementById("chat-input");
+    if (!inp) return;
+    const agent = findAgent(sendTarget) || {};
+    inp.placeholder = "Nachricht an " + (agent.label || "Brainstorm");
   }
 
   function findAgent(id) {
@@ -2182,7 +2160,7 @@
     try {
       res = await fetch(API + path, opts);
     } catch (netErr) {
-      toast("Network error: " + netErr.message, "error");
+      toast("Netzwerkfehler: " + netErr.message, "error");
       throw netErr;
     }
     if (!res.ok) {
@@ -2218,7 +2196,7 @@
     try {
       return await res.json();
     } catch (parseErr) {
-      toast("Bad JSON from server (job/state) — " + (parseErr.message || parseErr), "error");
+      toast("Ungültiges JSON vom Server (Job/Status) — " + (parseErr.message || parseErr), "error");
       throw parseErr;
     }
   }
@@ -2265,7 +2243,7 @@
       if (wantsStart) {
         toast("Arbeit starten", "ok");
         if (typeof appendChat === "function") {
-          appendChat("system", "Execute started (distill → flex → workers)…");
+          appendChat("system", "Arbeit gestartet…");
         }
       }
       let snap = start;
@@ -2278,17 +2256,17 @@
           snap = job.snapshot || (await api("GET", "/api/state"));
           if (job.status === "error") {
             if (typeof appendChat === "function") {
-              appendChat("system", "Execute error: " + (job.error || "?"));
+              appendChat("system", "Fehler: " + (job.error || "?"));
             }
-            toast(job.error || "Execute error", "error");
+            toast(job.error || "Fehler", "error");
             applySnapshot(snap);
             return;
           }
           if (job.status === "cancelled") {
             if (typeof appendChat === "function") {
-              appendChat("system", "Execute cancelled.");
+              appendChat("system", "Arbeit abgebrochen.");
             }
-            toast("Cancelled", "info");
+            toast("Abgebrochen", "info");
             applySnapshot(snap);
             return;
           }
@@ -2316,6 +2294,7 @@
       }
     );
     const placeholder = document.querySelector("#box1-layer-live .box1-placeholder");
+    const review = document.getElementById("flex-review");
     if (!qs.length) {
       host.hidden = true;
       list.textContent = "";
@@ -2324,6 +2303,7 @@
     }
     host.hidden = false;
     if (placeholder) placeholder.hidden = true;
+    if (review) review.hidden = true;
     qs = qs.slice(0, 1);
     if (typeof markOwner === "function") markOwner(host, "flex");
     else host.dataset.agent = "flex";
@@ -2572,7 +2552,7 @@
     if (snap.version) {
       const vb = document.getElementById("ver-badge");
       if (vb) vb.textContent = "v" + String(snap.version).replace(/^v/, "");
-      document.title = "Gnom-Hub v" + String(snap.version).replace(/^v/, "");
+      document.title = "Gnom-Hub-V1 v" + String(snap.version).replace(/^v/, "");
     }
 
     if (els.llmBadge && snap.llm) {
@@ -2584,22 +2564,13 @@
       const blocked = !!auth.session_auth_blocked;
       const placeholder = !!auth.placeholder_detected || sys === "placeholder" || wrk === "placeholder";
       const ok = (ds || ol) && !blocked;
-      const tok =
-        (snap.llm.prompt_tokens || 0) + (snap.llm.completion_tokens || 0);
       const viaTg = !!snap.llm.via_tollgate;
       const tg = snap.tollgate || {};
       const tgOk = tg.ok !== false;
-      let label = "LLM: stub";
-      if (blocked) label = "LLM: auth blocked";
-      else if (placeholder && !ok) label = "LLM: key placeholder";
-      else if (!ok && sys === "missing") label = "LLM: no key";
-      else if (viaTg && (ds || ol)) {
-        const route = (snap.llm.last_route && snap.llm.last_route.provider) || "";
-        label = route ? "LLM: Tollgate/" + route : "LLM: Tollgate";
-      } else if (ds && ol) label = "LLM: DeepSeek+Ollama";
-      else if (ds) label = "LLM: DeepSeek";
-      else if (ol) label = "LLM: Ollama";
-      els.llmBadge.textContent = ok ? label + " · " + tok + " tok" : label;
+      let label = "LLM: fehlt";
+      if (blocked) label = "LLM: gesperrt";
+      else if (ok) label = "LLM: bereit";
+      els.llmBadge.textContent = label;
       els.llmBadge.classList.toggle("has-key", ok);
       els.llmBadge.classList.toggle("auth-warn", placeholder && !ok);
       els.llmBadge.classList.toggle("auth-bad", blocked || (!ok && !placeholder && sys === "missing"));
@@ -2893,8 +2864,13 @@
     }
 
     lastCanExecute = !!p.can_execute;
+    const hasKey = !!(els.llmBadge && els.llmBadge.classList.contains("has-key"));
     if (els.btnExecute) {
-      els.btnExecute.disabled = !lastCanExecute || chatBusy;
+      els.btnExecute.disabled = !lastCanExecute || chatBusy || !hasKey;
+    }
+    const hint = document.getElementById("execute-hint");
+    if (hint) {
+      hint.hidden = hasKey || !lastCanExecute;
     }
 
     renderBox3Workers(p);
@@ -3437,10 +3413,10 @@
       brainstorm: "Brainstorm",
       memory: "Memory",
       coordinator: de ? "Koordinator" : "Coordinator",
-      worker1: "Worker 1",
-      worker2: "Worker 2",
-      worker3: "Worker 3",
-      worker4: "Worker 4",
+      worker1: de ? "Arbeiter 1" : "Worker 1",
+      worker2: de ? "Arbeiter 2" : "Worker 2",
+      worker3: de ? "Arbeiter 3" : "Worker 3",
+      worker4: de ? "Arbeiter 4" : "Worker 4",
     };
     /* flex omitted on purpose → maybeSpeakFlexSupport */
     const order = [
@@ -3530,7 +3506,10 @@
 
     const p = panel || {};
     const active = !!p.active;
-    root.hidden = !active;
+    const ask = document.getElementById("flex-ask");
+    const askVisible = !!(ask && !ask.hidden);
+    root.hidden = !active || askVisible;
+    if (askVisible) return;
     if (typeof markOwner === "function") markOwner(root, "flex");
     else root.dataset.agent = "flex";
     root.classList.toggle("is-active", active);
@@ -3691,10 +3670,10 @@
       }
       // Do NOT speak after await — gesture is gone (Chrome blocks it)
       renderCards();
-      toast(on ? "TTS on: " + (a.label || id) : "TTS off: " + (a.label || id), on ? "ok" : "info");
+      toast(on ? "Sprache an: " + (a.label || id) : "Sprache aus: " + (a.label || id), on ? "ok" : "info");
     } catch (err) {
-      appendChat("system", "TTS save failed: " + err.message);
-      toast("TTS save failed", "error");
+      appendChat("system", "Sprache speichern fehlgeschlagen: " + err.message);
+      toast("Sprache speichern fehlgeschlagen", "error");
     }
   }
 
@@ -3826,6 +3805,15 @@
         resetSlider(btn.getAttribute("data-reset"));
       });
     });
+    const tts = document.getElementById("tune-tts");
+    if (tts && !tts._bound) {
+      tts._bound = true;
+      tts.addEventListener("change", function () {
+        if (tuneAgentId && typeof setAgentTts === "function") {
+          setAgentTts(tuneAgentId, !!tts.checked);
+        }
+      });
+    }
   }
 
   async function saveTuneModal() {
@@ -3881,14 +3869,14 @@
       );
       applyAgentsFromServer([data]);
       closeTuneModal();
-      toast("Agent tuning saved", "ok");
+      toast("Regler gespeichert", "ok");
       try {
         await api("POST", "/api/save");
       } catch (_e) {
         /* optional */
       }
     } catch (err) {
-      toast("Tune failed: " + err.message, "error");
+      toast("Regler fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -5136,7 +5124,7 @@
         ul.appendChild(li);
       });
     } catch (err) {
-      toast("Vector list failed: " + err.message, "error");
+      toast("Vektor-Liste fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -5157,7 +5145,7 @@
       );
       await refreshVectorList();
     } catch (err) {
-      toast("Embedder switch failed: " + err.message, "error");
+      toast("Embedder wechseln fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -5166,7 +5154,7 @@
     const hitsEl = document.getElementById("vector-hits");
     const q = qEl ? String(qEl.value || "").trim() : "";
     if (!q) {
-      toast("Enter a search query", "info");
+      toast("Suchbegriff eingeben", "info");
       return;
     }
     try {
@@ -5192,7 +5180,7 @@
         })
         .join("\n");
     } catch (err) {
-      toast("Vector search failed: " + err.message, "error");
+      toast("Vektor-Suche fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -5200,7 +5188,7 @@
     const input = document.getElementById("vector-add-input");
     const text = input ? String(input.value || "").trim() : "";
     if (!text) {
-      toast("Enter text to add", "info");
+      toast("Text zum Speichern eingeben", "info");
       return;
     }
     try {
@@ -5215,9 +5203,9 @@
         if (countEl) countEl.textContent = "Docs: " + (data.count || 0);
       }
       await refreshVectorList();
-      toast("Vector doc " + (data.id || "added"), "ok");
+      toast("Vektor-Eintrag " + (data.id || "gespeichert"), "ok");
     } catch (err) {
-      toast("Vector add failed: " + err.message, "error");
+      toast("Vektor speichern fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -5226,22 +5214,22 @@
     try {
       await api("DELETE", "/api/vector/" + encodeURIComponent(id));
       await refreshVectorList();
-      toast("Deleted " + id, "ok");
+      toast("Gelöscht " + id, "ok");
     } catch (err) {
-      toast("Vector delete failed: " + err.message, "error");
+      toast("Vektor löschen fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function clearVectorStore() {
-    if (!confirm("Clear ALL vector docs?")) return;
+    if (!confirm("Alle Vektor-Einträge leeren?")) return;
     try {
       await api("POST", "/api/vector/clear");
       await refreshVectorList();
       const hitsEl = document.getElementById("vector-hits");
       if (hitsEl) hitsEl.textContent = "Search hits appear here.";
-      toast("Vector store cleared", "ok");
+      toast("Vektor-Speicher geleert", "ok");
     } catch (err) {
-      toast("Vector clear failed: " + err.message, "error");
+      toast("Vektor leeren fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -5305,7 +5293,7 @@
 
   async function saveWorkerPresetFromTune() {
     if (!tuneAgentId || tuneAgentId.indexOf("worker") !== 0) {
-      toast("Open a Worker card to save a worker preset", "info");
+      toast("Arbeiter-Karte öffnen, um ein Preset zu speichern", "info");
       return;
     }
     const name = prompt("Preset name:", tuneAgentId + "-preset");
@@ -5322,7 +5310,7 @@
         "ok"
       );
     } catch (err) {
-      toast("Preset save failed: " + err.message, "error");
+      toast("Preset speichern fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -5560,7 +5548,7 @@
   async function onFlexSelectChange() {
     if (!els.flexSelect) return;
     els.flexSelect.value = "personal";
-    toast("Flex is fixed — personal companion only", "info");
+    toast("Flex bleibt an — persönlicher Begleiter", "info");
   }
 
 
@@ -5636,7 +5624,7 @@
         }
       }
     } catch (err) {
-      toast("Skills load failed: " + err.message, "error");
+      toast("Skills laden fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -5648,17 +5636,17 @@
       toast((enable ? "Enabled " : "Disabled ") + id, "ok");
       await refreshSkillsModal();
     } catch (err) {
-      toast("Skill toggle failed: " + err.message, "error");
+      toast("Skill umschalten fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function reloadSkills() {
     try {
       const data = await api("POST", "/api/skills/reload");
-      toast("Skills reloaded: " + ((data.skills || []).length), "ok");
+      toast("Skills neu geladen: " + ((data.skills || []).length), "ok");
       await refreshSkillsModal();
     } catch (err) {
-      toast("Skills reload failed: " + err.message, "error");
+      toast("Skills neu laden fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -5666,16 +5654,16 @@
     const input = document.getElementById("skills-install-path");
     const path = input ? String(input.value || "").trim() : "";
     if (!path) {
-      toast("Enter a local skill folder path", "info");
+      toast("Lokalen Skill-Ordner angeben", "info");
       return;
     }
     try {
       const data = await api("POST", "/api/skills/install", { path: path });
-      toast("Installed skill: " + (data.id || path), "ok");
+      toast("Skill installiert: " + (data.id || path), "ok");
       if (input) input.value = "";
       await refreshSkillsModal();
     } catch (err) {
-      toast("Install failed: " + err.message, "error");
+      toast("Installieren fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -5686,23 +5674,23 @@
       toast("Skill gespeichert: " + (data.id || "learned"), "ok");
       await refreshSkillsModal();
     } catch (err) {
-      toast("Learn failed: " + err.message, "error");
+      toast("Lernen fehlgeschlagen: " + err.message, "error");
     }
   }
 
 
   async function installNeuralEmbedder() {
-    toast("Installing neural embeddings…", "info");
+    toast("Neuronale Embeddings werden installiert…", "info");
     try {
       const data = await api("POST", "/api/vector/embedder/install");
       if (data && data.ok === false) {
-        toast("Install failed: " + (data.error || "unknown"), "error");
+        toast("Installieren fehlgeschlagen: " + (data.error || "unbekannt"), "error");
         return;
       }
-      toast("Neural package OK — pick fastembed + Apply", "ok");
+      toast("Neural-Paket ok — fastembed wählen und Übernehmen", "ok");
       await refreshVectorList();
     } catch (err) {
-      toast("Install failed: " + err.message, "error");
+      toast("Installieren fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -5780,7 +5768,7 @@
           " hits · local catalog · rebuild: python scripts/build_docs_index.py";
       }
     } catch (err) {
-      toast("Docs search failed: " + err.message, "error");
+      toast("Doku-Suche fehlgeschlagen: " + err.message, "error");
     }
   }
 /* part: 08-chat-jobs.js — edit parts, run scripts/build_ui_js.py */
@@ -5867,7 +5855,7 @@
   }
 
   async function _cycleFlexPreset() {
-    toast("Flex is fixed — personal companion only", "info");
+    toast("Flex bleibt an — persönlicher Begleiter", "info");
   }
 
   async function toggleAgent(id) {
@@ -5886,7 +5874,7 @@
         renderCards();
       }
     } catch (err) {
-      appendChat("system", "Toggle failed: " + err.message);
+      appendChat("system", "Umschalten fehlgeschlagen: " + err.message);
     }
   }
 
@@ -6078,7 +6066,7 @@
             hideClarify();
           })
           .catch(function (err) {
-            toast("Clarify failed: " + (err.message || err), "error");
+            toast("Rückfrage fehlgeschlagen: " + (err.message || err), "error");
           });
       }
       return;
@@ -6246,8 +6234,8 @@
       els.btnSend.textContent = chatBusy ? "…" : "Senden";
     }
     if (els.btnExecute) {
-      // Must re-apply can_execute when busy ends — applySnapshot often ran while busy=true
-      els.btnExecute.disabled = !lastCanExecute || chatBusy;
+      const hasKey = !!(els.llmBadge && els.llmBadge.classList.contains("has-key"));
+      els.btnExecute.disabled = !lastCanExecute || chatBusy || !hasKey;
     }
     const btnSendExec = document.getElementById("btn-send-exec");
     if (btnSendExec) btnSendExec.disabled = chatBusy;
@@ -6261,7 +6249,7 @@
     if (els.chatInput) els.chatInput.disabled = chatBusy;
     if (els.stageBadge) {
       if (chatBusy) {
-        els.stageBadge.textContent = "running…";
+        els.stageBadge.textContent = "läuft…";
       } else if (activeStage) {
         // Restore real stage — otherwise badge stays on "running…" and UI feels frozen
         els.stageBadge.textContent = activeStage;
@@ -6408,7 +6396,7 @@
       return e.id === id;
     });
     if (!entry) {
-      toast("History entry not found", "info");
+      toast("Verlaufseintrag nicht gefunden", "info");
       return;
     }
     lastWorkerOutputs = entry.outputs || [];
@@ -6422,12 +6410,12 @@
       re.dataset.historyId = entry.id;
     }
     focusBox3();
-    toast("Restored: " + (entry.label || id), "ok");
+    toast("Wiederhergestellt: " + (entry.label || id), "ok");
   }
 
   function exportResultHistory() {
     if (!resultHistory.length) {
-      toast("No history to export", "info");
+      toast("Kein Verlauf zum Exportieren", "info");
       return;
     }
     const lines = ["# Gnom-Hub result history", ""];
@@ -6456,19 +6444,19 @@
       URL.revokeObjectURL(a.href);
       a.remove();
     }, 500);
-    toast("History exported (" + resultHistory.length + " runs)", "ok");
+    toast("Verlauf exportiert (" + resultHistory.length + " Läufe)", "ok");
   }
 
   async function _rerunWorker(workerId) {
     if (chatBusy) {
-      toast("Busy — wait for current job", "info");
+      toast("Beschäftigt — warte auf den laufenden Job", "info");
       return;
     }
     const wid = String(workerId || "").toLowerCase();
     if (!wid) return;
     setChatBusy(true);
-    appendChat("system", "Re-run " + wid + "…");
-    toast("Re-running " + wid + "…", "info");
+    appendChat("system", "Nochmal " + wid + "…");
+    toast("Nochmal: " + wid + "…", "info");
     try {
       const live =
         els.llmBadge && els.llmBadge.classList.contains("has-key");
@@ -6481,13 +6469,13 @@
         const job = await pollJob(start.job_id, live ? 180000 : 30000);
         snap = job.snapshot || (await api("GET", "/api/state"));
         if (job.status === "error") {
-          appendChat("system", "Re-run error: " + (job.error || "?"));
+          appendChat("system", "Nochmal-Fehler: " + (job.error || "?"));
           toast(job.error || "Re-run failed", "error");
           applySnapshot(snap);
           return;
         }
         if (job.status === "cancelled") {
-          appendChat("system", "Re-run cancelled.");
+          appendChat("system", "Nochmal abgebrochen.");
           applySnapshot(snap);
           return;
         }
@@ -6495,7 +6483,7 @@
       applySnapshot(snap);
       const stage = (snap.pipeline && snap.pipeline.stage) || "";
       if (stage === "done") {
-        appendChat("system", "Re-run done: " + wid);
+        appendChat("system", "Nochmal fertig: " + wid);
         toast(wid + " re-run done", "ok");
         focusBox3();
         try {
@@ -6512,8 +6500,8 @@
         );
       }
     } catch (err) {
-      appendChat("system", "Re-run failed: " + err.message);
-      toast("Re-run failed: " + err.message, "error");
+      appendChat("system", "Nochmal fehlgeschlagen: " + err.message);
+      toast("Nochmal fehlgeschlagen: " + err.message, "error");
     } finally {
       setChatBusy(false);
       currentJobId = null;
@@ -6522,7 +6510,7 @@
 
   async function reexecFromHistory() {
     if (chatBusy) {
-      toast("Busy — wait for current job", "info");
+      toast("Beschäftigt — warte auf den laufenden Job", "info");
       return;
     }
     const re = document.getElementById("btn-reexec");
@@ -6533,14 +6521,14 @@
       return e.id === pick;
     });
     if (!entry) {
-      toast("Pick a History entry first", "info");
+      toast("Zuerst einen Verlaufseintrag wählen", "info");
       return;
     }
     if (!(entry.user_text || entry.brainstorm_notes)) {
-      toast("This history entry has no brainstorm to re-run (pre-2.0 entry)", "info");
+      toast("Dieser Verlauf hat kein Brainstorm zum erneuten Bauen", "info");
       return;
     }
-    appendChat("system", "Re-Exec from history: " + (entry.label || entry.id));
+    appendChat("system", "Nochmal aus Verlauf: " + (entry.label || entry.id));
     setChatBusy(true);
     try {
       const start = await api("POST", "/api/reexecute", {
@@ -6553,15 +6541,15 @@
         const job = await pollJob(start.job_id, 180000);
         snap = job.snapshot || (await api("GET", "/api/state"));
         if (job.status === "error") {
-          appendChat("system", "Re-Exec error: " + (job.error || "?"));
+          appendChat("system", "Nochmal-Fehler: " + (job.error || "?"));
           toast(job.error || "Re-Exec error", "error");
           return;
         }
       }
       applySnapshot(snap);
       if (snap.pipeline && snap.pipeline.stage === "done") {
-        appendChat("system", "Re-Exec done — see Box 3.");
-        toast("Re-Exec done", "ok");
+        appendChat("system", "Nochmal fertig — siehe Box 3.");
+        toast("Nochmal fertig", "ok");
         focusBox3();
         try {
           pushResultHistory(snap.pipeline || {}, {
@@ -6569,12 +6557,12 @@
           });
         } catch (_h) {}
       } else if (snap.pipeline && snap.pipeline.stage === "clarify") {
-        appendChat("system", "Clarify needed in Box 1.");
-        toast("Clarify needed", "info");
+        appendChat("system", "Rückfrage in Box 1.");
+        toast("Rückfrage in Box 1", "info");
       }
     } catch (err) {
-      appendChat("system", "Re-Exec failed: " + err.message);
-      toast("Re-Exec failed: " + err.message, "error");
+      appendChat("system", "Nochmal fehlgeschlagen: " + err.message);
+      toast("Nochmal fehlgeschlagen: " + err.message, "error");
     } finally {
       setChatBusy(false);
     }
@@ -6597,7 +6585,7 @@
     if (!list || !list.length) {
       const li = document.createElement("li");
       li.className = "muted";
-      li.textContent = "(no HOT facts yet)";
+      li.textContent = "(noch keine HOT-Fakten)";
       ul.appendChild(li);
       return;
     }
@@ -6640,30 +6628,30 @@
     const input = document.getElementById("sys-hot-input");
     const text = input ? String(input.value || "").trim() : "";
     if (!text) {
-      toast("Enter a HOT fact", "info");
+      toast("HOT-Fakt eingeben", "info");
       return;
     }
     try {
       const data = await api("POST", "/api/memory/hot", { text: text });
       if (input) input.value = "";
       await renderHotList(data.facts);
-      toast(data.ok ? "HOT fact added" : "Already present", "ok");
+      toast(data.ok ? "HOT-Fakt gespeichert" : "Schon vorhanden", "ok");
     } catch (err) {
-      toast("HOT add failed: " + err.message, "error");
+      toast("HOT speichern fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function deleteHotFact(text) {
-    if (!confirm("Delete HOT fact: " + String(text || "").slice(0, 60) + "?")) return;
+    if (!confirm("HOT-Fakt löschen: " + String(text || "").slice(0, 60) + "?")) return;
     try {
       const data = await api(
         "DELETE",
         "/api/memory/hot?text=" + encodeURIComponent(text || "")
       );
       await renderHotList(data.facts);
-      toast("HOT fact removed", "ok");
+      toast("HOT-Fakt entfernt", "ok");
     } catch (err) {
-      toast("HOT delete failed: " + err.message, "error");
+      toast("HOT löschen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -6679,18 +6667,18 @@
         "ok"
       );
     } catch (err) {
-      toast("Promote failed: " + err.message, "error");
+      toast("Hochstufen fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function clearHotFacts() {
-    if (!confirm("Clear all HOT session facts?")) return;
+    if (!confirm("Alle HOT-Sitzungsfakten leeren?")) return;
     try {
       await api("POST", "/api/memory/hot/clear");
       await renderHotList([]);
-      toast("HOT facts cleared", "ok");
+      toast("HOT-Fakten geleert", "ok");
     } catch (err) {
-      toast("HOT clear failed: " + err.message, "error");
+      toast("HOT leeren fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -6722,7 +6710,7 @@
     if (!list || !list.length) {
       const li = document.createElement("li");
       li.className = "muted";
-      li.textContent = "(no WARM facts yet)";
+      li.textContent = "(noch keine WARM-Fakten)";
       ul.appendChild(li);
       return;
     }
@@ -6759,41 +6747,41 @@
     const input = document.getElementById("sys-warm-input");
     const text = input ? String(input.value || "").trim() : "";
     if (!text) {
-      toast("Enter a WARM fact", "info");
+      toast("WARM-Fakt eingeben", "info");
       return;
     }
     try {
       const data = await api("POST", "/api/memory/warm", { text: text });
       if (input) input.value = "";
       await renderWarmList(data.warm_facts);
-      toast(data.ok ? "WARM fact added" : "Already present", "ok");
+      toast(data.ok ? "WARM-Fakt gespeichert" : "Schon vorhanden", "ok");
     } catch (err) {
-      toast("WARM add failed: " + err.message, "error");
+      toast("WARM speichern fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function deleteWarmFact(index, text) {
-    if (!confirm("Delete WARM fact: " + String(text || "").slice(0, 60) + "?")) return;
+    if (!confirm("WARM-Fakt löschen: " + String(text || "").slice(0, 60) + "?")) return;
     try {
       const data = await api(
         "DELETE",
         "/api/memory/warm?text=" + encodeURIComponent(text || "")
       );
       await renderWarmList(data.warm_facts);
-      toast("WARM fact removed", "ok");
+      toast("WARM-Fakt entfernt", "ok");
     } catch (err) {
-      toast("WARM delete failed: " + err.message, "error");
+      toast("WARM löschen fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function clearWarmFacts() {
-    if (!confirm("Clear ALL WARM facts?")) return;
+    if (!confirm("Alle WARM-Fakten leeren?")) return;
     try {
       await api("POST", "/api/memory/warm/clear");
       await renderWarmList([]);
-      toast("WARM cleared", "ok");
+      toast("WARM geleert", "ok");
     } catch (err) {
-      toast("WARM clear failed: " + err.message, "error");
+      toast("WARM leeren fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -6914,10 +6902,10 @@
         "/api/session/packs/" + encodeURIComponent(name) + "/import"
       );
       applySnapshot(snap);
-      appendChat("system", "Loaded pack: " + name);
-      toast("Pack loaded", "ok");
+      appendChat("system", "Pack geladen: " + name);
+      toast("Pack geladen", "ok");
     } catch (err) {
-      toast("Pack load failed: " + err.message, "error");
+      toast("Pack laden fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -6927,7 +6915,7 @@
     if (next === null) return;
     next = String(next).trim().slice(0, 80);
     if (!next) {
-      toast("Label required", "error");
+      toast("Name fehlt", "error");
       return;
     }
     let notesNext = window.prompt(
@@ -6943,9 +6931,9 @@
         { label: next, notes: notesNext }
       );
       await renderPackList(data.packs);
-      toast("Pack updated", "ok");
+      toast("Pack aktualisiert", "ok");
     } catch (err) {
-      toast("Pack rename failed: " + err.message, "error");
+      toast("Pack umbenennen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -6965,9 +6953,9 @@
       a.download = name;
       a.click();
       URL.revokeObjectURL(a.href);
-      toast("Pack downloaded", "ok");
+      toast("Pack heruntergeladen", "ok");
     } catch (err) {
-      toast("Pack download failed: " + err.message, "error");
+      toast("Pack herunterladen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -6979,9 +6967,9 @@
         "/api/session/packs/" + encodeURIComponent(name)
       );
       await renderPackList(data.packs);
-      toast("Pack deleted", "ok");
+      toast("Pack gelöscht", "ok");
     } catch (err) {
-      toast("Pack delete failed: " + err.message, "error");
+      toast("Pack löschen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -7020,7 +7008,7 @@
         "ok"
       );
     } catch (err) {
-      toast("Pack export failed: " + err.message, "error");
+      toast("Pack exportieren fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -7043,10 +7031,10 @@
       });
       applySnapshot(snap);
       await renderPackList();
-      appendChat("system", "Session pack imported: " + (pack.label || file.name));
-      toast("Session pack imported + stored", "ok");
+      appendChat("system", "Sitzungs-Pack importiert: " + (pack.label || file.name));
+      toast("Sitzungs-Pack importiert und gespeichert", "ok");
     } catch (err) {
-      toast("Pack import failed: " + err.message, "error");
+      toast("Pack importieren fehlgeschlagen: " + err.message, "error");
     } finally {
       if (ev.target) ev.target.value = "";
     }
@@ -7265,11 +7253,23 @@
       !isYou && !isSys && typeof ownerColorFor === "function"
         ? ownerColorFor(whoKey)
         : "";
+    const WHO_DE = {
+      you: "Du",
+      system: "System",
+      brainstorm: "Brainstorm",
+      memory: "Memory",
+      flex: "Flex",
+      coordinator: "Koordinator",
+      worker1: "Arbeiter 1",
+      worker2: "Arbeiter 2",
+      worker3: "Arbeiter 3",
+      worker4: "Arbeiter 4",
+    };
     label.className =
-      "chat-who-label mr-1 text-2xs font-semibold uppercase tracking-wide " +
+      "chat-who-label mr-1 text-2xs font-semibold tracking-wide " +
       (isYou ? "text-gnom-accent" : isSys ? "text-gnom-muted" : "");
     if (whoHex) label.style.color = whoHex;
-    label.textContent = who;
+    label.textContent = WHO_DE[whoKey] || who;
     bubble.appendChild(label);
     const body = document.createElement("span");
     body.className = "chat-text whitespace-pre-wrap break-words";
@@ -7415,16 +7415,6 @@
             renderCards();
             updateBoxBorders();
           }
-          if (
-            stage !== "worker1" &&
-            stage !== "worker2" &&
-            stage !== "worker3" &&
-            stage !== "worker4"
-          ) {
-            appendChat("system", "Stage: " + stage);
-          } else {
-            appendChat("system", "Worker: " + stage);
-          }
         }
         if (job.snapshot) {
           applySnapshot(job.snapshot);
@@ -7493,7 +7483,7 @@
             encodeURIComponent(jobId) +
             "/cancel?as_timeout=1"
         );
-        appendChat("system", "FEHLER — client poll timeout — cancel requested.");
+        appendChat("system", "FEHLER — Wartezeit abgelaufen, Abbruch angefordert.");
       } catch (_c) {
         /* ignore */
       }
@@ -7541,8 +7531,8 @@
       try {
         const r = await api("POST", "/api/jobs/cancel-busy");
         if (r && r.busy) {
-          toast("Cancel requested — warte bis Pipeline frei…", "info");
-          appendChat("system", "Cancel busy job " + ((r.cancelled && r.cancelled.id) || ""));
+          toast("Abbruch angefordert — warte bis die Pipeline frei ist…", "info");
+          appendChat("system", "Laufenden Job abbrechen " + ((r.cancelled && r.cancelled.id) || ""));
           showBusyBanner({
             busy_job_id: (r.cancelled && r.cancelled.id) || "?",
             busy_stage: "cancelling",
@@ -7554,21 +7544,21 @@
             free ? "Pipeline frei" : "Cancel läuft noch (LLM kann warten)",
             free ? "ok" : "info"
           );
-          if (free) appendChat("system", "Pipeline free — ready.");
+          if (free) appendChat("system", "Pipeline frei.");
         } else {
-          toast("No running job", "info");
+          toast("Kein laufender Job", "info");
           hideBusyBanner();
         }
         await resyncState();
       } catch (err) {
-        toast("Cancel failed: " + err.message, "error");
+        toast("Abbrechen fehlgeschlagen: " + err.message, "error");
       }
       return;
     }
     try {
       await api("POST", "/api/jobs/" + encodeURIComponent(jid) + "/cancel");
-      toast("Cancel requested — warte bis Pipeline frei…", "info");
-      appendChat("system", "Cancel requested for job " + jid);
+      toast("Abbruch angefordert — warte bis die Pipeline frei ist…", "info");
+      appendChat("system", "Abbruch angefordert für Job " + jid);
       showBusyBanner({
         busy_job_id: jid,
         busy_stage: "cancelling",
@@ -7580,10 +7570,10 @@
         free ? "Pipeline frei" : "Cancel läuft noch (LLM kann warten)",
         free ? "ok" : "info"
       );
-      if (free) appendChat("system", "Pipeline free — ready.");
+      if (free) appendChat("system", "Pipeline frei.");
       await resyncState();
     } catch (err) {
-      toast("Cancel failed: " + err.message, "error");
+      toast("Abbrechen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -7825,13 +7815,18 @@
       btn.setAttribute("aria-checked", id === sendTarget ? "true" : "false");
       btn.textContent =
         id === "brainstorm"
-          ? "BS"
+          ? "Brain"
           : id === "coordinator"
-            ? "Co"
+            ? "Plan"
             : id === "flex"
               ? "Flex"
-              : id.replace("worker", "W");
-      btn.title = "Senden an " + id;
+              : id.replace("worker", "");
+      btn.title = "Senden an " + (
+        id === "brainstorm" ? "Brainstorm"
+          : id === "coordinator" ? "Koordinator"
+            : id === "flex" ? "Flex"
+              : "Arbeiter " + id.replace("worker", "")
+      );
       if (typeof COLOR_HEX !== "undefined" && COLOR_HEX[id]) {
         btn.style.setProperty("--owner-color", COLOR_HEX[id]);
       }
@@ -7842,6 +7837,13 @@
           el.classList.toggle("is-on", on);
           el.setAttribute("aria-checked", on ? "true" : "false");
         });
+        if (typeof paintChatPlaceholder === "function") paintChatPlaceholder();
+        if (typeof renderCards === "function") {
+          document.querySelectorAll(".agent-card").forEach(function (card) {
+            const on = card.dataset.agentId === sendTarget;
+            card.classList.toggle("is-target", on);
+          });
+        }
       });
       root.appendChild(btn);
     });
@@ -7865,7 +7867,7 @@
     setChatBusy(true);
     // Prefer long poll always for async jobs (badge may lag bootstrap)
     const pollMs = 180000;
-    appendChat("system", "Send → " + target + "…", target);
+    appendChat("system", "Senden → " + target + "…", target);
     toast("Send = " + target + " · keine Ausführung", "info");
 
     function applySendSnap(snap) {
@@ -7898,14 +7900,14 @@
         const job = await pollJob(start.job_id, pollMs);
         snap = job.snapshot || (await api("GET", "/api/state"));
         if (job.status === "error") {
-          appendChat("system", "Brainstorm error: " + (job.error || "?"), target);
+          appendChat("system", "Brainstorm-Fehler: " + (job.error || "?"), target);
           toast(job.error || "Brainstorm error", "error");
           applySendSnap(snap);
           return;
         }
         if (job.status === "cancelled") {
-          appendChat("system", "Job cancelled.", target);
-          toast("Cancelled", "info");
+          appendChat("system", "Job abgebrochen.", target);
+        toast("Abgebrochen", "info");
           hideBusyBanner();
           applySendSnap(snap);
           return;
@@ -7940,18 +7942,18 @@
         }
         focusBox3();
       } else if (stage === "clarify") {
-        appendChat("system", "Need a clarify answer in Box 1.", target);
-        toast("Clarify needed in Box 1", "info");
+        appendChat("system", "Rückfrage in Box 1 beantworten.", target);
+        toast("Rückfrage in Box 1", "info");
       } else if (stage === "cancelled") {
-        appendChat("system", "Job cancelled.", target);
-        toast("Cancelled", "info");
+        appendChat("system", "Job abgebrochen.", target);
+        toast("Abgebrochen", "info");
       }
     } catch (err) {
       if (err && (err.status === 409 || (err.detail && err.detail.busy))) {
         handleBusyError(err, text);
       } else {
-        appendChat("system", "Chat failed: " + err.message, target);
-        toast("Chat failed: " + err.message, "error");
+        appendChat("system", "Senden fehlgeschlagen: " + err.message, target);
+        toast("Senden fehlgeschlagen: " + err.message, "error");
       }
     } finally {
       setChatBusy(false);
@@ -7961,19 +7963,26 @@
 
   async function runExecute() {
     if (chatBusy) return;
+    const hasKey = !!(els.llmBadge && els.llmBadge.classList.contains("has-key"));
+    if (!hasKey) {
+      toast("Key fehlt. In System eintragen, dann Arbeit starten.", "error");
+      const hint = document.getElementById("execute-hint");
+      if (hint) hint.hidden = false;
+      return;
+    }
     if (els.btnExecute && els.btnExecute.disabled) {
-      toast("Brainstorm first, then Execute", "info");
+      toast("Zuerst senden, dann Arbeit starten", "info");
       return;
     }
     setChatBusy(true);
-    appendChat("system", "Execute started (distill → flex → workers)…");
+    appendChat("system", "Arbeit gestartet…");
     try {
       await persistActiveFlagsAsWishes();
     } catch (_e) {
       /* non-fatal */
     }
 
-    toast("Executing…", "info");
+    toast("Arbeit läuft…", "info");
     try {
       const start = await api("POST", "/api/execute");
       let snap = start;
@@ -7981,14 +7990,14 @@
         const job = await pollJob(start.job_id, 300000);
         snap = job.snapshot || (await api("GET", "/api/state"));
         if (job.status === "error") {
-          appendChat("system", "Execute error: " + (job.error || "?"));
-          toast(job.error || "Execute error", "error");
+          appendChat("system", "Fehler: " + (job.error || "?"));
+          toast(job.error || "Fehler", "error");
           applySnapshot(snap);
           return;
         }
         if (job.status === "cancelled") {
-          appendChat("system", "Execute cancelled.");
-          toast("Cancelled", "info");
+          appendChat("system", "Arbeit abgebrochen.");
+          toast("Abgebrochen", "info");
           applySnapshot(snap);
           return;
         }
@@ -8003,15 +8012,15 @@
         if (okDeliverable) {
           appendChat(
             "system",
-            "Execute done in " + formatDuration(dur) + " — see Box 3."
+            "Fertig in " + formatDuration(dur) + " — siehe Box 3."
           );
-          toast("Execute done · " + formatDuration(dur), "ok");
+          toast("Fertig · " + formatDuration(dur), "ok");
         } else {
           appendChat(
             "system",
-            "Execute finished in "
+            "Lauf zu Ende in "
               + formatDuration(dur)
-              + " without a valid deliverable — see Box 3."
+              + " ohne gültige Lieferung — siehe Box 3."
           );
           toast("Kein Deliverable · " + formatDuration(dur), "error");
         }
@@ -8019,7 +8028,7 @@
         try {
           pushResultHistory(snap.pipeline || {}, {
             label:
-              ((snap.pipeline && snap.pipeline.user_text) || "Execute").slice(
+              ((snap.pipeline && snap.pipeline.user_text) || "Arbeit").slice(
                 0,
                 40
               ) +
@@ -8031,17 +8040,17 @@
         }
         try {
           await api("POST", "/api/save");
-          appendChat("system", "Auto-saved HOT + agents.");
+          appendChat("system", "HOT und Agenten automatisch gespeichert.");
         } catch (_e) {
           /* non-fatal */
         }
       } else if (stage === "clarify") {
-        appendChat("system", "Clarify needed in Box 1 before workers finish.");
-        toast("Clarify needed", "info");
+        appendChat("system", "Rückfrage in Box 1, bevor die Arbeiter fertig sind.");
+        toast("Rückfrage in Box 1", "info");
       }
     } catch (err) {
-      appendChat("system", "Execute failed: " + err.message);
-      toast("Execute failed: " + err.message, "error");
+      appendChat("system", "Arbeit fehlgeschlagen: " + err.message);
+      toast("Arbeit fehlgeschlagen: " + err.message, "error");
     } finally {
       setChatBusy(false);
       currentJobId = null;
@@ -8087,15 +8096,15 @@
         "Senden und Enter bedeuten nur reden.",
         "Der Empfänger ist das Flag, nicht die angeklickte Karte.",
         "Kartenklick öffnet Infos. Das Sendeziel bleibt, wo das Flag steht.",
-        "Brain redet frei. Coord plant. Flex fragt nach. A1–A4 sind Worker.",
+        "Brain redet frei. Coord plant. Flex fragt nach. A1–A4 sind Arbeiter.",
         "Läuft schon eine Antwort, bleibt sie dem Agenten zugeordnet, der sie begonnen hat.",
       ],
-      nicht: "Senden startet keine Worker, keine Werkzeuge und keine Dateiänderung.",
+      nicht: "Senden startet keine Arbeiter, keine Werkzeuge und keine Dateiänderung.",
     },
     {
       id: "arbeit",
       label: "Arbeit",
-      wozu: "Die Worker sollen etwas bauen, prüfen oder liefern.",
+      wozu: "Die Arbeiter sollen etwas bauen, prüfen oder liefern.",
       steps: [
         "Auftrag in die Zeile schreiben oder nach dem Gespräch stehen lassen.",
         "Arbeit starten oder Ctrl/⌘+Enter.",
@@ -8104,7 +8113,7 @@
         "Laufenden Job mit Esc oder Abbrechen stoppen.",
       ],
       points: [
-        "Arbeit starten startet Distill und danach die Worker.",
+        "Arbeit starten startet Distill und danach die Arbeiter.",
         "Ohne diesen Knopf (oder Ctrl/⌘+Enter) bleibt es ein Gespräch.",
         "Offene Entscheidungen stehen in Box 1, nicht im Chat versteckt.",
         "Ergebnisse gehören nach Box 3, nicht als JSON in Box 2.",
@@ -8119,13 +8128,13 @@
       steps: [
         "Box 1 links: wenn Gnom fragt, hier klicken oder eine Karte wählen.",
         "Box 2 Mitte: Reiter Brain, Flex, Coord, Mem, A1–A4 — eine Antwort lesen.",
-        "Box 3 rechts: Worker-Ergebnis. Sicht = echte Seite, Code = der Text dahinter.",
-        "Unter den Worker-Reitern: Weg, Neu, Behalten.",
+        "Box 3 rechts: Ergebnis. Sicht = echte Seite, Code = der Text dahinter.",
+        "Unter den Reitern: Weg, Neu, Behalten.",
       ],
       points: [
         "Box 1 ist Rückfrage und Entscheidung, kein Chat-Verlauf.",
         "Box 2 ist die Antwort des gewählten Agenten.",
-        "Box 3 ist die Lieferung der Worker nach Arbeit starten.",
+        "Box 3 ist die Lieferung nach Arbeit starten.",
         "Kurze weiße Namen auf den Reitern. Voller Name steht im Hover.",
         "Scrollen geht, der Balken bleibt unsichtbar.",
       ],
@@ -8155,7 +8164,7 @@
       label: "Dateien",
       wozu: "Ergebnisse behalten, ohne sie ins Git zu schieben.",
       steps: [
-        "In Box 3 den Worker-Reiter wählen, dessen Datei du willst.",
+        "In Box 3 den Reiter wählen, dessen Datei du willst.",
         "Behalten klicken. Erfolg kommt erst nach bestätigtem Rücklesen.",
         "Workspace öffnen: drei Spalten Temp, Dauerhaft, Behalten.",
         "HTML zuerst als Sicht ansehen, daneben Code, wenn du den Text brauchst.",
@@ -8181,7 +8190,7 @@
       ],
       points: [
         "Enter und Senden sind dieselbe Tat: reden.",
-        "Ctrl/⌘+Enter und Arbeit starten sind dieselbe Tat: Worker.",
+        "Ctrl/⌘+Enter und Arbeit starten sind dieselbe Tat: liefern.",
         "Das Mikrofon bleibt an, bis du es ausklickst. Es sendet nicht von allein.",
         "Sprache (Vorlesen) spricht Antworten, startet aber keine Arbeit.",
         "Kleine Fenster: dieselben Tasten, dieselben drei Boxen.",
@@ -8286,9 +8295,9 @@
     if (!name) return;
     if (
       !confirm(
-        'Restore backup "' +
+        'Backup "' +
           name +
-          '"? Current HOT is archived to COLD if non-empty. HOT/WARM/agents will be replaced.'
+          '" wiederherstellen? Aktuelles HOT geht nach COLD, wenn es nicht leer ist. HOT/WARM/Agenten werden ersetzt.'
       )
     ) {
       return;
@@ -8301,27 +8310,27 @@
       applySnapshot(snap);
       appendChat(
         "system",
-        "Restored backup: " + (snap.restored_backup || name)
+        "Backup wiederhergestellt: " + (snap.restored_backup || name)
       );
       toast(
-        "Backup restored" +
-          (snap.checkpoint_loaded ? " (+ checkpoint)" : ""),
+        "Backup wiederhergestellt" +
+          (snap.checkpoint_loaded ? " (+ Checkpoint)" : ""),
         "ok"
       );
       openSystemModal();
     } catch (err) {
-      toast("Restore backup failed: " + err.message, "error");
+      toast("Backup wiederherstellen fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function deleteBackupByName(name) {
-    if (!name || !confirm('Delete backup "' + name + '"?')) return;
+    if (!name || !confirm('Backup "' + name + '" löschen?')) return;
     try {
       await api("DELETE", "/api/backups/" + encodeURIComponent(name));
-      toast("Backup deleted", "ok");
+      toast("Backup gelöscht", "ok");
       openSystemModal();
     } catch (err) {
-      toast("Delete backup failed: " + err.message, "error");
+      toast("Backup löschen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -8337,7 +8346,7 @@
       const snap = await api("POST", "/api/reset");
       applySnapshot(snap);
       setBox2("Noch keine Antwort. Senden = reden.");
-      setBox3("Noch kein Ergebnis. Arbeit starten legt die Worker-Seiten hier ab.");
+      setBox3("Noch kein Ergebnis. Arbeit starten legt die Seiten hier ab.");
       hideClarify();
       appendChat("system", "Sitzung neu (HOT nach COLD, wenn nicht leer).");
       toast("Sitzung neu", "ok");
@@ -8433,7 +8442,7 @@
         els.coldList.appendChild(li);
       });
     } catch (err) {
-      toast("COLD list failed: " + err.message, "error");
+      toast("COLD-Liste fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -8461,20 +8470,20 @@
       }
       if (els.coldDetail) els.coldDetail.textContent = lines.join("\n");
     } catch (err) {
-      toast("COLD load failed: " + err.message, "error");
+      toast("COLD laden fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function restoreSelectedCold() {
     if (!selectedColdId) {
-      toast("Select a COLD archive first", "info");
+      toast("Zuerst ein COLD-Archiv wählen", "info");
       return;
     }
     if (
       !confirm(
-        'Restore COLD "' +
+        'COLD "' +
           selectedColdId +
-          '" into HOT? Current HOT is archived first if non-empty.'
+          '" nach HOT holen? Aktuelles HOT wird zuerst archiviert, wenn es nicht leer ist.'
       )
     ) {
       return;
@@ -8493,13 +8502,13 @@
       toast("COLD restored to HOT", "ok");
       await openColdBrowser();
     } catch (err) {
-      toast("COLD restore failed: " + err.message, "error");
+      toast("COLD wiederherstellen fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function deleteSelectedCold() {
     if (!selectedColdId) {
-      toast("Select a COLD archive first", "info");
+      toast("Zuerst ein COLD-Archiv wählen", "info");
       return;
     }
     if (!confirm('Delete COLD archive "' + selectedColdId + '"?')) return;
@@ -8513,13 +8522,13 @@
       toast("COLD deleted", "ok");
       await openColdBrowser();
     } catch (err) {
-      toast("COLD delete failed: " + err.message, "error");
+      toast("COLD löschen fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function onClarify(answer) {
     if (chatBusy) {
-      toast("Busy — wait for current job", "info");
+      toast("Beschäftigt — warte auf den laufenden Job", "info");
       return;
     }
     const cb = w.GnomHub.onClarify;
@@ -8533,7 +8542,7 @@
         const job = await pollJob(start.job_id, 180000);
         snap = job.snapshot || (await api("GET", "/api/state"));
         if (job.status === "error") {
-          appendChat("system", "Clarify error: " + (job.error || "?"));
+          appendChat("system", "Rückfrage-Fehler: " + (job.error || "?"));
           toast(job.error || "Clarify failed", "error");
           // Re-show clarify UI if still needed
           applySnapshot(snap);
@@ -8559,14 +8568,14 @@
           "system",
           "Clarify → Later: parked (no workers). Task stays in notes; Send again when ready."
         );
-        toast("Clarify deferred — no zombie job", "info");
+        toast("Rückfrage später — kein hängender Job", "info");
       } else if (snap.pipeline && snap.pipeline.stage === "done") {
-        appendChat("system", "Pipeline done.");
-        toast("Pipeline done", "ok");
+        appendChat("system", "Pipeline fertig.");
+        toast("Pipeline fertig", "ok");
       }
     } catch (err) {
-      appendChat("system", "Clarify failed: " + err.message);
-      toast("Clarify failed: " + err.message, "error");
+      appendChat("system", "Rückfrage fehlgeschlagen: " + err.message);
+      toast("Rückfrage fehlgeschlagen: " + err.message, "error");
       // Restore buttons/state so user can retry
       await resyncState();
     } finally {
@@ -8630,7 +8639,7 @@
 
   async function resumeDeferredClarify(index) {
     if (chatBusy) {
-      toast("Busy — wait for current job", "info");
+      toast("Beschäftigt — warte auf den laufenden Job", "info");
       return;
     }
     setChatBusy(true);
@@ -8642,11 +8651,11 @@
       applySnapshot(snap);
       if (snap.pipeline && snap.pipeline.pending_question) {
         showClarify(snap.pipeline.pending_question.text);
-        appendChat("system", "Clarify resumed — answer Yes/No/Whatever/Later.");
-        toast("Clarify resumed", "ok");
+        appendChat("system", "Rückfrage fortgesetzt — Ja/Nein/Egal/Später.");
+        toast("Rückfrage fortgesetzt", "ok");
       }
     } catch (err) {
-      toast("Resume failed: " + err.message, "error");
+      toast("Fortsetzen fehlgeschlagen: " + err.message, "error");
       await resyncState();
     } finally {
       setChatBusy(false);
@@ -8662,10 +8671,10 @@
     const id = String(role || "").toLowerCase();
     if (id === "brainstorm") return "Brain";
     if (id === "flex") return "Flex";
-    if (id === "coordinator") return "Coord";
+    if (id === "coordinator") return "Plan";
     if (id === "memory") return "Mem";
     const wm = /^worker(\d+)$/.exec(id);
-    if (wm) return "A" + wm[1];
+    if (wm) return wm[1];
     return "Antw";
   }
 
@@ -8717,10 +8726,15 @@
     }
     const box = document.getElementById("box2");
     host.textContent = "";
-    if (!answers.length) {
+    if (answers.length < 2) {
       host.hidden = true;
-      box2ReplyAgent = "";
       if (box) box.classList.remove("box2-has-tabs");
+      if (answers.length === 1) {
+        box2ReplyAgent = answers[0];
+        showBox2ReplyLayer(answers[0]);
+      } else {
+        box2ReplyAgent = "";
+      }
       return;
     }
     host.hidden = false;
@@ -9040,7 +9054,7 @@
   function box3WorkerTabLabel(out, i) {
     const raw = String((out && (out.worker || out.name)) || "").toLowerCase();
     const wm = /worker\s*(\d+)/.exec(raw);
-    const base = wm ? "A" + wm[1] : "A" + (i + 1);
+    const base = wm ? wm[1] : String(i + 1);
     if (out && out.variant_of != null) return base + "v";
     return base;
   }
@@ -9052,7 +9066,19 @@
   }
 
   function box3WorkerTabTitle(out, i) {
-    return String((out && (out.name || out.worker)) || "Arbeiter " + (i + 1));
+    const raw = String((out && (out.worker || out.name)) || "").toLowerCase();
+    const wm = /worker\s*(\d+)/.exec(raw);
+    if (wm) return "Arbeiter " + wm[1];
+    if (out && out.name) return String(out.name);
+    return "Arbeiter " + (i + 1);
+  }
+
+  function paintBox3Nav() {
+    const many = box3TabsWanted(lastWorkerOutputs);
+    ["box3-btn-prev", "box3-btn-next"].forEach(function (id) {
+      const el = document.getElementById(id);
+      if (el) el.hidden = !many;
+    });
   }
 
   function renderBox3WorkerTabs() {
@@ -9060,11 +9086,13 @@
     if (!tabs) return;
     const outs = lastWorkerOutputs || [];
     tabs.innerHTML = "";
-    if (outs.length < 1) {
+    if (!box3TabsWanted(outs)) {
       tabs.hidden = true;
+      paintBox3Nav();
       return;
     }
     tabs.hidden = false;
+    paintBox3Nav();
     outs.forEach(function (o, i) {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -9117,7 +9145,7 @@
       return function (ev) {
         const cur = currentBox3Worker();
         if (!cur.out) {
-          toast("Kein Worker-Ergebnis", "info");
+          toast("Kein Ergebnis", "info");
           return;
         }
         const raw = String(cur.out.result || "");
@@ -9139,10 +9167,10 @@
                 toast("Kopiert", "ok");
               })
               .catch(function () {
-                toast("Clipboard failed", "error");
+                toast("Zwischenablage fehlgeschlagen", "error");
               });
           } else {
-            toast("Clipboard not available", "error");
+            toast("Keine Zwischenablage", "error");
           }
         })
       );
@@ -9607,7 +9635,7 @@
       return false;
     }
     if (emptyEl) emptyEl.hidden = true;
-    const name = (out && (out.name || out.worker)) || "Worker";
+    const name = box3WorkerTabTitle(out, idx);
     const html = extractHtml(raw);
     let val = out && out.validation && typeof out.validation === "object" ? out.validation : null;
     if (!val && typeof lastSnapshot !== "undefined" && lastSnapshot && lastSnapshot.pipeline) {
@@ -9781,6 +9809,12 @@
       stage.hidden = true;
       stage.classList.remove("is-open");
     }
+    const tabs = document.getElementById("box3-worker-tabs");
+    if (tabs) {
+      tabs.hidden = true;
+      tabs.innerHTML = "";
+    }
+    paintBox3Nav();
     const strip = document.getElementById("box3-tool-strip");
     if (strip) {
       strip.hidden = true;
@@ -9834,7 +9868,11 @@
   }
 
   function renderBox3Workers(pipeline) {
-    const outputs = normalizeWorkerOutputs(pipeline);
+    let outputs = collapseSharedErrors(normalizeWorkerOutputs(pipeline));
+    const stageName = pipeline && pipeline.stage;
+    if (box3KeepLast(outputs, lastWorkerOutputs, stageName)) {
+      outputs = lastWorkerOutputs;
+    }
     const prevFocusName =
       lastWorkerOutputs && lastWorkerOutputs[box3FocusIdx]
         ? lastWorkerOutputs[box3FocusIdx].worker
@@ -9846,7 +9884,6 @@
       renderToolStrip(pipeline.tool_log || [], pipeline.quality_notes || "");
     }
 
-    const stageName = pipeline && pipeline.stage;
     const renderKey = box3OutputsKey(outputs, stageName);
     const stageEl = document.getElementById("box3-result-stage");
     /* Poll with unchanged worker output: do not wipe DOM / flash white. */
@@ -9869,27 +9906,11 @@
       return;
     }
 
-    /* clear each worker agent layer in box 3 */
-    ["worker1", "worker2", "worker3", "worker4"].forEach(function (wid) {
-      const body =
-        (typeof getAgentBoxBody === "function" && getAgentBoxBody(3, wid)) ||
-        document.getElementById("box3-" + wid);
-      if (!body) return;
-      body.innerHTML = "";
-      body.classList.add("box3-dynamic");
-      const empty = document.createElement("p");
-      empty.className = "muted empty-hint";
-      if (pipeline && pipeline.stage === "work") {
-        empty.textContent = "Workers laufen…";
-      } else {
-        empty.textContent = wid + " — noch kein Ergebnis";
-      }
-      body.appendChild(empty);
-    });
-
+    /* Box 3 empty overlay is enough — do not fill four worker graves. */
     if (!outputs.length) {
       lastBox3RenderKey = renderKey;
       hideBox3ResultStage();
+      renderBox3WorkerTabs();
       return;
     }
 
@@ -10088,7 +10109,7 @@
 
   function copyAllWorkerResults() {
     if (!lastWorkerOutputs.length) {
-      toast("Keine Worker-Ergebnisse zum Kopieren", "info");
+      toast("Keine Ergebnisse zum Kopieren", "info");
       return;
     }
     lastWorkerOutputs.forEach(function (o, i) {
@@ -10182,15 +10203,15 @@
 
   function openWorkerDiff() {
     if (lastWorkerOutputs.length < 2) {
-      toast("Need at least two worker results to diff", "info");
+      toast("Mindestens zwei Ergebnisse zum Vergleichen", "info");
       return;
     }
     closeDiffOverlay();
     closeWorkerFullscreen();
     const a = lastWorkerOutputs[0];
     const b = lastWorkerOutputs[1];
-    const nameA = a.name || "Worker 1";
-    const nameB = b.name || "Worker 2";
+    const nameA = box3WorkerTabTitle(a, 0);
+    const nameB = box3WorkerTabTitle(b, 1);
     const rows = computeLineDiff(a.result || "", b.result || "");
 
     const overlay = document.createElement("div");
@@ -10218,10 +10239,10 @@
         return navigator.clipboard
           .writeText(text)
           .then(function () {
-            toast("Diff copied", "ok");
+            toast("Vergleich kopiert", "ok");
           })
           .catch(function () {
-            toast("Copy failed", "error");
+            toast("Kopieren fehlgeschlagen", "error");
           });
       }
     });
@@ -10257,13 +10278,70 @@
     document.body.appendChild(overlay);
   }
 
+  function box3KeepLast(incoming, previous, stage) {
+    return (
+      !(incoming && incoming.length) &&
+      !!(previous && previous.length) &&
+      (stage === "brainstorm" || stage === "idle")
+    );
+  }
+
+  function box3TabsWanted(outputs) {
+    return ((outputs && outputs.length) || 0) >= 2;
+  }
+
+  function collapseSharedErrors(outputs) {
+    const rows = Array.isArray(outputs) ? outputs : [];
+    if (rows.length < 2) return rows;
+    function failish(s) {
+      const t = String(s || "").toLowerCase();
+      return (
+        t.indexOf("kein deliverable") >= 0 ||
+        t.indexOf("llm/key") >= 0 ||
+        t.indexOf("deepseek_api_key") >= 0 ||
+        t.indexOf("kein nutzbarer llm") >= 0 ||
+        /\bfehler\b/.test(t) ||
+        /\berror\b/.test(t)
+      );
+    }
+    function keyish(s) {
+      const t = String(s || "").toLowerCase();
+      return (
+        t.indexOf("llm/key") >= 0 ||
+        t.indexOf("deepseek_api_key") >= 0 ||
+        t.indexOf("kein nutzbarer llm") >= 0
+      );
+    }
+    const texts = rows.map(function (o) {
+      return String((o && o.result) || "")
+        .replace(/\s+/g, " ")
+        .trim();
+    });
+    if (!texts.every(failish)) return rows;
+    const allKey = texts.every(keyish);
+    const allSame = texts.every(function (t) {
+      return t === texts[0];
+    });
+    if (!allKey && !allSame) return rows;
+    return [
+      {
+        worker: "desk",
+        name: "Ergebnis",
+        task: rows[0].task || "",
+        result: rows[0].result,
+        index: 1,
+        validation: rows[0].validation || null,
+      },
+    ];
+  }
+
   function normalizeWorkerOutputs(pipeline) {
     const p = pipeline || {};
     if (p.worker_outputs && p.worker_outputs.length) {
       return p.worker_outputs.map(function (o, i) {
         return {
           worker: o.worker || "worker" + (i + 1),
-          name: o.name || "Worker " + (i + 1),
+          name: o.name || "Arbeiter " + (i + 1),
           task: o.task || "",
           result: o.result != null ? String(o.result) : "",
           index: o.index != null ? o.index : i + 1,
@@ -10275,7 +10353,7 @@
       return p.worker_results.map(function (r, i) {
         return {
           worker: "worker" + (i + 1),
-          name: "Worker " + (i + 1),
+          name: "Arbeiter " + (i + 1),
           task: "",
           result: String(r),
           index: i + 1,
@@ -10414,7 +10492,7 @@
       URL.revokeObjectURL(a.href);
       a.remove();
     }, 500);
-    toast("Downloaded " + a.download, "ok");
+    toast("Gespeichert: " + a.download, "ok");
   }
 
   function openWorkerInTab(html, forceExternal) {
@@ -10468,13 +10546,13 @@
         content: content,
       });
       const label = z === "perm" ? "perm" : "temp";
-      toast("Saved → " + label + ": " + name, "ok");
+      toast("Gespeichert → " + label + ": " + name, "ok");
       appendChat(
         "system",
         "Workspace[" + label + "] ← " + name + (data.path ? " (" + data.path + ")" : "")
       );
     } catch (err) {
-      toast("Workspace save failed: " + err.message, "error");
+      toast("Workspace speichern fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -10837,6 +10915,15 @@
       });
     }
     if (els.btnSystem) els.btnSystem.addEventListener("click", openSystemModal);
+    if (els.llmBadge) {
+      els.llmBadge.addEventListener("click", openSystemModal);
+      els.llmBadge.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          openSystemModal();
+        }
+      });
+    }
     if (els.btnWorkspace) els.btnWorkspace.addEventListener("click", openWorkspaceModal);
     if (els.btnTools) els.btnTools.addEventListener("click", openToolsModal);
     const histCopy = document.getElementById("tools-hist-copy");

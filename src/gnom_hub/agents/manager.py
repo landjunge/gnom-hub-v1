@@ -34,12 +34,12 @@ class AgentManager:
             (AgentId.BRAINSTORM, "Brainstorm", "brainstorm", True, True, None),
             (AgentId.MEMORY, "Memory", "memory", True, False, None),
             (AgentId.FLEX, "Flex", "flex", True, False, DEFAULT_FLEX_PRESET),  # fixed: always on
-            (AgentId.COORDINATOR, "Coordinator", "coordinator", True, True, None),
+            (AgentId.COORDINATOR, "Koordinator", "coordinator", True, True, None),
             # All workers on by default (user: Box 3 dynamic for 1+2+…; enable off workers)
-            (AgentId.WORKER1, "Worker 1", "worker", True, True, None),
-            (AgentId.WORKER2, "Worker 2", "worker", True, True, None),
-            (AgentId.WORKER3, "Worker 3", "worker", True, True, None),
-            (AgentId.WORKER4, "Worker 4", "worker", True, True, None),
+            (AgentId.WORKER1, "Arbeiter 1", "worker", True, True, None),
+            (AgentId.WORKER2, "Arbeiter 2", "worker", True, True, None),
+            (AgentId.WORKER3, "Arbeiter 3", "worker", True, True, None),
+            (AgentId.WORKER4, "Arbeiter 4", "worker", True, True, None),
         ]
         agents: dict[AgentId, AgentState] = {}
         for agent_id, name, role, enabled, toggleable, preset in specs:

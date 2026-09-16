@@ -80,7 +80,7 @@ def _check(key: str) -> dict[str, Any]:
             "import": meta["import"],
             "pip": meta["pip"],
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {
             "ok": True,
             "installed": False,
@@ -106,7 +106,7 @@ def _playwright_chromium() -> dict[str, Any]:
             "stdout_tail": (proc.stdout or "")[-800:],
             "stderr_tail": (proc.stderr or "")[-400:],
         }
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {"ok": False, "error": str(exc)}
 
 
@@ -173,7 +173,7 @@ def install_tool(
             timeout=300,
             check=False,
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {"ok": False, "package": key, "error": f"pip failed: {exc}"}
 
     post = _check(key)

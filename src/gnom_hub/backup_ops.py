@@ -199,7 +199,7 @@ class BackupOpsMixin:
                         with store_mod._lock:
                             inst = store_mod._instances.pop(key, None)
                             if inst is None:
-                                for k, v in list(store_mod._instances.items()):
+                                for k, _ in list(store_mod._instances.items()):
                                     if Path(k).resolve() == live.resolve():
                                         inst = store_mod._instances.pop(k, None)
                                         break

@@ -114,7 +114,7 @@ def contrast_check(fg: str = "", bg: str = "") -> dict[str, Any]:
     try:
         f = _parse_hex(fg)
         b = _parse_hex(bg)
-    except Exception:  # noqa: BLE001
+    except Exception:
         return fail("invalid hex color")
     ratio = round(_contrast(f, b), 2)
     return ok(

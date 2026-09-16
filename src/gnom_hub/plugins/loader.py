@@ -349,7 +349,7 @@ class PluginLoader:
                 "ToolSpec": ToolSpec,
                 "registry": self.registry,
             }
-            exec(code, ns, ns)  # noqa: S102
+            exec(code, ns, ns)
             # Drop plugin __pycache__ so next loads stay fresh
             try:
                 import shutil

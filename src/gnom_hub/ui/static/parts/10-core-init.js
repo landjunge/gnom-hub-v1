@@ -223,6 +223,15 @@
       });
     }
     if (els.btnSystem) els.btnSystem.addEventListener("click", openSystemModal);
+    if (els.llmBadge) {
+      els.llmBadge.addEventListener("click", openSystemModal);
+      els.llmBadge.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          openSystemModal();
+        }
+      });
+    }
     if (els.btnWorkspace) els.btnWorkspace.addEventListener("click", openWorkspaceModal);
     if (els.btnTools) els.btnTools.addEventListener("click", openToolsModal);
     const histCopy = document.getElementById("tools-hist-copy");

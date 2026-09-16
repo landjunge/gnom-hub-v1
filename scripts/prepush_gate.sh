@@ -62,8 +62,8 @@ if ! run_ruff check .; then
   exit 1
 fi
 
-echo "▸ prepush_gate: ruff format --check ."
-if ! run_ruff format --check .; then
+echo "▸ prepush_gate: ruff format --check --diff ."
+if ! run_ruff format --check --diff .; then
   echo "" >&2
   echo "❌ ruff format drift. Fix with:" >&2
   echo "  ruff format ." >&2

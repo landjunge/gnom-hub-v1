@@ -8,10 +8,10 @@
     const id = String(role || "").toLowerCase();
     if (id === "brainstorm") return "Brain";
     if (id === "flex") return "Flex";
-    if (id === "coordinator") return "Coord";
+    if (id === "coordinator") return "Plan";
     if (id === "memory") return "Mem";
     const wm = /^worker(\d+)$/.exec(id);
-    if (wm) return "A" + wm[1];
+    if (wm) return wm[1];
     return "Antw";
   }
 
@@ -63,10 +63,15 @@
     }
     const box = document.getElementById("box2");
     host.textContent = "";
-    if (!answers.length) {
+    if (answers.length < 2) {
       host.hidden = true;
-      box2ReplyAgent = "";
       if (box) box.classList.remove("box2-has-tabs");
+      if (answers.length === 1) {
+        box2ReplyAgent = answers[0];
+        showBox2ReplyLayer(answers[0]);
+      } else {
+        box2ReplyAgent = "";
+      }
       return;
     }
     host.hidden = false;
@@ -386,7 +391,7 @@
   function box3WorkerTabLabel(out, i) {
     const raw = String((out && (out.worker || out.name)) || "").toLowerCase();
     const wm = /worker\s*(\d+)/.exec(raw);
-    const base = wm ? "A" + wm[1] : "A" + (i + 1);
+    const base = wm ? wm[1] : String(i + 1);
     if (out && out.variant_of != null) return base + "v";
     return base;
   }
@@ -398,7 +403,19 @@
   }
 
   function box3WorkerTabTitle(out, i) {
-    return String((out && (out.name || out.worker)) || "Arbeiter " + (i + 1));
+    const raw = String((out && (out.worker || out.name)) || "").toLowerCase();
+    const wm = /worker\s*(\d+)/.exec(raw);
+    if (wm) return "Arbeiter " + wm[1];
+    if (out && out.name) return String(out.name);
+    return "Arbeiter " + (i + 1);
+  }
+
+  function paintBox3Nav() {
+    const many = box3TabsWanted(lastWorkerOutputs);
+    ["box3-btn-prev", "box3-btn-next"].forEach(function (id) {
+      const el = document.getElementById(id);
+      if (el) el.hidden = !many;
+    });
   }
 
   function renderBox3WorkerTabs() {
@@ -406,11 +423,13 @@
     if (!tabs) return;
     const outs = lastWorkerOutputs || [];
     tabs.innerHTML = "";
-    if (outs.length < 1) {
+    if (!box3TabsWanted(outs)) {
       tabs.hidden = true;
+      paintBox3Nav();
       return;
     }
     tabs.hidden = false;
+    paintBox3Nav();
     outs.forEach(function (o, i) {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -463,7 +482,7 @@
       return function (ev) {
         const cur = currentBox3Worker();
         if (!cur.out) {
-          toast("Kein Worker-Ergebnis", "info");
+          toast("Kein Ergebnis", "info");
           return;
         }
         const raw = String(cur.out.result || "");
@@ -485,10 +504,10 @@
                 toast("Kopiert", "ok");
               })
               .catch(function () {
-                toast("Clipboard failed", "error");
+                toast("Zwischenablage fehlgeschlagen", "error");
               });
           } else {
-            toast("Clipboard not available", "error");
+            toast("Keine Zwischenablage", "error");
           }
         })
       );
@@ -953,7 +972,7 @@
       return false;
     }
     if (emptyEl) emptyEl.hidden = true;
-    const name = (out && (out.name || out.worker)) || "Worker";
+    const name = box3WorkerTabTitle(out, idx);
     const html = extractHtml(raw);
     let val = out && out.validation && typeof out.validation === "object" ? out.validation : null;
     if (!val && typeof lastSnapshot !== "undefined" && lastSnapshot && lastSnapshot.pipeline) {
@@ -1127,6 +1146,12 @@
       stage.hidden = true;
       stage.classList.remove("is-open");
     }
+    const tabs = document.getElementById("box3-worker-tabs");
+    if (tabs) {
+      tabs.hidden = true;
+      tabs.innerHTML = "";
+    }
+    paintBox3Nav();
     const strip = document.getElementById("box3-tool-strip");
     if (strip) {
       strip.hidden = true;
@@ -1180,7 +1205,11 @@
   }
 
   function renderBox3Workers(pipeline) {
-    const outputs = normalizeWorkerOutputs(pipeline);
+    let outputs = collapseSharedErrors(normalizeWorkerOutputs(pipeline));
+    const stageName = pipeline && pipeline.stage;
+    if (box3KeepLast(outputs, lastWorkerOutputs, stageName)) {
+      outputs = lastWorkerOutputs;
+    }
     const prevFocusName =
       lastWorkerOutputs && lastWorkerOutputs[box3FocusIdx]
         ? lastWorkerOutputs[box3FocusIdx].worker
@@ -1192,7 +1221,6 @@
       renderToolStrip(pipeline.tool_log || [], pipeline.quality_notes || "");
     }
 
-    const stageName = pipeline && pipeline.stage;
     const renderKey = box3OutputsKey(outputs, stageName);
     const stageEl = document.getElementById("box3-result-stage");
     /* Poll with unchanged worker output: do not wipe DOM / flash white. */
@@ -1215,27 +1243,11 @@
       return;
     }
 
-    /* clear each worker agent layer in box 3 */
-    ["worker1", "worker2", "worker3", "worker4"].forEach(function (wid) {
-      const body =
-        (typeof getAgentBoxBody === "function" && getAgentBoxBody(3, wid)) ||
-        document.getElementById("box3-" + wid);
-      if (!body) return;
-      body.innerHTML = "";
-      body.classList.add("box3-dynamic");
-      const empty = document.createElement("p");
-      empty.className = "muted empty-hint";
-      if (pipeline && pipeline.stage === "work") {
-        empty.textContent = "Workers laufen…";
-      } else {
-        empty.textContent = wid + " — noch kein Ergebnis";
-      }
-      body.appendChild(empty);
-    });
-
+    /* Box 3 empty overlay is enough — do not fill four worker graves. */
     if (!outputs.length) {
       lastBox3RenderKey = renderKey;
       hideBox3ResultStage();
+      renderBox3WorkerTabs();
       return;
     }
 
@@ -1434,7 +1446,7 @@
 
   function copyAllWorkerResults() {
     if (!lastWorkerOutputs.length) {
-      toast("Keine Worker-Ergebnisse zum Kopieren", "info");
+      toast("Keine Ergebnisse zum Kopieren", "info");
       return;
     }
     lastWorkerOutputs.forEach(function (o, i) {
@@ -1528,15 +1540,15 @@
 
   function openWorkerDiff() {
     if (lastWorkerOutputs.length < 2) {
-      toast("Need at least two worker results to diff", "info");
+      toast("Mindestens zwei Ergebnisse zum Vergleichen", "info");
       return;
     }
     closeDiffOverlay();
     closeWorkerFullscreen();
     const a = lastWorkerOutputs[0];
     const b = lastWorkerOutputs[1];
-    const nameA = a.name || "Worker 1";
-    const nameB = b.name || "Worker 2";
+    const nameA = box3WorkerTabTitle(a, 0);
+    const nameB = box3WorkerTabTitle(b, 1);
     const rows = computeLineDiff(a.result || "", b.result || "");
 
     const overlay = document.createElement("div");
@@ -1564,10 +1576,10 @@
         return navigator.clipboard
           .writeText(text)
           .then(function () {
-            toast("Diff copied", "ok");
+            toast("Vergleich kopiert", "ok");
           })
           .catch(function () {
-            toast("Copy failed", "error");
+            toast("Kopieren fehlgeschlagen", "error");
           });
       }
     });
@@ -1603,13 +1615,70 @@
     document.body.appendChild(overlay);
   }
 
+  function box3KeepLast(incoming, previous, stage) {
+    return (
+      !(incoming && incoming.length) &&
+      !!(previous && previous.length) &&
+      (stage === "brainstorm" || stage === "idle")
+    );
+  }
+
+  function box3TabsWanted(outputs) {
+    return ((outputs && outputs.length) || 0) >= 2;
+  }
+
+  function collapseSharedErrors(outputs) {
+    const rows = Array.isArray(outputs) ? outputs : [];
+    if (rows.length < 2) return rows;
+    function failish(s) {
+      const t = String(s || "").toLowerCase();
+      return (
+        t.indexOf("kein deliverable") >= 0 ||
+        t.indexOf("llm/key") >= 0 ||
+        t.indexOf("deepseek_api_key") >= 0 ||
+        t.indexOf("kein nutzbarer llm") >= 0 ||
+        /\bfehler\b/.test(t) ||
+        /\berror\b/.test(t)
+      );
+    }
+    function keyish(s) {
+      const t = String(s || "").toLowerCase();
+      return (
+        t.indexOf("llm/key") >= 0 ||
+        t.indexOf("deepseek_api_key") >= 0 ||
+        t.indexOf("kein nutzbarer llm") >= 0
+      );
+    }
+    const texts = rows.map(function (o) {
+      return String((o && o.result) || "")
+        .replace(/\s+/g, " ")
+        .trim();
+    });
+    if (!texts.every(failish)) return rows;
+    const allKey = texts.every(keyish);
+    const allSame = texts.every(function (t) {
+      return t === texts[0];
+    });
+    if (!allKey && !allSame) return rows;
+    return [
+      {
+        worker: "desk",
+        name: "Ergebnis",
+        task: rows[0].task || "",
+        result: rows[0].result,
+        index: 1,
+        validation: rows[0].validation || null,
+      },
+    ];
+  }
+
   function normalizeWorkerOutputs(pipeline) {
     const p = pipeline || {};
     if (p.worker_outputs && p.worker_outputs.length) {
       return p.worker_outputs.map(function (o, i) {
         return {
           worker: o.worker || "worker" + (i + 1),
-          name: o.name || "Worker " + (i + 1),
+          name: o.name || "Arbeiter " + (i + 1),
           task: o.task || "",
           result: o.result != null ? String(o.result) : "",
           index: o.index != null ? o.index : i + 1,
@@ -1621,7 +1690,7 @@
       return p.worker_results.map(function (r, i) {
         return {
           worker: "worker" + (i + 1),
-          name: "Worker " + (i + 1),
+          name: "Arbeiter " + (i + 1),
           task: "",
           result: String(r),
           index: i + 1,
@@ -1760,7 +1829,7 @@
       URL.revokeObjectURL(a.href);
       a.remove();
     }, 500);
-    toast("Downloaded " + a.download, "ok");
+    toast("Gespeichert: " + a.download, "ok");
   }
 
   function openWorkerInTab(html, forceExternal) {
@@ -1814,13 +1883,13 @@
         content: content,
       });
       const label = z === "perm" ? "perm" : "temp";
-      toast("Saved → " + label + ": " + name, "ok");
+      toast("Gespeichert → " + label + ": " + name, "ok");
       appendChat(
         "system",
         "Workspace[" + label + "] ← " + name + (data.path ? " (" + data.path + ")" : "")
       );
     } catch (err) {
-      toast("Workspace save failed: " + err.message, "error");
+      toast("Workspace speichern fehlgeschlagen: " + err.message, "error");
     }
   }
 

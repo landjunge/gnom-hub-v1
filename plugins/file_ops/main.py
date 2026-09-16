@@ -11,7 +11,7 @@ def _root() -> Path:
         from gnom_hub.config.paths import project_root
 
         return project_root().resolve()
-    except Exception:  # noqa: BLE001
+    except Exception:
         return Path.cwd().resolve()
 
 
@@ -74,7 +74,7 @@ def file_read(path: str = "", max_chars: int = 50000) -> dict[str, Any]:
         return {"ok": False, "error": f"not a file: {target}"}
     try:
         text = target.read_text(encoding="utf-8", errors="replace")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {"ok": False, "error": str(exc)}
     lim = max(100, min(200_000, int(max_chars or 50_000)))
     return {
@@ -93,6 +93,6 @@ def file_write(path: str = "", content: str = "") -> dict[str, Any]:
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(str(content or ""), encoding="utf-8")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {"ok": False, "error": str(exc)}
     return {"ok": True, "path": str(target), "bytes": len(str(content or "").encode("utf-8"))}

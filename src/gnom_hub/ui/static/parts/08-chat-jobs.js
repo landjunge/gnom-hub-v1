@@ -82,7 +82,7 @@
   }
 
   async function _cycleFlexPreset() {
-    toast("Flex is fixed — personal companion only", "info");
+    toast("Flex bleibt an — persönlicher Begleiter", "info");
   }
 
   async function toggleAgent(id) {
@@ -101,7 +101,7 @@
         renderCards();
       }
     } catch (err) {
-      appendChat("system", "Toggle failed: " + err.message);
+      appendChat("system", "Umschalten fehlgeschlagen: " + err.message);
     }
   }
 
@@ -293,7 +293,7 @@
             hideClarify();
           })
           .catch(function (err) {
-            toast("Clarify failed: " + (err.message || err), "error");
+            toast("Rückfrage fehlgeschlagen: " + (err.message || err), "error");
           });
       }
       return;
@@ -461,8 +461,8 @@
       els.btnSend.textContent = chatBusy ? "…" : "Senden";
     }
     if (els.btnExecute) {
-      // Must re-apply can_execute when busy ends — applySnapshot often ran while busy=true
-      els.btnExecute.disabled = !lastCanExecute || chatBusy;
+      const hasKey = !!(els.llmBadge && els.llmBadge.classList.contains("has-key"));
+      els.btnExecute.disabled = !lastCanExecute || chatBusy || !hasKey;
     }
     const btnSendExec = document.getElementById("btn-send-exec");
     if (btnSendExec) btnSendExec.disabled = chatBusy;
@@ -476,7 +476,7 @@
     if (els.chatInput) els.chatInput.disabled = chatBusy;
     if (els.stageBadge) {
       if (chatBusy) {
-        els.stageBadge.textContent = "running…";
+        els.stageBadge.textContent = "läuft…";
       } else if (activeStage) {
         // Restore real stage — otherwise badge stays on "running…" and UI feels frozen
         els.stageBadge.textContent = activeStage;
@@ -623,7 +623,7 @@
       return e.id === id;
     });
     if (!entry) {
-      toast("History entry not found", "info");
+      toast("Verlaufseintrag nicht gefunden", "info");
       return;
     }
     lastWorkerOutputs = entry.outputs || [];
@@ -637,12 +637,12 @@
       re.dataset.historyId = entry.id;
     }
     focusBox3();
-    toast("Restored: " + (entry.label || id), "ok");
+    toast("Wiederhergestellt: " + (entry.label || id), "ok");
   }
 
   function exportResultHistory() {
     if (!resultHistory.length) {
-      toast("No history to export", "info");
+      toast("Kein Verlauf zum Exportieren", "info");
       return;
     }
     const lines = ["# Gnom-Hub result history", ""];
@@ -671,19 +671,19 @@
       URL.revokeObjectURL(a.href);
       a.remove();
     }, 500);
-    toast("History exported (" + resultHistory.length + " runs)", "ok");
+    toast("Verlauf exportiert (" + resultHistory.length + " Läufe)", "ok");
   }
 
   async function _rerunWorker(workerId) {
     if (chatBusy) {
-      toast("Busy — wait for current job", "info");
+      toast("Beschäftigt — warte auf den laufenden Job", "info");
       return;
     }
     const wid = String(workerId || "").toLowerCase();
     if (!wid) return;
     setChatBusy(true);
-    appendChat("system", "Re-run " + wid + "…");
-    toast("Re-running " + wid + "…", "info");
+    appendChat("system", "Nochmal " + wid + "…");
+    toast("Nochmal: " + wid + "…", "info");
     try {
       const live =
         els.llmBadge && els.llmBadge.classList.contains("has-key");
@@ -696,13 +696,13 @@
         const job = await pollJob(start.job_id, live ? 180000 : 30000);
         snap = job.snapshot || (await api("GET", "/api/state"));
         if (job.status === "error") {
-          appendChat("system", "Re-run error: " + (job.error || "?"));
+          appendChat("system", "Nochmal-Fehler: " + (job.error || "?"));
           toast(job.error || "Re-run failed", "error");
           applySnapshot(snap);
           return;
         }
         if (job.status === "cancelled") {
-          appendChat("system", "Re-run cancelled.");
+          appendChat("system", "Nochmal abgebrochen.");
           applySnapshot(snap);
           return;
         }
@@ -710,7 +710,7 @@
       applySnapshot(snap);
       const stage = (snap.pipeline && snap.pipeline.stage) || "";
       if (stage === "done") {
-        appendChat("system", "Re-run done: " + wid);
+        appendChat("system", "Nochmal fertig: " + wid);
         toast(wid + " re-run done", "ok");
         focusBox3();
         try {
@@ -727,8 +727,8 @@
         );
       }
     } catch (err) {
-      appendChat("system", "Re-run failed: " + err.message);
-      toast("Re-run failed: " + err.message, "error");
+      appendChat("system", "Nochmal fehlgeschlagen: " + err.message);
+      toast("Nochmal fehlgeschlagen: " + err.message, "error");
     } finally {
       setChatBusy(false);
       currentJobId = null;
@@ -737,7 +737,7 @@
 
   async function reexecFromHistory() {
     if (chatBusy) {
-      toast("Busy — wait for current job", "info");
+      toast("Beschäftigt — warte auf den laufenden Job", "info");
       return;
     }
     const re = document.getElementById("btn-reexec");
@@ -748,14 +748,14 @@
       return e.id === pick;
     });
     if (!entry) {
-      toast("Pick a History entry first", "info");
+      toast("Zuerst einen Verlaufseintrag wählen", "info");
       return;
     }
     if (!(entry.user_text || entry.brainstorm_notes)) {
-      toast("This history entry has no brainstorm to re-run (pre-2.0 entry)", "info");
+      toast("Dieser Verlauf hat kein Brainstorm zum erneuten Bauen", "info");
       return;
     }
-    appendChat("system", "Re-Exec from history: " + (entry.label || entry.id));
+    appendChat("system", "Nochmal aus Verlauf: " + (entry.label || entry.id));
     setChatBusy(true);
     try {
       const start = await api("POST", "/api/reexecute", {
@@ -768,15 +768,15 @@
         const job = await pollJob(start.job_id, 180000);
         snap = job.snapshot || (await api("GET", "/api/state"));
         if (job.status === "error") {
-          appendChat("system", "Re-Exec error: " + (job.error || "?"));
+          appendChat("system", "Nochmal-Fehler: " + (job.error || "?"));
           toast(job.error || "Re-Exec error", "error");
           return;
         }
       }
       applySnapshot(snap);
       if (snap.pipeline && snap.pipeline.stage === "done") {
-        appendChat("system", "Re-Exec done — see Box 3.");
-        toast("Re-Exec done", "ok");
+        appendChat("system", "Nochmal fertig — siehe Box 3.");
+        toast("Nochmal fertig", "ok");
         focusBox3();
         try {
           pushResultHistory(snap.pipeline || {}, {
@@ -784,12 +784,12 @@
           });
         } catch (_h) {}
       } else if (snap.pipeline && snap.pipeline.stage === "clarify") {
-        appendChat("system", "Clarify needed in Box 1.");
-        toast("Clarify needed", "info");
+        appendChat("system", "Rückfrage in Box 1.");
+        toast("Rückfrage in Box 1", "info");
       }
     } catch (err) {
-      appendChat("system", "Re-Exec failed: " + err.message);
-      toast("Re-Exec failed: " + err.message, "error");
+      appendChat("system", "Nochmal fehlgeschlagen: " + err.message);
+      toast("Nochmal fehlgeschlagen: " + err.message, "error");
     } finally {
       setChatBusy(false);
     }
@@ -812,7 +812,7 @@
     if (!list || !list.length) {
       const li = document.createElement("li");
       li.className = "muted";
-      li.textContent = "(no HOT facts yet)";
+      li.textContent = "(noch keine HOT-Fakten)";
       ul.appendChild(li);
       return;
     }
@@ -855,30 +855,30 @@
     const input = document.getElementById("sys-hot-input");
     const text = input ? String(input.value || "").trim() : "";
     if (!text) {
-      toast("Enter a HOT fact", "info");
+      toast("HOT-Fakt eingeben", "info");
       return;
     }
     try {
       const data = await api("POST", "/api/memory/hot", { text: text });
       if (input) input.value = "";
       await renderHotList(data.facts);
-      toast(data.ok ? "HOT fact added" : "Already present", "ok");
+      toast(data.ok ? "HOT-Fakt gespeichert" : "Schon vorhanden", "ok");
     } catch (err) {
-      toast("HOT add failed: " + err.message, "error");
+      toast("HOT speichern fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function deleteHotFact(text) {
-    if (!confirm("Delete HOT fact: " + String(text || "").slice(0, 60) + "?")) return;
+    if (!confirm("HOT-Fakt löschen: " + String(text || "").slice(0, 60) + "?")) return;
     try {
       const data = await api(
         "DELETE",
         "/api/memory/hot?text=" + encodeURIComponent(text || "")
       );
       await renderHotList(data.facts);
-      toast("HOT fact removed", "ok");
+      toast("HOT-Fakt entfernt", "ok");
     } catch (err) {
-      toast("HOT delete failed: " + err.message, "error");
+      toast("HOT löschen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -894,18 +894,18 @@
         "ok"
       );
     } catch (err) {
-      toast("Promote failed: " + err.message, "error");
+      toast("Hochstufen fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function clearHotFacts() {
-    if (!confirm("Clear all HOT session facts?")) return;
+    if (!confirm("Alle HOT-Sitzungsfakten leeren?")) return;
     try {
       await api("POST", "/api/memory/hot/clear");
       await renderHotList([]);
-      toast("HOT facts cleared", "ok");
+      toast("HOT-Fakten geleert", "ok");
     } catch (err) {
-      toast("HOT clear failed: " + err.message, "error");
+      toast("HOT leeren fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -937,7 +937,7 @@
     if (!list || !list.length) {
       const li = document.createElement("li");
       li.className = "muted";
-      li.textContent = "(no WARM facts yet)";
+      li.textContent = "(noch keine WARM-Fakten)";
       ul.appendChild(li);
       return;
     }
@@ -974,41 +974,41 @@
     const input = document.getElementById("sys-warm-input");
     const text = input ? String(input.value || "").trim() : "";
     if (!text) {
-      toast("Enter a WARM fact", "info");
+      toast("WARM-Fakt eingeben", "info");
       return;
     }
     try {
       const data = await api("POST", "/api/memory/warm", { text: text });
       if (input) input.value = "";
       await renderWarmList(data.warm_facts);
-      toast(data.ok ? "WARM fact added" : "Already present", "ok");
+      toast(data.ok ? "WARM-Fakt gespeichert" : "Schon vorhanden", "ok");
     } catch (err) {
-      toast("WARM add failed: " + err.message, "error");
+      toast("WARM speichern fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function deleteWarmFact(index, text) {
-    if (!confirm("Delete WARM fact: " + String(text || "").slice(0, 60) + "?")) return;
+    if (!confirm("WARM-Fakt löschen: " + String(text || "").slice(0, 60) + "?")) return;
     try {
       const data = await api(
         "DELETE",
         "/api/memory/warm?text=" + encodeURIComponent(text || "")
       );
       await renderWarmList(data.warm_facts);
-      toast("WARM fact removed", "ok");
+      toast("WARM-Fakt entfernt", "ok");
     } catch (err) {
-      toast("WARM delete failed: " + err.message, "error");
+      toast("WARM löschen fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function clearWarmFacts() {
-    if (!confirm("Clear ALL WARM facts?")) return;
+    if (!confirm("Alle WARM-Fakten leeren?")) return;
     try {
       await api("POST", "/api/memory/warm/clear");
       await renderWarmList([]);
-      toast("WARM cleared", "ok");
+      toast("WARM geleert", "ok");
     } catch (err) {
-      toast("WARM clear failed: " + err.message, "error");
+      toast("WARM leeren fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -1129,10 +1129,10 @@
         "/api/session/packs/" + encodeURIComponent(name) + "/import"
       );
       applySnapshot(snap);
-      appendChat("system", "Loaded pack: " + name);
-      toast("Pack loaded", "ok");
+      appendChat("system", "Pack geladen: " + name);
+      toast("Pack geladen", "ok");
     } catch (err) {
-      toast("Pack load failed: " + err.message, "error");
+      toast("Pack laden fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -1142,7 +1142,7 @@
     if (next === null) return;
     next = String(next).trim().slice(0, 80);
     if (!next) {
-      toast("Label required", "error");
+      toast("Name fehlt", "error");
       return;
     }
     let notesNext = window.prompt(
@@ -1158,9 +1158,9 @@
         { label: next, notes: notesNext }
       );
       await renderPackList(data.packs);
-      toast("Pack updated", "ok");
+      toast("Pack aktualisiert", "ok");
     } catch (err) {
-      toast("Pack rename failed: " + err.message, "error");
+      toast("Pack umbenennen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -1180,9 +1180,9 @@
       a.download = name;
       a.click();
       URL.revokeObjectURL(a.href);
-      toast("Pack downloaded", "ok");
+      toast("Pack heruntergeladen", "ok");
     } catch (err) {
-      toast("Pack download failed: " + err.message, "error");
+      toast("Pack herunterladen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -1194,9 +1194,9 @@
         "/api/session/packs/" + encodeURIComponent(name)
       );
       await renderPackList(data.packs);
-      toast("Pack deleted", "ok");
+      toast("Pack gelöscht", "ok");
     } catch (err) {
-      toast("Pack delete failed: " + err.message, "error");
+      toast("Pack löschen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -1235,7 +1235,7 @@
         "ok"
       );
     } catch (err) {
-      toast("Pack export failed: " + err.message, "error");
+      toast("Pack exportieren fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -1258,10 +1258,10 @@
       });
       applySnapshot(snap);
       await renderPackList();
-      appendChat("system", "Session pack imported: " + (pack.label || file.name));
-      toast("Session pack imported + stored", "ok");
+      appendChat("system", "Sitzungs-Pack importiert: " + (pack.label || file.name));
+      toast("Sitzungs-Pack importiert und gespeichert", "ok");
     } catch (err) {
-      toast("Pack import failed: " + err.message, "error");
+      toast("Pack importieren fehlgeschlagen: " + err.message, "error");
     } finally {
       if (ev.target) ev.target.value = "";
     }
@@ -1480,11 +1480,23 @@
       !isYou && !isSys && typeof ownerColorFor === "function"
         ? ownerColorFor(whoKey)
         : "";
+    const WHO_DE = {
+      you: "Du",
+      system: "System",
+      brainstorm: "Brainstorm",
+      memory: "Memory",
+      flex: "Flex",
+      coordinator: "Koordinator",
+      worker1: "Arbeiter 1",
+      worker2: "Arbeiter 2",
+      worker3: "Arbeiter 3",
+      worker4: "Arbeiter 4",
+    };
     label.className =
-      "chat-who-label mr-1 text-2xs font-semibold uppercase tracking-wide " +
+      "chat-who-label mr-1 text-2xs font-semibold tracking-wide " +
       (isYou ? "text-gnom-accent" : isSys ? "text-gnom-muted" : "");
     if (whoHex) label.style.color = whoHex;
-    label.textContent = who;
+    label.textContent = WHO_DE[whoKey] || who;
     bubble.appendChild(label);
     const body = document.createElement("span");
     body.className = "chat-text whitespace-pre-wrap break-words";
@@ -1630,16 +1642,6 @@
             renderCards();
             updateBoxBorders();
           }
-          if (
-            stage !== "worker1" &&
-            stage !== "worker2" &&
-            stage !== "worker3" &&
-            stage !== "worker4"
-          ) {
-            appendChat("system", "Stage: " + stage);
-          } else {
-            appendChat("system", "Worker: " + stage);
-          }
         }
         if (job.snapshot) {
           applySnapshot(job.snapshot);
@@ -1708,7 +1710,7 @@
             encodeURIComponent(jobId) +
             "/cancel?as_timeout=1"
         );
-        appendChat("system", "FEHLER — client poll timeout — cancel requested.");
+        appendChat("system", "FEHLER — Wartezeit abgelaufen, Abbruch angefordert.");
       } catch (_c) {
         /* ignore */
       }
@@ -1756,8 +1758,8 @@
       try {
         const r = await api("POST", "/api/jobs/cancel-busy");
         if (r && r.busy) {
-          toast("Cancel requested — warte bis Pipeline frei…", "info");
-          appendChat("system", "Cancel busy job " + ((r.cancelled && r.cancelled.id) || ""));
+          toast("Abbruch angefordert — warte bis die Pipeline frei ist…", "info");
+          appendChat("system", "Laufenden Job abbrechen " + ((r.cancelled && r.cancelled.id) || ""));
           showBusyBanner({
             busy_job_id: (r.cancelled && r.cancelled.id) || "?",
             busy_stage: "cancelling",
@@ -1769,21 +1771,21 @@
             free ? "Pipeline frei" : "Cancel läuft noch (LLM kann warten)",
             free ? "ok" : "info"
           );
-          if (free) appendChat("system", "Pipeline free — ready.");
+          if (free) appendChat("system", "Pipeline frei.");
         } else {
-          toast("No running job", "info");
+          toast("Kein laufender Job", "info");
           hideBusyBanner();
         }
         await resyncState();
       } catch (err) {
-        toast("Cancel failed: " + err.message, "error");
+        toast("Abbrechen fehlgeschlagen: " + err.message, "error");
       }
       return;
     }
     try {
       await api("POST", "/api/jobs/" + encodeURIComponent(jid) + "/cancel");
-      toast("Cancel requested — warte bis Pipeline frei…", "info");
-      appendChat("system", "Cancel requested for job " + jid);
+      toast("Abbruch angefordert — warte bis die Pipeline frei ist…", "info");
+      appendChat("system", "Abbruch angefordert für Job " + jid);
       showBusyBanner({
         busy_job_id: jid,
         busy_stage: "cancelling",
@@ -1795,10 +1797,10 @@
         free ? "Pipeline frei" : "Cancel läuft noch (LLM kann warten)",
         free ? "ok" : "info"
       );
-      if (free) appendChat("system", "Pipeline free — ready.");
+      if (free) appendChat("system", "Pipeline frei.");
       await resyncState();
     } catch (err) {
-      toast("Cancel failed: " + err.message, "error");
+      toast("Abbrechen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -2040,13 +2042,18 @@
       btn.setAttribute("aria-checked", id === sendTarget ? "true" : "false");
       btn.textContent =
         id === "brainstorm"
-          ? "BS"
+          ? "Brain"
           : id === "coordinator"
-            ? "Co"
+            ? "Plan"
             : id === "flex"
               ? "Flex"
-              : id.replace("worker", "W");
-      btn.title = "Senden an " + id;
+              : id.replace("worker", "");
+      btn.title = "Senden an " + (
+        id === "brainstorm" ? "Brainstorm"
+          : id === "coordinator" ? "Koordinator"
+            : id === "flex" ? "Flex"
+              : "Arbeiter " + id.replace("worker", "")
+      );
       if (typeof COLOR_HEX !== "undefined" && COLOR_HEX[id]) {
         btn.style.setProperty("--owner-color", COLOR_HEX[id]);
       }
@@ -2057,6 +2064,13 @@
           el.classList.toggle("is-on", on);
           el.setAttribute("aria-checked", on ? "true" : "false");
         });
+        if (typeof paintChatPlaceholder === "function") paintChatPlaceholder();
+        if (typeof renderCards === "function") {
+          document.querySelectorAll(".agent-card").forEach(function (card) {
+            const on = card.dataset.agentId === sendTarget;
+            card.classList.toggle("is-target", on);
+          });
+        }
       });
       root.appendChild(btn);
     });
@@ -2080,7 +2094,7 @@
     setChatBusy(true);
     // Prefer long poll always for async jobs (badge may lag bootstrap)
     const pollMs = 180000;
-    appendChat("system", "Send → " + target + "…", target);
+    appendChat("system", "Senden → " + target + "…", target);
     toast("Send = " + target + " · keine Ausführung", "info");
 
     function applySendSnap(snap) {
@@ -2113,14 +2127,14 @@
         const job = await pollJob(start.job_id, pollMs);
         snap = job.snapshot || (await api("GET", "/api/state"));
         if (job.status === "error") {
-          appendChat("system", "Brainstorm error: " + (job.error || "?"), target);
+          appendChat("system", "Brainstorm-Fehler: " + (job.error || "?"), target);
           toast(job.error || "Brainstorm error", "error");
           applySendSnap(snap);
           return;
         }
         if (job.status === "cancelled") {
-          appendChat("system", "Job cancelled.", target);
-          toast("Cancelled", "info");
+          appendChat("system", "Job abgebrochen.", target);
+        toast("Abgebrochen", "info");
           hideBusyBanner();
           applySendSnap(snap);
           return;
@@ -2155,18 +2169,18 @@
         }
         focusBox3();
       } else if (stage === "clarify") {
-        appendChat("system", "Need a clarify answer in Box 1.", target);
-        toast("Clarify needed in Box 1", "info");
+        appendChat("system", "Rückfrage in Box 1 beantworten.", target);
+        toast("Rückfrage in Box 1", "info");
       } else if (stage === "cancelled") {
-        appendChat("system", "Job cancelled.", target);
-        toast("Cancelled", "info");
+        appendChat("system", "Job abgebrochen.", target);
+        toast("Abgebrochen", "info");
       }
     } catch (err) {
       if (err && (err.status === 409 || (err.detail && err.detail.busy))) {
         handleBusyError(err, text);
       } else {
-        appendChat("system", "Chat failed: " + err.message, target);
-        toast("Chat failed: " + err.message, "error");
+        appendChat("system", "Senden fehlgeschlagen: " + err.message, target);
+        toast("Senden fehlgeschlagen: " + err.message, "error");
       }
     } finally {
       setChatBusy(false);
@@ -2176,19 +2190,26 @@
 
   async function runExecute() {
     if (chatBusy) return;
+    const hasKey = !!(els.llmBadge && els.llmBadge.classList.contains("has-key"));
+    if (!hasKey) {
+      toast("Key fehlt. In System eintragen, dann Arbeit starten.", "error");
+      const hint = document.getElementById("execute-hint");
+      if (hint) hint.hidden = false;
+      return;
+    }
     if (els.btnExecute && els.btnExecute.disabled) {
-      toast("Brainstorm first, then Execute", "info");
+      toast("Zuerst senden, dann Arbeit starten", "info");
       return;
     }
     setChatBusy(true);
-    appendChat("system", "Execute started (distill → flex → workers)…");
+    appendChat("system", "Arbeit gestartet…");
     try {
       await persistActiveFlagsAsWishes();
     } catch (_e) {
       /* non-fatal */
     }
 
-    toast("Executing…", "info");
+    toast("Arbeit läuft…", "info");
     try {
       const start = await api("POST", "/api/execute");
       let snap = start;
@@ -2196,14 +2217,14 @@
         const job = await pollJob(start.job_id, 300000);
         snap = job.snapshot || (await api("GET", "/api/state"));
         if (job.status === "error") {
-          appendChat("system", "Execute error: " + (job.error || "?"));
-          toast(job.error || "Execute error", "error");
+          appendChat("system", "Fehler: " + (job.error || "?"));
+          toast(job.error || "Fehler", "error");
           applySnapshot(snap);
           return;
         }
         if (job.status === "cancelled") {
-          appendChat("system", "Execute cancelled.");
-          toast("Cancelled", "info");
+          appendChat("system", "Arbeit abgebrochen.");
+          toast("Abgebrochen", "info");
           applySnapshot(snap);
           return;
         }
@@ -2218,15 +2239,15 @@
         if (okDeliverable) {
           appendChat(
             "system",
-            "Execute done in " + formatDuration(dur) + " — see Box 3."
+            "Fertig in " + formatDuration(dur) + " — siehe Box 3."
           );
-          toast("Execute done · " + formatDuration(dur), "ok");
+          toast("Fertig · " + formatDuration(dur), "ok");
         } else {
           appendChat(
             "system",
-            "Execute finished in "
+            "Lauf zu Ende in "
               + formatDuration(dur)
-              + " without a valid deliverable — see Box 3."
+              + " ohne gültige Lieferung — siehe Box 3."
           );
           toast("Kein Deliverable · " + formatDuration(dur), "error");
         }
@@ -2234,7 +2255,7 @@
         try {
           pushResultHistory(snap.pipeline || {}, {
             label:
-              ((snap.pipeline && snap.pipeline.user_text) || "Execute").slice(
+              ((snap.pipeline && snap.pipeline.user_text) || "Arbeit").slice(
                 0,
                 40
               ) +
@@ -2246,17 +2267,17 @@
         }
         try {
           await api("POST", "/api/save");
-          appendChat("system", "Auto-saved HOT + agents.");
+          appendChat("system", "HOT und Agenten automatisch gespeichert.");
         } catch (_e) {
           /* non-fatal */
         }
       } else if (stage === "clarify") {
-        appendChat("system", "Clarify needed in Box 1 before workers finish.");
-        toast("Clarify needed", "info");
+        appendChat("system", "Rückfrage in Box 1, bevor die Arbeiter fertig sind.");
+        toast("Rückfrage in Box 1", "info");
       }
     } catch (err) {
-      appendChat("system", "Execute failed: " + err.message);
-      toast("Execute failed: " + err.message, "error");
+      appendChat("system", "Arbeit fehlgeschlagen: " + err.message);
+      toast("Arbeit fehlgeschlagen: " + err.message, "error");
     } finally {
       setChatBusy(false);
       currentJobId = null;
@@ -2302,15 +2323,15 @@
         "Senden und Enter bedeuten nur reden.",
         "Der Empfänger ist das Flag, nicht die angeklickte Karte.",
         "Kartenklick öffnet Infos. Das Sendeziel bleibt, wo das Flag steht.",
-        "Brain redet frei. Coord plant. Flex fragt nach. A1–A4 sind Worker.",
+        "Brain redet frei. Coord plant. Flex fragt nach. A1–A4 sind Arbeiter.",
         "Läuft schon eine Antwort, bleibt sie dem Agenten zugeordnet, der sie begonnen hat.",
       ],
-      nicht: "Senden startet keine Worker, keine Werkzeuge und keine Dateiänderung.",
+      nicht: "Senden startet keine Arbeiter, keine Werkzeuge und keine Dateiänderung.",
     },
     {
       id: "arbeit",
       label: "Arbeit",
-      wozu: "Die Worker sollen etwas bauen, prüfen oder liefern.",
+      wozu: "Die Arbeiter sollen etwas bauen, prüfen oder liefern.",
       steps: [
         "Auftrag in die Zeile schreiben oder nach dem Gespräch stehen lassen.",
         "Arbeit starten oder Ctrl/⌘+Enter.",
@@ -2319,7 +2340,7 @@
         "Laufenden Job mit Esc oder Abbrechen stoppen.",
       ],
       points: [
-        "Arbeit starten startet Distill und danach die Worker.",
+        "Arbeit starten startet Distill und danach die Arbeiter.",
         "Ohne diesen Knopf (oder Ctrl/⌘+Enter) bleibt es ein Gespräch.",
         "Offene Entscheidungen stehen in Box 1, nicht im Chat versteckt.",
         "Ergebnisse gehören nach Box 3, nicht als JSON in Box 2.",
@@ -2334,13 +2355,13 @@
       steps: [
         "Box 1 links: wenn Gnom fragt, hier klicken oder eine Karte wählen.",
         "Box 2 Mitte: Reiter Brain, Flex, Coord, Mem, A1–A4 — eine Antwort lesen.",
-        "Box 3 rechts: Worker-Ergebnis. Sicht = echte Seite, Code = der Text dahinter.",
-        "Unter den Worker-Reitern: Weg, Neu, Behalten.",
+        "Box 3 rechts: Ergebnis. Sicht = echte Seite, Code = der Text dahinter.",
+        "Unter den Reitern: Weg, Neu, Behalten.",
       ],
       points: [
         "Box 1 ist Rückfrage und Entscheidung, kein Chat-Verlauf.",
         "Box 2 ist die Antwort des gewählten Agenten.",
-        "Box 3 ist die Lieferung der Worker nach Arbeit starten.",
+        "Box 3 ist die Lieferung nach Arbeit starten.",
         "Kurze weiße Namen auf den Reitern. Voller Name steht im Hover.",
         "Scrollen geht, der Balken bleibt unsichtbar.",
       ],
@@ -2370,7 +2391,7 @@
       label: "Dateien",
       wozu: "Ergebnisse behalten, ohne sie ins Git zu schieben.",
       steps: [
-        "In Box 3 den Worker-Reiter wählen, dessen Datei du willst.",
+        "In Box 3 den Reiter wählen, dessen Datei du willst.",
         "Behalten klicken. Erfolg kommt erst nach bestätigtem Rücklesen.",
         "Workspace öffnen: drei Spalten Temp, Dauerhaft, Behalten.",
         "HTML zuerst als Sicht ansehen, daneben Code, wenn du den Text brauchst.",
@@ -2396,7 +2417,7 @@
       ],
       points: [
         "Enter und Senden sind dieselbe Tat: reden.",
-        "Ctrl/⌘+Enter und Arbeit starten sind dieselbe Tat: Worker.",
+        "Ctrl/⌘+Enter und Arbeit starten sind dieselbe Tat: liefern.",
         "Das Mikrofon bleibt an, bis du es ausklickst. Es sendet nicht von allein.",
         "Sprache (Vorlesen) spricht Antworten, startet aber keine Arbeit.",
         "Kleine Fenster: dieselben Tasten, dieselben drei Boxen.",
@@ -2501,9 +2522,9 @@
     if (!name) return;
     if (
       !confirm(
-        'Restore backup "' +
+        'Backup "' +
           name +
-          '"? Current HOT is archived to COLD if non-empty. HOT/WARM/agents will be replaced.'
+          '" wiederherstellen? Aktuelles HOT geht nach COLD, wenn es nicht leer ist. HOT/WARM/Agenten werden ersetzt.'
       )
     ) {
       return;
@@ -2516,27 +2537,27 @@
       applySnapshot(snap);
       appendChat(
         "system",
-        "Restored backup: " + (snap.restored_backup || name)
+        "Backup wiederhergestellt: " + (snap.restored_backup || name)
       );
       toast(
-        "Backup restored" +
-          (snap.checkpoint_loaded ? " (+ checkpoint)" : ""),
+        "Backup wiederhergestellt" +
+          (snap.checkpoint_loaded ? " (+ Checkpoint)" : ""),
         "ok"
       );
       openSystemModal();
     } catch (err) {
-      toast("Restore backup failed: " + err.message, "error");
+      toast("Backup wiederherstellen fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function deleteBackupByName(name) {
-    if (!name || !confirm('Delete backup "' + name + '"?')) return;
+    if (!name || !confirm('Backup "' + name + '" löschen?')) return;
     try {
       await api("DELETE", "/api/backups/" + encodeURIComponent(name));
-      toast("Backup deleted", "ok");
+      toast("Backup gelöscht", "ok");
       openSystemModal();
     } catch (err) {
-      toast("Delete backup failed: " + err.message, "error");
+      toast("Backup löschen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -2552,7 +2573,7 @@
       const snap = await api("POST", "/api/reset");
       applySnapshot(snap);
       setBox2("Noch keine Antwort. Senden = reden.");
-      setBox3("Noch kein Ergebnis. Arbeit starten legt die Worker-Seiten hier ab.");
+      setBox3("Noch kein Ergebnis. Arbeit starten legt die Seiten hier ab.");
       hideClarify();
       appendChat("system", "Sitzung neu (HOT nach COLD, wenn nicht leer).");
       toast("Sitzung neu", "ok");
@@ -2648,7 +2669,7 @@
         els.coldList.appendChild(li);
       });
     } catch (err) {
-      toast("COLD list failed: " + err.message, "error");
+      toast("COLD-Liste fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -2676,20 +2697,20 @@
       }
       if (els.coldDetail) els.coldDetail.textContent = lines.join("\n");
     } catch (err) {
-      toast("COLD load failed: " + err.message, "error");
+      toast("COLD laden fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function restoreSelectedCold() {
     if (!selectedColdId) {
-      toast("Select a COLD archive first", "info");
+      toast("Zuerst ein COLD-Archiv wählen", "info");
       return;
     }
     if (
       !confirm(
-        'Restore COLD "' +
+        'COLD "' +
           selectedColdId +
-          '" into HOT? Current HOT is archived first if non-empty.'
+          '" nach HOT holen? Aktuelles HOT wird zuerst archiviert, wenn es nicht leer ist.'
       )
     ) {
       return;
@@ -2708,13 +2729,13 @@
       toast("COLD restored to HOT", "ok");
       await openColdBrowser();
     } catch (err) {
-      toast("COLD restore failed: " + err.message, "error");
+      toast("COLD wiederherstellen fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function deleteSelectedCold() {
     if (!selectedColdId) {
-      toast("Select a COLD archive first", "info");
+      toast("Zuerst ein COLD-Archiv wählen", "info");
       return;
     }
     if (!confirm('Delete COLD archive "' + selectedColdId + '"?')) return;
@@ -2728,13 +2749,13 @@
       toast("COLD deleted", "ok");
       await openColdBrowser();
     } catch (err) {
-      toast("COLD delete failed: " + err.message, "error");
+      toast("COLD löschen fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function onClarify(answer) {
     if (chatBusy) {
-      toast("Busy — wait for current job", "info");
+      toast("Beschäftigt — warte auf den laufenden Job", "info");
       return;
     }
     const cb = w.GnomHub.onClarify;
@@ -2748,7 +2769,7 @@
         const job = await pollJob(start.job_id, 180000);
         snap = job.snapshot || (await api("GET", "/api/state"));
         if (job.status === "error") {
-          appendChat("system", "Clarify error: " + (job.error || "?"));
+          appendChat("system", "Rückfrage-Fehler: " + (job.error || "?"));
           toast(job.error || "Clarify failed", "error");
           // Re-show clarify UI if still needed
           applySnapshot(snap);
@@ -2774,14 +2795,14 @@
           "system",
           "Clarify → Later: parked (no workers). Task stays in notes; Send again when ready."
         );
-        toast("Clarify deferred — no zombie job", "info");
+        toast("Rückfrage später — kein hängender Job", "info");
       } else if (snap.pipeline && snap.pipeline.stage === "done") {
-        appendChat("system", "Pipeline done.");
-        toast("Pipeline done", "ok");
+        appendChat("system", "Pipeline fertig.");
+        toast("Pipeline fertig", "ok");
       }
     } catch (err) {
-      appendChat("system", "Clarify failed: " + err.message);
-      toast("Clarify failed: " + err.message, "error");
+      appendChat("system", "Rückfrage fehlgeschlagen: " + err.message);
+      toast("Rückfrage fehlgeschlagen: " + err.message, "error");
       // Restore buttons/state so user can retry
       await resyncState();
     } finally {
@@ -2845,7 +2866,7 @@
 
   async function resumeDeferredClarify(index) {
     if (chatBusy) {
-      toast("Busy — wait for current job", "info");
+      toast("Beschäftigt — warte auf den laufenden Job", "info");
       return;
     }
     setChatBusy(true);
@@ -2857,11 +2878,11 @@
       applySnapshot(snap);
       if (snap.pipeline && snap.pipeline.pending_question) {
         showClarify(snap.pipeline.pending_question.text);
-        appendChat("system", "Clarify resumed — answer Yes/No/Whatever/Later.");
-        toast("Clarify resumed", "ok");
+        appendChat("system", "Rückfrage fortgesetzt — Ja/Nein/Egal/Später.");
+        toast("Rückfrage fortgesetzt", "ok");
       }
     } catch (err) {
-      toast("Resume failed: " + err.message, "error");
+      toast("Fortsetzen fehlgeschlagen: " + err.message, "error");
       await resyncState();
     } finally {
       setChatBusy(false);

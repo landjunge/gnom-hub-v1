@@ -126,6 +126,15 @@
         resetSlider(btn.getAttribute("data-reset"));
       });
     });
+    const tts = document.getElementById("tune-tts");
+    if (tts && !tts._bound) {
+      tts._bound = true;
+      tts.addEventListener("change", function () {
+        if (tuneAgentId && typeof setAgentTts === "function") {
+          setAgentTts(tuneAgentId, !!tts.checked);
+        }
+      });
+    }
   }
 
   async function saveTuneModal() {
@@ -181,14 +190,14 @@
       );
       applyAgentsFromServer([data]);
       closeTuneModal();
-      toast("Agent tuning saved", "ok");
+      toast("Regler gespeichert", "ok");
       try {
         await api("POST", "/api/save");
       } catch (_e) {
         /* optional */
       }
     } catch (err) {
-      toast("Tune failed: " + err.message, "error");
+      toast("Regler fehlgeschlagen: " + err.message, "error");
     }
   }
 

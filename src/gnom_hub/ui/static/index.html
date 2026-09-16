@@ -3,86 +3,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gnom-Hub</title>
-  <link rel="stylesheet" href="/static/app.css?v=185" />
-  <!-- Tailwind utilities for Chat module (preflight OFF) -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      corePlugins: { preflight: false },
-      theme: {
-        extend: {
-          colors: {
-            gnom: {
-              bg: "#121316",
-              panel: "#1a1b1f",
-              card: "#1e1f24",
-              elev: "#22242a",
-              border: "#2c2e34",
-              text: "#d8dbe0",
-              muted: "#7a7f88",
-              flex: "#f0c000",
-              ok: "#3dd68c",
-              accent: "#4dabf7",
-            },
-          },
-          fontSize: {
-            "2xs": ["10px", "1.3"],
-          },
-        },
-      },
-    };
-  </script>
+  <title>Gnom-Hub-V1</title>
+  <link rel="stylesheet" href="/static/app.css?v=187" />
 </head>
 <body>
   <div id="app">
     <header class="top-bar">
       <div class="top-bar-head">
-        <h1 class="app-title">Gnom-Hub <span id="ver-badge" class="ver-badge">v3.10.1</span></h1>
+        <h1 class="app-title">Gnom-Hub-V1 <span id="ver-badge" class="ver-badge">v3.10.1</span></h1>
         <div class="top-meta top-meta-badges">
-          <span id="llm-badge" class="llm-badge" title="LLM-Schlüssel">LLM: —</span>
-          <span id="cost-badge" class="cost-badge" title="Kosten und Jobs" role="button" tabindex="0">$0.00</span>
-          <span id="mem-badge" class="mem-badge" title="HOT-Memory dieser Sitzung">Mem: —</span>
-          <span id="vec-badge" class="vec-badge" title="Vektorspeicher öffnen" role="button" tabindex="0">Vec: —</span>
+          <span id="llm-badge" class="llm-badge" title="Schlüssel" role="button" tabindex="0">LLM: —</span>
           <span id="god-badge" class="god-badge" title="God aus = Trockenlauf. God an = echte Desktop-Aktionen. Nur dieser rote Knopf schaltet God." role="button" tabindex="0">God: aus</span>
-          <span id="cold-badge" class="cold-badge" title="COLD-Archive durchsuchen" role="button" tabindex="0">Cold: —</span>
-          <span id="docs-badge" class="tools-badge" role="button" tabindex="0" title="Hilfe-Dokumente suchen">Docs</span>
-          <span id="skills-badge" class="tools-badge" role="button" tabindex="0" title="Playbooks">Skills: —</span>
-          <span id="tools-badge" class="tools-badge" role="button" tabindex="0" title="Werkzeuge in diesem Lauf">Werkzeuge: 0</span>
-          <span id="stage-badge" class="stage-badge" title="Stand der Arbeit">leer</span>
         </div>
       </div>
       <!-- All header buttons: one module, horizontal, centered under head -->
       <div class="top-toolbar" role="toolbar" aria-label="Hauptaktionen">
-        <label class="flex-preset-label" title="Flex ist fest (persönlicher Begleiter)" data-tooltip-id="flex">
-          Flex
-          <select id="flex-preset-select" class="flex-preset-select" aria-label="Flex fest persönlich" disabled>
-            <option value="personal" selected>Persönlich (fest)</option>
-          </select>
-        </label>
         <button type="button" id="btn-workspace" class="btn-workspace" data-tooltip-id="workspace" title="Temp, Dauerhaft und behaltene Dateien">
           Workspace
-        </button>
-        <button type="button" id="btn-tools" class="btn-workspace" title="Werkzeuge listen und ausführen">
-          Werkzeuge
-        </button>
-        <button type="button" id="btn-clear-chat" class="btn-clear-chat" title="Chat in diesem Browser leeren">
-          Chat leeren
         </button>
         <button type="button" id="btn-system" class="btn-system" data-tooltip-id="system" title="Systemeinstellungen">
           System
         </button>
         <button type="button" id="btn-help" class="btn-help" data-tooltip-id="help" title="Hilfe">
           Hilfe
-        </button>
-        <button type="button" id="btn-archive" class="btn-archive" data-tooltip-id="archive" title="HOT nach COLD archivieren">
-          Archiv
-        </button>
-        <button type="button" id="btn-reset" class="btn-reset" data-tooltip-id="reset" title="Sitzung neu (HOT zuerst nach COLD)">
-          Neu
-        </button>
-        <button type="button" id="btn-save" class="btn-save" data-tooltip-id="save" title="Speichern">
-          Speichern
         </button>
       </div>
     </header>
@@ -261,9 +204,9 @@
             </div>
           </div>
           <div class="info-layer" data-info-layer="gnom" id="box1-layer-gnom" hidden>
-            <h2 class="tip-title">Gnom-Hub — Überblick</h2>
+            <h2 class="tip-title">Gnom-Hub-V1 — Überblick</h2>
             <div class="info-gnom-body">
-              <p><strong>Pipeline:</strong> Chat → Brainstorm → Distill → Flex → Coordinator → Worker(s) → Memory.</p>
+              <p><strong>Pipeline:</strong> Chat → Brainstorm → Distill → Flex → Koordinator → Arbeiter → Memory.</p>
               <p><strong>Agent-Layer:</strong> Jeder Agent hat Layer in Box 1/2/3. Klick → Layer + 1px Rahmenfarbe.</p>
               <p><strong>Memory:</strong> HOT / WARM (user.db) / COLD.</p>
             </div>
@@ -323,7 +266,7 @@
             <textarea
               id="chat-input"
               class="chat-input min-h-8 max-h-[72px] min-w-[80px] flex-1 rounded-md border border-gnom-border bg-gnom-bg px-2.5 text-[13px] leading-tight text-gnom-text placeholder:text-gnom-muted focus:border-gnom-accent focus:outline-none focus:ring-1 focus:ring-gnom-accent/50"
-              placeholder="An den gewählten Agenten schreiben. Senden = reden."
+              placeholder="Nachricht an Brainstorm"
               autocomplete="off"
               rows="1"
             ></textarea>
@@ -339,6 +282,7 @@
               title="Arbeit starten — Destillieren + Worker (Ctrl+Enter)"
               disabled
             >Arbeit starten</button>
+            <p id="execute-hint" class="execute-hint" hidden>Key fehlt. In System eintragen, dann Arbeit starten.</p>
             <button
               type="button"
               id="btn-cancel"
@@ -367,9 +311,6 @@
               title="Klick = an nächste Nachricht anhängen"
             >Wünsche</span>
           </div>
-          <p class="kbd-hint m-0 shrink-0 px-2 pb-1 text-2xs text-gnom-muted">
-            Senden = reden · Arbeit starten = Worker · Quadrate = stehende Wünsche
-          </p>
         </section>
       </section>
       </div>
@@ -381,18 +322,18 @@
           <div id="box3-content" class="layer-slot layer-slot-a is-front" data-slot="a"></div>
           <div class="layer-slot layer-slot-b" data-slot="b"></div>
         </div>
-        <div id="box3-empty" class="box3-empty">Noch kein Ergebnis. Arbeit starten legt die Worker-Seiten hier ab.</div>
+        <div id="box3-empty" class="box3-empty">Noch kein Ergebnis. Arbeit starten legt die Seiten hier ab.</div>
         <!-- Always-on top: worker deliverable the user must see after Execute -->
         <div id="box3-result-stage" class="box3-result-stage" hidden>
-          <div id="box3-worker-tabs" class="box3-worker-tabs" hidden role="tablist" aria-label="Worker"></div>
+          <div id="box3-worker-tabs" class="box3-worker-tabs" hidden role="tablist" aria-label="Arbeiter"></div>
           <div class="box3-result-bar">
-            <span id="box3-result-label" class="box3-result-label" hidden>Worker-Ergebnis</span>
-            <div class="box3-result-actions" role="toolbar" aria-label="Worker-Aktionen">
+            <span id="box3-result-label" class="box3-result-label" hidden>Ergebnis</span>
+            <div class="box3-result-actions" role="toolbar" aria-label="Aktionen">
               <button type="button" id="box3-btn-copy" class="btn-ws-sm" title="Ergebnis kopieren">Kopieren</button>
               <button type="button" id="box3-btn-dl" class="btn-ws-sm" title="Herunterladen">↓</button>
               <button type="button" id="box3-btn-open" class="btn-ws-sm" title="Seite in Box 2+3 (Shift = Browser-Tab)">↗</button>
-              <button type="button" id="box3-btn-prev" class="btn-ws-sm" title="Vorheriges Ergebnis">←</button>
-              <button type="button" id="box3-btn-next" class="btn-ws-sm" title="Nächstes Ergebnis">→</button>
+              <button type="button" id="box3-btn-prev" class="btn-ws-sm" title="Vorheriges Ergebnis" hidden>←</button>
+              <button type="button" id="box3-btn-next" class="btn-ws-sm" title="Nächstes Ergebnis" hidden>→</button>
               <button type="button" id="box3-btn-temp" class="btn-ws-sm" title="Temporär — Workspace-Entwurf">Temp</button>
               <button type="button" id="box3-btn-perm" class="btn-ws-sm" title="Dauerhaft — Workspace">Dauerhaft</button>
               <button type="button" id="box3-result-fs" class="btn-ws-sm" title="Vollbild in den Boxen">⛶</button>
@@ -526,6 +467,26 @@
         <p id="system-llm" class="system-line">DeepSeek: —</p>
         <p id="system-setup" class="system-line muted">Einrichtung: —</p>
         <p id="system-updates" class="system-line muted">Update: —</p>
+        <div class="system-row system-quiet-stats" aria-label="Stand">
+          <span id="cost-badge" class="cost-badge" title="Kosten und Jobs" role="button" tabindex="0">$0.00</span>
+          <span id="mem-badge" class="mem-badge" title="HOT-Memory dieser Sitzung">Mem: —</span>
+          <span id="vec-badge" class="vec-badge" title="Vektorspeicher öffnen" role="button" tabindex="0">Vec: —</span>
+          <span id="cold-badge" class="cold-badge" title="COLD-Archive durchsuchen" role="button" tabindex="0">Cold: —</span>
+          <span id="docs-badge" class="tools-badge" role="button" tabindex="0" title="Hilfe-Dokumente suchen">Docs</span>
+          <span id="skills-badge" class="tools-badge" role="button" tabindex="0" title="Playbooks">Skills: —</span>
+          <span id="tools-badge" class="tools-badge" role="button" tabindex="0" title="Werkzeuge in diesem Lauf">Werkzeuge: 0</span>
+          <span id="stage-badge" class="stage-badge" title="Stand der Arbeit">leer</span>
+        </div>
+        <div class="system-row system-session-actions" aria-label="Sitzung">
+          <button type="button" id="btn-tools" class="btn-ws-sm" title="Werkzeuge listen und ausführen">Werkzeuge</button>
+          <button type="button" id="btn-clear-chat" class="btn-ws-sm" title="Chat in diesem Browser leeren">Chat leeren</button>
+          <button type="button" id="btn-archive" class="btn-ws-sm" data-tooltip-id="archive" title="HOT nach COLD archivieren">Archiv</button>
+          <button type="button" id="btn-reset" class="btn-ws-sm" data-tooltip-id="reset" title="Sitzung neu (HOT zuerst nach COLD)">Neu</button>
+          <button type="button" id="btn-save" class="btn-ws-sm" data-tooltip-id="save" title="Speichern">Speichern</button>
+          <select id="flex-preset-select" class="flex-preset-select" aria-label="Flex fest persönlich" hidden disabled>
+            <option value="personal" selected>Persönlich (fest)</option>
+          </select>
+        </div>
         <div class="system-row system-row-actions">
           <button type="button" id="sys-update-check" class="btn-ws-sm">Suchen</button>
           <button type="button" id="sys-update-details" class="btn-ws-sm">Details</button>
@@ -594,16 +555,16 @@
           <ul id="sys-pack-list" class="ws-list" style="max-height:100px"></ul>
         </div>
         <div class="system-row">
-          <span>Worker-Presets</span>
+          <span>Arbeiter-Presets</span>
           <div class="system-row-actions">
             <select id="sys-preset-select" class="tune-input" style="max-width:180px">
               <option value="">— Preset wählen —</option>
             </select>
             <select id="sys-preset-agent" class="tune-input" style="max-width:110px">
-              <option value="worker1">Worker 1</option>
-              <option value="worker2">Worker 2</option>
-              <option value="worker3">Worker 3</option>
-              <option value="worker4">Worker 4</option>
+              <option value="worker1">Arbeiter 1</option>
+              <option value="worker2">Arbeiter 2</option>
+              <option value="worker3">Arbeiter 3</option>
+              <option value="worker4">Arbeiter 4</option>
             </select>
             <button type="button" id="sys-preset-apply" class="btn-ws-sm">Übernehmen</button>
             <button type="button" id="sys-preset-delete" class="btn-ws-sm">Löschen</button>
@@ -634,7 +595,7 @@
           <span>Backups</span>
           <ul id="sys-backup-list" class="ws-list" style="max-height:100px"></ul>
         </div>
-        <p class="system-hint muted">Keys: Key.txt → DEEPSEEK_API_KEY. Modell ollama/…. Worker 3/4: Doppelklick zum Einschalten. Chat bleibt in diesem Browser.</p>
+        <p class="system-hint muted">Keys: Key.txt → DEEPSEEK_API_KEY. Modell ollama/…. Arbeiter 3/4: Doppelklick zum Einschalten. Chat bleibt in diesem Browser.</p>
       </div>
       <div class="modal-actions">
         <button type="button" id="system-save" class="btn-save">Übernehmen</button>
@@ -646,8 +607,8 @@
   <div id="vector-modal" class="modal" hidden>
     <div class="modal-panel trace-panel">
       <div class="modal-head">
-        <h2 class="modal-title">Vector store (lite)</h2>
-        <button type="button" id="vector-close" class="modal-close" title="Close">×</button>
+        <h2 class="modal-title">Suche im Speicher</h2>
+        <button type="button" id="vector-close" class="modal-close" title="Schließen">×</button>
       </div>
       <p id="vector-count" class="system-line muted">Docs: 0 · embedder: bow</p>
       <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
@@ -661,21 +622,21 @@
             <option value="sbert">sbert (neural)</option>
           </select>
         </label>
-        <button type="button" id="vector-embedder-apply" class="btn-ws-sm" title="Apply embedder and reindex docs">Apply + reindex</button>
-        <button type="button" id="vector-embedder-install" class="btn-ws-sm" title="One-click install fastembed">Install neural</button>
+        <button type="button" id="vector-embedder-apply" class="btn-ws-sm" title="Embedder anwenden und neu indexieren">Übernehmen</button>
+        <button type="button" id="vector-embedder-install" class="btn-ws-sm" title="fastembed einmal installieren">Neural installieren</button>
       </div>
       <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-        <input id="vector-query" class="tune-input" type="search" placeholder="Search…" style="flex:1;min-width:140px" />
-        <button type="button" id="vector-search-btn" class="btn-ws-sm">Search</button>
-        <button type="button" id="vector-refresh" class="btn-ws-sm">List</button>
-        <button type="button" id="vector-clear" class="btn-ws-sm">Clear</button>
+        <input id="vector-query" class="tune-input" type="search" placeholder="Suchen…" style="flex:1;min-width:140px" />
+        <button type="button" id="vector-search-btn" class="btn-ws-sm">Suchen</button>
+        <button type="button" id="vector-refresh" class="btn-ws-sm">Liste</button>
+        <button type="button" id="vector-clear" class="btn-ws-sm">Leeren</button>
       </div>
       <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-        <input id="vector-add-input" class="tune-input" type="text" placeholder="Add doc text…" style="flex:1;min-width:140px" />
-        <button type="button" id="vector-add-btn" class="btn-ws-sm">Add</button>
+        <input id="vector-add-input" class="tune-input" type="text" placeholder="Text hinzufügen…" style="flex:1;min-width:140px" />
+        <button type="button" id="vector-add-btn" class="btn-ws-sm">Hinzufügen</button>
       </div>
       <ul id="vector-list" class="ws-list" style="max-height:220px"></ul>
-      <pre id="vector-hits" class="trace-body muted" style="max-height:140px;margin-top:8px">Search hits appear here.</pre>
+      <pre id="vector-hits" class="trace-body muted" style="max-height:140px;margin-top:8px">Treffer erscheinen hier.</pre>
     </div>
   </div>
 
@@ -687,13 +648,13 @@
   <div id="docs-modal" class="modal" hidden>
     <div class="modal-panel trace-panel">
       <div class="modal-head">
-        <h2 class="modal-title">Documentation search</h2>
-        <button type="button" id="docs-close" class="modal-close" title="Close">×</button>
+        <h2 class="modal-title">Hilfe-Dokumente</h2>
+        <button type="button" id="docs-close" class="modal-close" title="Schließen">×</button>
       </div>
-      <p class="system-hint muted">Local index over docs/*.md — no external search engine.</p>
+      <p class="system-hint muted">Lokaler Index über docs/*.md — keine externe Suche.</p>
       <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-        <input id="docs-query" class="tune-input" type="search" placeholder="Search docs… e.g. skills, embeddings, install" style="flex:1;min-width:160px" />
-        <button type="button" id="docs-search-btn" class="btn-ws-sm">Search</button>
+        <input id="docs-query" class="tune-input" type="search" placeholder="Dokumente suchen…" style="flex:1;min-width:160px" />
+        <button type="button" id="docs-search-btn" class="btn-ws-sm">Suchen</button>
       </div>
       <ul id="docs-hits" class="ws-list" style="max-height:320px"></ul>
       <pre id="docs-hint" class="trace-body muted" style="max-height:80px;margin-top:8px">Tip: keywords from docs/INDEX.md · API GET /api/docs/search?q=</pre>
@@ -703,8 +664,8 @@
   <div id="skills-modal" class="modal" hidden>
     <div class="modal-panel trace-panel">
       <div class="modal-head">
-        <h2 class="modal-title">Skills (playbooks)</h2>
-        <button type="button" id="skills-close" class="modal-close" title="Close">×</button>
+        <h2 class="modal-title">Playbooks</h2>
+        <button type="button" id="skills-close" class="modal-close" title="Schließen">×</button>
       </div>
       <p id="skills-count" class="system-line muted">Skills: 0</p>
       <p class="system-hint muted">Markdown playbooks for agents — not tools, not a workflow engine.</p>
@@ -795,7 +756,7 @@
         <button type="button" id="help-close" class="modal-close" title="Schließen">×</button>
       </div>
       <div id="help-tabs" class="help-tabs" role="tablist" aria-label="Hilfe-Themen"></div>
-      <div id="help-body" class="help-body">Senden = reden. Arbeit starten = Worker.</div>
+      <div id="help-body" class="help-body">Senden = reden. Arbeit starten = Arbeiter.</div>
     </div>
   </div>
 

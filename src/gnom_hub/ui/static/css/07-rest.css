@@ -360,14 +360,13 @@ a:focus-visible {
 }
 
 .agent-card {
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
 }
 
 .agent-card.is-active-stage,
 .agent-card.is-layer-active {
-  box-shadow: 0 0 0 1px var(--card-color, var(--border)),
-    0 0 14px rgba(0, 0, 0, 0.35);
+  box-shadow: none;
 }
 
 .box {
@@ -375,8 +374,8 @@ a:focus-visible {
 }
 
 .modal-panel {
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-soft);
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .toast {

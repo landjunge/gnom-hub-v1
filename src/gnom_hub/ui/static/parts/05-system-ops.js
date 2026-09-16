@@ -207,7 +207,7 @@
         ul.appendChild(li);
       });
     } catch (err) {
-      toast("Vector list failed: " + err.message, "error");
+      toast("Vektor-Liste fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -228,7 +228,7 @@
       );
       await refreshVectorList();
     } catch (err) {
-      toast("Embedder switch failed: " + err.message, "error");
+      toast("Embedder wechseln fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -237,7 +237,7 @@
     const hitsEl = document.getElementById("vector-hits");
     const q = qEl ? String(qEl.value || "").trim() : "";
     if (!q) {
-      toast("Enter a search query", "info");
+      toast("Suchbegriff eingeben", "info");
       return;
     }
     try {
@@ -263,7 +263,7 @@
         })
         .join("\n");
     } catch (err) {
-      toast("Vector search failed: " + err.message, "error");
+      toast("Vektor-Suche fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -271,7 +271,7 @@
     const input = document.getElementById("vector-add-input");
     const text = input ? String(input.value || "").trim() : "";
     if (!text) {
-      toast("Enter text to add", "info");
+      toast("Text zum Speichern eingeben", "info");
       return;
     }
     try {
@@ -286,9 +286,9 @@
         if (countEl) countEl.textContent = "Docs: " + (data.count || 0);
       }
       await refreshVectorList();
-      toast("Vector doc " + (data.id || "added"), "ok");
+      toast("Vektor-Eintrag " + (data.id || "gespeichert"), "ok");
     } catch (err) {
-      toast("Vector add failed: " + err.message, "error");
+      toast("Vektor speichern fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -297,22 +297,22 @@
     try {
       await api("DELETE", "/api/vector/" + encodeURIComponent(id));
       await refreshVectorList();
-      toast("Deleted " + id, "ok");
+      toast("Gelöscht " + id, "ok");
     } catch (err) {
-      toast("Vector delete failed: " + err.message, "error");
+      toast("Vektor löschen fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function clearVectorStore() {
-    if (!confirm("Clear ALL vector docs?")) return;
+    if (!confirm("Alle Vektor-Einträge leeren?")) return;
     try {
       await api("POST", "/api/vector/clear");
       await refreshVectorList();
       const hitsEl = document.getElementById("vector-hits");
       if (hitsEl) hitsEl.textContent = "Search hits appear here.";
-      toast("Vector store cleared", "ok");
+      toast("Vektor-Speicher geleert", "ok");
     } catch (err) {
-      toast("Vector clear failed: " + err.message, "error");
+      toast("Vektor leeren fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -376,7 +376,7 @@
 
   async function saveWorkerPresetFromTune() {
     if (!tuneAgentId || tuneAgentId.indexOf("worker") !== 0) {
-      toast("Open a Worker card to save a worker preset", "info");
+      toast("Arbeiter-Karte öffnen, um ein Preset zu speichern", "info");
       return;
     }
     const name = prompt("Preset name:", tuneAgentId + "-preset");
@@ -393,7 +393,7 @@
         "ok"
       );
     } catch (err) {
-      toast("Preset save failed: " + err.message, "error");
+      toast("Preset speichern fehlgeschlagen: " + err.message, "error");
     }
   }
 

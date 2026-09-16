@@ -420,10 +420,10 @@
       brainstorm: "Brainstorm",
       memory: "Memory",
       coordinator: de ? "Koordinator" : "Coordinator",
-      worker1: "Worker 1",
-      worker2: "Worker 2",
-      worker3: "Worker 3",
-      worker4: "Worker 4",
+      worker1: de ? "Arbeiter 1" : "Worker 1",
+      worker2: de ? "Arbeiter 2" : "Worker 2",
+      worker3: de ? "Arbeiter 3" : "Worker 3",
+      worker4: de ? "Arbeiter 4" : "Worker 4",
     };
     /* flex omitted on purpose → maybeSpeakFlexSupport */
     const order = [
@@ -513,7 +513,10 @@
 
     const p = panel || {};
     const active = !!p.active;
-    root.hidden = !active;
+    const ask = document.getElementById("flex-ask");
+    const askVisible = !!(ask && !ask.hidden);
+    root.hidden = !active || askVisible;
+    if (askVisible) return;
     if (typeof markOwner === "function") markOwner(root, "flex");
     else root.dataset.agent = "flex";
     root.classList.toggle("is-active", active);
@@ -674,10 +677,10 @@
       }
       // Do NOT speak after await — gesture is gone (Chrome blocks it)
       renderCards();
-      toast(on ? "TTS on: " + (a.label || id) : "TTS off: " + (a.label || id), on ? "ok" : "info");
+      toast(on ? "Sprache an: " + (a.label || id) : "Sprache aus: " + (a.label || id), on ? "ok" : "info");
     } catch (err) {
-      appendChat("system", "TTS save failed: " + err.message);
-      toast("TTS save failed", "error");
+      appendChat("system", "Sprache speichern fehlgeschlagen: " + err.message);
+      toast("Sprache speichern fehlgeschlagen", "error");
     }
   }
 

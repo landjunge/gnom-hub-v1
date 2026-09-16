@@ -39,6 +39,8 @@ def test_mic_latch_and_german_errors():
 
 
 def test_card_tts_label_is_sprache():
-    assert "/> Sprache</label>" in PRE_JS
+    speech = (ROOT / "src/gnom_hub/ui/static/parts/02-speech.js").read_text(encoding="utf-8")
+    assert 'id="tune-tts"' in HTML
+    assert "Sprache" in HTML.split('id="tune-tts"', 1)[1][:80]
     assert "/> TTS</label>" not in PRE_JS
-    assert "Sprache an:" in PRE_JS
+    assert "Sprache an:" in speech

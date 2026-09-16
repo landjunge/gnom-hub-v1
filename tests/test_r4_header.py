@@ -25,13 +25,17 @@ USAGE_JS = "".join(
 
 def test_toolbar_buttons_are_german():
     bar = HTML.split('class="top-toolbar"', 1)[1].split("agent-cards", 1)[0]
-    assert "Chat leeren" in bar
-    assert "Archiv" in bar
-    assert "Speichern" in bar
+    assert "Workspace" in bar
+    assert "System" in bar
+    assert "Hilfe" in bar
     assert "Clear chat" not in bar
     assert ">Save<" not in bar
     assert "Reset" not in bar
     assert "Archive HOT" not in bar
+    system = HTML.split('id="system-modal"', 1)[1]
+    assert "Chat leeren" in system
+    assert "Archiv" in system
+    assert "Speichern" in system
 
 
 def test_stage_badge_maps_idle_to_leer():

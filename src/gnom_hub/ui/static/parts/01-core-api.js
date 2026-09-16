@@ -6,7 +6,7 @@
     try {
       res = await fetch(API + path, opts);
     } catch (netErr) {
-      toast("Network error: " + netErr.message, "error");
+      toast("Netzwerkfehler: " + netErr.message, "error");
       throw netErr;
     }
     if (!res.ok) {
@@ -42,7 +42,7 @@
     try {
       return await res.json();
     } catch (parseErr) {
-      toast("Bad JSON from server (job/state) — " + (parseErr.message || parseErr), "error");
+      toast("Ungültiges JSON vom Server (Job/Status) — " + (parseErr.message || parseErr), "error");
       throw parseErr;
     }
   }
@@ -89,7 +89,7 @@
       if (wantsStart) {
         toast("Arbeit starten", "ok");
         if (typeof appendChat === "function") {
-          appendChat("system", "Execute started (distill → flex → workers)…");
+          appendChat("system", "Arbeit gestartet…");
         }
       }
       let snap = start;
@@ -102,17 +102,17 @@
           snap = job.snapshot || (await api("GET", "/api/state"));
           if (job.status === "error") {
             if (typeof appendChat === "function") {
-              appendChat("system", "Execute error: " + (job.error || "?"));
+              appendChat("system", "Fehler: " + (job.error || "?"));
             }
-            toast(job.error || "Execute error", "error");
+            toast(job.error || "Fehler", "error");
             applySnapshot(snap);
             return;
           }
           if (job.status === "cancelled") {
             if (typeof appendChat === "function") {
-              appendChat("system", "Execute cancelled.");
+              appendChat("system", "Arbeit abgebrochen.");
             }
-            toast("Cancelled", "info");
+            toast("Abgebrochen", "info");
             applySnapshot(snap);
             return;
           }
@@ -140,6 +140,7 @@
       }
     );
     const placeholder = document.querySelector("#box1-layer-live .box1-placeholder");
+    const review = document.getElementById("flex-review");
     if (!qs.length) {
       host.hidden = true;
       list.textContent = "";
@@ -148,6 +149,7 @@
     }
     host.hidden = false;
     if (placeholder) placeholder.hidden = true;
+    if (review) review.hidden = true;
     qs = qs.slice(0, 1);
     if (typeof markOwner === "function") markOwner(host, "flex");
     else host.dataset.agent = "flex";
@@ -396,7 +398,7 @@
     if (snap.version) {
       const vb = document.getElementById("ver-badge");
       if (vb) vb.textContent = "v" + String(snap.version).replace(/^v/, "");
-      document.title = "Gnom-Hub v" + String(snap.version).replace(/^v/, "");
+      document.title = "Gnom-Hub-V1 v" + String(snap.version).replace(/^v/, "");
     }
 
     if (els.llmBadge && snap.llm) {
@@ -408,22 +410,13 @@
       const blocked = !!auth.session_auth_blocked;
       const placeholder = !!auth.placeholder_detected || sys === "placeholder" || wrk === "placeholder";
       const ok = (ds || ol) && !blocked;
-      const tok =
-        (snap.llm.prompt_tokens || 0) + (snap.llm.completion_tokens || 0);
       const viaTg = !!snap.llm.via_tollgate;
       const tg = snap.tollgate || {};
       const tgOk = tg.ok !== false;
-      let label = "LLM: stub";
-      if (blocked) label = "LLM: auth blocked";
-      else if (placeholder && !ok) label = "LLM: key placeholder";
-      else if (!ok && sys === "missing") label = "LLM: no key";
-      else if (viaTg && (ds || ol)) {
-        const route = (snap.llm.last_route && snap.llm.last_route.provider) || "";
-        label = route ? "LLM: Tollgate/" + route : "LLM: Tollgate";
-      } else if (ds && ol) label = "LLM: DeepSeek+Ollama";
-      else if (ds) label = "LLM: DeepSeek";
-      else if (ol) label = "LLM: Ollama";
-      els.llmBadge.textContent = ok ? label + " · " + tok + " tok" : label;
+      let label = "LLM: fehlt";
+      if (blocked) label = "LLM: gesperrt";
+      else if (ok) label = "LLM: bereit";
+      els.llmBadge.textContent = label;
       els.llmBadge.classList.toggle("has-key", ok);
       els.llmBadge.classList.toggle("auth-warn", placeholder && !ok);
       els.llmBadge.classList.toggle("auth-bad", blocked || (!ok && !placeholder && sys === "missing"));
@@ -717,8 +710,13 @@
     }
 
     lastCanExecute = !!p.can_execute;
+    const hasKey = !!(els.llmBadge && els.llmBadge.classList.contains("has-key"));
     if (els.btnExecute) {
-      els.btnExecute.disabled = !lastCanExecute || chatBusy;
+      els.btnExecute.disabled = !lastCanExecute || chatBusy || !hasKey;
+    }
+    const hint = document.getElementById("execute-hint");
+    if (hint) {
+      hint.hidden = hasKey || !lastCanExecute;
     }
 
     renderBox3Workers(p);

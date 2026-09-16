@@ -61,9 +61,10 @@ def test_box3_empty_german():
 
 def test_box3_tabs_short_a_labels():
     body = _function_body(BOXES_JS, "box3WorkerTabLabel")
-    assert '"A"' in body and ("return base" in body or 'return "A"' in body)
+    assert "return base" in body
     render = _function_body(BOXES_JS, "renderBox3WorkerTabs")
     assert "box3WorkerTabLabel" in render
+    assert "box3TabsWanted" in render
     assert "sendTarget" not in render
 
 

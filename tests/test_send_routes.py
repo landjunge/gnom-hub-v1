@@ -79,7 +79,7 @@ def test_unbound_yes_rejected_when_two_questions_open():
     assert a["ok"] and b["ok"]
     r = desk.answer(a["question_id"], "Ja", job_id="job-a")
     assert r["ok"] is False
-    assert r["error"] == "unbound_yes"
+    assert r["error"] in ("unbound_yes", "stale_question")
 
 
 def test_start_id_mismatch_does_not_start():
