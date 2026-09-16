@@ -2736,7 +2736,7 @@
 
     // Tool strip in Box 3 (persists after job done)
     if (typeof renderToolStrip === "function") {
-      renderToolStrip(p.tool_log || [], p.quality_notes || "");
+      renderToolStrip(p.tool_log || []);
     }
     // One toast when plan mode resolved (debug + user-facing clarity)
     if (p.stage === "done" && p.resolved_plan_mode) {
@@ -9788,23 +9788,22 @@
     }
   }
 
-  function renderToolStrip(toolLog, qualityNotes) {
+  function renderToolStrip(toolLog) {
     const strip = document.getElementById("box3-tool-strip");
     if (!strip) return;
     const log = Array.isArray(toolLog) ? toolLog : [];
     if (!log.length) {
-      // fallback: quality_notes may list tools
-      if (qualityNotes && /tool/i.test(String(qualityNotes))) {
-        strip.hidden = false;
-        strip.textContent = String(qualityNotes).slice(0, 220);
-        return;
-      }
       strip.hidden = true;
       strip.innerHTML = "";
       return;
     }
     strip.hidden = false;
     strip.innerHTML = "";
+    const modeDe = {
+      "dry-run": "Trockenlauf",
+      blocked: "gesperrt",
+      error: "Fehler",
+    };
     log.slice(-16).forEach(function (e) {
       if (!e) return;
       const chip = document.createElement("span");
@@ -9815,15 +9814,13 @@
       else if (e.ok === false || mode === "error") chip.classList.add("is-err");
       const ok = e.ok === false ? "✗" : "✓";
       const why = e.reason ? String(e.reason) : "";
+      const modeLabel = modeDe[mode] || mode;
       chip.textContent =
         ok +
         " " +
-        (e.tool || e.name || "?") +
-        (mode ? " · " + mode : "") +
-        (why ? " · " + why.slice(0, 36) : "");
-      chip.title = why
-        ? "Why: " + why + "\n" + JSON.stringify(e)
-        : JSON.stringify(e);
+        (e.tool || e.name || "Werkzeug") +
+        (modeLabel ? " · " + modeLabel : "");
+      chip.title = why ? "Grund: " + why.slice(0, 120) : chip.textContent;
       strip.appendChild(chip);
     });
   }
@@ -9842,7 +9839,7 @@
     stageResultsRecovery(outputs);
     updateBox3Toolbar();
     if (pipeline) {
-      renderToolStrip(pipeline.tool_log || [], pipeline.quality_notes || "");
+      renderToolStrip(pipeline.tool_log || []);
     }
 
     const renderKey = box3OutputsKey(outputs, stageName);

@@ -582,7 +582,7 @@
 
     // Tool strip in Box 3 (persists after job done)
     if (typeof renderToolStrip === "function") {
-      renderToolStrip(p.tool_log || [], p.quality_notes || "");
+      renderToolStrip(p.tool_log || []);
     }
     // One toast when plan mode resolved (debug + user-facing clarity)
     if (p.stage === "done" && p.resolved_plan_mode) {
