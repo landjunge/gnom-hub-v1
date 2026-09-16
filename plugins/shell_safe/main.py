@@ -37,7 +37,7 @@ def _root() -> Path:
         from gnom_hub.config.paths import project_root
 
         return project_root().resolve()
-    except Exception:  # noqa: BLE001
+    except Exception:
         return Path.cwd().resolve()
 
 
@@ -46,7 +46,7 @@ def _god() -> bool:
         from gnom_hub.hub import get_hub
 
         return bool(get_hub().god_mode.enabled)
-    except Exception:  # noqa: BLE001
+    except Exception:
         return False
 
 
@@ -71,7 +71,7 @@ def shell_safe(cmd: str = "") -> dict[str, Any]:
         return {"ok": False, "error": f"not allowlisted: {binary}", "allow": sorted(_ALLOW)}
     if binary in ("python", "python3") and parts[1:] not in (["-V"], ["--version"]):
         return {"ok": False, "error": "python restricted to -V / --version"}
-    if binary == "git" and parts[1:2] not in (  # noqa: SIM102
+    if binary == "git" and parts[1:2] not in (
         ["status"],
         ["diff"],
         ["log"],
@@ -112,7 +112,7 @@ def shell_safe(cmd: str = "") -> dict[str, Any]:
             timeout=20,
             check=False,
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return {"ok": False, "error": str(exc), "cmd": raw}
     return {
         "ok": proc.returncode == 0,

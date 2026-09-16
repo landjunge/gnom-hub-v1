@@ -85,11 +85,33 @@ skip-magic-trailing-comma = false
 docstring-code-format = false
 
 [tool.ruff.lint]
-# Keep CI stable across ruff minors; bandit noise on intentional soft-fail is noisy
-ignore = ["S110"]
+# Explicit set: keep CI stable on ruff==0.16.1. Skip noisy families
+# (S, SIM, PERF, PT, FAST, ARG, E501) — format owns wrapping.
+select = [
+  "E4", "E7", "E9", "F",
+  "W",
+  "I",
+  "UP",
+  "B",
+  "BLE",
+  "C4",
+  "PIE",
+  "ASYNC",
+  "RUF",
+]
+ignore = [
+  "RUF001",  # × − in benches / German copy
+  "RUF002",
+  "RUF003",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["gnom_hub"]
 
 [tool.ruff.lint.per-file-ignores]
-"scripts/*" = ["E402", "BLE001", "EXE001", "S104", "S110"]
+"scripts/*" = ["E402", "BLE001", "EXE001"]
+"plugins/*" = ["BLE001"]
+"tests/*" = ["BLE001", "RUF001", "RUF002", "RUF003"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

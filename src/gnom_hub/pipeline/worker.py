@@ -208,7 +208,7 @@ class WorkerMixin:
             {"notes": self._state.quality_notes, "workers": 1},
         )
         if not nav.get("ok"):
-            self._state.warnings = list(self._state.warnings or []) + ["browser_open_failed"]
+            self._state.warnings = [*(self._state.warnings or []), "browser_open_failed"]
         self._finish()
         return True
 

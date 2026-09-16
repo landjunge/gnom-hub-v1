@@ -238,7 +238,7 @@ class DispatchMixin:
             self._state.quality_notes = (
                 self._state.quality_notes or ""
             ).strip() or "Coordinator disabled — no workers ran."
-            self._state.warnings = list(self._state.warnings or []) + ["coordinator_disabled_skip"]
+            self._state.warnings = [*(self._state.warnings or []), "coordinator_disabled_skip"]
             self._finish()
             return
 
@@ -273,7 +273,7 @@ class DispatchMixin:
             self._state.worker_results = []
             self._state.worker_outputs = []
             self._state.quality_notes = "No workers enabled — nothing to execute."
-            self._state.warnings = list(self._state.warnings or []) + ["no_workers_enabled"]
+            self._state.warnings = [*(self._state.warnings or []), "no_workers_enabled"]
             self._finish()
             return
 
@@ -445,7 +445,7 @@ class DispatchMixin:
         if outputs and all(not str(o.get("result") or "").strip() for o in outputs):
             warn = "All worker results were empty."
             self._state.quality_notes = ((self._state.quality_notes or "") + "\n" + warn).strip()
-            self._state.warnings = list(self._state.warnings or []) + ["empty_worker_results"]
+            self._state.warnings = [*(self._state.warnings or []), "empty_worker_results"]
         self._append_prefetch_why_notes()
         self.bus.emit(
             "pipeline.quality",

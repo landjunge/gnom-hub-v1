@@ -14,7 +14,7 @@ def _vectors():
         from gnom_hub.hub import get_hub
 
         return getattr(get_hub(), "vectors", None)
-    except Exception:  # noqa: BLE001
+    except Exception:
         return None
 
 
@@ -46,10 +46,10 @@ def use_neural(backend: str = "fastembed", reindex: bool = False) -> dict[str, A
             path = Path(root) / "data" / "hot" / "vector_embedder.json"
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps({"embedder": name}, indent=2) + chr(10), encoding="utf-8")
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
         return ok(**out, available=probe_neural())
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return fail(f"neural embedder failed: {exc}")
 
 
@@ -79,5 +79,5 @@ def install_pkg() -> dict[str, Any]:
             available=p,
             next="Call embeddings_neural_use backend=fastembed reindex=true, or Vector modal.",
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return fail(str(exc))

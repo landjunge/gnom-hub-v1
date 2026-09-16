@@ -213,7 +213,7 @@ def test_orchestrator_short_circuit_tool_drill(tmp_path, monkeypatch):
     # Use real hub tools if available; skip if too heavy
     try:
         hub = Hub()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         pytest.skip(f"hub init skipped: {exc}")
 
     assert "install_tool" in {t["name"] for t in hub.tools.list_tools()}

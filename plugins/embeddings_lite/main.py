@@ -13,7 +13,7 @@ def _vectors():
         from gnom_hub.hub import get_hub
 
         return getattr(get_hub(), "vectors", None)
-    except Exception:  # noqa: BLE001
+    except Exception:
         return None
 
 
@@ -37,7 +37,7 @@ def on_load(info: dict[str, Any]) -> None:
     )
     try:
         vs.set_embedder(backend, reindex=reindex)
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
 
 
@@ -60,7 +60,7 @@ def use_backend(backend: str = "bow", reindex: bool = False) -> dict[str, Any]:
         out = vs.set_embedder(str(backend or "bow"), reindex=bool(reindex))
     except ValueError as exc:
         return fail(str(exc))
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return fail(f"set_embedder failed: {exc}")
     return ok(**out)
 
