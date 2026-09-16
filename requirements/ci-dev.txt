@@ -5,8 +5,8 @@
 #
 # When bumping dev deps in pyproject.toml, update pins here too (CI cache).
 ruff==0.16.1
-pytest==8.3.5
-pytest-asyncio==0.25.3
+pytest==9.0.3
+pytest-asyncio==1.3.0
 httpx>=0.27,<1
 mutmut==2.4.5
 fastapi>=0.110,<1
