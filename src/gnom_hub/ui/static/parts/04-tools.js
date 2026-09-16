@@ -100,7 +100,7 @@
     host.hidden = false;
     host.removeAttribute("hidden");
     host.textContent =
-      "DoD nicht erfüllt" +
+      "Auftrag nicht erfüllt" +
       (v.score != null ? " · Wert " + v.score : "") +
       (v.retryable ? " · erneut möglich" : "") +
       (uniq.length ? ": " + uniq.slice(0, 6).join(", ") : "");

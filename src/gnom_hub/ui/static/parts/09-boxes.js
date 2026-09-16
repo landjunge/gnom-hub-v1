@@ -884,35 +884,22 @@
   }
 
 
-  /** Compact DoD checklist under Box 3 bar — only when gate failed / soft issues. */
+  /** Box 3 DoD strip: hard fail stays in the FEHLER banner; soft = one hint. */
   function renderDodChecklist(validation) {
     const host = document.getElementById("box3-dod-checklist");
     if (!host) return;
     const v = validation && typeof validation === "object" ? validation : null;
     const soft = (v && Array.isArray(v.soft_issues) && v.soft_issues.length) || false;
     const hardFail = v && v.ok === false;
-    if (!v || (!hardFail && !soft)) {
+    if (!v || hardFail || !soft) {
       host.hidden = true;
       host.innerHTML = "";
       return;
     }
-    const checklist = Array.isArray(v.checklist) ? v.checklist : [];
-    const failed = checklist.filter(function (c) {
-      return c && c.pass === false;
-    });
-    // Fallback: issues[] if checklist empty
-    const rows =
-      failed.length > 0
-        ? failed
-        : (v.issues || []).map(function (code) {
-            return {
-              id: code,
-              label: code,
-              severity: "must",
-              pass: false,
-            };
-          });
-    if (!rows.length && !soft) {
+    const hintText =
+      (Array.isArray(v.hints) && v.hints[0] && String(v.hints[0])) ||
+      String(v.soft_issues[0] || "");
+    if (!hintText.trim()) {
       host.hidden = true;
       host.innerHTML = "";
       return;
@@ -922,38 +909,12 @@
     host.innerHTML = "";
     const head = document.createElement("div");
     head.className = "box3-dod-head";
-    const score = v.score != null ? v.score : "?";
-    const bits = ["DoD", "score " + score];
-    if (v.retryable) bits.push("retryable");
-    if (hardFail) bits.push("fail");
-    else if (soft) bits.push("soft");
-    head.textContent = bits.join(" · ");
+    head.textContent = "Hinweis";
     host.appendChild(head);
-    const ul = document.createElement("ul");
-    ul.className = "box3-dod-list";
-    rows.slice(0, 8).forEach(function (c) {
-      const li = document.createElement("li");
-      const sev = (c.severity || "must") === "should" ? "should" : "must";
-      li.className = "box3-dod-item is-" + sev;
-      const mark = document.createElement("span");
-      mark.className = "box3-dod-mark";
-      mark.textContent = "✗";
-      const lab = document.createElement("span");
-      lab.className = "box3-dod-lab";
-      lab.textContent =
-        (c.id || "item") +
-        (c.label && c.label !== c.id ? " — " + String(c.label).slice(0, 90) : "");
-      li.appendChild(mark);
-      li.appendChild(lab);
-      ul.appendChild(li);
-    });
-    host.appendChild(ul);
-    if (Array.isArray(v.hints) && v.hints.length) {
-      const hint = document.createElement("div");
-      hint.className = "box3-dod-hint";
-      hint.textContent = String(v.hints[0]).slice(0, 160);
-      host.appendChild(hint);
-    }
+    const hint = document.createElement("div");
+    hint.className = "box3-dod-hint";
+    hint.textContent = hintText.slice(0, 160);
+    host.appendChild(hint);
   }
 
   function showBox3ResultStage(out, idx) {
@@ -1015,7 +976,7 @@
     revokeBox3Blobs(body);
     body.innerHTML = "";
     body.classList.add("box3-dynamic", "box3-result-split");
-    // Honest FEHLER surface (worker body or DoD fail)
+    // Honest FEHLER surface (worker body or gate fail)
     stage.classList.remove("box3-fehler");
     const isFehler =
       /FEHLER/i.test(raw.slice(0, 400)) || (val && val.ok === false);
@@ -1031,8 +992,8 @@
       banner.textContent = (
         line ||
         (val && val.ok === false
-          ? "FEHLER — DoD fail" +
-            (val.score != null ? " (score " + val.score + ")" : "")
+          ? "FEHLER — Auftrag nicht erfüllt" +
+            (val.score != null ? " (Wert " + val.score + ")" : "")
           : "FEHLER")
       ).slice(0, 200);
       body.appendChild(banner);
