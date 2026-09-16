@@ -482,7 +482,7 @@
       return function (ev) {
         const cur = currentBox3Worker();
         if (!cur.out) {
-          toast("Kein Worker-Ergebnis", "info");
+          toast("Kein Ergebnis", "info");
           return;
         }
         const raw = String(cur.out.result || "");
@@ -1446,7 +1446,7 @@
 
   function copyAllWorkerResults() {
     if (!lastWorkerOutputs.length) {
-      toast("Keine Worker-Ergebnisse zum Kopieren", "info");
+      toast("Keine Ergebnisse zum Kopieren", "info");
       return;
     }
     lastWorkerOutputs.forEach(function (o, i) {
@@ -1883,7 +1883,7 @@
         content: content,
       });
       const label = z === "perm" ? "perm" : "temp";
-      toast("Saved → " + label + ": " + name, "ok");
+      toast("Gespeichert → " + label + ": " + name, "ok");
       appendChat(
         "system",
         "Workspace[" + label + "] ← " + name + (data.path ? " (" + data.path + ")" : "")

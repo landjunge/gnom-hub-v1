@@ -78,7 +78,7 @@
         }
       }
     } catch (err) {
-      toast("Skills load failed: " + err.message, "error");
+      toast("Skills laden fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -90,17 +90,17 @@
       toast((enable ? "Enabled " : "Disabled ") + id, "ok");
       await refreshSkillsModal();
     } catch (err) {
-      toast("Skill toggle failed: " + err.message, "error");
+      toast("Skill umschalten fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function reloadSkills() {
     try {
       const data = await api("POST", "/api/skills/reload");
-      toast("Skills reloaded: " + ((data.skills || []).length), "ok");
+      toast("Skills neu geladen: " + ((data.skills || []).length), "ok");
       await refreshSkillsModal();
     } catch (err) {
-      toast("Skills reload failed: " + err.message, "error");
+      toast("Skills neu laden fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -108,16 +108,16 @@
     const input = document.getElementById("skills-install-path");
     const path = input ? String(input.value || "").trim() : "";
     if (!path) {
-      toast("Enter a local skill folder path", "info");
+      toast("Lokalen Skill-Ordner angeben", "info");
       return;
     }
     try {
       const data = await api("POST", "/api/skills/install", { path: path });
-      toast("Installed skill: " + (data.id || path), "ok");
+      toast("Skill installiert: " + (data.id || path), "ok");
       if (input) input.value = "";
       await refreshSkillsModal();
     } catch (err) {
-      toast("Install failed: " + err.message, "error");
+      toast("Installieren fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -128,23 +128,23 @@
       toast("Skill gespeichert: " + (data.id || "learned"), "ok");
       await refreshSkillsModal();
     } catch (err) {
-      toast("Learn failed: " + err.message, "error");
+      toast("Lernen fehlgeschlagen: " + err.message, "error");
     }
   }
 
 
   async function installNeuralEmbedder() {
-    toast("Installing neural embeddings…", "info");
+    toast("Neuronale Embeddings werden installiert…", "info");
     try {
       const data = await api("POST", "/api/vector/embedder/install");
       if (data && data.ok === false) {
-        toast("Install failed: " + (data.error || "unknown"), "error");
+        toast("Installieren fehlgeschlagen: " + (data.error || "unbekannt"), "error");
         return;
       }
-      toast("Neural package OK — pick fastembed + Apply", "ok");
+      toast("Neural-Paket ok — fastembed wählen und Übernehmen", "ok");
       await refreshVectorList();
     } catch (err) {
-      toast("Install failed: " + err.message, "error");
+      toast("Installieren fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -222,6 +222,6 @@
           " hits · local catalog · rebuild: python scripts/build_docs_index.py";
       }
     } catch (err) {
-      toast("Docs search failed: " + err.message, "error");
+      toast("Doku-Suche fehlgeschlagen: " + err.message, "error");
     }
   }

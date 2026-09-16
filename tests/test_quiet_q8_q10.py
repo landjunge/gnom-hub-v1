@@ -32,6 +32,11 @@ def test_q9_german_card_and_target_labels():
     assert "Arbeit starten = Arbeiter" in HTML
     assert "Arbeit läuft…" in CHAT
     assert "Executing…" not in CHAT
+    assert "Vector list failed" not in (
+        ROOT / "src/gnom_hub/ui/static/parts/05-system-ops.js"
+    ).read_text(encoding="utf-8")
+    assert "Pack loaded" not in CHAT
+    assert "HOT fact added" not in CHAT
     assert "Brainstorm-Dialog" in CORE or "Gespräch" in CORE
     assert 'textContent = "Brain"' in CHAT or '"Brain"' in CHAT
     assert "Senden an" in CHAT

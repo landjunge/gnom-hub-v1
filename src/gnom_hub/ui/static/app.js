@@ -5124,7 +5124,7 @@
         ul.appendChild(li);
       });
     } catch (err) {
-      toast("Vector list failed: " + err.message, "error");
+      toast("Vektor-Liste fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -5145,7 +5145,7 @@
       );
       await refreshVectorList();
     } catch (err) {
-      toast("Embedder switch failed: " + err.message, "error");
+      toast("Embedder wechseln fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -5154,7 +5154,7 @@
     const hitsEl = document.getElementById("vector-hits");
     const q = qEl ? String(qEl.value || "").trim() : "";
     if (!q) {
-      toast("Enter a search query", "info");
+      toast("Suchbegriff eingeben", "info");
       return;
     }
     try {
@@ -5180,7 +5180,7 @@
         })
         .join("\n");
     } catch (err) {
-      toast("Vector search failed: " + err.message, "error");
+      toast("Vektor-Suche fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -5188,7 +5188,7 @@
     const input = document.getElementById("vector-add-input");
     const text = input ? String(input.value || "").trim() : "";
     if (!text) {
-      toast("Enter text to add", "info");
+      toast("Text zum Speichern eingeben", "info");
       return;
     }
     try {
@@ -5203,9 +5203,9 @@
         if (countEl) countEl.textContent = "Docs: " + (data.count || 0);
       }
       await refreshVectorList();
-      toast("Vector doc " + (data.id || "added"), "ok");
+      toast("Vektor-Eintrag " + (data.id || "gespeichert"), "ok");
     } catch (err) {
-      toast("Vector add failed: " + err.message, "error");
+      toast("Vektor speichern fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -5214,9 +5214,9 @@
     try {
       await api("DELETE", "/api/vector/" + encodeURIComponent(id));
       await refreshVectorList();
-      toast("Deleted " + id, "ok");
+      toast("Gelöscht " + id, "ok");
     } catch (err) {
-      toast("Vector delete failed: " + err.message, "error");
+      toast("Vektor löschen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -5227,9 +5227,9 @@
       await refreshVectorList();
       const hitsEl = document.getElementById("vector-hits");
       if (hitsEl) hitsEl.textContent = "Search hits appear here.";
-      toast("Vector store cleared", "ok");
+      toast("Vektor-Speicher geleert", "ok");
     } catch (err) {
-      toast("Vector clear failed: " + err.message, "error");
+      toast("Vektor leeren fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -5624,7 +5624,7 @@
         }
       }
     } catch (err) {
-      toast("Skills load failed: " + err.message, "error");
+      toast("Skills laden fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -5636,17 +5636,17 @@
       toast((enable ? "Enabled " : "Disabled ") + id, "ok");
       await refreshSkillsModal();
     } catch (err) {
-      toast("Skill toggle failed: " + err.message, "error");
+      toast("Skill umschalten fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function reloadSkills() {
     try {
       const data = await api("POST", "/api/skills/reload");
-      toast("Skills reloaded: " + ((data.skills || []).length), "ok");
+      toast("Skills neu geladen: " + ((data.skills || []).length), "ok");
       await refreshSkillsModal();
     } catch (err) {
-      toast("Skills reload failed: " + err.message, "error");
+      toast("Skills neu laden fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -5654,16 +5654,16 @@
     const input = document.getElementById("skills-install-path");
     const path = input ? String(input.value || "").trim() : "";
     if (!path) {
-      toast("Enter a local skill folder path", "info");
+      toast("Lokalen Skill-Ordner angeben", "info");
       return;
     }
     try {
       const data = await api("POST", "/api/skills/install", { path: path });
-      toast("Installed skill: " + (data.id || path), "ok");
+      toast("Skill installiert: " + (data.id || path), "ok");
       if (input) input.value = "";
       await refreshSkillsModal();
     } catch (err) {
-      toast("Install failed: " + err.message, "error");
+      toast("Installieren fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -5674,23 +5674,23 @@
       toast("Skill gespeichert: " + (data.id || "learned"), "ok");
       await refreshSkillsModal();
     } catch (err) {
-      toast("Learn failed: " + err.message, "error");
+      toast("Lernen fehlgeschlagen: " + err.message, "error");
     }
   }
 
 
   async function installNeuralEmbedder() {
-    toast("Installing neural embeddings…", "info");
+    toast("Neuronale Embeddings werden installiert…", "info");
     try {
       const data = await api("POST", "/api/vector/embedder/install");
       if (data && data.ok === false) {
-        toast("Install failed: " + (data.error || "unknown"), "error");
+        toast("Installieren fehlgeschlagen: " + (data.error || "unbekannt"), "error");
         return;
       }
-      toast("Neural package OK — pick fastembed + Apply", "ok");
+      toast("Neural-Paket ok — fastembed wählen und Übernehmen", "ok");
       await refreshVectorList();
     } catch (err) {
-      toast("Install failed: " + err.message, "error");
+      toast("Installieren fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -5768,7 +5768,7 @@
           " hits · local catalog · rebuild: python scripts/build_docs_index.py";
       }
     } catch (err) {
-      toast("Docs search failed: " + err.message, "error");
+      toast("Doku-Suche fehlgeschlagen: " + err.message, "error");
     }
   }
 /* part: 08-chat-jobs.js — edit parts, run scripts/build_ui_js.py */
@@ -6396,7 +6396,7 @@
       return e.id === id;
     });
     if (!entry) {
-      toast("History entry not found", "info");
+      toast("Verlaufseintrag nicht gefunden", "info");
       return;
     }
     lastWorkerOutputs = entry.outputs || [];
@@ -6410,12 +6410,12 @@
       re.dataset.historyId = entry.id;
     }
     focusBox3();
-    toast("Restored: " + (entry.label || id), "ok");
+    toast("Wiederhergestellt: " + (entry.label || id), "ok");
   }
 
   function exportResultHistory() {
     if (!resultHistory.length) {
-      toast("No history to export", "info");
+      toast("Kein Verlauf zum Exportieren", "info");
       return;
     }
     const lines = ["# Gnom-Hub result history", ""];
@@ -6444,7 +6444,7 @@
       URL.revokeObjectURL(a.href);
       a.remove();
     }, 500);
-    toast("History exported (" + resultHistory.length + " runs)", "ok");
+    toast("Verlauf exportiert (" + resultHistory.length + " Läufe)", "ok");
   }
 
   async function _rerunWorker(workerId) {
@@ -6521,11 +6521,11 @@
       return e.id === pick;
     });
     if (!entry) {
-      toast("Pick a History entry first", "info");
+      toast("Zuerst einen Verlaufseintrag wählen", "info");
       return;
     }
     if (!(entry.user_text || entry.brainstorm_notes)) {
-      toast("This history entry has no brainstorm to re-run (pre-2.0 entry)", "info");
+      toast("Dieser Verlauf hat kein Brainstorm zum erneuten Bauen", "info");
       return;
     }
     appendChat("system", "Re-Exec from history: " + (entry.label || entry.id));
@@ -6549,7 +6549,7 @@
       applySnapshot(snap);
       if (snap.pipeline && snap.pipeline.stage === "done") {
         appendChat("system", "Re-Exec done — see Box 3.");
-        toast("Re-Exec done", "ok");
+        toast("Nochmal fertig", "ok");
         focusBox3();
         try {
           pushResultHistory(snap.pipeline || {}, {
@@ -6562,7 +6562,7 @@
       }
     } catch (err) {
       appendChat("system", "Re-Exec failed: " + err.message);
-      toast("Re-Exec failed: " + err.message, "error");
+      toast("Nochmal fehlgeschlagen: " + err.message, "error");
     } finally {
       setChatBusy(false);
     }
@@ -6585,7 +6585,7 @@
     if (!list || !list.length) {
       const li = document.createElement("li");
       li.className = "muted";
-      li.textContent = "(no HOT facts yet)";
+      li.textContent = "(noch keine HOT-Fakten)";
       ul.appendChild(li);
       return;
     }
@@ -6628,30 +6628,30 @@
     const input = document.getElementById("sys-hot-input");
     const text = input ? String(input.value || "").trim() : "";
     if (!text) {
-      toast("Enter a HOT fact", "info");
+      toast("HOT-Fakt eingeben", "info");
       return;
     }
     try {
       const data = await api("POST", "/api/memory/hot", { text: text });
       if (input) input.value = "";
       await renderHotList(data.facts);
-      toast(data.ok ? "HOT fact added" : "Already present", "ok");
+      toast(data.ok ? "HOT-Fakt gespeichert" : "Schon vorhanden", "ok");
     } catch (err) {
-      toast("HOT add failed: " + err.message, "error");
+      toast("HOT speichern fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function deleteHotFact(text) {
-    if (!confirm("Delete HOT fact: " + String(text || "").slice(0, 60) + "?")) return;
+    if (!confirm("HOT-Fakt löschen: " + String(text || "").slice(0, 60) + "?")) return;
     try {
       const data = await api(
         "DELETE",
         "/api/memory/hot?text=" + encodeURIComponent(text || "")
       );
       await renderHotList(data.facts);
-      toast("HOT fact removed", "ok");
+      toast("HOT-Fakt entfernt", "ok");
     } catch (err) {
-      toast("HOT delete failed: " + err.message, "error");
+      toast("HOT löschen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -6667,18 +6667,18 @@
         "ok"
       );
     } catch (err) {
-      toast("Promote failed: " + err.message, "error");
+      toast("Hochstufen fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function clearHotFacts() {
-    if (!confirm("Clear all HOT session facts?")) return;
+    if (!confirm("Alle HOT-Sitzungsfakten leeren?")) return;
     try {
       await api("POST", "/api/memory/hot/clear");
       await renderHotList([]);
-      toast("HOT facts cleared", "ok");
+      toast("HOT-Fakten geleert", "ok");
     } catch (err) {
-      toast("HOT clear failed: " + err.message, "error");
+      toast("HOT leeren fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -6710,7 +6710,7 @@
     if (!list || !list.length) {
       const li = document.createElement("li");
       li.className = "muted";
-      li.textContent = "(no WARM facts yet)";
+      li.textContent = "(noch keine WARM-Fakten)";
       ul.appendChild(li);
       return;
     }
@@ -6747,41 +6747,41 @@
     const input = document.getElementById("sys-warm-input");
     const text = input ? String(input.value || "").trim() : "";
     if (!text) {
-      toast("Enter a WARM fact", "info");
+      toast("WARM-Fakt eingeben", "info");
       return;
     }
     try {
       const data = await api("POST", "/api/memory/warm", { text: text });
       if (input) input.value = "";
       await renderWarmList(data.warm_facts);
-      toast(data.ok ? "WARM fact added" : "Already present", "ok");
+      toast(data.ok ? "WARM-Fakt gespeichert" : "Schon vorhanden", "ok");
     } catch (err) {
-      toast("WARM add failed: " + err.message, "error");
+      toast("WARM speichern fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function deleteWarmFact(index, text) {
-    if (!confirm("Delete WARM fact: " + String(text || "").slice(0, 60) + "?")) return;
+    if (!confirm("WARM-Fakt löschen: " + String(text || "").slice(0, 60) + "?")) return;
     try {
       const data = await api(
         "DELETE",
         "/api/memory/warm?text=" + encodeURIComponent(text || "")
       );
       await renderWarmList(data.warm_facts);
-      toast("WARM fact removed", "ok");
+      toast("WARM-Fakt entfernt", "ok");
     } catch (err) {
-      toast("WARM delete failed: " + err.message, "error");
+      toast("WARM löschen fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function clearWarmFacts() {
-    if (!confirm("Clear ALL WARM facts?")) return;
+    if (!confirm("Alle WARM-Fakten leeren?")) return;
     try {
       await api("POST", "/api/memory/warm/clear");
       await renderWarmList([]);
-      toast("WARM cleared", "ok");
+      toast("WARM geleert", "ok");
     } catch (err) {
-      toast("WARM clear failed: " + err.message, "error");
+      toast("WARM leeren fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -6903,9 +6903,9 @@
       );
       applySnapshot(snap);
       appendChat("system", "Loaded pack: " + name);
-      toast("Pack loaded", "ok");
+      toast("Pack geladen", "ok");
     } catch (err) {
-      toast("Pack load failed: " + err.message, "error");
+      toast("Pack laden fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -6915,7 +6915,7 @@
     if (next === null) return;
     next = String(next).trim().slice(0, 80);
     if (!next) {
-      toast("Label required", "error");
+      toast("Name fehlt", "error");
       return;
     }
     let notesNext = window.prompt(
@@ -6931,9 +6931,9 @@
         { label: next, notes: notesNext }
       );
       await renderPackList(data.packs);
-      toast("Pack updated", "ok");
+      toast("Pack aktualisiert", "ok");
     } catch (err) {
-      toast("Pack rename failed: " + err.message, "error");
+      toast("Pack umbenennen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -6953,9 +6953,9 @@
       a.download = name;
       a.click();
       URL.revokeObjectURL(a.href);
-      toast("Pack downloaded", "ok");
+      toast("Pack heruntergeladen", "ok");
     } catch (err) {
-      toast("Pack download failed: " + err.message, "error");
+      toast("Pack herunterladen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -6967,9 +6967,9 @@
         "/api/session/packs/" + encodeURIComponent(name)
       );
       await renderPackList(data.packs);
-      toast("Pack deleted", "ok");
+      toast("Pack gelöscht", "ok");
     } catch (err) {
-      toast("Pack delete failed: " + err.message, "error");
+      toast("Pack löschen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -7008,7 +7008,7 @@
         "ok"
       );
     } catch (err) {
-      toast("Pack export failed: " + err.message, "error");
+      toast("Pack exportieren fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -7032,9 +7032,9 @@
       applySnapshot(snap);
       await renderPackList();
       appendChat("system", "Session pack imported: " + (pack.label || file.name));
-      toast("Session pack imported + stored", "ok");
+      toast("Sitzungs-Pack importiert und gespeichert", "ok");
     } catch (err) {
-      toast("Pack import failed: " + err.message, "error");
+      toast("Pack importieren fehlgeschlagen: " + err.message, "error");
     } finally {
       if (ev.target) ev.target.value = "";
     }
@@ -8320,27 +8320,27 @@
       applySnapshot(snap);
       appendChat(
         "system",
-        "Restored backup: " + (snap.restored_backup || name)
+        "Backup wiederhergestellt: " + (snap.restored_backup || name)
       );
       toast(
-        "Backup restored" +
-          (snap.checkpoint_loaded ? " (+ checkpoint)" : ""),
+        "Backup wiederhergestellt" +
+          (snap.checkpoint_loaded ? " (+ Checkpoint)" : ""),
         "ok"
       );
       openSystemModal();
     } catch (err) {
-      toast("Restore backup failed: " + err.message, "error");
+      toast("Backup wiederherstellen fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function deleteBackupByName(name) {
-    if (!name || !confirm('Delete backup "' + name + '"?')) return;
+    if (!name || !confirm('Backup "' + name + '" löschen?')) return;
     try {
       await api("DELETE", "/api/backups/" + encodeURIComponent(name));
-      toast("Backup deleted", "ok");
+      toast("Backup gelöscht", "ok");
       openSystemModal();
     } catch (err) {
-      toast("Delete backup failed: " + err.message, "error");
+      toast("Backup löschen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -8452,7 +8452,7 @@
         els.coldList.appendChild(li);
       });
     } catch (err) {
-      toast("COLD list failed: " + err.message, "error");
+      toast("COLD-Liste fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -8480,20 +8480,20 @@
       }
       if (els.coldDetail) els.coldDetail.textContent = lines.join("\n");
     } catch (err) {
-      toast("COLD load failed: " + err.message, "error");
+      toast("COLD laden fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function restoreSelectedCold() {
     if (!selectedColdId) {
-      toast("Select a COLD archive first", "info");
+      toast("Zuerst ein COLD-Archiv wählen", "info");
       return;
     }
     if (
       !confirm(
-        'Restore COLD "' +
+        'COLD "' +
           selectedColdId +
-          '" into HOT? Current HOT is archived first if non-empty.'
+          '" nach HOT holen? Aktuelles HOT wird zuerst archiviert, wenn es nicht leer ist.'
       )
     ) {
       return;
@@ -8512,13 +8512,13 @@
       toast("COLD restored to HOT", "ok");
       await openColdBrowser();
     } catch (err) {
-      toast("COLD restore failed: " + err.message, "error");
+      toast("COLD wiederherstellen fehlgeschlagen: " + err.message, "error");
     }
   }
 
   async function deleteSelectedCold() {
     if (!selectedColdId) {
-      toast("Select a COLD archive first", "info");
+      toast("Zuerst ein COLD-Archiv wählen", "info");
       return;
     }
     if (!confirm('Delete COLD archive "' + selectedColdId + '"?')) return;
@@ -8532,7 +8532,7 @@
       toast("COLD deleted", "ok");
       await openColdBrowser();
     } catch (err) {
-      toast("COLD delete failed: " + err.message, "error");
+      toast("COLD löschen fehlgeschlagen: " + err.message, "error");
     }
   }
 
@@ -8578,14 +8578,14 @@
           "system",
           "Clarify → Later: parked (no workers). Task stays in notes; Send again when ready."
         );
-        toast("Clarify deferred — no zombie job", "info");
+        toast("Rückfrage später — kein hängender Job", "info");
       } else if (snap.pipeline && snap.pipeline.stage === "done") {
         appendChat("system", "Pipeline done.");
-        toast("Pipeline done", "ok");
+        toast("Pipeline fertig", "ok");
       }
     } catch (err) {
       appendChat("system", "Clarify failed: " + err.message);
-      toast("Clarify failed: " + err.message, "error");
+      toast("Rückfrage fehlgeschlagen: " + err.message, "error");
       // Restore buttons/state so user can retry
       await resyncState();
     } finally {
@@ -8662,10 +8662,10 @@
       if (snap.pipeline && snap.pipeline.pending_question) {
         showClarify(snap.pipeline.pending_question.text);
         appendChat("system", "Clarify resumed — answer Yes/No/Whatever/Later.");
-        toast("Clarify resumed", "ok");
+        toast("Rückfrage fortgesetzt", "ok");
       }
     } catch (err) {
-      toast("Resume failed: " + err.message, "error");
+      toast("Fortsetzen fehlgeschlagen: " + err.message, "error");
       await resyncState();
     } finally {
       setChatBusy(false);
@@ -9155,7 +9155,7 @@
       return function (ev) {
         const cur = currentBox3Worker();
         if (!cur.out) {
-          toast("Kein Worker-Ergebnis", "info");
+          toast("Kein Ergebnis", "info");
           return;
         }
         const raw = String(cur.out.result || "");
@@ -10119,7 +10119,7 @@
 
   function copyAllWorkerResults() {
     if (!lastWorkerOutputs.length) {
-      toast("Keine Worker-Ergebnisse zum Kopieren", "info");
+      toast("Keine Ergebnisse zum Kopieren", "info");
       return;
     }
     lastWorkerOutputs.forEach(function (o, i) {
@@ -10556,7 +10556,7 @@
         content: content,
       });
       const label = z === "perm" ? "perm" : "temp";
-      toast("Saved → " + label + ": " + name, "ok");
+      toast("Gespeichert → " + label + ": " + name, "ok");
       appendChat(
         "system",
         "Workspace[" + label + "] ← " + name + (data.path ? " (" + data.path + ")" : "")
