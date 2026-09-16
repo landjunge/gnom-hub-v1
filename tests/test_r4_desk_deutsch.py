@@ -25,3 +25,22 @@ def test_box2_empty_state_is_german():
     assert "Noch keine Antwort" in js or "Brainstorm-Dialog erscheint hier" in js
     assert "reden" in js
     assert "Arbeit starten" in js
+
+
+def test_de_tooltips_have_no_execute():
+    for key, langs in TOOLTIPS.items():
+        de = langs["de"]
+        blob = " ".join(de.values())
+        assert "Execute" not in blob, key
+        assert "Worker-Ergebnisse" not in blob, key
+
+
+def test_skills_modal_is_german():
+    html = Path("src/gnom_hub/ui/static/index.html").read_text(encoding="utf-8")
+    assert "Markdown-Playbooks für Agenten" in html
+    assert ">Neu laden<" in html
+    assert ">Installieren<" in html
+    assert "Lokaler Ordner zum Installieren" in html
+    assert "Katalog…" in html
+    assert "last Execute" not in html
+    assert "Destillieren + Arbeiter" in html

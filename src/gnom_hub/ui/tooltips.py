@@ -37,7 +37,7 @@ TOOLTIPS: dict[str, dict[str, TooltipText]] = {
         "de": {
             "title": "Memory",
             "how_to": "Immer an. Session-Fakten, Mermaid-Canvas, LLM-Recall/Curate.",
-            "example": "Nach Execute bleiben wichtige Fakten für spätere Chats erhalten.",
+            "example": "Nach Arbeit starten bleiben wichtige Fakten für spätere Chats erhalten.",
         },
     },
     "flex": {
@@ -48,8 +48,8 @@ TOOLTIPS: dict[str, dict[str, TooltipText]] = {
         },
         "de": {
             "title": "Flex",
-            "how_to": "Preset Security / Neutral / Researcher (Dropdown oben). Prüft vor den Workern.",
-            "example": "Security → listet Risiken; danach verteilt der Coordinator Aufgaben.",
+            "how_to": "Preset Security / Neutral / Researcher (Dropdown oben). Prüft vor den Arbeitern.",
+            "example": "Security → listet Risiken; danach verteilt der Koordinator Aufgaben.",
         },
     },
     "coordinator": {
@@ -59,9 +59,9 @@ TOOLTIPS: dict[str, dict[str, TooltipText]] = {
             "example": "After brainstorm, Execute → requirements + worker tasks.",
         },
         "de": {
-            "title": "Coordinator",
-            "how_to": "Destilliert Anforderungen und steuert 1–2 Worker. Läuft bei Arbeit starten.",
-            "example": "Nach Brainstorm → Arbeit starten → Pakete + Worker-Aufgaben.",
+            "title": "Koordinator",
+            "how_to": "Destilliert Anforderungen und steuert 1–2 Arbeiter. Läuft bei Arbeit starten.",
+            "example": "Nach Brainstorm → Arbeit starten → Pakete + Arbeiter-Aufgaben.",
         },
     },
     "worker1": {
@@ -96,8 +96,8 @@ TOOLTIPS: dict[str, dict[str, TooltipText]] = {
         },
         "de": {
             "title": "Arbeiter 3 (später)",
-            "how_to": "Reservierter Slot. v1 nutzt maximal zwei Worker.",
-            "example": "Anzeige „on · later“ bis mehr Worker kommen.",
+            "how_to": "Reservierter Slot. v1 nutzt maximal zwei Arbeiter.",
+            "example": "Anzeige „an · später“, bis mehr Arbeiter kommen.",
         },
     },
     "worker4": {
@@ -108,8 +108,8 @@ TOOLTIPS: dict[str, dict[str, TooltipText]] = {
         },
         "de": {
             "title": "Arbeiter 4 (später)",
-            "how_to": "Reservierter Slot. v1 nutzt maximal zwei Worker.",
-            "example": "Anzeige „on · later“ bis mehr Worker kommen.",
+            "how_to": "Reservierter Slot. v1 nutzt maximal zwei Arbeiter.",
+            "example": "Anzeige „an · später“, bis mehr Arbeiter kommen.",
         },
     },
     "box1": {
@@ -133,7 +133,7 @@ TOOLTIPS: dict[str, dict[str, TooltipText]] = {
         "de": {
             "title": "Box 2",
             "how_to": "Dialog-Turns, Flex-Notizen, destillierte Anforderungen.",
-            "example": "Du + Brainstorm erscheinen hier bis Execute.",
+            "example": "Du + Brainstorm erscheinen hier bis Arbeit starten.",
         },
     },
     "box3": {
@@ -143,8 +143,8 @@ TOOLTIPS: dict[str, dict[str, TooltipText]] = {
             "example": "After Execute, landing-page HTML renders in Vorschau.",
         },
         "de": {
-            "title": "Worker-Ergebnisse (Box 3)",
-            "how_to": "Worker-1/2-Panels mit HTML-Vorschau + Quelle.",
+            "title": "Ergebnisse (Box 3)",
+            "how_to": "Arbeiter 1/2 mit HTML-Vorschau + Quelle.",
             "example": "Nach Arbeit starten: Landingpage-HTML in der Vorschau.",
         },
     },
@@ -167,7 +167,7 @@ TOOLTIPS: dict[str, dict[str, TooltipText]] = {
             "example": "Click Save after a good session so work is not lost.",
         },
         "de": {
-            "title": "Save",
+            "title": "Speichern",
             "how_to": "Global speichern: HOT, WARM, Agent-Toggles/Tuning.",
             "example": "Nach guter Session speichern, damit nichts verloren geht.",
         },
@@ -179,7 +179,7 @@ TOOLTIPS: dict[str, dict[str, TooltipText]] = {
             "example": "Question: 'MVP or robust?' → Yes / No / …",
         },
         "de": {
-            "title": "Clarify",
+            "title": "Rückfrage",
             "how_to": "Destillationsfragen: Ja / Nein / Egal / Später.",
             "example": "Frage: „MVP oder robust?“ → Ja / Nein / …",
         },
@@ -204,7 +204,7 @@ TOOLTIPS: dict[str, dict[str, TooltipText]] = {
         },
         "de": {
             "title": "Workspace",
-            "how_to": "Temp = Agent-Outputs nach Execute. Promote → permanent. Temp leeren möglich.",
+            "how_to": "Temp = Agent-Dateien nach Arbeit starten. Nach Dauerhaft heben. Temp leeren möglich.",
             "example": "worker1_done.html in Temp → ↑ perm zum Behalten.",
         },
     },
@@ -216,8 +216,8 @@ TOOLTIPS: dict[str, dict[str, TooltipText]] = {
         },
         "de": {
             "title": "Trace",
-            "how_to": "Leichtes Pipeline-Log (Stages, Worker, Quality). Keine Heavy-Spans.",
-            "example": "Nach Execute Trace öffnen für Stage-Abfolge.",
+            "how_to": "Leichtes Pipeline-Log (Stufen, Arbeiter, Qualität). Keine Heavy-Spans.",
+            "example": "Nach Arbeit starten Trace öffnen für die Stufenfolge.",
         },
     },
 }

@@ -279,7 +279,7 @@
               type="button"
               id="btn-execute"
               class="btn-execute h-8 shrink-0 rounded-md border border-gnom-ok/40 bg-gnom-elev px-3 text-xs font-semibold text-gnom-text transition hover:border-gnom-ok hover:text-gnom-ok disabled:cursor-not-allowed disabled:opacity-40"
-              title="Arbeit starten — Destillieren + Worker (Ctrl+Enter)"
+              title="Arbeit starten — Destillieren + Arbeiter (Ctrl+Enter)"
               disabled
             >Arbeit starten</button>
             <p id="execute-hint" class="execute-hint" hidden>Key fehlt. In System eintragen, dann Arbeit starten.</p>
@@ -668,15 +668,15 @@
         <button type="button" id="skills-close" class="modal-close" title="Schließen">×</button>
       </div>
       <p id="skills-count" class="system-line muted">Skills: 0</p>
-      <p class="system-hint muted">Markdown playbooks for agents — not tools, not a workflow engine.</p>
+      <p class="system-hint muted">Markdown-Playbooks für Agenten — keine Werkzeuge, keine Engine.</p>
       <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-        <button type="button" id="skills-reload" class="btn-ws-sm">Reload</button>
-        <input id="skills-install-path" class="tune-input" type="text" placeholder="Local folder path to install…" style="flex:1;min-width:140px" />
-        <button type="button" id="skills-install-btn" class="btn-ws-sm">Install</button>
-        <button type="button" id="skills-learn-last" class="btn-ws-sm" title="Save playbook from last Execute">Als Skill speichern</button>
+        <button type="button" id="skills-reload" class="btn-ws-sm">Neu laden</button>
+        <input id="skills-install-path" class="tune-input" type="text" placeholder="Lokaler Ordner zum Installieren…" style="flex:1;min-width:140px" />
+        <button type="button" id="skills-install-btn" class="btn-ws-sm">Installieren</button>
+        <button type="button" id="skills-learn-last" class="btn-ws-sm" title="Playbook aus der letzten Arbeit speichern">Als Skill speichern</button>
       </div>
       <ul id="skills-list" class="ws-list" style="max-height:280px"></ul>
-      <pre id="skills-catalog" class="trace-body muted" style="max-height:120px;margin-top:8px">Catalog…</pre>
+      <pre id="skills-catalog" class="trace-body muted" style="max-height:120px;margin-top:8px">Katalog…</pre>
     </div>
   </div>
 
