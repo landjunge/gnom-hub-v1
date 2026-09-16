@@ -37,6 +37,9 @@ def test_q9_german_card_and_target_labels():
     ).read_text(encoding="utf-8")
     assert "Pack loaded" not in CHAT
     assert "HOT fact added" not in CHAT
+    assert 'appendChat("system", "Stage:' not in CHAT
+    assert 'appendChat("system", "Worker:' not in CHAT
+    assert "Job cancelled." not in CHAT
     assert "Brainstorm-Dialog" in CORE or "Gespräch" in CORE
     assert 'textContent = "Brain"' in CHAT or '"Brain"' in CHAT
     assert "Senden an" in CHAT

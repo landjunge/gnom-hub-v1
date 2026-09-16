@@ -304,7 +304,7 @@
   }
 
   async function clearVectorStore() {
-    if (!confirm("Clear ALL vector docs?")) return;
+    if (!confirm("Alle Vektor-Einträge leeren?")) return;
     try {
       await api("POST", "/api/vector/clear");
       await refreshVectorList();

@@ -5221,7 +5221,7 @@
   }
 
   async function clearVectorStore() {
-    if (!confirm("Clear ALL vector docs?")) return;
+    if (!confirm("Alle Vektor-Einträge leeren?")) return;
     try {
       await api("POST", "/api/vector/clear");
       await refreshVectorList();
@@ -5874,7 +5874,7 @@
         renderCards();
       }
     } catch (err) {
-      appendChat("system", "Toggle failed: " + err.message);
+      appendChat("system", "Umschalten fehlgeschlagen: " + err.message);
     }
   }
 
@@ -6455,7 +6455,7 @@
     const wid = String(workerId || "").toLowerCase();
     if (!wid) return;
     setChatBusy(true);
-    appendChat("system", "Re-run " + wid + "…");
+    appendChat("system", "Nochmal " + wid + "…");
     toast("Nochmal: " + wid + "…", "info");
     try {
       const live =
@@ -6469,13 +6469,13 @@
         const job = await pollJob(start.job_id, live ? 180000 : 30000);
         snap = job.snapshot || (await api("GET", "/api/state"));
         if (job.status === "error") {
-          appendChat("system", "Re-run error: " + (job.error || "?"));
+          appendChat("system", "Nochmal-Fehler: " + (job.error || "?"));
           toast(job.error || "Re-run failed", "error");
           applySnapshot(snap);
           return;
         }
         if (job.status === "cancelled") {
-          appendChat("system", "Re-run cancelled.");
+          appendChat("system", "Nochmal abgebrochen.");
           applySnapshot(snap);
           return;
         }
@@ -6483,7 +6483,7 @@
       applySnapshot(snap);
       const stage = (snap.pipeline && snap.pipeline.stage) || "";
       if (stage === "done") {
-        appendChat("system", "Re-run done: " + wid);
+        appendChat("system", "Nochmal fertig: " + wid);
         toast(wid + " re-run done", "ok");
         focusBox3();
         try {
@@ -6500,7 +6500,7 @@
         );
       }
     } catch (err) {
-      appendChat("system", "Re-run failed: " + err.message);
+      appendChat("system", "Nochmal fehlgeschlagen: " + err.message);
       toast("Nochmal fehlgeschlagen: " + err.message, "error");
     } finally {
       setChatBusy(false);
@@ -6528,7 +6528,7 @@
       toast("Dieser Verlauf hat kein Brainstorm zum erneuten Bauen", "info");
       return;
     }
-    appendChat("system", "Re-Exec from history: " + (entry.label || entry.id));
+    appendChat("system", "Nochmal aus Verlauf: " + (entry.label || entry.id));
     setChatBusy(true);
     try {
       const start = await api("POST", "/api/reexecute", {
@@ -6541,14 +6541,14 @@
         const job = await pollJob(start.job_id, 180000);
         snap = job.snapshot || (await api("GET", "/api/state"));
         if (job.status === "error") {
-          appendChat("system", "Re-Exec error: " + (job.error || "?"));
+          appendChat("system", "Nochmal-Fehler: " + (job.error || "?"));
           toast(job.error || "Re-Exec error", "error");
           return;
         }
       }
       applySnapshot(snap);
       if (snap.pipeline && snap.pipeline.stage === "done") {
-        appendChat("system", "Re-Exec done — see Box 3.");
+        appendChat("system", "Nochmal fertig — siehe Box 3.");
         toast("Nochmal fertig", "ok");
         focusBox3();
         try {
@@ -6557,11 +6557,11 @@
           });
         } catch (_h) {}
       } else if (snap.pipeline && snap.pipeline.stage === "clarify") {
-        appendChat("system", "Clarify needed in Box 1.");
+        appendChat("system", "Rückfrage in Box 1.");
         toast("Rückfrage in Box 1", "info");
       }
     } catch (err) {
-      appendChat("system", "Re-Exec failed: " + err.message);
+      appendChat("system", "Nochmal fehlgeschlagen: " + err.message);
       toast("Nochmal fehlgeschlagen: " + err.message, "error");
     } finally {
       setChatBusy(false);
@@ -6902,7 +6902,7 @@
         "/api/session/packs/" + encodeURIComponent(name) + "/import"
       );
       applySnapshot(snap);
-      appendChat("system", "Loaded pack: " + name);
+      appendChat("system", "Pack geladen: " + name);
       toast("Pack geladen", "ok");
     } catch (err) {
       toast("Pack laden fehlgeschlagen: " + err.message, "error");
@@ -7031,7 +7031,7 @@
       });
       applySnapshot(snap);
       await renderPackList();
-      appendChat("system", "Session pack imported: " + (pack.label || file.name));
+      appendChat("system", "Sitzungs-Pack importiert: " + (pack.label || file.name));
       toast("Sitzungs-Pack importiert und gespeichert", "ok");
     } catch (err) {
       toast("Pack importieren fehlgeschlagen: " + err.message, "error");
@@ -7415,16 +7415,6 @@
             renderCards();
             updateBoxBorders();
           }
-          if (
-            stage !== "worker1" &&
-            stage !== "worker2" &&
-            stage !== "worker3" &&
-            stage !== "worker4"
-          ) {
-            appendChat("system", "Stage: " + stage);
-          } else {
-            appendChat("system", "Worker: " + stage);
-          }
         }
         if (job.snapshot) {
           applySnapshot(job.snapshot);
@@ -7493,7 +7483,7 @@
             encodeURIComponent(jobId) +
             "/cancel?as_timeout=1"
         );
-        appendChat("system", "FEHLER — client poll timeout — cancel requested.");
+        appendChat("system", "FEHLER — Wartezeit abgelaufen, Abbruch angefordert.");
       } catch (_c) {
         /* ignore */
       }
@@ -7542,7 +7532,7 @@
         const r = await api("POST", "/api/jobs/cancel-busy");
         if (r && r.busy) {
           toast("Abbruch angefordert — warte bis die Pipeline frei ist…", "info");
-          appendChat("system", "Cancel busy job " + ((r.cancelled && r.cancelled.id) || ""));
+          appendChat("system", "Laufenden Job abbrechen " + ((r.cancelled && r.cancelled.id) || ""));
           showBusyBanner({
             busy_job_id: (r.cancelled && r.cancelled.id) || "?",
             busy_stage: "cancelling",
@@ -7554,7 +7544,7 @@
             free ? "Pipeline frei" : "Cancel läuft noch (LLM kann warten)",
             free ? "ok" : "info"
           );
-          if (free) appendChat("system", "Pipeline free — ready.");
+          if (free) appendChat("system", "Pipeline frei.");
         } else {
           toast("Kein laufender Job", "info");
           hideBusyBanner();
@@ -7568,7 +7558,7 @@
     try {
       await api("POST", "/api/jobs/" + encodeURIComponent(jid) + "/cancel");
       toast("Abbruch angefordert — warte bis die Pipeline frei ist…", "info");
-      appendChat("system", "Cancel requested for job " + jid);
+      appendChat("system", "Abbruch angefordert für Job " + jid);
       showBusyBanner({
         busy_job_id: jid,
         busy_stage: "cancelling",
@@ -7580,7 +7570,7 @@
         free ? "Pipeline frei" : "Cancel läuft noch (LLM kann warten)",
         free ? "ok" : "info"
       );
-      if (free) appendChat("system", "Pipeline free — ready.");
+      if (free) appendChat("system", "Pipeline frei.");
       await resyncState();
     } catch (err) {
       toast("Abbrechen fehlgeschlagen: " + err.message, "error");
@@ -7877,7 +7867,7 @@
     setChatBusy(true);
     // Prefer long poll always for async jobs (badge may lag bootstrap)
     const pollMs = 180000;
-    appendChat("system", "Send → " + target + "…", target);
+    appendChat("system", "Senden → " + target + "…", target);
     toast("Send = " + target + " · keine Ausführung", "info");
 
     function applySendSnap(snap) {
@@ -7910,13 +7900,13 @@
         const job = await pollJob(start.job_id, pollMs);
         snap = job.snapshot || (await api("GET", "/api/state"));
         if (job.status === "error") {
-          appendChat("system", "Brainstorm error: " + (job.error || "?"), target);
+          appendChat("system", "Brainstorm-Fehler: " + (job.error || "?"), target);
           toast(job.error || "Brainstorm error", "error");
           applySendSnap(snap);
           return;
         }
         if (job.status === "cancelled") {
-          appendChat("system", "Job cancelled.", target);
+          appendChat("system", "Job abgebrochen.", target);
         toast("Abgebrochen", "info");
           hideBusyBanner();
           applySendSnap(snap);
@@ -7952,17 +7942,17 @@
         }
         focusBox3();
       } else if (stage === "clarify") {
-        appendChat("system", "Need a clarify answer in Box 1.", target);
+        appendChat("system", "Rückfrage in Box 1 beantworten.", target);
         toast("Rückfrage in Box 1", "info");
       } else if (stage === "cancelled") {
-        appendChat("system", "Job cancelled.", target);
+        appendChat("system", "Job abgebrochen.", target);
         toast("Abgebrochen", "info");
       }
     } catch (err) {
       if (err && (err.status === 409 || (err.detail && err.detail.busy))) {
         handleBusyError(err, text);
       } else {
-        appendChat("system", "Chat failed: " + err.message, target);
+        appendChat("system", "Senden fehlgeschlagen: " + err.message, target);
         toast("Senden fehlgeschlagen: " + err.message, "error");
       }
     } finally {
@@ -8050,16 +8040,16 @@
         }
         try {
           await api("POST", "/api/save");
-          appendChat("system", "Auto-saved HOT + agents.");
+          appendChat("system", "HOT und Agenten automatisch gespeichert.");
         } catch (_e) {
           /* non-fatal */
         }
       } else if (stage === "clarify") {
-        appendChat("system", "Clarify needed in Box 1 before workers finish.");
+        appendChat("system", "Rückfrage in Box 1, bevor die Arbeiter fertig sind.");
         toast("Rückfrage in Box 1", "info");
       }
     } catch (err) {
-      appendChat("system", "Execute failed: " + err.message);
+      appendChat("system", "Arbeit fehlgeschlagen: " + err.message);
       toast("Arbeit fehlgeschlagen: " + err.message, "error");
     } finally {
       setChatBusy(false);
@@ -8305,9 +8295,9 @@
     if (!name) return;
     if (
       !confirm(
-        'Restore backup "' +
+        'Backup "' +
           name +
-          '"? Current HOT is archived to COLD if non-empty. HOT/WARM/agents will be replaced.'
+          '" wiederherstellen? Aktuelles HOT geht nach COLD, wenn es nicht leer ist. HOT/WARM/Agenten werden ersetzt.'
       )
     ) {
       return;
@@ -8552,7 +8542,7 @@
         const job = await pollJob(start.job_id, 180000);
         snap = job.snapshot || (await api("GET", "/api/state"));
         if (job.status === "error") {
-          appendChat("system", "Clarify error: " + (job.error || "?"));
+          appendChat("system", "Rückfrage-Fehler: " + (job.error || "?"));
           toast(job.error || "Clarify failed", "error");
           // Re-show clarify UI if still needed
           applySnapshot(snap);
@@ -8580,11 +8570,11 @@
         );
         toast("Rückfrage später — kein hängender Job", "info");
       } else if (snap.pipeline && snap.pipeline.stage === "done") {
-        appendChat("system", "Pipeline done.");
+        appendChat("system", "Pipeline fertig.");
         toast("Pipeline fertig", "ok");
       }
     } catch (err) {
-      appendChat("system", "Clarify failed: " + err.message);
+      appendChat("system", "Rückfrage fehlgeschlagen: " + err.message);
       toast("Rückfrage fehlgeschlagen: " + err.message, "error");
       // Restore buttons/state so user can retry
       await resyncState();
@@ -8661,7 +8651,7 @@
       applySnapshot(snap);
       if (snap.pipeline && snap.pipeline.pending_question) {
         showClarify(snap.pipeline.pending_question.text);
-        appendChat("system", "Clarify resumed — answer Yes/No/Whatever/Later.");
+        appendChat("system", "Rückfrage fortgesetzt — Ja/Nein/Egal/Später.");
         toast("Rückfrage fortgesetzt", "ok");
       }
     } catch (err) {
