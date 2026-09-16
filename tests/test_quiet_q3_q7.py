@@ -33,8 +33,8 @@ def test_q4_execute_needs_key_and_short_placeholder():
 
 
 def test_q5_box3_keeps_delivery_and_collapses_same_error():
+    assert "box3KeepLast" in BOX_JS
     assert "collapseSharedErrors" in BOX_JS
-    assert "lastWorkerOutputs.length" in BOX_JS
     assert "Kein Deliverable" in BOX_JS or "llm/key" in BOX_JS
 
 

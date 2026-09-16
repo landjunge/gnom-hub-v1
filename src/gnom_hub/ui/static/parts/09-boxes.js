@@ -411,8 +411,7 @@
   }
 
   function paintBox3Nav() {
-    const n = (lastWorkerOutputs && lastWorkerOutputs.length) || 0;
-    const many = n > 1;
+    const many = box3TabsWanted(lastWorkerOutputs);
     ["box3-btn-prev", "box3-btn-next"].forEach(function (id) {
       const el = document.getElementById(id);
       if (el) el.hidden = !many;
@@ -1208,12 +1207,7 @@
   function renderBox3Workers(pipeline) {
     let outputs = collapseSharedErrors(normalizeWorkerOutputs(pipeline));
     const stageName = pipeline && pipeline.stage;
-    if (
-      !outputs.length &&
-      lastWorkerOutputs &&
-      lastWorkerOutputs.length &&
-      (stageName === "brainstorm" || stageName === "idle")
-    ) {
+    if (box3KeepLast(outputs, lastWorkerOutputs, stageName)) {
       outputs = lastWorkerOutputs;
     }
     const prevFocusName =
@@ -1619,6 +1613,14 @@
       if (ev.target === overlay) closeDiffOverlay();
     });
     document.body.appendChild(overlay);
+  }
+
+  function box3KeepLast(incoming, previous, stage) {
+    return (
+      !(incoming && incoming.length) &&
+      !!(previous && previous.length) &&
+      (stage === "brainstorm" || stage === "idle")
+    );
   }
 
   function box3TabsWanted(outputs) {
