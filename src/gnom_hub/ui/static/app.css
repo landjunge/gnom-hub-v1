@@ -513,7 +513,7 @@ html, body {
 .agent-cards {
   display: flex;
   flex-direction: row;
-  gap: 20px;
+  gap: 8px;
   justify-content: stretch;
   width: 100%;
   flex: 0 0 auto;
@@ -581,8 +581,7 @@ html, body {
 
 .agent-card .card-status {
   font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
 }
 
 .agent-card[data-enabled="true"] .card-status {

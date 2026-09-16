@@ -24,7 +24,7 @@
   --pad-x: clamp(8px, 1vw, 16px);
   --pad-y: clamp(6px, 0.8vh, 12px);
   --layout-w: 100%;
-  --card-h: clamp(64px, 8.5vh, 96px);
+  --card-h: clamp(44px, 5.5vh, 56px);
   --chat-h: clamp(160px, 22vh, 280px);
   --radius-sm: 0;
   --radius-md: 0;

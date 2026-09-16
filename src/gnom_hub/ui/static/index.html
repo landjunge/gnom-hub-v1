@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gnom-Hub-V1</title>
-  <link rel="stylesheet" href="/static/app.css?v=186" />
+  <link rel="stylesheet" href="/static/app.css?v=187" />
 </head>
 <body>
   <div id="app">
@@ -311,9 +311,6 @@
               title="Klick = an nächste Nachricht anhängen"
             >Wünsche</span>
           </div>
-          <p class="kbd-hint m-0 shrink-0 px-2 pb-1 text-2xs text-gnom-muted">
-            Senden = reden · Arbeit starten = Worker · Quadrate = stehende Wünsche
-          </p>
         </section>
       </section>
       </div>
@@ -335,8 +332,8 @@
               <button type="button" id="box3-btn-copy" class="btn-ws-sm" title="Ergebnis kopieren">Kopieren</button>
               <button type="button" id="box3-btn-dl" class="btn-ws-sm" title="Herunterladen">↓</button>
               <button type="button" id="box3-btn-open" class="btn-ws-sm" title="Seite in Box 2+3 (Shift = Browser-Tab)">↗</button>
-              <button type="button" id="box3-btn-prev" class="btn-ws-sm" title="Vorheriges Ergebnis">←</button>
-              <button type="button" id="box3-btn-next" class="btn-ws-sm" title="Nächstes Ergebnis">→</button>
+              <button type="button" id="box3-btn-prev" class="btn-ws-sm" title="Vorheriges Ergebnis" hidden>←</button>
+              <button type="button" id="box3-btn-next" class="btn-ws-sm" title="Nächstes Ergebnis" hidden>→</button>
               <button type="button" id="box3-btn-temp" class="btn-ws-sm" title="Temporär — Workspace-Entwurf">Temp</button>
               <button type="button" id="box3-btn-perm" class="btn-ws-sm" title="Dauerhaft — Workspace">Dauerhaft</button>
               <button type="button" id="box3-result-fs" class="btn-ws-sm" title="Vollbild in den Boxen">⛶</button>
@@ -610,8 +607,8 @@
   <div id="vector-modal" class="modal" hidden>
     <div class="modal-panel trace-panel">
       <div class="modal-head">
-        <h2 class="modal-title">Vector store (lite)</h2>
-        <button type="button" id="vector-close" class="modal-close" title="Close">×</button>
+        <h2 class="modal-title">Suche im Speicher</h2>
+        <button type="button" id="vector-close" class="modal-close" title="Schließen">×</button>
       </div>
       <p id="vector-count" class="system-line muted">Docs: 0 · embedder: bow</p>
       <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
@@ -625,21 +622,21 @@
             <option value="sbert">sbert (neural)</option>
           </select>
         </label>
-        <button type="button" id="vector-embedder-apply" class="btn-ws-sm" title="Apply embedder and reindex docs">Apply + reindex</button>
-        <button type="button" id="vector-embedder-install" class="btn-ws-sm" title="One-click install fastembed">Install neural</button>
+        <button type="button" id="vector-embedder-apply" class="btn-ws-sm" title="Embedder anwenden und neu indexieren">Übernehmen</button>
+        <button type="button" id="vector-embedder-install" class="btn-ws-sm" title="fastembed einmal installieren">Neural installieren</button>
       </div>
       <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-        <input id="vector-query" class="tune-input" type="search" placeholder="Search…" style="flex:1;min-width:140px" />
-        <button type="button" id="vector-search-btn" class="btn-ws-sm">Search</button>
-        <button type="button" id="vector-refresh" class="btn-ws-sm">List</button>
-        <button type="button" id="vector-clear" class="btn-ws-sm">Clear</button>
+        <input id="vector-query" class="tune-input" type="search" placeholder="Suchen…" style="flex:1;min-width:140px" />
+        <button type="button" id="vector-search-btn" class="btn-ws-sm">Suchen</button>
+        <button type="button" id="vector-refresh" class="btn-ws-sm">Liste</button>
+        <button type="button" id="vector-clear" class="btn-ws-sm">Leeren</button>
       </div>
       <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-        <input id="vector-add-input" class="tune-input" type="text" placeholder="Add doc text…" style="flex:1;min-width:140px" />
-        <button type="button" id="vector-add-btn" class="btn-ws-sm">Add</button>
+        <input id="vector-add-input" class="tune-input" type="text" placeholder="Text hinzufügen…" style="flex:1;min-width:140px" />
+        <button type="button" id="vector-add-btn" class="btn-ws-sm">Hinzufügen</button>
       </div>
       <ul id="vector-list" class="ws-list" style="max-height:220px"></ul>
-      <pre id="vector-hits" class="trace-body muted" style="max-height:140px;margin-top:8px">Search hits appear here.</pre>
+      <pre id="vector-hits" class="trace-body muted" style="max-height:140px;margin-top:8px">Treffer erscheinen hier.</pre>
     </div>
   </div>
 
@@ -651,13 +648,13 @@
   <div id="docs-modal" class="modal" hidden>
     <div class="modal-panel trace-panel">
       <div class="modal-head">
-        <h2 class="modal-title">Documentation search</h2>
-        <button type="button" id="docs-close" class="modal-close" title="Close">×</button>
+        <h2 class="modal-title">Hilfe-Dokumente</h2>
+        <button type="button" id="docs-close" class="modal-close" title="Schließen">×</button>
       </div>
-      <p class="system-hint muted">Local index over docs/*.md — no external search engine.</p>
+      <p class="system-hint muted">Lokaler Index über docs/*.md — keine externe Suche.</p>
       <div class="system-row-actions" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-        <input id="docs-query" class="tune-input" type="search" placeholder="Search docs… e.g. skills, embeddings, install" style="flex:1;min-width:160px" />
-        <button type="button" id="docs-search-btn" class="btn-ws-sm">Search</button>
+        <input id="docs-query" class="tune-input" type="search" placeholder="Dokumente suchen…" style="flex:1;min-width:160px" />
+        <button type="button" id="docs-search-btn" class="btn-ws-sm">Suchen</button>
       </div>
       <ul id="docs-hits" class="ws-list" style="max-height:320px"></ul>
       <pre id="docs-hint" class="trace-body muted" style="max-height:80px;margin-top:8px">Tip: keywords from docs/INDEX.md · API GET /api/docs/search?q=</pre>
@@ -667,8 +664,8 @@
   <div id="skills-modal" class="modal" hidden>
     <div class="modal-panel trace-panel">
       <div class="modal-head">
-        <h2 class="modal-title">Skills (playbooks)</h2>
-        <button type="button" id="skills-close" class="modal-close" title="Close">×</button>
+        <h2 class="modal-title">Playbooks</h2>
+        <button type="button" id="skills-close" class="modal-close" title="Schließen">×</button>
       </div>
       <p id="skills-count" class="system-line muted">Skills: 0</p>
       <p class="system-hint muted">Markdown playbooks for agents — not tools, not a workflow engine.</p>

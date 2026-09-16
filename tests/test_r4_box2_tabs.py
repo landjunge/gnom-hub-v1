@@ -167,7 +167,7 @@ def test_box2_reply_tabs_equal_flex_centered_white():
     assert "color: #fff" in tab, ".box2-reply-tab names must be white"
     body = _function_body(BOXES_JS, "box2AgentTabLabel")
     assert 'return "Brain"' in body
-    assert 'return "Coord"' in body
+    assert 'return "Plan"' in body
     assert 'return "Mem"' in body
 
 

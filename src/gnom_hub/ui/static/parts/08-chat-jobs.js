@@ -2052,13 +2052,18 @@
       btn.setAttribute("aria-checked", id === sendTarget ? "true" : "false");
       btn.textContent =
         id === "brainstorm"
-          ? "BS"
+          ? "Brain"
           : id === "coordinator"
-            ? "Co"
+            ? "Plan"
             : id === "flex"
               ? "Flex"
-              : id.replace("worker", "W");
-      btn.title = "Senden an " + id;
+              : id.replace("worker", "");
+      btn.title = "Senden an " + (
+        id === "brainstorm" ? "Brainstorm"
+          : id === "coordinator" ? "Koordinator"
+            : id === "flex" ? "Flex"
+              : "Arbeiter " + id.replace("worker", "")
+      );
       if (typeof COLOR_HEX !== "undefined" && COLOR_HEX[id]) {
         btn.style.setProperty("--owner-color", COLOR_HEX[id]);
       }
@@ -2069,6 +2074,13 @@
           el.classList.toggle("is-on", on);
           el.setAttribute("aria-checked", on ? "true" : "false");
         });
+        if (typeof paintChatPlaceholder === "function") paintChatPlaceholder();
+        if (typeof renderCards === "function") {
+          document.querySelectorAll(".agent-card").forEach(function (card) {
+            const on = card.dataset.agentId === sendTarget;
+            card.classList.toggle("is-target", on);
+          });
+        }
       });
       root.appendChild(btn);
     });

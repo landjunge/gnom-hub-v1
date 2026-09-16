@@ -8,10 +8,10 @@
     const id = String(role || "").toLowerCase();
     if (id === "brainstorm") return "Brain";
     if (id === "flex") return "Flex";
-    if (id === "coordinator") return "Coord";
+    if (id === "coordinator") return "Plan";
     if (id === "memory") return "Mem";
     const wm = /^worker(\d+)$/.exec(id);
-    if (wm) return "A" + wm[1];
+    if (wm) return wm[1];
     return "Antw";
   }
 
@@ -386,7 +386,7 @@
   function box3WorkerTabLabel(out, i) {
     const raw = String((out && (out.worker || out.name)) || "").toLowerCase();
     const wm = /worker\s*(\d+)/.exec(raw);
-    const base = wm ? "A" + wm[1] : "A" + (i + 1);
+    const base = wm ? wm[1] : String(i + 1);
     if (out && out.variant_of != null) return base + "v";
     return base;
   }
@@ -401,16 +401,27 @@
     return String((out && (out.name || out.worker)) || "Arbeiter " + (i + 1));
   }
 
+  function paintBox3Nav() {
+    const n = (lastWorkerOutputs && lastWorkerOutputs.length) || 0;
+    const many = n > 1;
+    ["box3-btn-prev", "box3-btn-next"].forEach(function (id) {
+      const el = document.getElementById(id);
+      if (el) el.hidden = !many;
+    });
+  }
+
   function renderBox3WorkerTabs() {
     const tabs = document.getElementById("box3-worker-tabs");
     if (!tabs) return;
     const outs = lastWorkerOutputs || [];
     tabs.innerHTML = "";
-    if (outs.length < 1) {
+    if (outs.length < 2) {
       tabs.hidden = true;
+      paintBox3Nav();
       return;
     }
     tabs.hidden = false;
+    paintBox3Nav();
     outs.forEach(function (o, i) {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -1223,27 +1234,11 @@
       return;
     }
 
-    /* clear each worker agent layer in box 3 */
-    ["worker1", "worker2", "worker3", "worker4"].forEach(function (wid) {
-      const body =
-        (typeof getAgentBoxBody === "function" && getAgentBoxBody(3, wid)) ||
-        document.getElementById("box3-" + wid);
-      if (!body) return;
-      body.innerHTML = "";
-      body.classList.add("box3-dynamic");
-      const empty = document.createElement("p");
-      empty.className = "muted empty-hint";
-      if (pipeline && pipeline.stage === "work") {
-        empty.textContent = "Arbeiter laufen…";
-      } else {
-        empty.textContent = "Noch kein Ergebnis";
-      }
-      body.appendChild(empty);
-    });
-
+    /* Box 3 empty overlay is enough — do not fill four worker graves. */
     if (!outputs.length) {
       lastBox3RenderKey = renderKey;
       hideBox3ResultStage();
+      paintBox3Nav();
       return;
     }
 

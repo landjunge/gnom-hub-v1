@@ -84,11 +84,11 @@
     { id: "brainstorm", label: "Brainstorm", color: "brainstorm", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
     { id: "memory", label: "Memory", color: "memory", enabled: true, toggleable: false, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
     { id: "flex", label: "Flex", color: "flex", enabled: true, toggleable: true, parked: false, model: "—", preset: "personal", tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
-    { id: "coordinator", label: "Coordinator", color: "coordinator", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
-    { id: "worker1", label: "Worker 1", color: "worker1", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
-    { id: "worker2", label: "Worker 2", color: "worker2", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
-    { id: "worker3", label: "Worker 3", color: "worker3", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
-    { id: "worker4", label: "Worker 4", color: "worker4", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
+    { id: "coordinator", label: "Koordinator", color: "coordinator", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
+    { id: "worker1", label: "Arbeiter 1", color: "worker1", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
+    { id: "worker2", label: "Arbeiter 2", color: "worker2", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
+    { id: "worker3", label: "Arbeiter 3", color: "worker3", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
+    { id: "worker4", label: "Arbeiter 4", color: "worker4", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
   ];
 
   const els = {
@@ -409,14 +409,14 @@
   /** Build 8 agent layers per box (Agent N = Layer N). */
   function buildAgentLayers() {
     const hints = {
-      brainstorm: "Brainstorm dialogue",
-      memory: "Memory notes",
-      flex: "Flex review",
-      coordinator: "Coordinator / plan",
-      worker1: "Worker 1 result",
-      worker2: "Worker 2 result",
-      worker3: "Worker 3 result",
-      worker4: "Worker 4 result",
+      brainstorm: "Gespräch",
+      memory: "Notizen",
+      flex: "Rückfragen",
+      coordinator: "Plan",
+      worker1: "Noch kein Ergebnis",
+      worker2: "Noch kein Ergebnis",
+      worker3: "Noch kein Ergebnis",
+      worker4: "Noch kein Ergebnis",
     };
     [1, 2, 3].forEach(function (n) {
       const stack = document.getElementById("box" + n + "-layers");
@@ -7825,13 +7825,18 @@
       btn.setAttribute("aria-checked", id === sendTarget ? "true" : "false");
       btn.textContent =
         id === "brainstorm"
-          ? "BS"
+          ? "Brain"
           : id === "coordinator"
-            ? "Co"
+            ? "Plan"
             : id === "flex"
               ? "Flex"
-              : id.replace("worker", "W");
-      btn.title = "Senden an " + id;
+              : id.replace("worker", "");
+      btn.title = "Senden an " + (
+        id === "brainstorm" ? "Brainstorm"
+          : id === "coordinator" ? "Koordinator"
+            : id === "flex" ? "Flex"
+              : "Arbeiter " + id.replace("worker", "")
+      );
       if (typeof COLOR_HEX !== "undefined" && COLOR_HEX[id]) {
         btn.style.setProperty("--owner-color", COLOR_HEX[id]);
       }
@@ -7842,6 +7847,13 @@
           el.classList.toggle("is-on", on);
           el.setAttribute("aria-checked", on ? "true" : "false");
         });
+        if (typeof paintChatPlaceholder === "function") paintChatPlaceholder();
+        if (typeof renderCards === "function") {
+          document.querySelectorAll(".agent-card").forEach(function (card) {
+            const on = card.dataset.agentId === sendTarget;
+            card.classList.toggle("is-target", on);
+          });
+        }
       });
       root.appendChild(btn);
     });
@@ -8669,10 +8681,10 @@
     const id = String(role || "").toLowerCase();
     if (id === "brainstorm") return "Brain";
     if (id === "flex") return "Flex";
-    if (id === "coordinator") return "Coord";
+    if (id === "coordinator") return "Plan";
     if (id === "memory") return "Mem";
     const wm = /^worker(\d+)$/.exec(id);
-    if (wm) return "A" + wm[1];
+    if (wm) return wm[1];
     return "Antw";
   }
 
@@ -9047,7 +9059,7 @@
   function box3WorkerTabLabel(out, i) {
     const raw = String((out && (out.worker || out.name)) || "").toLowerCase();
     const wm = /worker\s*(\d+)/.exec(raw);
-    const base = wm ? "A" + wm[1] : "A" + (i + 1);
+    const base = wm ? wm[1] : String(i + 1);
     if (out && out.variant_of != null) return base + "v";
     return base;
   }
@@ -9062,16 +9074,27 @@
     return String((out && (out.name || out.worker)) || "Arbeiter " + (i + 1));
   }
 
+  function paintBox3Nav() {
+    const n = (lastWorkerOutputs && lastWorkerOutputs.length) || 0;
+    const many = n > 1;
+    ["box3-btn-prev", "box3-btn-next"].forEach(function (id) {
+      const el = document.getElementById(id);
+      if (el) el.hidden = !many;
+    });
+  }
+
   function renderBox3WorkerTabs() {
     const tabs = document.getElementById("box3-worker-tabs");
     if (!tabs) return;
     const outs = lastWorkerOutputs || [];
     tabs.innerHTML = "";
-    if (outs.length < 1) {
+    if (outs.length < 2) {
       tabs.hidden = true;
+      paintBox3Nav();
       return;
     }
     tabs.hidden = false;
+    paintBox3Nav();
     outs.forEach(function (o, i) {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -9884,27 +9907,11 @@
       return;
     }
 
-    /* clear each worker agent layer in box 3 */
-    ["worker1", "worker2", "worker3", "worker4"].forEach(function (wid) {
-      const body =
-        (typeof getAgentBoxBody === "function" && getAgentBoxBody(3, wid)) ||
-        document.getElementById("box3-" + wid);
-      if (!body) return;
-      body.innerHTML = "";
-      body.classList.add("box3-dynamic");
-      const empty = document.createElement("p");
-      empty.className = "muted empty-hint";
-      if (pipeline && pipeline.stage === "work") {
-        empty.textContent = "Arbeiter laufen…";
-      } else {
-        empty.textContent = "Noch kein Ergebnis";
-      }
-      body.appendChild(empty);
-    });
-
+    /* Box 3 empty overlay is enough — do not fill four worker graves. */
     if (!outputs.length) {
       lastBox3RenderKey = renderKey;
       hideBox3ResultStage();
+      paintBox3Nav();
       return;
     }
 
