@@ -1,0 +1,3 @@
+# GitHub PR webhook — scripts/github_pr_webhook.py
+# Python >= 3.10. Standard library only (http.server, hmac, json, subprocess).
+# No pip packages. The desk still installs from pyproject.toml (./scripts/install.sh).

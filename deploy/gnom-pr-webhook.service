@@ -1,0 +1,33 @@
+# systemd unit for scripts/github_pr_webhook.py (Linux host).
+# The desk on :8080 is a separate process. This listener uses :8088.
+#
+#   sudo cp deploy/gnom-pr-webhook.service /etc/systemd/system/
+#   # edit WorkingDirectory / EnvironmentFile / ExecStart paths
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now gnom-pr-webhook.service
+#
+# Put GNOM_WEBHOOK_SECRET and GNOM_BUILDER_CMD in the EnvironmentFile
+# (copy .env.example → .env). Bind 127.0.0.1 and expose /webhook via
+# ngrok or cloudflared — do not publish this port on the internet.
+
+[Unit]
+Description=Gnom-Hub GitHub PR webhook
+After=network.target
+Documentation=file:README.md
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/gnom-hub-v1
+EnvironmentFile=/opt/gnom-hub-v1/.env
+ExecStart=/usr/bin/python3 /opt/gnom-hub-v1/scripts/github_pr_webhook.py --host 127.0.0.1 --port 8088
+Restart=on-failure
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+# Harden a bit: no new privileges, private tmp.
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
