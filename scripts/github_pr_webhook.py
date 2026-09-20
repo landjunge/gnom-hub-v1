@@ -115,6 +115,8 @@ def pr_number_from(payload: dict[str, Any]) -> int | None:
 
 def is_changes_requested(event: str, payload: dict[str, Any]) -> bool:
     action = str(payload.get("action") or "")
+    # GitHub never sends pull_request + action=changes_requested.
+    # Real reviews arrive as pull_request_review / submitted / CHANGES_REQUESTED.
     if event == "pull_request" and action == "changes_requested":
         return True
     if event == "pull_request_review":

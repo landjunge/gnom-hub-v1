@@ -151,6 +151,30 @@ def test_claim_happens_before_launch(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert order == ["claim", "launch"]
 
 
+def test_launch_failed_unclaims(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    unclaimed: list[int] = []
+
+    def boom(*_a, **_k):
+        raise OSError("no-builder")
+
+    monkeypatch.setattr(poll, "launch_builder", boom)
+    action = poll.process_issue(
+        _issue(107),
+        repo="landjunge/gnom-hub-v1",
+        token="tok",
+        state={"started": {}},
+        state_path=tmp_path / "state.json",
+        prompt_path=tmp_path / "p.md",
+        cmd=OK_CMD,
+        claim=lambda *_a, **_k: None,
+        unclaim=lambda _repo, number, _token: unclaimed.append(number),
+        comments=[],
+    )
+    assert action == "launch-failed"
+    assert unclaimed == [107]
+    assert not (tmp_path / "state.json").exists()
+
+
 def test_poll_once_starts_only_one_issue(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     claimed: list[int] = []
 

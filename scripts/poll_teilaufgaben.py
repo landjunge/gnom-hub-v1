@@ -182,6 +182,18 @@ def claim_issue(repo: str, number: int, token: str) -> None:
     )
 
 
+def unclaim_issue(repo: str, number: int, token: str) -> None:
+    encoded = urllib.parse.quote(IN_PROGRESS, safe="")
+    try:
+        github_request(
+            "DELETE",
+            f"https://api.github.com/repos/{repo}/issues/{number}/labels/{encoded}",
+            token,
+        )
+    except RuntimeError:
+        pass
+
+
 def launch_builder(issue_number: int, prompt: str, cmd: str | None = None) -> str:
     raw = cmd if cmd is not None else require_builder_cmd()
     args = shlex.split(raw)
@@ -204,6 +216,7 @@ def process_issue(
     dry_run: bool = False,
     cmd: str | None = None,
     claim: Callable[[str, int, str], None] | None = None,
+    unclaim: Callable[[str, int, str], None] | None = None,
     comments: list[dict[str, Any]] | None = None,
 ) -> str:
     number = int(issue["number"])
@@ -220,8 +233,10 @@ def process_issue(
     except MissingBuilderCmd as exc:
         log("error", number, f"{MISSING_CMD} {exc}")
         return MISSING_CMD
+    claimed = False
     if token:
         (claim or claim_issue)(repo, number, token)
+        claimed = True
         labels = issue.setdefault("labels", [])
         if isinstance(labels, list):
             labels.append({"name": IN_PROGRESS})
@@ -229,6 +244,8 @@ def process_issue(
         how = launch_builder(number, builder_prompt(number, prompt_path), cmd=raw_cmd)
     except (MissingBuilderCmd, OSError, subprocess.CalledProcessError) as exc:
         log("launch-failed", number, str(exc)[:200])
+        if claimed and token:
+            (unclaim or unclaim_issue)(repo, number, token)
         return "launch-failed"
     state.setdefault("started", {})[str(number)] = {"at": utc_now(), "how": how}
     save_state(state_path, state)

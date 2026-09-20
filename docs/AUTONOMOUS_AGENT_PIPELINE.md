@@ -53,9 +53,9 @@ Dann zurück zu Phase 2, bis #105 als erledigt markiert ist.
 ### Reviewer
 - **Prompt:** `agents/reviewer.md`
 - **Modus:** Blind-Review + Adversarial.
-- **Aufgabe:** Offene PRs prüfen (Qualität, Lesbarkeit, Tests, Plan-Treue). Mindestens 3 Probleme pro PR suchen. Bei Problemen: Kommentar + „Änderungen angefordert". Bei OK: Merge, Teilaufgabe schließen, #105 aktualisieren.
-- **Trigger:** Neuer offener PR.
-- **Nicht:** Zwei PRs gleichzeitig.
+- **Aufgabe:** Offene PRs prüfen. Aktiv nach Blockern suchen (Bugs, fehlende Tests, Scope-Bruch, Gate rot). Nits sind keine Merge-Sperre. Bei Blockern: `CHANGES_REQUESTED`. Sonst Approve + Merge, Teilaufgabe schließen, #105 kurz aktualisieren.
+- **Trigger:** Neuer offener PR gegen `baseline`.
+- **Nicht:** Zwei PRs gleichzeitig. „Mindestens drei Probleme“ ist Suchheuristik, kein Veto.
 
 ### Koordinator
 - **Prompt:** `agents/koordinator.md`
@@ -71,12 +71,13 @@ Dann zurück zu Phase 2, bis #105 als erledigt markiert ist.
 
 ---
 
-## 4. Gegenmaßnahmen gegen Stillstand
+## 4. Runtime (gegen Stillstand)
 
-**Problem:** Builder läuft nur bei manuellem Anstupsen → Zyklus bricht ab.
+**Problem:** Prompts allein starten niemanden. Poll/Webhook ohne `grok`-Launcher und ohne Reviewer/Test bleiben tot.
 
-**Lösung (Zwischenaufgabe #108):**  
-Builder baut zuerst ein **Polling-/Webhook-Skript**, das auf neue Issues mit Label `teilaufgabe` reagiert und den Builder automatisch startet. Danach arbeitet er #106, dann #107 ab.
+**Lösung:** `scripts/agent_dispatch.py` — ein Tick, eine Rolle, Headless Grok (`scripts/run_agent.sh`). Reihenfolge: Review-Fixes → Reviewer → Test nach baseline-Move → Builder → Planer → Koordinator.
+
+Start und Kill-Switch: `agents/AUTOMATION.md`. Poll und Webhook sind optional und rufen denselben Launcher.
 
 ---
 
@@ -116,6 +117,9 @@ Starte jetzt. Issue #106 ist offen, Label "teilaufgabe". Nimm sie, setze um, öf
 | Koordinator-Prompt | `agents/koordinator.md` |
 | Test-Agent-Prompt | `agents/test-agent.md` |
 | Haupt-Issue | #105 |
+| Dispatcher | `scripts/agent_dispatch.py` |
+| Grok-Launcher | `scripts/run_agent.sh` |
+| launchd | `deploy/gnom-agent-dispatch.plist` |
 | Automatisierungs-Issue | #108 |
 
 ---

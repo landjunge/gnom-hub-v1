@@ -1,52 +1,62 @@
-# Builder-Polling für Teilaufgaben
+# Agenten-Runtime
 
-Kleines Polling-Skript, das offene Issues mit Label `teilaufgabe` findet und den Builder genau einmal anstupst. Kein Webhook-Server.
+Ein Dispatcher liest GitHub und startet genau eine Rolle pro Tick über Headless Grok. Polling und der PR-Webhook bleiben optional; sie sind nicht der Hauptdienst.
 
-## Pflicht-Umgebung
-
-Ohne `GNOM_BUILDER_CMD` startet nichts. Das Skript loggt `error missing-cmd` und speichert die Issue nicht als gestartet. Es legt auch keine Queue-Datei mehr.
+## Pflicht
 
 ```bash
-export GITHUB_TOKEN=ghp_xxx          # oder GNOM_GITHUB_TOKEN
-export GNOM_GITHUB_REPO=landjunge/gnom-hub-v1   # optional, Default ist dieses Repo
-# konkretes ausführbares Kommando — wird mit shlex.split zerlegt, shell=False
-export GNOM_BUILDER_CMD="/usr/bin/python3 /pfad/zum/builder-launcher.py"
+export GITHUB_TOKEN="$(gh auth token)"   # oder GNOM_GITHUB_TOKEN
+export GNOM_GITHUB_REPO=landjunge/gnom-hub-v1
+# Kill-Switch: GNOM_AGENT_DISPATCH=0
 ```
 
-Das Kind bekommt `ISSUE_NUMBER` in der Umgebung und den Prompt aus `agents/builder.md` plus Issue-Hinweis auf stdin.
+`scripts/run_agent.sh` ruft `grok --prompt-file … --yolo --max-turns 80` auf. Der Prompt liegt in `agents/<rolle>.md`. Zusätzlicher Text (Poll/Webhook) kommt über stdin in dieselbe Datei, nicht als `grok -p "$(cat)"`.
+
+Override pro Rolle (sonst `scripts/run_agent.sh <rolle>`):
+
+```bash
+export GNOM_BUILDER_CMD="scripts/run_agent.sh builder"
+export GNOM_REVIEWER_CMD="scripts/run_agent.sh reviewer"
+export GNOM_GROK_BIN=grok
+export GNOM_AGENT_WORKDIR=/Users/landjunge/.grok/worktrees/gnom-hub-agents
+```
 
 ## Start
 
 ```bash
-# einmalig (CI / Test)
-python scripts/poll_teilaufgaben.py --once
+# Worktree nur für Agenten (nicht den Desk-Clone)
+git fetch origin baseline
+git worktree add ~/.grok/worktrees/gnom-hub-agents origin/baseline
 
-# Dauerbetrieb, Intervall 30–60 Sekunden (Default 45)
-python scripts/poll_teilaufgaben.py --interval 45
+cd ~/.grok/worktrees/gnom-hub-agents
+python3 scripts/agent_dispatch.py --once --dry-run
+python3 scripts/agent_dispatch.py --once
+python3 scripts/agent_dispatch.py --interval 45
 ```
 
-Nur ansehen, nichts schreiben (kein Claim, kein Start):
+macOS-Dienst: `deploy/gnom-agent-dispatch.plist` nach `~/Library/LaunchAgents/` kopieren, Pfade prüfen, `launchctl load`.
+
+Stop: Prozess beenden, oder `GNOM_AGENT_DISPATCH=0`, oder `launchctl unload`.
+
+State: `data/agent_dispatch_state.json` (gitignored unter `data/`). Einträge gelten 2 Stunden.
+
+## Reihenfolge pro Tick
+
+1. Offener PR mit Review *changes requested* → Builder (Fixes auf demselben Branch)
+2. Offener PR ohne Review oder Approve ohne Merge → Reviewer
+3. `baseline` HEAD neu seit letztem Test → Test-Agent
+4. Offene `teilaufgabe` ohne PR (stale `in-bearbeitung` nach 2h nochmal) → Builder
+5. #105 offen, keine Teilaufgaben → Planer
+6. sonst Stale/Warteschlange → Koordinator (Cooldown 1h)
+
+Genau eine Rolle, ein Prozess. Launch-Fehler speichert keinen Start.
+
+## Alt: nur Builder-Poll / Webhook
 
 ```bash
-python scripts/poll_teilaufgaben.py --once --dry-run
+export GNOM_BUILDER_CMD="scripts/run_agent.sh builder"
+python3 scripts/poll_teilaufgaben.py --once --dry-run
+python3 scripts/github_pr_webhook.py --host 127.0.0.1 --port 8088
 ```
 
-## Stop
-
-Prozess beenden (`Ctrl+C` oder `kill <pid>`). Es gibt keinen Dienst und kein Docker.
-
-State-Datei: `data/agent_poll_state.json`. Löschen setzt die lokale Doppelstart-Sperre zurück. Zusätzliche Sperren:
-
-- Label `in-bearbeitung` auf der Issue
-- Issue-Kommentar mit Marker `<!-- gnom-builder-poll:started -->` (ohne Prompt-Dump)
-
-## Verhalten
-
-1. Fragt offene Issues mit Label `teilaufgabe` ab.
-2. Überspringt Issues, die schon gestartet / in Bearbeitung sind.
-3. Pro Tick höchstens *eine* noch freie Teilaufgabe.
-4. Claim zuerst (Marker-Kommentar + Label), danach Start.
-5. Ohne `GNOM_BUILDER_CMD`: klare Fehlermeldung, kein Claim, kein State-Eintrag.
-6. Loggt `Timestamp Aktion issue=#N Detail` auf stdout.
-
-Nach dem Merge sollen offene Teilaufgaben wie #106 und #107 ohne manuelles Anstupsen weiterlaufen, sobald dieses Skript mit Token und `GNOM_BUILDER_CMD` läuft.
+GitHub-Event für Review-Fixes ist `pull_request_review` mit `state=changes_requested` (nicht `pull_request` / Action `changes_requested`). Claim: bei Launch-Fehler wird `in-bearbeitung` wieder entfernt.
