@@ -35,8 +35,10 @@ def test_creates_fixed_agents():
         AgentId.WORKER4,
     ]
     assert len(agents) == 8
-    assert mgr.get(AgentId.WORKER3).enabled is True
-    assert mgr.get(AgentId.WORKER4).enabled is True
+    assert mgr.get(AgentId.WORKER1).enabled is True
+    assert mgr.get(AgentId.WORKER2).enabled is True
+    assert mgr.get(AgentId.WORKER3).enabled is False
+    assert mgr.get(AgentId.WORKER4).enabled is False
 
 
 def test_colors_and_defaults():
@@ -92,9 +94,18 @@ def test_enable_all_turns_workers_on():
     assert mgr.get(AgentId.BRAINSTORM).enabled is True
     assert mgr.get(AgentId.WORKER1).enabled is True
     assert mgr.get(AgentId.WORKER2).enabled is True
-    # all workers on by default (Box 3 dynamic for 1–4)
+    # enable_all includes worker 3/4
     assert mgr.get(AgentId.WORKER3).enabled is True
     assert mgr.get(AgentId.WORKER4).enabled is True
+
+
+def test_enable_all_can_skip_extra_workers():
+    _, mgr, _ = _manager()
+    mgr.enable_all(include_extra_workers=False)
+    assert mgr.get(AgentId.WORKER1).enabled is True
+    assert mgr.get(AgentId.WORKER2).enabled is True
+    assert mgr.get(AgentId.WORKER3).enabled is False
+    assert mgr.get(AgentId.WORKER4).enabled is False
 
 
 def test_flex_preset_locked_personal():
@@ -162,10 +173,11 @@ def test_status_payload_fields():
 
 def test_enabled_workers():
     _, mgr, _ = _manager()
-    assert len(mgr.enabled_workers()) == 4  # all workers on by default
+    assert len(mgr.enabled_workers()) == 2
     mgr.toggle(AgentId.WORKER1)
     workers = mgr.enabled_workers()
-    assert len(workers) == 3
+    assert len(workers) == 1
     mgr.toggle(AgentId.WORKER3)
     assert len(mgr.enabled_workers()) == 2
     assert AgentId.WORKER2 in [w.id for w in mgr.enabled_workers()]
+    assert AgentId.WORKER3 in [w.id for w in mgr.enabled_workers()]
