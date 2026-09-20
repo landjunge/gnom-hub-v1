@@ -15,6 +15,31 @@ def test_send_does_not_open_start_c1():
     assert not any(t.get("role") == "flex" for t in (st.brainstorm_turns or []))
 
 
+def test_send_build_language_does_not_start_workers():
+    orch = Orchestrator(EventBus())
+    st = orch.chat_turn(
+        "Build a modern landing page for a coffee shop called Bean & Bloom. Full HTML."
+    )
+    assert st.stage.value == "brainstorm"
+    assert not st.worker_results
+    assert not st.worker_outputs
+
+
+def test_send_tool_drill_does_not_finish_pipeline():
+    orch = Orchestrator(EventBus())
+    st = orch.chat_turn("Tool drill S6 plugins")
+    assert st.stage.value != "done"
+    assert not st.worker_results
+
+
+def test_go_only_after_task_does_not_start_workers():
+    orch = Orchestrator(EventBus())
+    orch.chat_turn("Ideen zu einer Checklisten-App, nur Brainstorm bitte")
+    st = orch.chat_turn("mach das")
+    assert st.stage.value == "brainstorm"
+    assert not st.worker_results
+
+
 def test_judgment_question_after_finish_with_results():
     desk = FlexDesk()
     out = desk.offer_judgment()
