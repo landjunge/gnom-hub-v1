@@ -312,10 +312,7 @@
       const mine = outs.some(function (o) {
         return _agentPageOutputMine(o, id);
       });
-      if (
-        mine ||
-        (isSend && (result === "GELIEFERT" || result === "UNGEPRÜFT" || result))
-      ) {
+      if (pipe.deliverable_ok === true && (mine || isSend)) {
         return "hat Ergebnis";
       }
     }

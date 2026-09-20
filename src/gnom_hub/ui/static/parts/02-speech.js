@@ -489,7 +489,7 @@
 
     /* Personal companion only — not product pitch */
     let spoken = "Flex, nur für dich. " + body;
-    if (p.stage === "done") {
+    if (p.stage === "done" && p.deliverable_ok === true) {
       spoken +=
         " Wenn du magst: sag mir kurz, ob das Ergebnis für dich passt.";
     }

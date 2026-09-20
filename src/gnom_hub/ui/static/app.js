@@ -312,10 +312,7 @@
       const mine = outs.some(function (o) {
         return _agentPageOutputMine(o, id);
       });
-      if (
-        mine ||
-        (isSend && (result === "GELIEFERT" || result === "UNGEPRÜFT" || result))
-      ) {
+      if (pipe.deliverable_ok === true && (mine || isSend)) {
         return "hat Ergebnis";
       }
     }
@@ -3482,7 +3479,7 @@
 
     /* Personal companion only — not product pitch */
     let spoken = "Flex, nur für dich. " + body;
-    if (p.stage === "done") {
+    if (p.stage === "done" && p.deliverable_ok === true) {
       spoken +=
         " Wenn du magst: sag mir kurz, ob das Ergebnis für dich passt.";
     }
@@ -6483,8 +6480,14 @@
       applySnapshot(snap);
       const stage = (snap.pipeline && snap.pipeline.stage) || "";
       if (stage === "done") {
-        appendChat("system", "Nochmal fertig: " + wid);
-        toast(wid + " re-run done", "ok");
+        const okDeliverable = snap.pipeline && snap.pipeline.deliverable_ok;
+        if (okDeliverable) {
+          appendChat("system", "Nochmal fertig: " + wid);
+          toast(wid + " re-run done", "ok");
+        } else {
+          appendChat("system", "Nochmal fertig ohne Deliverable: " + wid);
+          toast(wid + " re-run ohne Deliverable", "error");
+        }
         focusBox3();
         try {
           pushResultHistory(snap.pipeline || {}, {
@@ -6548,8 +6551,14 @@
       }
       applySnapshot(snap);
       if (snap.pipeline && snap.pipeline.stage === "done") {
-        appendChat("system", "Nochmal fertig — siehe Box 3.");
-        toast("Nochmal fertig", "ok");
+        const okDeliverable = snap.pipeline && snap.pipeline.deliverable_ok;
+        if (okDeliverable) {
+          appendChat("system", "Nochmal fertig — siehe Box 3.");
+          toast("Nochmal fertig", "ok");
+        } else {
+          appendChat("system", "Nochmal fertig ohne Deliverable — siehe Box 3.");
+          toast("Kein Deliverable", "error");
+        }
         focusBox3();
         try {
           pushResultHistory(snap.pipeline || {}, {
