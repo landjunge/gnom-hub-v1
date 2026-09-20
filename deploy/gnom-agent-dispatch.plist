@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>de.landjunge.gnom-agent-dispatch</string>
+  <key>Comment</key>
+  <string>Copy to ~/Library/LaunchAgents/. Set WorkingDirectory to the agents worktree of gnom-hub-v1 (baseline). Kill switch: GNOM_AGENT_DISPATCH=0.</string>
+  <key>WorkingDirectory</key>
+  <string>/Users/landjunge/.grok/worktrees/gnom-hub-agents</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <string>scripts/agent_dispatch.py</string>
+    <string>--interval</string>
+    <string>45</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/Users/landjunge/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <key>GNOM_AGENT_DISPATCH</key>
+    <string>1</string>
+    <key>GNOM_GITHUB_REPO</key>
+    <string>landjunge/gnom-hub-v1</string>
+    <key>GNOM_AGENT_WORKDIR</key>
+    <string>/Users/landjunge/.grok/worktrees/gnom-hub-agents</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/Users/landjunge/.grok/worktrees/gnom-hub-agents/data/agent_dispatch.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/landjunge/.grok/worktrees/gnom-hub-agents/data/agent_dispatch.err</string>
+</dict>
+</plist>

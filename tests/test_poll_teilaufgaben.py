@@ -57,7 +57,9 @@ def test_already_started_on_claim_comment() -> None:
     assert poll.already_started(issue, {"started": {}}, comments) is True
 
 
-def test_missing_builder_cmd_does_not_start(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_missing_builder_cmd_does_not_start(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.delenv("GNOM_BUILDER_CMD", raising=False)
     state_path = tmp_path / "state.json"
     action = poll.process_issue(
@@ -73,7 +75,9 @@ def test_missing_builder_cmd_does_not_start(tmp_path: Path, monkeypatch: pytest.
     assert not state_path.exists()
 
 
-def test_poll_once_missing_env_returns_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_poll_once_missing_env_returns_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.delenv("GNOM_BUILDER_CMD", raising=False)
     actions = poll.poll_once(
         repo="landjunge/gnom-hub-v1",
@@ -147,12 +151,37 @@ def test_claim_happens_before_launch(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert order == ["claim", "launch"]
 
 
-def test_poll_once_starts_only_one_issue(tmp_path: Path) -> None:
+def test_launch_failed_unclaims(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    unclaimed: list[int] = []
+
+    def boom(*_a, **_k):
+        raise OSError("no-builder")
+
+    monkeypatch.setattr(poll, "launch_builder", boom)
+    action = poll.process_issue(
+        _issue(107),
+        repo="landjunge/gnom-hub-v1",
+        token="tok",
+        state={"started": {}},
+        state_path=tmp_path / "state.json",
+        prompt_path=tmp_path / "p.md",
+        cmd=OK_CMD,
+        claim=lambda *_a, **_k: None,
+        unclaim=lambda _repo, number, _token: unclaimed.append(number),
+        comments=[],
+    )
+    assert action == "launch-failed"
+    assert unclaimed == [107]
+    assert not (tmp_path / "state.json").exists()
+
+
+def test_poll_once_starts_only_one_issue(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     claimed: list[int] = []
 
     def claim(repo: str, number: int, token: str) -> None:
         claimed.append(number)
 
+    monkeypatch.setattr(poll, "list_issue_comments", lambda *_args, **_kw: [])
     actions = poll.poll_once(
         repo="landjunge/gnom-hub-v1",
         token="tok",
