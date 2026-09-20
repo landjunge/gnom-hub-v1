@@ -173,11 +173,10 @@ class PersistMixin:
             self._state.error = None
         else:
             self._state.result_status = "FEHLER"
-            if not self._state.error:
-                self._state.error = "Kein belastbares Deliverable"
-        # "Passt das?" only after a real deliverable — never after FEHLER.
-        if ok_deliv:
-            self._offer_judgment()
+            # Pipeline finished. Missing deliverable is result_status, not a crash.
+            self._state.error = None
+        # Key-missing still asked. "Passt das?" only after a real deliverable.
+        self._offer_judgment()
         self._set_stage(PipelineStage.done)
         total_ms = round(sum(self._state.stage_timings.values()), 1)
         self.bus.emit(

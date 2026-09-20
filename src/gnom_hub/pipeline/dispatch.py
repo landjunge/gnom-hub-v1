@@ -29,11 +29,9 @@ class DispatchMixin:
         del reason, workers
 
     def _offer_judgment(self) -> None:
-        """Box 1 after a real deliverable. Key missing beats Passt das."""
+        """Box 1: key-missing first. Passt das? only after a real deliverable."""
         from gnom_hub.snapshot_ops import _deliverable_ok
 
-        if not _deliverable_ok(self._state):
-            return
         self._ensure_flex_job()
         if self._results_missing_key():
             self.flex_desk.ask(
@@ -47,8 +45,10 @@ class DispatchMixin:
                 options=["Verstanden"],
                 entry_type="blockiert",
             )
-        else:
+        elif _deliverable_ok(self._state):
             self.flex_desk.offer_judgment()
+        else:
+            return
         self._sync_flex_state()
         vis = self.flex_desk.visible_question()
         self.bus.emit(
