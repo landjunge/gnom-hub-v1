@@ -35,7 +35,10 @@ def health() -> dict[str, Any]:
             import tollgate  # noqa: F401
         except ImportError:
             tg_ok = False
-            tg_note = "TollGate-Paket fehlt. Cloud-Modelle gehen nicht. ./scripts/install.sh oder GNOM_TOLLGATE_LLM=0."
+            tg_note = (
+                "TollGate-Paket fehlt. DeepSeek-Key wird direkt genutzt, "
+                "oder ./scripts/install.sh mit Sibling ../tollgate."
+            )
     return {
         "status": "ok",
         "service": "gnom-hub-v1",

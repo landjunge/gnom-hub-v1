@@ -99,7 +99,7 @@ class SystemOpsMixin:
                 import tollgate  # noqa: F401
             except ImportError:
                 tg_ok = False
-                tg_note = "TollGate fehlt — Cloud-Modelle gehen nicht."
+                tg_note = "TollGate fehlt — DeepSeek-Key wird direkt genutzt."
         return {
             "key_ok": bool(st.key_has_deepseek),
             "personal_ws": st.personal_ws,
