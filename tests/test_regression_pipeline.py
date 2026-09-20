@@ -73,8 +73,10 @@ def test_r2_no_auto_execute_pure_question():
     assert not _wants_auto_execute("What could TTS do inside Gnom-Hub?")
 
 
-def test_r2_auto_execute_clear_build():
-    assert _wants_auto_execute("Build a modern landing page for a coffee shop called Bean & Bloom")
+def test_r2_no_auto_execute_clear_build():
+    assert not _wants_auto_execute(
+        "Build a modern landing page for a coffee shop called Bean & Bloom"
+    )
 
 
 # ── R3: HTML quality gates ──────────────────────────────────────────

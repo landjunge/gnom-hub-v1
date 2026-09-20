@@ -46,7 +46,7 @@ Chat (`#chat-mod`) is **not** a box. Per-agent chat layers live under the three 
 
 Allowed short-circuits in `AGENTS.md`: tool drill, live browser nav, go-only (`mach das` / `ja` / `execute` after a prior task).
 
-**Code is broader:** `_wants_auto_execute` also fires on HTML/build language (`baue`, `landing page`, `todo app`, …). Flex `maybe_request_execute` can fire from Send. Desk toast does not claim Send auto-executes.
+**Code:** `_wants_auto_execute` is only the three AGENTS.md short-circuits (tool drill, live browser nav, go-only re-run). HTML/build language is not Execute. Flex `maybe_request_execute` never starts work. Desk toast does not claim Send auto-executes.
 
 `POST /api/chat?full=1`, `/api/reexecute`, `/api/workers/{id}/rerun`, `/api/tools/call`, `/api/mcp`, Telegram `/do` bypass the Execute button.
 
@@ -68,7 +68,7 @@ Default **off**. Only the user switch (`POST /api/god-mode` with reason user). `
 
 ## Known code/doc contradictions
 
-1. AGENTS.md / CODE_ANALYSIS: no auto-execute on HTML after brainstorm. Code: `_wants_auto_execute` does.
+1. AGENTS.md / CODE_ANALYSIS: no auto-execute on HTML after brainstorm. `_wants_auto_execute` matches that (HTML/build is not a short-circuit).
 2. CODE_ANALYSIS: Worker 3/4 default off. Code: all four on (`manager.py`, `enable_all`).
 3. HUB_ARCHITECTURE: workers call tools with `TOOL_CALL`. Fixed on this branch: Orchestrator no longer zeroes `tools` after `__init__`; assigning `pipe.tools` also updates WorkerAgent. Prefetch remains the auto path.
 4. Flex preset dropdown is disabled leftover chrome.
