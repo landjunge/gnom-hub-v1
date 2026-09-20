@@ -92,6 +92,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 ### Other
 | Doc | Keywords |
 |-----|----------|
+| [AUTONOMOUS_AGENT_PIPELINE.md](AUTONOMOUS_AGENT_PIPELINE.md) | agent, teilaufgabe, nicht, pipeline, builder, agents, autonomous, baseline, issue, issues |
 | [BUG_HUNT_TEAM.md](BUG_HUNT_TEAM.md) | orchestrator, cancel, team, bug, hunt, can, god, jobs, mode, telegram |
 | [GNOM-HUB-V1-HUMAN-UI-AUDIT.md](GNOM-HUB-V1-HUMAN-UI-AUDIT.md) | audit, execute, pass, human, send, box, assets, png, tollgate, brainstorm |
 | [GNOM-HUB-V1-WORKER-BOX-CONTRACT.md](GNOM-HUB-V1-WORKER-BOX-CONTRACT.md) | box, flex, worker, api, workers, after, execute, chat, job, brainstorm |
@@ -115,6 +116,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 - [AGENTS_DEFINITION.md](AGENTS_DEFINITION.md) — Konkrete Agenten-Definition (Gnom-Hub v1)
 - [AGENTS_PROMPTS.md](AGENTS_PROMPTS.md) — Agenten-Prompts und Rechte — Gnom-Hub-V1
 - [ARCHITECTURE.md](ARCHITECTURE.md) — Gnom-Hub Architecture (overview)
+- [AUTONOMOUS_AGENT_PIPELINE.md](AUTONOMOUS_AGENT_PIPELINE.md) — Autonomes Agenten-Team — Pipeline & Rollen
 - [BASIC_USER_TEST.md](BASIC_USER_TEST.md) — Basic User Test (canonical)
 - [BUG_HUNT_TEAM.md](BUG_HUNT_TEAM.md) — Team Bug-Hunt Report (static)
 - [CHANGELOG_3.10.md](CHANGELOG_3.10.md) — Changelog — 3.10.0 (V4 Skills wave)
