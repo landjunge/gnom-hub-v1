@@ -1,0 +1,39 @@
+# GitHub PR webhook only — not the Gnom-Hub desk (the desk stays without Docker).
+# Copy .env.example → .env and set GNOM_WEBHOOK_SECRET + GNOM_BUILDER_CMD first.
+#
+#   docker compose up -d
+#   curl -fsS http://127.0.0.1:8088/health
+#
+# Builder runs inside this container, so GNOM_BUILDER_CMD must exist here.
+# On a host with a local Builder CLI, prefer the systemd unit in
+# deploy/gnom-pr-webhook.service instead.
+
+services:
+  github-pr-webhook:
+    image: python:3.12-slim
+    working_dir: /app
+    command:
+      - python
+      - scripts/github_pr_webhook.py
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8088"
+    env_file:
+      - .env
+    ports:
+      - "8088:8088"
+    volumes:
+      - .:/app
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8088/health')",
+        ]
+      interval: 15s
+      timeout: 3s
+      retries: 5
