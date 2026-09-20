@@ -18,8 +18,21 @@ from gnom_hub.pipeline.models import PipelineStage, PipelineState
 class DispatchMixin:
     def _worker_ids_for_plan(self) -> list[str]:
         """Flag (send_target) is the assigned worker. HTML/default no longer always Worker 1."""
-        ids = [wid for wid, w in self._workers.items() if w.enabled]
         pref = str(getattr(self._state, "send_target", "") or "").strip().lower()
+        if pref in self._workers:
+            agents = getattr(self, "agents", None) or getattr(self, "_agents", None)
+            if agents is not None:
+                try:
+                    ag = agents.get(pref)
+                    if not ag.enabled:
+                        agents.toggle(pref)
+                except (KeyError, ValueError, AttributeError):
+                    pass
+            else:
+                st = getattr(self._workers[pref], "state", None)
+                if st is not None and not getattr(st, "enabled", True):
+                    st.enabled = True
+        ids = [wid for wid, w in self._workers.items() if w.enabled]
         if pref in ids:
             return [pref] + [w for w in ids if w != pref]
         return ids
