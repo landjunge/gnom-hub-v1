@@ -338,13 +338,15 @@ class LLMManager:
             except BudgetExceededError:
                 # F-03: Protect / budget / freeze is never bypassed by legacy DeepSeek
                 raise
-            except (MissingKeyError, AuthError, RateLimitError, FreeOnlyError, LLMError):
-                # GNOM_TOLLGATE_LLM=1 (force_tg): hard fail — no silent paid spillover
-                # as consumer "anonymous" via legacy client.
-                if force_tg:
+            except (MissingKeyError, AuthError, RateLimitError, FreeOnlyError, LLMError) as exc:
+                # force_tg: no silent paid spillover, except missing tollgate package + key.
+                missing_pkg = "tollgate package not installed" in str(exc).lower()
+                have_key = bool(self.deepseek_key(api_key)) or (
+                    agent_key.startswith("worker") and bool(self.worker_key(api_key))
+                )
+                if force_tg and not (missing_pkg and have_key):
                     raise
-                # Optional Tollgate path only: allow legacy DeepSeek when key present
-                if not self.deepseek_key(api_key):
+                if not have_key:
                     raise
                 # fall through to legacy DeepSeek
             except Exception as e:

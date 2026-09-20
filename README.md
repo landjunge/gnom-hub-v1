@@ -158,7 +158,7 @@ Notfall: Backup in der System-Liste mit **Laden**.
 | Symptom | Was tun |
 |---------|---------|
 | Key fehlt | `WS-gnom-hub-v1/User/Key.txt` oder System. Platzhalter zählen nicht. |
-| TollGate fehlt | `./scripts/install.sh` mit Sibling `../tollgate`, oder `GNOM_TOLLGATE_LLM=0`. |
+| TollGate fehlt | DeepSeek-Key reicht für Cloud. Optional Sibling `../tollgate` via `./scripts/install.sh`. |
 | Arbeiter sagt FEHLER | Kein Key / kein Modell. Keine Attrappe. |
 | Senden tut „nichts“ | Antwort steht in Box 2 beim Flag, nicht als Arbeiter-Seite. |
 | Arbeit startet nicht | Nur **Arbeit starten** oder Ctrl/⌘+Enter. Offene Frage in Box 1 zuerst beantworten. |

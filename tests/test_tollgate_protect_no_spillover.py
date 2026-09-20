@@ -59,6 +59,42 @@ def test_generic_llm_error_also_hard_fails_when_force_tg(monkeypatch):
     legacy.chat.assert_not_called()
 
 
+def test_missing_tollgate_package_falls_through_to_deepseek(monkeypatch):
+    monkeypatch.setenv("GNOM_TOLLGATE_LLM", "1")
+    monkeypatch.delenv("TOLLGATE_URL", raising=False)
+    keys = {"DEEPSEEK_API_KEY": "sk-abcdefghijklmnop-realish"}
+    m = LLMManager(keys=keys)
+    monkeypatch.setattr(m, "deepseek_key", lambda override=None: keys["DEEPSEEK_API_KEY"])
+    monkeypatch.setattr(m, "worker_key", lambda override=None: keys["DEEPSEEK_API_KEY"])
+    monkeypatch.setattr(m, "ollama_available", lambda force=False: False)
+
+    class FakeClient:
+        def chat(self, *a, **k):
+            from gnom_hub.llm.types import LLMResult
+
+            return LLMResult(
+                content="legacy-after-missing-pkg",
+                model="deepseek",
+                prompt_tokens=1,
+                completion_tokens=1,
+            )
+
+    m._client_factory = lambda key: FakeClient()  # type: ignore[method-assign]
+    monkeypatch.setattr(m, "_tollgate_admit", lambda *a, **k: None)
+    monkeypatch.setattr(m, "_tollgate_record", lambda *a, **k: None)
+    monkeypatch.setattr(
+        m,
+        "_chat_via_tollgate",
+        lambda *a, **k: (_ for _ in ()).throw(LLMError("tollgate package not installed")),
+    )
+    r = m.chat(
+        [LLMMessage(role="user", content="hi")],
+        model="deepseek-v4-flash",
+        agent="brainstorm",
+    )
+    assert r.content == "legacy-after-missing-pkg"
+
+
 def test_optional_tollgate_may_fall_through_when_force_off(monkeypatch):
     """GNOM_TOLLGATE_LLM=0 and via_tg from provider still can use legacy — not force path.
 
