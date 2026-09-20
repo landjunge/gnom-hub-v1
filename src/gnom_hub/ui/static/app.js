@@ -10758,20 +10758,26 @@
     document.addEventListener("keydown", function (ev) {
       // Esc: close overlays first, else cancel running job
       if (ev.key === "Escape") {
-        if (els.toolsModal && !els.toolsModal.hidden) {
-          ev.preventDefault();
-          closeToolsModal();
-          return;
-        }
-        if (els.usageModal && !els.usageModal.hidden) {
-          ev.preventDefault();
-          closeUsageModal();
-          return;
-        }
-        if (els.vectorModal && !els.vectorModal.hidden) {
-          ev.preventDefault();
-          closeVectorModal();
-          return;
+        const overlayClosers = [
+          [els.tuneModal, closeTuneModal],
+          [els.systemModal, closeSystemModal],
+          [els.workspaceModal, closeWorkspaceModal],
+          [els.docsModal, closeDocsModal],
+          [els.skillsModal, closeSkillsModal],
+          [els.coldBrowser, hideColdBrowser],
+          [els.helpModal, closeHelpModal],
+          [els.toolsModal, closeToolsModal],
+          [els.usageModal, closeUsageModal],
+          [els.vectorModal, closeVectorModal],
+        ];
+        for (let i = 0; i < overlayClosers.length; i++) {
+          const el = overlayClosers[i][0];
+          const fn = overlayClosers[i][1];
+          if (el && !el.hidden && typeof fn === "function") {
+            ev.preventDefault();
+            fn();
+            return;
+          }
         }
         if (document.getElementById("diff-overlay")) {
           ev.preventDefault();

@@ -99,6 +99,23 @@ def test_enable_all_turns_workers_on():
     assert mgr.get(AgentId.WORKER4).enabled is True
 
 
+def test_hub_boot_does_not_force_worker34_on(tmp_path, monkeypatch):
+    """Hub start must not undo Worker 3/4 default-off (#119)."""
+    import gnom_hub.hub as hub_mod
+    from gnom_hub.hub import Hub
+
+    monkeypatch.setattr(hub_mod, "project_root", lambda: tmp_path)
+    hub_mod._HUB = None
+    hub = Hub()
+    try:
+        assert hub.agents.get("worker1").enabled is True
+        assert hub.agents.get("worker2").enabled is True
+        assert hub.agents.get("worker3").enabled is False
+        assert hub.agents.get("worker4").enabled is False
+    finally:
+        hub_mod._HUB = None
+
+
 def test_enable_all_can_skip_extra_workers():
     _, mgr, _ = _manager()
     mgr.enable_all(include_extra_workers=False)

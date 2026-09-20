@@ -165,8 +165,7 @@ class Hub(
         self._load_agent_state()
         # Key.txt: DEEPSEEK_API_KEY = system, WORKER_API_KEY = all workers
         self._apply_keys_from_keyfile()
-        # All agents on (Box 3 shows every worker result dynamically)
-        self.agents.enable_all(include_extra_workers=True)
+        # Worker 3/4 stay at default (off) unless agents.json enabled them.
         self._wire_memory()
         self._wire_trace()
         self._wire_thoughts()
