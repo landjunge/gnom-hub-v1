@@ -95,7 +95,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 | [AUTONOMOUS_AGENT_PIPELINE.md](AUTONOMOUS_AGENT_PIPELINE.md) | agent, baseline, nicht, pipeline, teilaufgabe, agents, reviewer, test, autonomous, issue |
 | [BUG_HUNT_TEAM.md](BUG_HUNT_TEAM.md) | orchestrator, cancel, team, bug, hunt, can, god, jobs, mode, telegram |
 | [GNOM-HUB-V1-HUMAN-UI-AUDIT.md](GNOM-HUB-V1-HUMAN-UI-AUDIT.md) | audit, execute, pass, human, send, box, assets, png, tollgate, brainstorm |
-| [GNOM-HUB-V1-WORKER-BOX-CONTRACT.md](GNOM-HUB-V1-WORKER-BOX-CONTRACT.md) | box, flex, worker, api, workers, after, execute, chat, job, brainstorm |
+| [GNOM-HUB-V1-WORKER-BOX-CONTRACT.md](GNOM-HUB-V1-WORKER-BOX-CONTRACT.md) | box, flex, worker, api, execute, workers, after, chat, job, brainstorm |
 | [GSC_CHECKLIST.md](GSC_CHECKLIST.md) | github, https, landjunge, tollgate, html, gnom, hub, checklist, gsc, sitemap |
 | [MEMORY_FRESHNESS.md](MEMORY_FRESHNESS.md) | freshness, memory, sync, vector, warm, hot, write, fact, hit, index |
 | [PIPELINE_RELIABILITY.md](PIPELINE_RELIABILITY.md) | pipeline, reliability, clarify, timeout, cancel, later, busy, prefetch, tests, tool |

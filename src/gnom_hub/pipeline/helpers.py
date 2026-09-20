@@ -104,94 +104,26 @@ def _is_go_only(text: str) -> bool:
 
 
 def _wants_auto_execute(text: str, turns: list[dict] | None = None) -> bool:
-    from gnom_hub.agents.plan_fast_path import _wants_one_html_page
+    """True only for the three desk short-circuits in AGENTS.md.
+
+    HTML/build language is not Execute. Send stays talk; Arbeit starten runs workers.
+    """
     from gnom_hub.tools.agent_bridge import is_live_browser_task
+    from gnom_hub.tools.tool_scenarios import is_tool_drill_task
 
     t = (text or "").strip()
     if not t:
         return False
-    # Live browser navigation must run tools without waiting for "ja/execute"
     if is_live_browser_task(t):
         return True
-    from gnom_hub.tools.tool_scenarios import is_tool_drill_task
-
     if is_tool_drill_task(t):
         return True
-    low = t.lower().strip(" !.。")
-
     users = [
         str(x.get("text") or "").strip()
         for x in (turns or [])
         if x.get("role") == "user" and str(x.get("text") or "").strip()
     ]
-    if len(users) >= 2 and _is_go_only(t):
-        return True
-
-    if len(t) < 6:
-        return False
-
-    diagnose = (
-        "wo hakt",
-        "wo es hakt",
-        "wo ist der fehler",
-        "was ist mit",
-        "warum",
-        "erklär",
-        "analys",
-        "prüfe die pipeline",
-        "only brainstorm",
-        "nur brainstorm",
-        "nur ideen",
-        "ideen zu",
-        "soll ich",
-    )
-    buildish = (
-        "baue",
-        "build",
-        "html",
-        "landing",
-        "seite",
-        "page",
-        "implement",
-        "erstelle",
-        "mach mir",
-        "todo",
-    )
-    if any(d in low for d in diagnose) and not any(b in low for b in buildish):
-        return False
-    if low.endswith("?") and not any(b in low for b in buildish):
-        return False
-
-    if _wants_one_html_page(t):
-        return True
-    triggers = (
-        "baue ",
-        "baue eine",
-        "baue mir",
-        "build a",
-        "build me",
-        "erstelle ",
-        "create a",
-        "implement ",
-        "mach mir",
-        "mach eine",
-        "schreibe ",
-        "schreib eine",
-        "single-file",
-        "single file",
-        "landingpage",
-        "landing page",
-        "website",
-        "todo app",
-        "ausführen",
-        "setz um",
-        "umsetzen",
-        "deliver",
-        "fertig machen",
-        "plan erstellen",
-        "erstell den plan",
-    )
-    return any(k in low for k in triggers)
+    return bool(len(users) >= 2 and _is_go_only(t))
 
 
 def _pick_execute_task(turns: list[dict], fallback: str = "") -> str:

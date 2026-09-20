@@ -131,6 +131,17 @@ def test_wants_auto_execute_rejects_open_question():
     assert _wants_auto_execute("Was meinst du zu dem Layout?", []) is False
 
 
+def test_wants_auto_execute_tool_drill_and_live_nav():
+    assert _wants_auto_execute("Tool drill S6 plugins") is True
+    assert _wants_auto_execute("öffne https://example.com") is True
+
+
+def test_wants_auto_execute_rejects_html_and_todo_build():
+    assert _wants_auto_execute("Baue eine Landing Page mit Hero und Footer") is False
+    assert _wants_auto_execute("mach mir eine todo app") is False
+    assert _wants_auto_execute("erstelle eine website") is False
+
+
 def test_pick_execute_task_skips_short_go_words():
     turns = [
         {"role": "user", "text": "Build a todo list with dark mode HTML"},
