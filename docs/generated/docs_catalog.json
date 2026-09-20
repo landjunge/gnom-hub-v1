@@ -203,10 +203,10 @@
         "hub",
         "analysis",
         "code",
+        "agents",
         "ai",
         "product",
         "worker",
-        "agents",
         "app",
         "execute",
         "gnom",
@@ -215,7 +215,7 @@
         "src",
         "brainstorm"
       ],
-      "chars": 22173,
+      "chars": 22434,
       "lines": 555
     },
     {
@@ -490,8 +490,8 @@
       "keywords": [
         "audit",
         "execute",
-        "pass",
         "human",
+        "pass",
         "send",
         "box",
         "assets",
@@ -503,8 +503,8 @@
         "workers",
         "clarify"
       ],
-      "chars": 7508,
-      "lines": 133
+      "chars": 10279,
+      "lines": 176
     },
     {
       "file": "GNOM-HUB-V1-WORKER-BOX-CONTRACT.md",

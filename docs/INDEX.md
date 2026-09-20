@@ -28,7 +28,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 | [AGENTS_DEFINITION.md](AGENTS_DEFINITION.md) | flex, agents, kein, worker, nicht, brainstorm, user, definition, coordinator, code |
 | [AGENTS_PROMPTS.md](AGENTS_PROMPTS.md) | kein, box, agents, hub, tools, execute, prompts, arbeit, brainstorm, flex |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | stroke, architecture, orch, rest, tools, agents, core, classdef, color, fill |
-| [CODE_ANALYSIS_FOR_AI.md](CODE_ANALYSIS_FOR_AI.md) | hub, analysis, code, ai, product, worker, agents, app, execute, gnom |
+| [CODE_ANALYSIS_FOR_AI.md](CODE_ANALYSIS_FOR_AI.md) | hub, analysis, code, agents, ai, product, worker, app, execute, gnom |
 | [DESK_UI_MAP.md](DESK_UI_MAP.md) | box, desk, boxes, volle, app, box2, breite, map, box1, chat |
 | [GITHUB_HOLDER_3.10.md](GITHUB_HOLDER_3.10.md) | skills, github, holder, skill, 3.10, inject, mobile, neural, embeddings, install |
 | [HUB_ARCHITECTURE.md](HUB_ARCHITECTURE.md) | architecture, hub, tools, data, plugins, vector, warm, hot, cancel, cold |
@@ -94,7 +94,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 |-----|----------|
 | [AUTONOMOUS_AGENT_PIPELINE.md](AUTONOMOUS_AGENT_PIPELINE.md) | agent, baseline, nicht, pipeline, teilaufgabe, agents, reviewer, test, autonomous, issue |
 | [BUG_HUNT_TEAM.md](BUG_HUNT_TEAM.md) | orchestrator, cancel, team, bug, hunt, can, god, jobs, mode, telegram |
-| [GNOM-HUB-V1-HUMAN-UI-AUDIT.md](GNOM-HUB-V1-HUMAN-UI-AUDIT.md) | audit, execute, pass, human, send, box, assets, png, tollgate, brainstorm |
+| [GNOM-HUB-V1-HUMAN-UI-AUDIT.md](GNOM-HUB-V1-HUMAN-UI-AUDIT.md) | audit, execute, human, pass, send, box, assets, png, tollgate, brainstorm |
 | [GNOM-HUB-V1-WORKER-BOX-CONTRACT.md](GNOM-HUB-V1-WORKER-BOX-CONTRACT.md) | box, flex, worker, api, execute, workers, after, chat, job, brainstorm |
 | [GSC_CHECKLIST.md](GSC_CHECKLIST.md) | github, https, landjunge, tollgate, html, gnom, hub, checklist, gsc, sitemap |
 | [MEMORY_FRESHNESS.md](MEMORY_FRESHNESS.md) | freshness, memory, sync, vector, warm, hot, write, fact, hit, index |
