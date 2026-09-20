@@ -2,11 +2,11 @@ name: CI/CD
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, baseline]
     tags:
       - "v*"
   pull_request:
-    branches: [main, master]
+    branches: [main, master, baseline]
   schedule:
     # Nightly tests on default branch. No release, no publish.
     - cron: "12 3 * * *"

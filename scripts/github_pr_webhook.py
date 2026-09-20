@@ -164,7 +164,7 @@ class WebhookHandler(BaseHTTPRequestHandler):
     server_version = "gnom-pr-webhook/1.0"
 
     def log_message(self, fmt: str, *args: Any) -> None:
-        sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
+        sys.stderr.write(f"{self.address_string()} - {fmt % args}\n")
 
     def _send(self, code: int, payload: dict[str, Any]) -> None:
         raw = json.dumps(payload).encode("utf-8")
@@ -174,14 +174,14 @@ class WebhookHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(raw)
 
-    def do_GET(self) -> None:  # noqa: N802
+    def do_GET(self) -> None:
         path = urlparse(self.path).path
         if path in ("/health", "/"):
             self._send(200, {"ok": True})
             return
         self._send(404, {"ok": False, "error": "not-found"})
 
-    def do_POST(self) -> None:  # noqa: N802
+    def do_POST(self) -> None:
         path = urlparse(self.path).path
         if path != "/webhook":
             self._send(404, {"ok": False, "error": "not-found"})

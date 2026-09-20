@@ -13,9 +13,10 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 CLAIM_MARKER = "<!-- gnom-builder-poll:started -->"
 DEFAULT_REPO = "landjunge/gnom-hub-v1"
@@ -45,9 +46,7 @@ def log(action: str, issue: int | None = None, detail: str = "") -> None:
 
 def repo_from_env() -> str:
     return (
-        os.environ.get("GNOM_GITHUB_REPO")
-        or os.environ.get("GITHUB_REPOSITORY")
-        or DEFAULT_REPO
+        os.environ.get("GNOM_GITHUB_REPO") or os.environ.get("GITHUB_REPOSITORY") or DEFAULT_REPO
     ).strip()
 
 
@@ -303,7 +302,7 @@ def main(argv: list[str] | None = None) -> int:
                 prompt_path=args.prompt,
                 dry_run=args.dry_run,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log("error", detail=str(exc)[:240])
         if args.once:
             return 0
