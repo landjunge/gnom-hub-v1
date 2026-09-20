@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from gnom_hub.memory.secrets import filter_secrets, looks_like_secret
 from gnom_hub.pipeline.models import PipelineStage
+from gnom_hub.snapshot_ops import _deliverable_ok
 from gnom_hub.threaddesk_ops import write_handoff
 
 
@@ -158,18 +159,25 @@ class PersistMixin:
             results=list(self._state.worker_results),
         )
         self._offer_memory_keep(list(facts or []))
+        # Stage stays done (pipeline finished). Honesty lives in result_status.
         self._state.error = None
         outputs = list(self._state.worker_outputs or [])
         any_ok = any(
             isinstance(o, dict) and (o.get("validation") or {}).get("ok") is True for o in outputs
         )
-        if self._state.worker_results and any_ok:
+        ok_deliv = bool(_deliverable_ok(self._state))
+        if ok_deliv and any_ok:
             self._state.result_status = "GELIEFERT"
-        elif self._state.worker_results:
+        elif ok_deliv:
             self._state.result_status = "UNGEPRÜFT"
         else:
             self._state.result_status = "FEHLER"
-        if self._state.worker_results:
+        missing_key = False
+        check_key = getattr(self, "_results_missing_key", None)
+        if callable(check_key):
+            missing_key = bool(check_key())
+        # "Passt das?" only after a real deliverable. Key-missing is not a success review.
+        if ok_deliv or missing_key:
             self._offer_judgment()
         self._set_stage(PipelineStage.done)
         total_ms = round(sum(self._state.stage_timings.values()), 1)
