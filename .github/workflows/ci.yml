@@ -8,7 +8,6 @@ on:
   pull_request:
     branches: [main, master, baseline]
   schedule:
-    # Nightly tests on default branch. No release, no publish.
     - cron: "12 3 * * *"
   workflow_dispatch:
 
@@ -24,77 +23,47 @@ env:
   PIP_NO_PYTHON_VERSION_WARNING: "1"
   PYTHONDONTWRITEBYTECODE: "1"
   PIP_CACHE_DIR: ${{ github.workspace }}/.cache/pip
-  # Bump to globally invalidate venv/pip caches after strategy changes.
   CACHE_SEED: v3
 
 jobs:
-  # No full app install. Ruff via official action (binary); mermaid is stdlib.
   lint:
-    name: Lint · Ruff · Mermaid · ESLint
+    name: Lint
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python 3.12 (mermaid only)
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: Ruff (binary action, no pip)
-        uses: astral-sh/ruff-action@v3
+      - uses: astral-sh/ruff-action@v3
         with:
           version: "0.16.1"
           args: "check ."
-
-      - name: Ruff format --check
-        uses: astral-sh/ruff-action@v3
+      - uses: astral-sh/ruff-action@v3
         with:
           version: "0.16.1"
           args: "format --check --diff ."
-
-      - name: Mermaid check + inventory drift
+      - name: Mermaid + docs index
         env:
           PYTHONPATH: src
         run: |
           chmod +x scripts/mermaid_check.py
           python scripts/mermaid_check.py --list
           python scripts/mermaid_check.py --write-inventory docs/generated/mermaid_inventory.md
-          if ! git diff --exit-code -- docs/generated/mermaid_inventory.md; then
-            echo "::error::mermaid_inventory.md out of date — run locally:"
-            echo "  python scripts/mermaid_check.py --write-inventory docs/generated/mermaid_inventory.md"
-            echo "  git add docs/generated/mermaid_inventory.md && git commit"
-            exit 1
-          fi
-          echo "▸ docs index check"
+          git diff --exit-code -- docs/generated/mermaid_inventory.md
           python scripts/build_docs_index.py --check
-
-      - name: Set up Node 22 (ESLint UI)
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
-
-      - name: ESLint (app.js, max-warnings 0)
+      - name: ESLint
         run: |
           npm ci
           npm run lint:js
           npm run lint:js:specificity
 
-      - name: Job summary
-        if: always()
-        run: |
-          {
-            echo "## Lint summary"
-            echo ""
-            echo "- Ruff: \`astral-sh/ruff-action@v3\` pin **0.16.1** (no pip install)"
-            echo "- Mermaid: stdlib script · inventory drift gate"
-            echo "- ESLint: \`npm run lint:js\` (max-warnings 0) + specificity self-test"
-            echo "- Pip cache: **none** (by design — keeps lint cold-start ~seconds)"
-          } >> "$GITHUB_STEP_SUMMARY"
-
   test:
-    name: Test · Py${{ matrix.python-version }}
+    name: Test Py${{ matrix.python-version }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -105,57 +74,42 @@ jobs:
           - python-version: "3.12"
             run_smoke: true
             run_live: true
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-
       - name: Cache virtualenv
         id: cache-venv
         uses: actions/cache@v4
         with:
           path: .venv
           key: ${{ runner.os }}-${{ env.CACHE_SEED }}-venv-py${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', 'requirements/ci-dev.txt') }}
-
-      - name: Verify cached venv (cache hit)
+      - name: Verify cached venv
         if: steps.cache-venv.outputs.cache-hit == 'true'
         id: verify-venv
         run: |
           set -euo pipefail
           if [ ! -x .venv/bin/python ]; then
             echo "broken=true" >> "$GITHUB_OUTPUT"
-            echo "::warning::venv cache hit but .venv/bin/python missing — reinstalling"
             rm -rf .venv
             exit 0
           fi
           echo "broken=false" >> "$GITHUB_OUTPUT"
-          .venv/bin/python -c "import gnom_hub,pytest; print('venv cache hit ok', gnom_hub.__version__)"
+          .venv/bin/python -c "import gnom_hub,pytest"
           .venv/bin/pip install --prefer-binary --no-deps -e . >/dev/null
-
       - name: Cache pip downloads
-        id: cache-pip
         if: steps.cache-venv.outputs.cache-hit != 'true' || steps.verify-venv.outputs.broken == 'true'
         uses: actions/cache@v4
         with:
           path: ${{ env.PIP_CACHE_DIR }}
           key: ${{ runner.os }}-${{ env.CACHE_SEED }}-pipdl-py${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', 'requirements/ci-dev.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ env.CACHE_SEED }}-pipdl-py${{ matrix.python-version }}-
-            ${{ runner.os }}-${{ env.CACHE_SEED }}-pipdl-
-
-      - name: Create venv + install (cache miss or broken)
+      - name: Install
         if: steps.cache-venv.outputs.cache-hit != 'true' || steps.verify-venv.outputs.broken == 'true'
         run: |
-          set -euo pipefail
           python -m venv .venv
           .venv/bin/python -m pip install --upgrade pip
           .venv/bin/pip install --prefer-binary --upgrade-strategy only-if-needed -e ".[dev]"
-          .venv/bin/python -c "import gnom_hub,pytest,ruff; print('install ok', gnom_hub.__version__)"
-
       - name: Pytest
         env:
           PYTEST_ADDOPTS: "-q --tb=short"
@@ -164,33 +118,19 @@ jobs:
           export TMPDIR="${RUNNER_TEMP}/pytest-${{ matrix.python-version }}"
           mkdir -p "$TMPDIR"
           .venv/bin/pytest tests/ --junitxml="$TMPDIR/junit.xml"
-
-      - name: Smoke E2E (in-process, Py3.12 only)
+      - name: Smoke E2E
         if: ${{ matrix.run_smoke }}
         env:
           PYTHONPATH: src
         run: .venv/bin/python scripts/smoke_e2e.py
-
-      - name: Live DeepSeek smoke (optional, Py3.12 only)
+      - name: Live smoke
         if: ${{ matrix.run_live }}
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           PYTHONPATH: src
         run: |
-          if [ -z "$DEEPSEEK_API_KEY" ]; then
-            echo "SKIP live smoke — no DEEPSEEK_API_KEY secret"
-            exit 0
-          fi
+          if [ -z "$DEEPSEEK_API_KEY" ]; then echo SKIP; exit 0; fi
           .venv/bin/python scripts/smoke_live.py || echo "LIVE smoke non-blocking failure"
-
-      - name: Upload junit (on failure only)
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: junit-py${{ matrix.python-version }}
-          path: ${{ runner.temp }}/pytest-${{ matrix.python-version }}/junit.xml
-          if-no-files-found: ignore
-          retention-days: 5
 
   ci-ok:
     name: CI OK
@@ -200,41 +140,5 @@ jobs:
     steps:
       - name: Require lint + test green
         run: |
-          echo "lint=${{ needs.lint.result }} test=${{ needs.test.result }}"
           test "${{ needs.lint.result }}" = "success"
           test "${{ needs.test.result }}" = "success"
-
-  release:
-    name: Create GitHub Release & Publish Package
-    needs: ci-ok
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
-    timeout-minutes: 20
-    permissions:
-      contents: write
-      packages: write
-    concurrency:
-      group: release-${{ github.ref }}
-      cancel-in-progress: false
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install build tools
-        run: |
-          python -m pip install --upgrade pip
-          pip install --prefer-binary build twine
-      - name: Build Python package
-        run: python -m build
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
-          draft: false
-          prerelease: ${{ contains(github.ref, '-') }}
-          files: |
-            dist/*
