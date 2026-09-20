@@ -186,6 +186,27 @@ def test_esc_closes_agent_page():
     assert "closeAgentPage" in INIT
 
 
+def test_esc_closes_system_workspace_docs_skills_tune_cold():
+    """Esc closes desk overlays before it cancels a job."""
+    assert "closeSystemModal" in INIT
+    assert "closeWorkspaceModal" in INIT
+    assert "closeDocsModal" in INIT
+    assert "closeSkillsModal" in INIT
+    assert "closeTuneModal" in INIT
+    assert "hideColdBrowser" in INIT
+    esc = INIT.split('ev.key === "Escape"', 1)[1]
+    job = esc.index("cancelCurrentJob")
+    for name in (
+        "closeSystemModal",
+        "closeWorkspaceModal",
+        "closeDocsModal",
+        "closeSkillsModal",
+        "closeTuneModal",
+        "hideColdBrowser",
+    ):
+        assert esc.index(name) < job
+
+
 def test_close_agent_page_does_not_assign_send_target():
     body = _function_body(PREAMBLE, "closeAgentPage")
     assert _ASSIGN_SEND_TARGET.search(body) is None
