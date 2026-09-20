@@ -22,7 +22,6 @@ def _worst_validation(worker_outputs: list | None) -> dict[str, Any] | None:
         ok = bool(g.get("ok", True))
         score = int(g.get("score") if g.get("score") is not None else (100 if ok else 0))
         issues = list(g.get("issues") or [])
-        # higher rank = worse
         rank = (0 if ok else 1000) + (100 - max(0, min(100, score))) + min(len(issues), 20)
         if rank > worst_rank:
             worst_rank = rank
@@ -58,6 +57,23 @@ def _flex_has_open_clarify(pipeline: Any) -> bool:
     return False
 
 
+def _body_is_error(body: str) -> bool:
+    """True for FEHLER / missing-tollgate / budget-fail / stub bodies."""
+    b = body or ""
+    low = b.lower()
+    if "FEHLER" in b:
+        return True
+    if "kein deliverable" in low:
+        return True
+    if "tollgate package not installed" in low:
+        return True
+    if "gnom_max_budget" in low or "budget exceeded" in low:
+        return True
+    if b.startswith("Stub") or "Stub —" in b or "stub —" in low:
+        return True
+    return False
+
+
 def _deliverable_ok(st: Any) -> bool:
     """True when at least one worker body is a real deliverable, not FEHLER/stub.
 
@@ -74,9 +90,7 @@ def _deliverable_ok(st: Any) -> bool:
         b = (body or "").strip()
         if len(b) < 400:
             continue
-        if "FEHLER" in b and "Deliverable" in b:
-            continue
-        if b.startswith("Stub") or "Stub —" in b:
+        if _body_is_error(b):
             continue
         return True
     return False
@@ -108,7 +122,6 @@ class SnapshotOpsMixin:
                 if isinstance(st.get("config"), dict)
                 else None,
             }
-            # usage totals if available
             try:
                 from tollgate.usage_ledger import usage_summary
 
@@ -259,7 +272,6 @@ class SnapshotOpsMixin:
             "plan_mode": getattr(self, "plan_mode", "default") or "default",
             "team_presets": self.list_team_presets(),
             "last_error": self.last_error,
-            # Reasoning streams for TTS (Gedanken) — not the written Box 2/3 text
             "agent_thoughts": dict(getattr(self, "_agent_thoughts", {}) or {}),
             "flex_review": (
                 self.flex_review_panel()

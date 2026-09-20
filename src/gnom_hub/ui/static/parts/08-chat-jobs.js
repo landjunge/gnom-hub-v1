@@ -710,8 +710,14 @@
       applySnapshot(snap);
       const stage = (snap.pipeline && snap.pipeline.stage) || "";
       if (stage === "done") {
-        appendChat("system", "Nochmal fertig: " + wid);
-        toast(wid + " re-run done", "ok");
+        const okDeliverable = snap.pipeline && snap.pipeline.deliverable_ok;
+        if (okDeliverable) {
+          appendChat("system", "Nochmal fertig: " + wid);
+          toast(wid + " re-run done", "ok");
+        } else {
+          appendChat("system", "Nochmal fertig ohne Deliverable: " + wid);
+          toast(wid + " re-run ohne Deliverable", "error");
+        }
         focusBox3();
         try {
           pushResultHistory(snap.pipeline || {}, {
@@ -775,8 +781,14 @@
       }
       applySnapshot(snap);
       if (snap.pipeline && snap.pipeline.stage === "done") {
-        appendChat("system", "Nochmal fertig — siehe Box 3.");
-        toast("Nochmal fertig", "ok");
+        const okDeliverable = snap.pipeline && snap.pipeline.deliverable_ok;
+        if (okDeliverable) {
+          appendChat("system", "Nochmal fertig — siehe Box 3.");
+          toast("Nochmal fertig", "ok");
+        } else {
+          appendChat("system", "Nochmal fertig ohne Deliverable — siehe Box 3.");
+          toast("Kein Deliverable", "error");
+        }
         focusBox3();
         try {
           pushResultHistory(snap.pipeline || {}, {
