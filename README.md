@@ -164,6 +164,8 @@ Notfall: Backup in der System-Liste mit **Laden**.
 | Arbeit startet nicht | Nur **Arbeit starten** oder Ctrl/⌘+Enter. Offene Frage in Box 1 zuerst beantworten. |
 | Update geht nicht | Laufende Arbeit abbrechen, oder es gibt noch kein Nutzer-Release. |
 | God greift nicht | Nur der rote Badge. System-Fenster hat keinen God-Schalter. |
+| Webhook antwortet 401 | Secret oder HMAC falsch. `GNOM_WEBHOOK_SECRET` muss dem GitHub-Webhook-Secret gleichen. |
+| Webhook startet nicht | `GNOM_WEBHOOK_SECRET` in `.env` setzen. Port 8088 nutzen, nicht den Desk auf 8080. |
 
 ---
 
@@ -204,6 +206,104 @@ Arbeit starten   → Distill → Flex → Plan → Prefetch → Arbeiter → Nud
 ```
 
 API-URLs bleiben stabil. Coding-Regeln: [AGENTS.md](AGENTS.md). Index: [docs/INDEX.md](docs/INDEX.md).
+
+### GitHub PR-Webhook
+
+`scripts/github_pr_webhook.py` nimmt GitHub-Events entgegen. Nur bei **changes requested** startet er den Builder (`GNOM_BUILDER_CMD`). Der Desk auf Port 8080 bleibt getrennt — den Webhook mit `--port 8088` starten.
+
+Abhängigkeiten: Python 3.10+, Standardbibliothek. Siehe `requirements.txt` (keine pip-Pakete).
+
+#### Server starten
+
+```bash
+cp .env.example .env   # GNOM_WEBHOOK_SECRET und GNOM_BUILDER_CMD setzen
+set -a && source .env && set +a
+python3 scripts/github_pr_webhook.py --host 127.0.0.1 --port 8088
+# → GET  http://127.0.0.1:8088/health
+# → POST http://127.0.0.1:8088/webhook
+```
+
+Als Dienst statt nur manuell:
+
+```bash
+# Linux (Host-Builder, empfohlen)
+# Pfade in der Unit anpassen, dann:
+sudo cp deploy/gnom-pr-webhook.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now gnom-pr-webhook.service
+
+# Docker — nur dieser Listener, nicht der Desk
+docker compose up -d
+```
+
+`GNOM_BUILDER_CMD` läuft dort, wo der Server läuft. Ein lokales Builder-CLI gehört deshalb an systemd oder den manuellen Start, nicht in den Container.
+
+#### Tunnel (ngrok oder Cloudflare)
+
+GitHub muss `https://…/webhook` erreichen. Der Prozess bleibt auf 127.0.0.1:8088.
+
+ngrok:
+
+```bash
+ngrok http 8088
+# Payload-URL: https://<subdomain>.ngrok-free.app/webhook
+```
+
+Cloudflare Tunnel:
+
+```bash
+cloudflared tunnel --url http://127.0.0.1:8088
+# Payload-URL: https://<trycloudflare-host>/webhook
+```
+
+#### Webhook in GitHub registrieren
+
+Repo → **Settings → Webhooks → Add webhook**:
+
+| Feld | Wert |
+|------|------|
+| Payload URL | `https://<tunnel-host>/webhook` |
+| Content type | `application/json` |
+| Secret | derselbe Wert wie `GNOM_WEBHOOK_SECRET` |
+| SSL verification | Enable |
+| Events | **Let me select individual events** → Pull requests, Pull request reviews |
+
+Speichern. GitHub schickt einen Ping; der Server antwortet 200 und ignoriert ihn (kein Builder).
+
+#### Smoke-Test
+
+Falsche Signatur muss 401 liefern, passende Signatur 200 (Event `opened` startet keinen Builder):
+
+```bash
+./scripts/webhook_smoke.sh
+# oder gegen einen laufenden Dienst:
+#   export GNOM_WEBHOOK_SECRET='…'   # gleicher Wert wie der Server
+#   ./scripts/webhook_smoke.sh http://127.0.0.1:8088
+```
+
+Dasselbe per Hand (Secret in `$GNOM_WEBHOOK_SECRET`, Body ohne Extra-Newline):
+
+```bash
+BODY='{"action":"opened","number":1,"pull_request":{"number":1}}'
+URL=http://127.0.0.1:8088/webhook
+
+curl -sS -o /dev/stderr -w 'HTTP %{http_code}\n' -X POST "$URL" \
+  -H 'Content-Type: application/json' \
+  -H 'X-GitHub-Event: pull_request' \
+  -H 'X-Hub-Signature-256: sha256=deadbeef' \
+  --data-binary "$BODY"
+# expect HTTP 401
+
+SIG=$(printf '%s' "$BODY" | python3 -c 'import hashlib,hmac,os,sys
+s=os.environ["GNOM_WEBHOOK_SECRET"].encode(); b=sys.stdin.buffer.read()
+print("sha256="+hmac.new(s,b,hashlib.sha256).hexdigest())')
+curl -sS -o /dev/stderr -w 'HTTP %{http_code}\n' -X POST "$URL" \
+  -H 'Content-Type: application/json' \
+  -H 'X-GitHub-Event: pull_request' \
+  -H "X-Hub-Signature-256: $SIG" \
+  --data-binary "$BODY"
+# expect HTTP 200
+```
 
 | Dokument | Thema |
 |----------|--------|

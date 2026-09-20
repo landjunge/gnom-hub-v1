@@ -5,7 +5,7 @@ Blocks: **27**
 
 | File | # | Line | Kind | Errors | Warnings |
 |------|---|------|------|--------|----------|
-| `README.md` | 1 | 181 | `stateDiagram-v2` | 0 | 0 |
+| `README.md` | 1 | 183 | `stateDiagram-v2` | 0 | 0 |
 | `docs/ARCHITECTURE.md` | 1 | 15 | `flowchart` | 0 | 0 |
 | `docs/ARCHITECTURE.md` | 2 | 88 | `stateDiagram-v2` | 0 | 0 |
 | `docs/ARCHITECTURE.md` | 3 | 114 | `flowchart` | 0 | 0 |
