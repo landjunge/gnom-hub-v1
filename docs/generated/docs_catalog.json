@@ -81,22 +81,22 @@
       "topic": "Other",
       "keywords": [
         "agent",
-        "teilaufgabe",
+        "baseline",
         "nicht",
         "pipeline",
-        "builder",
+        "teilaufgabe",
         "agents",
+        "reviewer",
+        "test",
         "autonomous",
-        "baseline",
         "issue",
-        "issues",
+        "merge",
         "prompt",
         "trigger",
-        "aufgabe",
-        "haupt"
+        "aufgabe"
       ],
-      "chars": 4911,
-      "lines": 123
+      "chars": 5270,
+      "lines": 127
     },
     {
       "file": "BASIC_USER_TEST.md",

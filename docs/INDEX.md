@@ -92,7 +92,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 ### Other
 | Doc | Keywords |
 |-----|----------|
-| [AUTONOMOUS_AGENT_PIPELINE.md](AUTONOMOUS_AGENT_PIPELINE.md) | agent, teilaufgabe, nicht, pipeline, builder, agents, autonomous, baseline, issue, issues |
+| [AUTONOMOUS_AGENT_PIPELINE.md](AUTONOMOUS_AGENT_PIPELINE.md) | agent, baseline, nicht, pipeline, teilaufgabe, agents, reviewer, test, autonomous, issue |
 | [BUG_HUNT_TEAM.md](BUG_HUNT_TEAM.md) | orchestrator, cancel, team, bug, hunt, can, god, jobs, mode, telegram |
 | [GNOM-HUB-V1-HUMAN-UI-AUDIT.md](GNOM-HUB-V1-HUMAN-UI-AUDIT.md) | audit, execute, pass, human, send, box, assets, png, tollgate, brainstorm |
 | [GNOM-HUB-V1-WORKER-BOX-CONTRACT.md](GNOM-HUB-V1-WORKER-BOX-CONTRACT.md) | box, flex, worker, api, workers, after, execute, chat, job, brainstorm |
