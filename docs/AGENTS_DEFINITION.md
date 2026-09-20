@@ -18,8 +18,8 @@ Dateien: `agents/models.py`, `agents/manager.py`, `agents/roles.py`, `agents/rol
 | 4 | coordinator | Coordinator | coordinator | `#26c281` | an | ja | — |
 | 5 | worker1 | Worker 1 | worker | `#29b6f6` | an | ja | — |
 | 6 | worker2 | Worker 2 | worker | `#8b6cf6` | an | ja | — |
-| 7 | worker3 | Worker 3 | worker | `#ec5f9b` | an | ja | — |
-| 8 | worker4 | Worker 4 | worker | `#ff8a3d` | an | ja | — |
+| 7 | worker3 | Worker 3 | worker | `#ec5f9b` | aus | ja | — |
+| 8 | worker4 | Worker 4 | worker | `#ff8a3d` | aus | ja | — |
 
 Gebaut in `AgentManager._build_agents()`.
 

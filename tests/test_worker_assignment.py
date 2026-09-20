@@ -33,10 +33,12 @@ def test_brainstorm_flag_keeps_default_order():
 
 def test_worker_intake_keeps_assignment():
     orch = Orchestrator(EventBus())
+    assert orch.agents.get("worker3").enabled is False
     st = orch.chat_turn("Baue eine ruhige Abendseite", target="worker3")
     assert st.send_target == "worker3"
     ids = orch._worker_ids_for_plan()
     assert ids[0] == "worker3"
+    assert orch.agents.get("worker3").enabled is True
     worker_talk = [
         m
         for m in (st.messages or [])

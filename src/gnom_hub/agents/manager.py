@@ -35,11 +35,11 @@ class AgentManager:
             (AgentId.MEMORY, "Memory", "memory", True, False, None),
             (AgentId.FLEX, "Flex", "flex", True, False, DEFAULT_FLEX_PRESET),  # fixed: always on
             (AgentId.COORDINATOR, "Koordinator", "coordinator", True, True, None),
-            # All workers on by default (user: Box 3 dynamic for 1+2+…; enable off workers)
+            # Worker 1+2 on; 3/4 off until the user toggles them (audit / docs).
             (AgentId.WORKER1, "Arbeiter 1", "worker", True, True, None),
             (AgentId.WORKER2, "Arbeiter 2", "worker", True, True, None),
-            (AgentId.WORKER3, "Arbeiter 3", "worker", True, True, None),
-            (AgentId.WORKER4, "Arbeiter 4", "worker", True, True, None),
+            (AgentId.WORKER3, "Arbeiter 3", "worker", False, True, None),
+            (AgentId.WORKER4, "Arbeiter 4", "worker", False, True, None),
         ]
         agents: dict[AgentId, AgentState] = {}
         for agent_id, name, role, enabled, toggleable, preset in specs:
