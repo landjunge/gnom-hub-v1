@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shlex
 import subprocess
 import sys
 import time
@@ -14,7 +15,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 CLAIM_MARKER = "<!-- gnom-builder-poll:started -->"
 DEFAULT_REPO = "landjunge/gnom-hub-v1"
@@ -22,6 +23,11 @@ DEFAULT_INTERVAL = 45
 DEFAULT_STATE = Path("data/agent_poll_state.json")
 BUILDER_PROMPT = Path("agents/builder.md")
 IN_PROGRESS = "in-bearbeitung"
+MISSING_CMD = "missing-cmd"
+
+
+class MissingBuilderCmd(RuntimeError):
+    """Raised when GNOM_BUILDER_CMD is unset."""
 
 
 def utc_now() -> str:
@@ -47,6 +53,20 @@ def repo_from_env() -> str:
 
 def token_from_env() -> str:
     return (os.environ.get("GNOM_GITHUB_TOKEN") or os.environ.get("GITHUB_TOKEN") or "").strip()
+
+
+def builder_cmd() -> str:
+    return (os.environ.get("GNOM_BUILDER_CMD") or "").strip()
+
+
+def require_builder_cmd() -> str:
+    cmd = builder_cmd()
+    if not cmd:
+        raise MissingBuilderCmd(
+            "GNOM_BUILDER_CMD is not set; refusing to start a Builder. "
+            "Export GNOM_BUILDER_CMD to an executable command."
+        )
+    return cmd
 
 
 def load_state(path: Path) -> dict[str, Any]:
@@ -79,7 +99,11 @@ def issue_labels(issue: dict[str, Any]) -> set[str]:
     return names
 
 
-def already_started(issue: dict[str, Any], state: dict[str, Any], comments: list[dict[str, Any]] | None = None) -> bool:
+def already_started(
+    issue: dict[str, Any],
+    state: dict[str, Any],
+    comments: list[dict[str, Any]] | None = None,
+) -> bool:
     number = str(issue.get("number") or "")
     if number and number in (state.get("started") or {}):
         return True
@@ -143,47 +167,31 @@ def list_issue_comments(repo: str, number: int, token: str) -> list[dict[str, An
     return [it for it in items if isinstance(it, dict)] if isinstance(items, list) else []
 
 
-def claim_issue(repo: str, number: int, token: str, prompt: str) -> None:
-    body = (
-        f"{CLAIM_MARKER}\n"
-        f"Builder-Poll startet Issue #{number}.\n\n"
-        f"Prompt:\n```\n{prompt.strip()}\n```\n"
-    )
+def claim_issue(repo: str, number: int, token: str) -> None:
+    body = f"{CLAIM_MARKER}\nBuilder-Poll claimt Issue #{number}.\n"
     github_request(
         "POST",
         f"https://api.github.com/repos/{repo}/issues/{number}/comments",
         token,
         {"body": body},
     )
-    try:
-        github_request(
-            "POST",
-            f"https://api.github.com/repos/{repo}/issues/{number}/labels",
-            token,
-            {"labels": [IN_PROGRESS]},
-        )
-    except RuntimeError as exc:
-        log("label-skip", number, str(exc)[:160])
+    github_request(
+        "POST",
+        f"https://api.github.com/repos/{repo}/issues/{number}/labels",
+        token,
+        {"labels": [IN_PROGRESS]},
+    )
 
 
-def launch_builder(issue_number: int, prompt: str, launch_dir: Path) -> str:
-    cmd = (os.environ.get("GNOM_BUILDER_CMD") or "").strip()
-    if cmd:
-        env = os.environ.copy()
-        env["ISSUE_NUMBER"] = str(issue_number)
-        subprocess.run(
-            cmd,
-            shell=True,
-            check=False,
-            input=prompt,
-            text=True,
-            env=env,
-        )
-        return f"cmd:{cmd}"
-    launch_dir.mkdir(parents=True, exist_ok=True)
-    path = launch_dir / f"{issue_number}.txt"
-    path.write_text(prompt, encoding="utf-8")
-    return f"queued:{path}"
+def launch_builder(issue_number: int, prompt: str, cmd: str | None = None) -> str:
+    raw = cmd if cmd is not None else require_builder_cmd()
+    args = shlex.split(raw)
+    if not args:
+        raise MissingBuilderCmd("GNOM_BUILDER_CMD is empty after parse; refusing to start.")
+    env = os.environ.copy()
+    env["ISSUE_NUMBER"] = str(issue_number)
+    subprocess.run(args, check=True, input=prompt, text=True, env=env, shell=False)
+    return f"cmd:{raw}"
 
 
 def process_issue(
@@ -193,24 +201,36 @@ def process_issue(
     token: str,
     state: dict[str, Any],
     state_path: Path,
-    launch_dir: Path,
     prompt_path: Path,
     dry_run: bool = False,
+    cmd: str | None = None,
+    claim: Callable[[str, int, str], None] | None = None,
+    comments: list[dict[str, Any]] | None = None,
 ) -> str:
     number = int(issue["number"])
-    comments = []
-    if token and not dry_run:
+    if comments is None and token and not dry_run:
         comments = list_issue_comments(repo, number, token)
     if already_started(issue, state, comments):
         log("skip-already-started", number)
         return "skipped"
-    prompt = builder_prompt(number, prompt_path)
     if dry_run:
         log("dry-run-start", number)
         return "dry-run"
-    how = launch_builder(number, prompt, launch_dir)
+    try:
+        raw_cmd = cmd if cmd is not None else require_builder_cmd()
+    except MissingBuilderCmd as exc:
+        log("error", number, f"{MISSING_CMD} {exc}")
+        return MISSING_CMD
     if token:
-        claim_issue(repo, number, token, prompt)
+        (claim or claim_issue)(repo, number, token)
+        labels = issue.setdefault("labels", [])
+        if isinstance(labels, list):
+            labels.append({"name": IN_PROGRESS})
+    try:
+        how = launch_builder(number, builder_prompt(number, prompt_path), cmd=raw_cmd)
+    except (MissingBuilderCmd, OSError, subprocess.CalledProcessError) as exc:
+        log("launch-failed", number, str(exc)[:200])
+        return "launch-failed"
     state.setdefault("started", {})[str(number)] = {"at": utc_now(), "how": how}
     save_state(state_path, state)
     log("start-builder", number, how)
@@ -222,29 +242,45 @@ def poll_once(
     repo: str,
     token: str,
     state_path: Path,
-    launch_dir: Path,
     prompt_path: Path,
     dry_run: bool = False,
+    cmd: str | None = None,
+    list_issues: Callable[[str, str], list[dict[str, Any]]] | None = None,
+    claim: Callable[[str, int, str], None] | None = None,
 ) -> list[str]:
-    state = load_state(state_path)
-    issues = list_open_teilaufgaben(repo, token) if token else []
+    if not dry_run:
+        try:
+            raw_cmd = cmd if cmd is not None else require_builder_cmd()
+        except MissingBuilderCmd as exc:
+            log("error", detail=f"{MISSING_CMD} {exc}")
+            return [MISSING_CMD]
+    else:
+        raw_cmd = cmd or ""
     if not token:
         log("no-token", detail="set GITHUB_TOKEN or GNOM_GITHUB_TOKEN")
         return []
+    fetch = list_issues or list_open_teilaufgaben
+    issues = fetch(repo, token)
+    if not issues:
+        log("empty-repo", detail="no open teilaufgabe issues")
+        return []
+    state = load_state(state_path)
     actions: list[str] = []
     for issue in issues:
-        actions.append(
-            process_issue(
-                issue,
-                repo=repo,
-                token=token,
-                state=state,
-                state_path=state_path,
-                launch_dir=launch_dir,
-                prompt_path=prompt_path,
-                dry_run=dry_run,
-            )
+        action = process_issue(
+            issue,
+            repo=repo,
+            token=token,
+            state=state,
+            state_path=state_path,
+            prompt_path=prompt_path,
+            dry_run=dry_run,
+            cmd=raw_cmd,
+            claim=claim,
         )
+        actions.append(action)
+        if action != "skipped":
+            break
     return actions
 
 
@@ -255,7 +291,6 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--repo", default=repo_from_env())
     parser.add_argument("--state", type=Path, default=DEFAULT_STATE)
-    parser.add_argument("--launch-dir", type=Path, default=Path("data/builder-launch"))
     parser.add_argument("--prompt", type=Path, default=BUILDER_PROMPT)
     args = parser.parse_args(argv)
     interval = max(30, min(60, int(args.interval)))
@@ -265,7 +300,6 @@ def main(argv: list[str] | None = None) -> int:
                 repo=args.repo,
                 token=token_from_env(),
                 state_path=args.state,
-                launch_dir=args.launch_dir,
                 prompt_path=args.prompt,
                 dry_run=args.dry_run,
             )
