@@ -69,6 +69,6 @@ Default **off**. Only the user switch (`POST /api/god-mode` with reason user). `
 ## Known code/doc contradictions
 
 1. AGENTS.md / CODE_ANALYSIS: no auto-execute on HTML after brainstorm. `_wants_auto_execute` matches that (HTML/build is not a short-circuit).
-2. CODE_ANALYSIS: Worker 3/4 default off. Code: all four on (`manager.py`, `enable_all`).
+2. CODE_ANALYSIS: Worker 3/4 default off. Hub boot no longer force-enables them.
 3. HUB_ARCHITECTURE: workers call tools with `TOOL_CALL`. Fixed on this branch: Orchestrator no longer zeroes `tools` after `__init__`; assigning `pipe.tools` also updates WorkerAgent. Prefetch remains the auto path.
-4. Flex preset dropdown is disabled leftover chrome.
+4. Flex preset dropdown removed (Flex is locked personal).

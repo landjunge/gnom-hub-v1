@@ -131,7 +131,6 @@ Modals hängen **außerhalb** von `#app` am `body`: Workspace, System, Vector, D
 
 | id | Label | Wirkung |
 |----|-------|---------|
-| `#flex-preset-select` | Flex Personal (fixed) | **disabled** — Rolle nicht wechselbar |
 | `#btn-workspace` | Workspace | Temp / Permanent Dateien |
 | `#btn-tools` | Tools | Tools-Modal |
 | `#btn-clear-chat` | Clear chat | nur Browser-Chatlog |
@@ -189,7 +188,7 @@ Scrollbalken unsichtbar, Inhalt scrollbar (`overflow-y: auto; scrollbar-width: n
 | `#clarify` | hidden | — | Yes/No/Whatever/Later (meist durch FlexDesk ersetzt) |
 | `#deferred-clarify` | hidden | — | Parked Later |
 
-`#box1-layer-tune` / `#box1-layer-gnom`: Info-Layer, nicht Live.
+`#box1-layer-tune`: Info-Layer, nicht Live. `#box1-layer-gnom` entfernt.
 
 ### Flex-Ask Komponenten
 

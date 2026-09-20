@@ -87,8 +87,8 @@
     { id: "coordinator", label: "Koordinator", color: "coordinator", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
     { id: "worker1", label: "Arbeiter 1", color: "worker1", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
     { id: "worker2", label: "Arbeiter 2", color: "worker2", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
-    { id: "worker3", label: "Arbeiter 3", color: "worker3", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
-    { id: "worker4", label: "Arbeiter 4", color: "worker4", enabled: true, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
+    { id: "worker3", label: "Arbeiter 3", color: "worker3", enabled: false, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
+    { id: "worker4", label: "Arbeiter 4", color: "worker4", enabled: false, toggleable: true, parked: false, model: "—", preset: null, tokens: 0, online: false, tts: false, system_prompt: "", temperature: null, top_p: null, max_tokens: null, frequency_penalty: null, presence_penalty: null },
   ];
 
   const els = {
@@ -5886,9 +5886,9 @@
     }
   }
 
-  /** Box 1 info layers (Live | Regler | Gnom) — switched by JS, no box buttons */
+  /** Box 1 info layers (Live | Regler) — switched by JS, no box buttons */
   function showInfoLayer(name) {
-    const allowed = { live: 1, tune: 1, gnom: 1 };
+    const allowed = { live: 1, tune: 1 };
     const n = allowed[name] ? name : "live";
     document.querySelectorAll("#box1-content .info-layer").forEach(function (el) {
       const on = el.getAttribute("data-info-layer") === n;

@@ -65,3 +65,21 @@ def test_q7_toolbar_is_workspace_system_help():
     assert 'id="btn-save"' in system
     assert 'id="btn-archive"' in system
     assert 'id="btn-tools"' in system
+
+
+def test_dead_placeholders_not_clickable():
+    """#118: leftover chrome must not appear as live controls."""
+    for dead_id in (
+        "flex-preset-select",
+        "box1-layer-gnom",
+        "btn-copy-all",
+        "btn-diff",
+        "btn-reexec",
+        "result-history",
+        "job-timer",
+        "pipeline-busy-banner",
+        "btn-hist-export",
+    ):
+        assert f'id="{dead_id}"' not in HTML
+    assert 'showInfoLayer("gnom")' not in CHAT_JS
+    assert "gnom: 1" not in CHAT_JS
