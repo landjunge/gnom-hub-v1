@@ -30,9 +30,9 @@ Chat → Brainstorm → Distillation → [Execute] → Coordinator → Worker(s)
 
 ### Product constraints the code must honor
 
-1. **No auto-execute** after brainstorm. Separate `Send` vs `Execute` buttons.
+1. **No auto-execute** after brainstorm except the three AGENTS.md short-circuits (tool drill, live browser nav, go-only). HTML/build language is **not** Execute. Separate **Senden** vs **Arbeit starten**.
 2. **Memory is always on** (agent not toggleable).
-3. **Worker 3/4 default off**; worker 1–2 on.
+3. **Worker 3/4 default off**; worker 1–2 on. Hub boot does not force extras on.
 4. **Presets freeze:** team presets + worker presets + `plan_mode` only.  
    **No** workflow engine, skill marketplace, or second orchestrator (`docs/WORKFLOWS_AND_PRESETS.md`).
 5. **YAGNI + KISS** — user repeatedly rejected UI chrome / overengineering.
@@ -166,14 +166,14 @@ Simple synchronous `on` / `off` / `emit`. No async, no persistence.
 |---------|-------|------------|---------|
 | brainstorm | red | yes | on |
 | memory | blue | **no** (locked) | on |
-| flex | yellow | yes | on (preset: security) |
+| flex | yellow | **no** (locked on) | on (preset: **personal**, changes ignored) |
 | coordinator | green | yes | on |
 | worker1 | orange | yes | on |
 | worker2 | purple | yes | on |
 | worker3 | teal | yes | **off** |
 | worker4 | gray | yes | **off** |
 
-Flex presets: `security` | `neutral` | `researcher`.
+Flex is locked **personal**. Preset API still exists but does not switch role. The old dropdown was removed (#118).
 
 Per-agent: model, api_key, system_prompt, temperature, top_p, max_tokens, penalties, TTS flag.  
 Persisted under `data/hot/agents.json`.

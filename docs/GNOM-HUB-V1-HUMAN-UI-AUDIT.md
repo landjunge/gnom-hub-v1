@@ -3,7 +3,8 @@
 **Project:** Gnom-Hub-V1  
 **Branch:** `test/human-ui-audit` (from `origin/main`)  
 **Base commit:** `06cfcc592e9c0f2c2ddb760185c10b41cf29bdf4`  
-**Date:** 2026-09-10
+**Date:** 2026-09-10  
+**Historical audit** on `test/human-ui-audit`. Findings below are the original session. Current code: [Stand baseline nach #125](#stand-baseline-nach-125).
 
 ## Test environment
 
@@ -130,3 +131,45 @@ Gnom-Hub-V1 **desk chrome works**. Box 1/2/3 light up. Send can brainstorm. Exec
 S1 can deliver a real Bean & Bloom page in Box 3 when the worker LLM path has budget (`GNOM_TOLLGATE_LLM=0` in this isolated run). Default Tollgate still fails workers when the shared consumer budget is spent. Agent Authority Lab should not assume Tollgate is always ready.
 
 Automated gates on this commit (venv + worktree): ruff, format, **546 pytest**, mermaid, eslint, mutation 33/33, vector rank, smoke, prepush — all green **before** the audit repairs. New tests: `tests/test_deliverable_ok.py`.
+
+---
+
+## Stand baseline nach #125
+
+**Date:** 2026-09-21 · **HEAD:** `348c266` (`baseline` after #122 placeholders and #125 DeepSeek-ohne-Tollgate). No new headed Playwright run.
+
+Original 2026-09-10 findings stay above. This table is the **code now**, so later agents do not re-open fixed bugs.
+
+| Original finding | Now |
+|------------------|-----|
+| Send + HTML/build auto-executes workers | **Fixed** #107 / #116. `_wants_auto_execute` is only tool-drill, live-browser-nav, go-only. Send stays talk. |
+| Esc does not close System/Workspace/Docs/Skills/Tune/COLD | **Fixed** #117 / #121. Overlays first, then job cancel. |
+| Worker 3/4 default on | **Fixed** #119 / #120 / #121. Default off; Hub boot no longer `enable_all(include_extra_workers=True)`. |
+| Flex preset select / chat `·` slots / `#box1-layer-gnom` as live chrome | **Fixed** #118 / #122. Select and Gnom-layer removed. Copy-all/Diff/History/timer/busy stay out of HTML. `#box3-dual` remains hidden paint infra. |
+| `stage=done` toasted as success without deliverable | **Fixed** #106 / #109. `deliverable_ok` / `result_status`; no “Passt das?” without a real deliverable. Key-fehlt still Box 1. |
+| Install without Tollgate package → worker FEHLER | **Fixed** #123 / #125. Missing package + usable DeepSeek key → legacy client. Protect/Budget still hard-fail. |
+| Send, Enter “may auto-execute” | **Stale.** Short-circuits only (AGENTS.md). |
+| Flex review after FEHLER (“Wie war’s?”) | **Addressed** with #106. Remaining risk only if some UI path ignores `deliverable_ok`. |
+| Localhost API no auth | **Open** (trusted local desk). |
+| Plugins unsandboxed | **Open**. |
+| CSRF to `127.0.0.1:8080` | **Open** (not live-tested). |
+| Mobile layout on a real phone | **Open**. |
+| Tollgate consumer budget spent → no HTML | **Open** when Tollgate is installed and Protect denies. |
+| Cooperative cancel / in-flight tools | **Open**. |
+
+### Control matrix (code 2026-09-21)
+
+| Control | Status |
+|---------|--------|
+| Send, Enter | works — talk only (plus three short-circuits) |
+| Arbeit starten, Ctrl/⌘+Enter | works when `can_execute` |
+| Cancel, Esc (job) | works after overlays |
+| Esc closes System/Workspace/Docs/Skills/Tune/COLD | works |
+| Flex preset select | **removed** |
+| Chat left `·` slots | **removed** |
+| `#box1-layer-gnom` | **removed** |
+| `#box3-dual` | hidden infra, not a control |
+| Worker 3/4 | default **off**, toggleable |
+| Mobile box tabs | present at ≤640px (not re-tested on a phone) |
+
+Do not file new `teilaufgabe` issues for rows marked **Fixed** / **removed** unless a regression is shown on current `baseline`.
