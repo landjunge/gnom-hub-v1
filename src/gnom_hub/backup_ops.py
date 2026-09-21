@@ -115,6 +115,7 @@ class BackupOpsMixin:
         if not bool(getattr(self, "auto_backup_before_execute", False)):
             return None
         try:
+            self.save_checkpoint()
             out = self.create_backup(automatic=True)
             removed = self.prune_auto_backups(max_keep=20)
             out["reason"] = reason
