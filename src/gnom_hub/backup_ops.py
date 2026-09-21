@@ -180,6 +180,7 @@ class BackupOpsMixin:
         import shutil
         import tempfile
 
+        self.maybe_auto_backup("restore")
         path = self.backup_path(name)
         archived = None
         if archive_current:
@@ -287,6 +288,7 @@ class BackupOpsMixin:
         self.hot.load()
         self.warm.load()
         self._load_agent_state()
+        self._load_system_settings()
         ckpt_loaded = False
         if load_checkpoint and self._checkpoint_path.is_file():
             try:
