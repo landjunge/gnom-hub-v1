@@ -139,7 +139,28 @@
   if (els.back) els.back.addEventListener("click", showLauncher);
 
   document.addEventListener("keydown", (event) => {
-    if (typingTarget(event.target) || event.metaKey || event.ctrlKey || event.altKey) return;
+    const isTyping = typingTarget(event.target);
+
+    if (isTyping) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.target.blur();
+      }
+      return;
+    }
+
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+
+    if (event.code === "Space") {
+      const input = document.querySelector("#chat-input");
+      if (input) {
+        event.preventDefault();
+        if (els.module && !els.module.hidden) closeTool();
+        input.focus();
+      }
+      return;
+    }
+
     if (event.key === "Escape" && els.module && !els.module.hidden) {
       event.preventDefault();
       closeTool();
