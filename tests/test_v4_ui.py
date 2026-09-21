@@ -106,3 +106,18 @@ def test_v4_tool_targets_reject_non_http_runtime_url(monkeypatch):
     rows = {row["id"]: row for row in payload["tools"]}
     assert rows["4allpass"]["connected"] is False
     assert rows["4allpass"]["target"] is None
+
+
+def test_v4_auto_backup_toggle_contract():
+    app = create_app()
+    with TestClient(app) as client:
+        html = client.get("/v4").text
+        js = client.get("/static/v4.js").text
+        css = client.get("/static/v4.css").text
+    assert 'id="auto-backup-chip"' in html
+    assert "Backup aus" in html
+    assert 'api("/api/system")' in js
+    assert "auto_backup_before_execute" in js
+    assert "Auto-Backup an · gilt auch bei God Mode" in js
+    assert '"sichert …"' in js
+    assert ".chip.backup.on" in css

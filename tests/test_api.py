@@ -1127,3 +1127,73 @@ def test_hot_facts_manager(client: TestClient):
     assert "added" in tg.json()["reply"].lower() or "HOT" in tg.json()["reply"]
     tg2 = client.post("/api/telegram/inbound", json={"text": "/hot list"})
     assert "telegram" in tg2.json()["reply"].lower()
+
+
+def test_auto_backup_runs_before_execute_even_with_god_mode(client: TestClient):
+    enabled = client.post("/api/system", json={"auto_backup_before_execute": True})
+    assert enabled.status_code == 200
+    assert enabled.json()["auto_backup_before_execute"] is True
+    assert enabled.json()["auto_backup_max"] == 20
+
+    hub = hub_mod.get_hub()
+    hub.set_god_mode(True)
+    client.post("/api/chat?sync=1", json={"text": "Auto backup safety run"})
+    out = client.post("/api/execute?sync=1")
+    assert out.status_code == 200
+
+    autos = [
+        row
+        for row in client.get("/api/backups").json()["backups"]
+        if row["name"].startswith("gnom-hub-backup-auto-")
+    ]
+    assert autos
+    events = client.get("/api/trace?limit=100").json()["trace"]
+    auto_events = [e for e in events if e.get("event") == "backup.auto"]
+    assert auto_events
+    assert auto_events[-1]["data"]["reason"] == "execute"
+    assert auto_events[-1]["data"]["god_mode"] is True
+
+
+def test_auto_backup_setting_is_persisted(client: TestClient):
+    r = client.post("/api/system", json={"auto_backup_before_execute": True})
+    assert r.status_code == 200
+    hub = hub_mod.get_hub()
+    settings = hub.root / "data" / "hot" / "system.json"
+    assert settings.is_file()
+    assert '"auto_backup_before_execute": true' in settings.read_text(encoding="utf-8").lower()
+
+    hub.auto_backup_before_execute = False
+    hub._load_system_settings()
+    assert hub.auto_backup_before_execute is True
+
+
+def test_auto_backup_rotation_never_prunes_manual_backup(client: TestClient):
+    hub = hub_mod.get_hub()
+    backup_dir = hub.root / "data" / "backups"
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    manual = backup_dir / "gnom-hub-backup-20260921T120000Z.zip"
+    manual.write_bytes(b"manual")
+    for i in range(23):
+        (backup_dir / f"gnom-hub-backup-auto-20260921T12{i:04d}Z.zip").write_bytes(b"auto")
+
+    removed = hub.prune_auto_backups(max_keep=20)
+    remaining = list(backup_dir.glob("gnom-hub-backup-auto-*.zip"))
+    assert len(removed) == 3
+    assert len(remaining) == 20
+    assert manual.is_file()
+
+
+def test_auto_backup_failure_blocks_execute(client: TestClient, monkeypatch):
+    client.post("/api/system", json={"auto_backup_before_execute": True})
+    client.post("/api/chat?sync=1", json={"text": "Do not run without a backup"})
+    hub = hub_mod.get_hub()
+
+    def fail_backup(*, automatic: bool = False):
+        raise OSError("disk full")
+
+    monkeypatch.setattr(hub, "create_backup", fail_backup)
+    out = client.post("/api/execute?sync=1")
+    assert out.status_code == 503
+    detail = out.json()["detail"]
+    assert detail["auto_backup_failed"] is True
+    assert "Auto-Backup fehlgeschlagen" in detail["message"]

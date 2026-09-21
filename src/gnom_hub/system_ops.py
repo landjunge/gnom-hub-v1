@@ -2,14 +2,35 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from gnom_hub import __version__
+from gnom_hub.memory.atomic import atomic_write_text
 from gnom_hub.ui.tooltips import TOOLTIPS
 
 
 class SystemOpsMixin:
     """Mixin extracted from Hub — pure move."""
+
+    def _load_system_settings(self) -> None:
+        path = self.root / "data" / "hot" / "system.json"
+        if not path.is_file():
+            return
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return
+        if "auto_backup_before_execute" in data:
+            self.auto_backup_before_execute = bool(data["auto_backup_before_execute"])
+
+    def _save_system_settings(self) -> None:
+        path = self.root / "data" / "hot" / "system.json"
+        payload = {
+            "auto_backup_before_execute": bool(getattr(self, "auto_backup_before_execute", False))
+        }
+        path.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_text(path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
 
     def set_god_mode(
         self, enabled: bool, reason: str = "user", assignment_id: str = ""
@@ -57,6 +78,12 @@ class SystemOpsMixin:
                 self.ui_lang = lang
         if "auto_pack_after_execute" in fields and fields["auto_pack_after_execute"] is not None:
             self.auto_pack_after_execute = bool(fields["auto_pack_after_execute"])
+        if (
+            "auto_backup_before_execute" in fields
+            and fields["auto_backup_before_execute"] is not None
+        ):
+            self.auto_backup_before_execute = bool(fields["auto_backup_before_execute"])
+            self._save_system_settings()
         if "pack_max" in fields and fields["pack_max"] is not None:
             try:
                 self.pack_max = max(5, min(100, int(fields["pack_max"])))
@@ -83,6 +110,8 @@ class SystemOpsMixin:
             "backups": self.list_backups()[:8],
             "packs": self.list_session_packs()[:12],
             "auto_pack_after_execute": self.auto_pack_after_execute,
+            "auto_backup_before_execute": bool(self.auto_backup_before_execute),
+            "auto_backup_max": 20,
             "pack_max": self.pack_max,
             "setup": self._setup_dict(),
         }

@@ -12,17 +12,19 @@ from typing import Any
 class BackupOpsMixin:
     """Mixin: expects Hub attributes (root, hot, warm, agents, …)."""
 
-    def create_backup(self) -> dict[str, Any]:
+    def create_backup(self, *, automatic: bool = False) -> dict[str, Any]:
         """
         Zip HOT + WARM + agents + checkpoint + consistent user.db into data/backups/.
 
         user.db is exported via SQLite online backup API (WAL-safe, H11) — not
         a raw shutil of a live WAL DB.
         """
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        stamp_format = "%Y%m%dT%H%M%S%fZ" if automatic else "%Y%m%dT%H%M%SZ"
+        stamp = datetime.now(timezone.utc).strftime(stamp_format)
         backup_dir = self.root / "data" / "backups"
         backup_dir.mkdir(parents=True, exist_ok=True)
-        path = backup_dir / f"gnom-hub-backup-{stamp}.zip"
+        prefix = "gnom-hub-backup-auto-" if automatic else "gnom-hub-backup-"
+        path = backup_dir / f"{prefix}{stamp}.zip"
         # Ensure current state on disk
         self.hot.save()
         self.warm.save()
@@ -63,6 +65,7 @@ class BackupOpsMixin:
                     "stamp": stamp,
                     "includes_user_db": True,
                     "user_db_bytes": db_bytes,
+                    "automatic": automatic,
                 }
                 zf.writestr("meta.json", json.dumps(meta, indent=2) + "\n")
                 members += 1
@@ -79,6 +82,7 @@ class BackupOpsMixin:
                 "path": str(path),
                 "members": members,
                 "user_db_bytes": db_bytes,
+                "automatic": automatic,
             },
         )
         return {
@@ -87,7 +91,48 @@ class BackupOpsMixin:
             "bytes": path.stat().st_size,
             "user_db": bool(db_bytes),
             "user_db_bytes": db_bytes,
+            "automatic": automatic,
         }
+
+    def prune_auto_backups(self, max_keep: int = 20) -> list[str]:
+        """Keep newest automatic backups only. Manual backups are never pruned."""
+        backup_dir = self.root / "data" / "backups"
+        keep = max(1, min(100, int(max_keep)))
+        paths = sorted(backup_dir.glob("gnom-hub-backup-auto-*.zip"), reverse=True)
+        removed: list[str] = []
+        for path in paths[keep:]:
+            try:
+                path.unlink()
+                removed.append(path.name)
+            except OSError:
+                continue
+        if removed:
+            self._append_trace("backup.auto_prune", {"removed": removed, "keep": keep})
+        return removed
+
+    def maybe_auto_backup(self, reason: str) -> dict[str, Any] | None:
+        """Create required safety backup before work/destructive actions when enabled."""
+        if not bool(getattr(self, "auto_backup_before_execute", False)):
+            return None
+        try:
+            self.save_checkpoint()
+            out = self.create_backup(automatic=True)
+            removed = self.prune_auto_backups(max_keep=20)
+            out["reason"] = reason
+            out["pruned"] = removed
+            out["god_mode"] = bool(getattr(getattr(self, "god_mode", None), "enabled", False))
+            self._append_trace(
+                "backup.auto",
+                {
+                    "reason": reason,
+                    "name": Path(str(out.get("path") or "")).name,
+                    "god_mode": out["god_mode"],
+                },
+            )
+            return out
+        except Exception as exc:
+            self._append_trace("backup.auto_fail", {"reason": reason, "error": str(exc)})
+            raise RuntimeError(f"Auto-Backup fehlgeschlagen: {exc}") from exc
 
     def list_backups(self) -> list[dict[str, Any]]:
         backup_dir = self.root / "data" / "backups"
@@ -136,6 +181,7 @@ class BackupOpsMixin:
         import shutil
         import tempfile
 
+        self.maybe_auto_backup("restore")
         path = self.backup_path(name)
         archived = None
         if archive_current:
@@ -243,6 +289,7 @@ class BackupOpsMixin:
         self.hot.load()
         self.warm.load()
         self._load_agent_state()
+        self._load_system_settings()
         ckpt_loaded = False
         if load_checkpoint and self._checkpoint_path.is_file():
             try:

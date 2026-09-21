@@ -181,6 +181,7 @@ class SessionOpsMixin:
         except Exception:  # noqa: BLE001
             pass
 
+        self.maybe_auto_backup("reset")
         archived = None
         with self._pipeline_lock_obj():
             if archive and (self.hot.session.get("messages") or self.hot.session.get("facts")):
@@ -229,6 +230,7 @@ class SessionOpsMixin:
                 pipe.cancel_check = None
         except Exception:  # noqa: BLE001
             pass
+        self.maybe_auto_backup("clean")
         archived = None
         with self._pipeline_lock_obj():
             if self.hot.session.get("messages") or self.hot.session.get("facts"):

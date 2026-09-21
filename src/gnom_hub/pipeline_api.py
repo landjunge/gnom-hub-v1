@@ -45,6 +45,7 @@ class PipelineApiMixin:
 
     def execute_sync(self) -> dict[str, Any]:
         """Run distill → flex → workers from accumulated brainstorm."""
+        self.maybe_auto_backup("execute")
         self.last_error = None
         with self._pipeline_lock_obj():
             # Single source: hub.plan_mode → pipeline before coordinate
@@ -65,6 +66,7 @@ class PipelineApiMixin:
 
     def rerun_worker_sync(self, worker_id: str) -> dict[str, Any]:
         """Re-run one worker from last task."""
+        self.maybe_auto_backup("worker-rerun")
         self.last_error = None
         with self._pipeline_lock_obj():
             self.pipeline.rerun_worker(worker_id)

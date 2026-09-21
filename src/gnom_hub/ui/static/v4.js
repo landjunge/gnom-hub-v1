@@ -7,6 +7,7 @@
     ready: $("#ready-chip"),
     tollgate: $("#tollgate-chip"),
     god: $("#god-chip"),
+    backup: $("#auto-backup-chip"),
     conversation: $("#conversation"),
     decisions: $("#decision-grid"),
     decisionCount: $("#decision-count"),
@@ -22,6 +23,7 @@
   };
 
   let snapshot = {};
+  let systemState = {};
   let agents = [];
   let busy = false;
   let selectedWorker = "";
@@ -405,6 +407,11 @@
     const godOn = !!god.enabled;
     els.god.classList.toggle("on", godOn);
     els.god.querySelector("b").textContent = godOn ? "God an" : "God aus";
+
+    const backupOn = !!systemState.auto_backup_before_execute;
+    els.backup.classList.toggle("on", backupOn);
+    els.backup.setAttribute("aria-pressed", backupOn ? "true" : "false");
+    els.backup.querySelector("b").textContent = backupOn ? "Backup an" : "Backup aus";
   }
 
   function renderAll() {
@@ -462,8 +469,13 @@
 
   async function refresh() {
     try {
-      const [state, agentData] = await Promise.all([api("/api/state"), api("/api/agents")]);
+      const [state, agentData, sys] = await Promise.all([
+        api("/api/state"),
+        api("/api/agents"),
+        api("/api/system"),
+      ]);
       snapshot = state || {};
+      systemState = sys || {};
       agents = Array.isArray(agentData.agents) ? agentData.agents : [];
       renderAll();
     } catch (err) {
@@ -497,6 +509,9 @@
   async function startWork() {
     if (busy) return;
     setBusy(true);
+    if (systemState.auto_backup_before_execute) {
+      els.execute.textContent = "sichert …";
+    }
     try {
       const res = await api("/api/execute", { method: "POST", body: "{}" });
       await consumeMaybeJob(res);
@@ -556,8 +571,27 @@
     }
   }
 
+  async function toggleAutoBackup() {
+    if (busy || !els.backup) return;
+    const next = !systemState.auto_backup_before_execute;
+    els.backup.disabled = true;
+    try {
+      systemState = await api("/api/system", {
+        method: "POST",
+        body: JSON.stringify({ auto_backup_before_execute: next }),
+      });
+      renderHeader();
+      toast(next ? "Auto-Backup an · gilt auch bei God Mode" : "Auto-Backup aus");
+    } catch (err) {
+      toast(err.message || "Backup-Schalter fehlgeschlagen", "error");
+    } finally {
+      els.backup.disabled = false;
+    }
+  }
+
   els.send.addEventListener("click", sendMessage);
   els.execute.addEventListener("click", startWork);
+  els.backup.addEventListener("click", toggleAutoBackup);
   els.newer.addEventListener("click", rerunSelected);
   els.keep.addEventListener("click", keepSelected);
   els.drop.addEventListener("click", () => {

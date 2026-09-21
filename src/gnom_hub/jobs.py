@@ -51,7 +51,13 @@ class JobsMixin:
                 return j
         return None
 
-    def _start_job(self, name: str, runner: Any) -> dict[str, Any]:
+    def _start_job(
+        self,
+        name: str,
+        runner: Any,
+        *,
+        auto_backup_reason: str | None = None,
+    ) -> dict[str, Any]:
 
         if not hasattr(self, "_jobs"):
             self._jobs: dict[str, dict[str, Any]] = {}
@@ -75,6 +81,18 @@ class JobsMixin:
                     "Cancel it or wait before sending again."
                 ),
             }
+
+        if auto_backup_reason:
+            try:
+                self.maybe_auto_backup(auto_backup_reason)
+            except RuntimeError as exc:
+                return {
+                    "ok": False,
+                    "status": "error",
+                    "error": str(exc),
+                    "message": str(exc),
+                    "auto_backup_failed": True,
+                }
 
         lock = self._pipeline_lock_obj()
 
@@ -399,7 +417,7 @@ class JobsMixin:
             self.pipeline.plan_mode = getattr(self, "plan_mode", "default") or "default"
             self.pipeline.execute()
 
-        return self._start_job("execute", _runner)
+        return self._start_job("execute", _runner, auto_backup_reason="execute")
 
     def rerun_worker_async(self, worker_id: str) -> dict[str, Any]:
         wid = worker_id
@@ -407,7 +425,7 @@ class JobsMixin:
         def _runner() -> None:
             self.pipeline.rerun_worker(wid)
 
-        return self._start_job("worker_rerun", _runner)
+        return self._start_job("worker_rerun", _runner, auto_backup_reason="worker-rerun")
 
     def get_job(self, job_id: str) -> dict[str, Any] | None:
         jobs = getattr(self, "_jobs", {})
