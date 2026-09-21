@@ -58,6 +58,68 @@ def _snap(**kwargs) -> ad.Snapshot:
     return ad.Snapshot(**data)
 
 
+def test_priority_chain_is_strict() -> None:
+    """Review-Fixes → Reviewer → Test → Builder → Planer → Koordinator."""
+    assert ad.PRIORITY == (
+        "review-fixes",
+        "reviewer",
+        "test-agent",
+        "builder",
+        "planer",
+        "koordinator",
+    )
+    snap = _snap(
+        pulls=[
+            _pr(1, "fixes (#10)", sha="aaa"),
+            _pr(2, "other", sha="bbb"),
+        ],
+        reviews={
+            1: [{"state": "CHANGES_REQUESTED", "submitted_at": "2026-09-20T13:00:00Z"}],
+            2: [],
+        },
+        teilaufgaben=[
+            _issue(10, labels=["teilaufgabe", "in-bearbeitung"]),
+            _issue(11),
+        ],
+        baseline_sha="new-sha",
+        haupt={"number": 105, "state": "open"},
+    )
+    state: dict = {"started": {}, "last_test_sha": "old-sha"}
+    seen: list[tuple[str, str]] = []
+    for _ in range(6):
+        job = ad.pick_job(snap, state)
+        if job is None:
+            break
+        seen.append((job.role, job.reason))
+        ad.mark_started(state, job, "ok", NOW)
+    assert seen[0] == ("builder", "changes-requested")
+    assert seen[1] == ("reviewer", "needs-review")
+    assert seen[2] == ("test-agent", "baseline-moved")
+    assert seen[3] == ("builder", "open-teilaufgabe")
+    # Planer only when the teilaufgabe list is empty.
+    empty = _snap(
+        pulls=[],
+        teilaufgaben=[],
+        baseline_sha="new-sha",
+        haupt={"number": 105, "state": "open"},
+    )
+    plan = ad.pick_job(empty, {"started": {}, "last_test_sha": "new-sha"})
+    assert plan is not None and plan.role == "planer"
+    wait = _snap(
+        pulls=[_pr(2, "other", sha="bbb")],
+        reviews={2: [{"state": "COMMENTED", "submitted_at": "2026-09-20T15:00:00Z"}]},
+        teilaufgaben=[_issue(10, labels=["teilaufgabe", "in-bearbeitung"])],
+        baseline_sha="new-sha",
+        haupt={"number": 105, "state": "open"},
+    )
+    wait_state: dict = {"started": {}, "last_test_sha": "new-sha"}
+    first = ad.pick_job(wait, wait_state)
+    assert first is not None and first.role == "reviewer"
+    ad.mark_started(wait_state, first, "ok", NOW)
+    coord = ad.pick_job(wait, wait_state)
+    assert coord is not None and coord.role == "koordinator"
+
+
 def test_changes_requested_starts_builder_not_reviewer() -> None:
     snap = _snap(
         pulls=[_pr(109, "fix honesty (#106)", sha="deadbeef")],

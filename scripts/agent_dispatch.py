@@ -322,6 +322,17 @@ def _pr_head_sha(pr: dict[str, Any]) -> str:
     return str((head or {}).get("sha") or "")
 
 
+# Strict one-job-per-tick order. Do not reorder these steps.
+PRIORITY = (
+    "review-fixes",  # 1 builder on CHANGES_REQUESTED
+    "reviewer",  # 2 needs-review or merge-approved
+    "test-agent",  # 3 baseline moved
+    "builder",  # 4 open teilaufgabe
+    "planer",  # 5 haupt open, no teilaufgaben
+    "koordinator",  # 6 stale or waiting
+)
+
+
 def pick_job(snapshot: Snapshot, state: dict[str, Any]) -> Job | None:
     now = snapshot.now
     pulls = list(snapshot.pulls)
