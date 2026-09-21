@@ -14,6 +14,7 @@
     title: $("#tool-view-title"),
     meta: $("#tool-view-meta"),
     frame: $("#tool-frame"),
+    unavailable: $("#tool-unavailable"),
     external: $("#tool-open-external"),
     back: $("#tool-back"),
     desk: $(".desk-grid"),
@@ -21,6 +22,7 @@
   };
 
   let activeKey = "";
+  let targets = new Map();
 
   function typingTarget(target) {
     if (!target) return false;
@@ -46,6 +48,7 @@
       els.frame.removeAttribute("src");
       els.frame.hidden = true;
     }
+    if (els.unavailable) els.unavailable.hidden = true;
     if (els.viewer) els.viewer.hidden = true;
     if (els.grid) els.grid.hidden = false;
     setDeskVisible(true);
@@ -68,32 +71,53 @@
       closeTool();
       return;
     }
+
+    const resolved = targets.get(tool.id) || {};
     activeKey = tool.key;
     setDeskVisible(false);
     if (els.grid) els.grid.hidden = true;
     if (els.viewer) els.viewer.hidden = false;
     if (els.title) els.title.textContent = tool.name;
-    if (els.meta) els.meta.textContent = tool.key + " · " + tool.role;
-    if (els.external) {
-      els.external.href = tool.url || "#";
-      els.external.hidden = !tool.url;
+    if (els.meta) {
+      els.meta.textContent =
+        tool.key + " · " + tool.role + (resolved.connected ? " · verbunden" : " · nicht verbunden");
     }
-    if (els.frame && tool.url) {
-      els.frame.title = tool.name;
-      els.frame.src = tool.url;
-      els.frame.hidden = false;
+    if (els.external) {
+      els.external.href = resolved.external_url || "#";
+      els.external.hidden = !resolved.external_url;
+    }
+    if (els.frame) {
+      els.frame.removeAttribute("src");
+      els.frame.hidden = true;
+    }
+    if (els.unavailable) els.unavailable.hidden = true;
+
+    if (resolved.connected && resolved.target) {
+      if (els.frame) {
+        els.frame.title = tool.name;
+        els.frame.src = resolved.target;
+        els.frame.hidden = false;
+      }
+    } else if (els.unavailable) {
+      els.unavailable.hidden = false;
     }
   }
 
   function makeLogo(tool) {
     const wrap = document.createElement("span");
     wrap.className = "tool-logo";
-    const img = document.createElement("img");
-    img.alt = "";
-    img.src = tool.logo;
     const fallback = document.createElement("span");
     fallback.className = "tool-logo-fallback";
     fallback.textContent = tool.fallback;
+
+    if (!tool.logo) {
+      wrap.appendChild(fallback);
+      return wrap;
+    }
+
+    const img = document.createElement("img");
+    img.alt = "";
+    img.src = tool.logo;
     fallback.hidden = true;
     img.addEventListener("error", () => {
       img.hidden = true;
@@ -101,6 +125,16 @@
     });
     wrap.append(img, fallback);
     return wrap;
+  }
+
+  async function loadTargets() {
+    try {
+      const res = await fetch("/api/tool-targets", { headers: { Accept: "application/json" } });
+      if (!res.ok) return;
+      const data = await res.json();
+      const rows = Array.isArray(data.tools) ? data.tools : [];
+      targets = new Map(rows.map((row) => [String(row.id || ""), row]));
+    } catch (_) {}
   }
 
   function renderCards() {
@@ -172,6 +206,6 @@
     openTool(tool);
   });
 
-  renderCards();
+  loadTargets().finally(renderCards);
   setDeskVisible(true);
 })();
