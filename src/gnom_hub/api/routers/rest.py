@@ -22,6 +22,82 @@ from gnom_hub.hub import get_hub
 router = APIRouter()
 
 
+@router.get("/api/tool-targets")
+def tool_targets_get() -> dict[str, Any]:
+    """Runtime UI targets for the V4 tool launcher. No secrets."""
+    import os
+    import urllib.parse
+
+    slots = (
+        (
+            "1",
+            "netzwerkpunkt",
+            "NetzwerkPunkt",
+            "GNOM_NETWORKPUNKT_URL",
+            None,
+            "https://netzwerkpunkt.de/",
+        ),
+        (
+            "2",
+            "gnom-hub",
+            "Gnom-Hub-V1",
+            None,
+            "/v4",
+            "https://gnom-hub-v1.netzwerkpunkt.de/",
+        ),
+        (
+            "3",
+            "threaddesk",
+            "ThreadDesk",
+            "THREADDESK_URL",
+            None,
+            "https://threaddesk.netzwerkpunkt.de/",
+        ),
+        (
+            "4",
+            "tollgate",
+            "TollGate",
+            "TOLLGATE_URL",
+            None,
+            "https://tollgate.netzwerkpunkt.de/",
+        ),
+        (
+            "5",
+            "4allpass",
+            "4AllPass",
+            "GNOM_ALLPASS_URL",
+            None,
+            "https://4allpass.netzwerkpunkt.de/",
+        ),
+    )
+
+    def http_url(value: str | None) -> str | None:
+        raw = (value or "").strip()
+        if not raw:
+            return None
+        parsed = urllib.parse.urlparse(raw)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            return None
+        return raw.rstrip("/")
+
+    rows: list[dict[str, object]] = []
+    for key, tool_id, name, env_name, internal_url, external_url in slots:
+        runtime = http_url(os.getenv(env_name)) if env_name else None
+        target = internal_url or runtime
+        rows.append(
+            {
+                "key": key,
+                "id": tool_id,
+                "name": name,
+                "connected": bool(target),
+                "target": target,
+                "mode": ("internal" if internal_url else ("embed" if runtime else "unavailable")),
+                "external_url": external_url,
+            }
+        )
+    return {"tools": rows}
+
+
 @router.get("/api/threaddesk")
 def threaddesk_peek() -> dict[str, Any]:
     """Last ThreadDesk packet. Fills chat only — never Send/Execute."""

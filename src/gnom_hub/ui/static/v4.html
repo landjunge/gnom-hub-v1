@@ -6,6 +6,7 @@
   <title>Gnom-Hub V4</title>
   <link rel="stylesheet" href="/static/tokens.css">
   <link rel="stylesheet" href="/static/v4.css?v=2">
+  <link rel="stylesheet" href="/static/v4-tools.css?v=1">
 </head>
 <body>
   <div class="v4-shell">
@@ -18,6 +19,7 @@
         <span id="ready-chip" class="chip" data-state="wait"><i></i><b>prüft…</b></span>
         <span id="tollgate-chip" class="chip muted"><i></i><b>TollGate</b></span>
         <span id="god-chip" class="chip god"><i></i><b>God aus</b></span>
+        <button id="tools-toggle" class="module-link" type="button" aria-pressed="false">Werkzeuge</button>
         <a class="legacy-link" href="/" title="Alte Oberfläche">alte UI</a>
       </div>
     </header>
@@ -29,6 +31,24 @@
       <button class="agent-pill agent-worker2" data-agent="worker2"><span>W2</span><small>wartet</small></button>
       <button class="agent-pill agent-worker3" data-agent="worker3"><span>W3</span><small>wartet</small></button>
       <button class="agent-pill agent-worker4" data-agent="worker4"><span>W4</span><small>wartet</small></button>
+    </section>
+
+    <section id="tool-module" class="tool-module" hidden aria-label="Werkzeuge">
+      <header class="tool-module-head">
+        <div><small>MODUL</small><h2>Werkzeuge</h2></div>
+        <span class="tool-hint">Klick oder Taste 1–5 · gleiche Taste schließt</span>
+      </header>
+      <div id="tool-grid" class="tool-grid"></div>
+      <div id="tool-viewer" class="tool-viewer" hidden>
+        <div class="tool-viewbar">
+          <button id="tool-back" type="button">Werkzeuge</button>
+          <strong id="tool-view-title">Werkzeug</strong>
+          <small id="tool-view-meta"></small>
+          <a id="tool-open-external" href="#" target="_blank" rel="noopener noreferrer">Extern öffnen</a>
+        </div>
+        <div id="tool-unavailable" class="tool-unavailable" hidden><strong>Noch nicht verbunden.</strong><span>Dieses Werkzeug hat noch keine lokale Gnom-Adresse. Die öffentliche Seite bleibt nur ein Fallback.</span></div>
+        <iframe id="tool-frame" class="tool-frame" title="Werkzeug"></iframe>
+      </div>
     </section>
 
     <main class="desk-grid">
@@ -83,5 +103,7 @@
     <div id="notice" class="notice" role="status" aria-live="polite"></div>
   </div>
   <script src="/static/v4.js?v=2"></script>
+  <script src="/static/v4-tool-manifest.js?v=1"></script>
+  <script src="/static/v4-tools.js?v=1"></script>
 </body>
 </html>
