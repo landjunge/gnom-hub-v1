@@ -21,10 +21,15 @@ button:focus-visible,textarea:focus-visible,a:focus-visible{outline:none;box-sha
 .brand small{display:block;color:var(--text-muted);font-size:11px;margin-top:2px}
 .system-strip{display:flex;align-items:center;gap:8px}
 .chip{height:30px;border:1px solid var(--v4-line);display:inline-flex;align-items:center;gap:7px;padding:0 10px;background:var(--v4-soft);font-size:12px}
+button.chip{cursor:pointer}
+button.chip:disabled{opacity:.5;cursor:not-allowed}
 .chip i{width:7px;height:7px;border-radius:50%;background:var(--text-muted)}
 .chip[data-state="ok"] i{background:var(--ok)}
 .chip[data-state="bad"] i{background:var(--err)}
 .chip[data-state="work"] i{background:var(--warn)}
+.chip.backup i{background:#4f545d}
+.chip.backup.on{border-color:#50735d;color:#dff5e5;background:#18231c}
+.chip.backup.on i{background:var(--ok);box-shadow:0 0 8px rgba(78,179,112,.25)}
 .chip.god i{background:#7b3131}
 .chip.god.on{border-color:#9c4040;color:#ffdede}
 .chip.god.on i{background:#d24b4b;box-shadow:0 0 0 4px rgba(210,75,75,.08),0 0 14px rgba(210,75,75,.45);animation:godpulse 1.8s ease-in-out infinite}
