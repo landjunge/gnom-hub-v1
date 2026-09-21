@@ -156,6 +156,17 @@ class DispatchMixin:
             if not text:
                 self._fail("Nothing to execute — brainstorm first")
                 return self._state
+            try:
+                from gnom_hub.authority_emit import emit as _auth_emit
+
+                _auth_emit(
+                    "work.started",
+                    actor="coordinator",
+                    action="execute",
+                    resource="pipeline:execute",
+                )
+            except Exception:  # noqa: BLE001
+                pass
 
             notes = self._state.brainstorm_notes or _format_turns(self._state.brainstorm_turns)
             self._state.brainstorm_notes = notes
@@ -325,6 +336,17 @@ class DispatchMixin:
             )
         dod = _definition_of_done(text, self._state.distilled_requirements)
         for i, (wid, task) in enumerate(tasks, start=1):
+            try:
+                from gnom_hub.authority_emit import emit as _auth_emit
+
+                _auth_emit(
+                    "agent.invoked",
+                    actor=str(wid),
+                    action="work",
+                    resource=f"worker:{wid}",
+                )
+            except Exception:  # noqa: BLE001
+                pass
             self._check_cancel()
             worker = self._workers.get(wid)
             if worker is None or not worker.enabled:
