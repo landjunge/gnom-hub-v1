@@ -33,3 +33,17 @@ def test_v4_static_assets_exist_and_are_separate():
     assert 'target: "brainstorm"' in js.text
     assert '"/api/execute"' in js.text
     assert '"/api/workspace/keep"' in js.text
+
+
+def test_v4_approved_visual_rules():
+    app = create_app()
+    with TestClient(app) as client:
+        css = client.get("/static/v4.css").text
+        html = client.get("/v4").text
+    assert "grid-template-columns:repeat(6,minmax(0,1fr))" in css
+    assert ".agent-worker1{--agent:#4169E1}" in css
+    assert "@keyframes agent-glow" in css
+    assert "50%{opacity:.15" in css
+    assert "height:36px" in css
+    assert html.count("Arbeit starten") == 2  # button + explanatory empty-state text
+    assert html.count('id="execute"') == 1
