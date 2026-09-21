@@ -21,6 +21,9 @@ def _dod_must_stop(gate: dict) -> bool:
     if gate.get("ok") is True:
         return False
     issues = set(gate.get("issues") or [])
+    # Missing key / stub: honesty path at _finish, not a hard pipeline abort.
+    if "worker_error" in issues or "stub" in issues:
+        return False
     return bool(issues & _DOD_STOP_ISSUES)
 
 
