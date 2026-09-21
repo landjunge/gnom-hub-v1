@@ -33,7 +33,8 @@ STARTED_TTL = timedelta(hours=2)
 MISSING_CMD = "missing-cmd"
 # Supervisor: end the tick on GitHub-effect or idle, not after --max-turns.
 DEFAULT_TICK_POLL_SEC = 2.0
-DEFAULT_TICK_IDLE_SEC = 20.0
+DEFAULT_TICK_IDLE_SEC = 180.0
+DEFAULT_TICK_START_GRACE_SEC = 600.0
 CPU_IDLE_PCT = 1.0
 STOP_GRACE_SEC = 2.0
 DONE_COMMENT_GENERIC = (
@@ -770,7 +771,14 @@ def tick_poll_sec() -> float:
 
 
 def tick_idle_sec() -> float:
-    return max(2.0, min(120.0, _env_float("GNOM_TICK_IDLE_SEC", DEFAULT_TICK_IDLE_SEC)))
+    return max(30.0, min(600.0, _env_float("GNOM_TICK_IDLE_SEC", DEFAULT_TICK_IDLE_SEC)))
+
+
+def tick_start_grace_sec() -> float:
+    """No idle halt until grok has printed, unless this grace expires."""
+    return max(
+        60.0, min(1800.0, _env_float("GNOM_TICK_START_GRACE_SEC", DEFAULT_TICK_START_GRACE_SEC))
+    )
 
 
 def is_done_comment(body: str, role: str = "", *, strict_role: bool = False) -> bool:
@@ -786,7 +794,7 @@ def is_done_comment(body: str, role: str = "", *, strict_role: bool = False) -> 
 def _comment_after(item: dict[str, Any], started_at: datetime) -> bool:
     at = parse_dt(str(item.get("created_at") or item.get("createdAt") or ""))
     if at is None:
-        return True
+        return False
     return at >= started_at
 
 
@@ -863,7 +871,9 @@ def github_effect_done(
         except RuntimeError as exc:
             log("watch-failed", target=f"issue=#{job.issue}", detail=str(exc)[:180])
             issue = {}
-        if isinstance(issue, dict) and str(issue.get("state") or "").lower() == "closed":
+        closed = isinstance(issue, dict) and str(issue.get("state") or "").lower() == "closed"
+        # #105 stays closed; test-agent/planer/koordinator still write there.
+        if closed and job.issue != HAUPT_ISSUE:
             return True
         strict = job.issue == HAUPT_ISSUE
         for item in _list_issue_comments(call, repo, job.issue, token, started_at):
@@ -1048,6 +1058,7 @@ def run_agent(
     clock = monotonic or time.monotonic
     interval = tick_poll_sec() if poll_sec is None else max(0.0, float(poll_sec))
     idle_limit = tick_idle_sec() if idle_sec is None else max(0.0, float(idle_sec))
+    start_grace = tick_start_grace_sec() if idle_sec is None else max(0.0, float(idle_sec))
     proc = spawn(
         argv,
         stdin=subprocess.PIPE,
@@ -1064,7 +1075,9 @@ def run_agent(
             os.set_blocking(proc.stdout.fileno(), False)
         except (OSError, AttributeError):
             pass
-    last_event = clock()
+    spawned = clock()
+    last_event = spawned
+    seen_event = False
     supervised = False
     reason = ""
     try:
@@ -1072,6 +1085,7 @@ def run_agent(
             rc = proc.poll()
             had_event = _drain_stdout(proc)
             if had_event:
+                seen_event = True
                 last_event = clock()
             if rc is not None:
                 if rc != 0 and not supervised:
@@ -1087,7 +1101,14 @@ def run_agent(
             busy_cpu = cpu(proc.pid) >= CPU_IDLE_PCT
             if busy_cpu or had_event:
                 last_event = clock()
-            elif clock() - last_event >= idle_limit:
+            elif seen_event and clock() - last_event >= idle_limit:
+                supervised = True
+                reason = "idle"
+                log("tick-done", role=job.role, target=job.target(), detail=reason)
+                halt(proc)
+                _drain_stdout(proc)
+                return f"cmd:{argv[0]}"
+            elif (not seen_event) and clock() - spawned >= start_grace:
                 supervised = True
                 reason = "idle"
                 log("tick-done", role=job.role, target=job.target(), detail=reason)
