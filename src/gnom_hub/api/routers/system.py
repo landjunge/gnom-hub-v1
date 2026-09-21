@@ -139,7 +139,13 @@ def checkpoint_load() -> dict[str, Any]:
 @router.post("/api/clean")
 def clean_state() -> dict[str, Any]:
     """One-click clean: HOT + temp workspace + pipeline; WARM kept."""
-    return get_hub().clean_state()
+    try:
+        return get_hub().clean_state()
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={"message": str(exc), "auto_backup_failed": True},
+        ) from exc
 
 
 @router.post("/api/backup")
@@ -190,6 +196,11 @@ def backups_restore(
             archive_current=archive_current,
             load_checkpoint=load_checkpoint,
         )
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={"message": str(exc), "auto_backup_failed": True},
+        ) from exc
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except FileNotFoundError as e:
@@ -278,7 +289,17 @@ def reset(
     clear_warm: bool = Query(False),
     archive: bool = Query(True),
 ) -> dict[str, Any]:
-    return get_hub().reset_session(keep_agents=True, clear_warm=clear_warm, archive=archive)
+    try:
+        return get_hub().reset_session(
+            keep_agents=True,
+            clear_warm=clear_warm,
+            archive=archive,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={"message": str(exc), "auto_backup_failed": True},
+        ) from exc
 
 
 @router.get("/api/help")
