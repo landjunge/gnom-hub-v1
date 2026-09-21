@@ -36,6 +36,12 @@ _INTERACT_TASK_HINTS = (
     "button",
     "form",
 )
+# Whole-word hints only ("form" must not match "information"). German compounds
+# like Kontaktformular still count via this stem.
+_INTERACT_COMPOUND_HINTS = ("formular",)
+_INTERACT_WORD_RE = re.compile(
+    r"\b(?:" + "|".join(re.escape(k) for k in _INTERACT_TASK_HINTS) + r")\b"
+)
 
 _STOP = frozenset(
     [
@@ -71,7 +77,9 @@ def wants_html_artifact(user_text: str, task: str = "") -> bool:
 
 def interaction_required(user_text: str, task: str = "") -> bool:
     blob = f"{user_text} {task}".lower()
-    return any(k in blob for k in _INTERACT_TASK_HINTS)
+    if _INTERACT_WORD_RE.search(blob):
+        return True
+    return any(k in blob for k in _INTERACT_COMPOUND_HINTS)
 
 
 def html_complete(body: str) -> bool:

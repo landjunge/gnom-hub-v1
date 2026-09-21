@@ -4,10 +4,20 @@ from __future__ import annotations
 
 import os
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
 PAGE_INCOMPLETE_MSG = "Worker konnte keine vollständige Seite liefern."
+
+# Prefer controls that stay on the page; a[href] can navigate away.
+_INTERACT_SELECTORS = (
+    "button",
+    "[onclick]",
+    "input[type=button]",
+    "input[type=submit]",
+    "a[href]",
+)
 
 
 def browser_check_enabled() -> bool:
@@ -64,7 +74,41 @@ def verify_worker_html(
     return _run_playwright(doc, interaction_required=interaction_required, timeout_ms=timeout_ms)
 
 
+def _chromium_executable_missing(exc: BaseException) -> bool:
+    """True only when the browser binary is absent — not any Chromium launch error."""
+    msg = str(exc).lower()
+    return (
+        "executable doesn't exist" in msg
+        or "executable not found" in msg
+        or "browser is not installed" in msg
+        or "browsers are not installed" in msg
+    )
+
+
 def _run_playwright(doc: str, *, interaction_required: bool, timeout_ms: int) -> dict[str, Any]:
+    """Always run Sync Playwright on a thread with no asyncio loop."""
+    wait_s = max(30.0, (timeout_ms / 1000.0) + 20.0)
+    with ThreadPoolExecutor(max_workers=1, thread_name_prefix="gnom-html-pw") as pool:
+        fut = pool.submit(
+            _playwright_sync,
+            doc,
+            interaction_required=interaction_required,
+            timeout_ms=timeout_ms,
+        )
+        try:
+            return fut.result(timeout=wait_s)
+        except Exception as exc:  # noqa: BLE001
+            return {
+                "ok": False,
+                "skipped": False,
+                "issues": ["page_load_error"],
+                "pageerrors": [],
+                "screenshot": False,
+                "error": str(exc)[:240],
+            }
+
+
+def _playwright_sync(doc: str, *, interaction_required: bool, timeout_ms: int) -> dict[str, Any]:
     from playwright.sync_api import sync_playwright
 
     issues: list[str] = []
@@ -83,12 +127,7 @@ def _run_playwright(doc: str, *, interaction_required: bool, timeout_ms: int) ->
                 try:
                     browser = p.chromium.launch(headless=True, args=launch_args)
                 except Exception as exc:  # noqa: BLE001
-                    msg = str(exc).lower()
-                    missing = (
-                        "executable doesn't exist" in msg
-                        or "browsertype.launch" in msg
-                        or "chromium" in msg
-                    )
+                    missing = _chromium_executable_missing(exc)
                     return {
                         "ok": False,
                         "skipped": missing,
@@ -118,9 +157,11 @@ def _run_playwright(doc: str, *, interaction_required: bool, timeout_ms: int) ->
                     if not structure:
                         issues.append("no_main_structure")
                     if interaction_required:
-                        target = page.query_selector(
-                            "button, [onclick], input[type=button], input[type=submit], a[href]"
-                        )
+                        target = None
+                        for sel in _INTERACT_SELECTORS:
+                            target = page.query_selector(sel)
+                            if target is not None:
+                                break
                         if target is None:
                             issues.append("no_interaction_target")
                         else:
@@ -204,19 +245,30 @@ def note_incomplete_page(state: Any) -> None:
     state.quality_notes = (qn + "\n" + PAGE_INCOMPLETE_MSG).strip() if qn else PAGE_INCOMPLETE_MSG
 
 
+def _complete_html_browser_checks(state: Any) -> list[dict[str, Any]]:
+    """Checks for complete HTML bodies only — fragments must not vote."""
+    from gnom_hub.pipeline.dod_gate import html_complete
+
+    checks: list[dict[str, Any]] = []
+    for o in getattr(state, "worker_outputs", None) or []:
+        if not isinstance(o, dict):
+            continue
+        bc = o.get("browser_check")
+        if not isinstance(bc, dict):
+            continue
+        if "incomplete_html" in (bc.get("issues") or []):
+            continue
+        body = str(o.get("result") or o.get("body") or "")
+        if not html_complete(body):
+            continue
+        checks.append(bc)
+    return checks
+
+
 def any_browser_ok(state: Any) -> bool:
-    return any(
-        isinstance(o, dict)
-        and isinstance(o.get("browser_check"), dict)
-        and o["browser_check"].get("ok") is True
-        for o in (getattr(state, "worker_outputs", None) or [])
-    )
+    return any(c.get("ok") is True for c in _complete_html_browser_checks(state))
 
 
 def all_browser_skipped(state: Any) -> bool:
-    checks = [
-        o.get("browser_check")
-        for o in (getattr(state, "worker_outputs", None) or [])
-        if isinstance(o, dict) and isinstance(o.get("browser_check"), dict)
-    ]
+    checks = _complete_html_browser_checks(state)
     return bool(checks) and all(bool(c.get("skipped")) for c in checks)

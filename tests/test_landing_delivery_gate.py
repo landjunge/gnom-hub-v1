@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 from pathlib import Path
 from types import SimpleNamespace
@@ -170,6 +171,77 @@ def test_box3_preview_and_fullscreen_share_sandbox():
 def test_interaction_required_from_task_language():
     assert interaction_required("landing html", "page with click demo") is True
     assert interaction_required("plain landing html page", "static page") is False
+    assert interaction_required("landing html with information about hours", "static page") is False
+    assert interaction_required("landing html", "contact form") is True
+    assert interaction_required("Informationen zu Öffnungszeiten", "statische Seite") is False
+    assert interaction_required("Landing HTML mit Kontaktformular", "") is True
+
+
+def test_fragment_does_not_poison_skipped_complete_page(monkeypatch):
+    from gnom_hub.hub import Hub
+
+    monkeypatch.setattr(
+        "gnom_hub.pipeline.html_browser_check.verify_worker_html",
+        lambda *a, **k: {
+            "ok": False,
+            "skipped": True,
+            "reason": "playwright_unavailable",
+            "issues": [],
+            "pageerrors": [],
+            "screenshot": False,
+        },
+    )
+    gate = run_dod_check(
+        COMPLETE_LANDING,
+        user_text="Build a landing page HTML for Bean & Bloom",
+        task="landing HTML",
+    )
+    h = Hub()
+    st = h.pipeline.state
+    st.user_text = "Build a landing page HTML for Bean & Bloom"
+    st.worker_outputs = [
+        {
+            "worker": "worker1",
+            "result": COMPLETE_LANDING,
+            "task": "landing HTML",
+            "validation": gate,
+        },
+        {"worker": "worker2", "result": LONG_FRAGMENT, "validation": {"ok": False}},
+    ]
+    st.worker_results = [COMPLETE_LANDING, LONG_FRAGMENT]
+    h.pipeline._finish()
+    assert _deliverable_ok(st) is True
+    assert st.result_status == "UNGEPRÜFT"
+    assert st.result_status != "NACHBESSERUNG"
+    assert PAGE_INCOMPLETE_MSG not in (st.quality_notes or "")
+
+
+def test_chromium_missing_is_executable_only():
+    from gnom_hub.pipeline.html_browser_check import _chromium_executable_missing
+
+    assert _chromium_executable_missing(
+        RuntimeError("Executable doesn't exist at /tmp/chromium/chrome")
+    )
+    assert not _chromium_executable_missing(
+        RuntimeError("Failed to launch chromium because of sandbox")
+    )
+
+
+def test_verify_worker_html_from_asyncio_loop():
+    from concurrent.futures import ThreadPoolExecutor
+
+    def _with_running_loop():
+        async def _go():
+            return verify_worker_html(COMPLETE_LANDING)
+
+        return asyncio.run(_go())
+
+    # Fresh thread so pytest-asyncio's loop cannot block asyncio.run.
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        r = pool.submit(_with_running_loop).result(timeout=60)
+    err = str(r.get("error") or "")
+    assert "Sync API inside the asyncio loop" not in err
+    assert "page_load_error" not in (r.get("issues") or [])
 
 
 def test_playwright_loads_complete_landing():

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from gnom_hub.memory.secrets import filter_secrets, looks_like_secret
 from gnom_hub.pipeline.models import PipelineStage
-from gnom_hub.snapshot_ops import _body_is_error, _deliverable_ok
+from gnom_hub.snapshot_ops import _body_is_error, _deliverable_ok, _wants_html
 from gnom_hub.threaddesk_ops import write_handoff
 
 
@@ -158,7 +158,6 @@ class PersistMixin:
 
     def _apply_delivery_status(self) -> None:
         """GELIEFERT only for a complete, browser-checked page when HTML is required."""
-        from gnom_hub.pipeline.dod_gate import wants_html_artifact
         from gnom_hub.pipeline.html_browser_check import (
             all_browser_skipped,
             any_browser_ok,
@@ -170,7 +169,7 @@ class PersistMixin:
         any_ok = any(
             isinstance(o, dict) and (o.get("validation") or {}).get("ok") is True for o in outputs
         )
-        wants = wants_html_artifact(self._state.user_text or "")
+        wants = _wants_html(self._state)
         if wants:
             attach_browser_checks(self._state)
         ok_deliv = bool(_deliverable_ok(self._state))
