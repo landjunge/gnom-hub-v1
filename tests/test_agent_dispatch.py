@@ -639,7 +639,7 @@ def test_started_ttl_prevents_double_start(tmp_path: Path) -> None:
         now=NOW,
     )
     assert first == "started"
-    assert second != "started"
+    assert second == "idle"
     assert launched == ["1"]
 
 

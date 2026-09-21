@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import errno
+import fcntl
 import json
 import os
 import shlex
@@ -24,6 +26,7 @@ DEFAULT_REPO = "landjunge/gnom-hub-v1"
 DEFAULT_BASE = "baseline"
 DEFAULT_INTERVAL = 45
 DEFAULT_STATE = Path("data/agent_dispatch_state.json")
+DEFAULT_LOCK = Path("data/agent_dispatch.lock")
 DEFAULT_AGENTS = Path("agents")
 HAUPT_ISSUE = 105
 IN_PROGRESS = "in-bearbeitung"
@@ -232,11 +235,15 @@ def load_state(path: Path) -> dict[str, Any]:
     if not isinstance(raw, dict):
         return {"started": {}, "last_test_sha": ""}
     started = raw.get("started") if isinstance(raw.get("started"), dict) else {}
-    return {
+    out: dict[str, Any] = {
         "started": {str(k): v for k, v in started.items()},
         "last_test_sha": str(raw.get("last_test_sha") or ""),
         "last_koordinator_at": str(raw.get("last_koordinator_at") or ""),
     }
+    running = raw.get("running")
+    if isinstance(running, dict) and running:
+        out["running"] = running
+    return out
 
 
 def save_state(path: Path, state: dict[str, Any]) -> None:
@@ -244,6 +251,69 @@ def save_state(path: Path, state: dict[str, Any]) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     tmp.replace(path)
+
+
+def default_lock_path(state_path: Path) -> Path:
+    return state_path.parent / DEFAULT_LOCK.name
+
+
+def _lock_is_busy(exc: BaseException) -> bool:
+    if isinstance(exc, BlockingIOError):
+        return True
+    err = getattr(exc, "errno", None)
+    return err in (errno.EAGAIN, errno.EWOULDBLOCK, errno.EACCES)
+
+
+def acquire_instance_lock(path: Path) -> int | None:
+    """Non-blocking exclusive flock. None if another dispatch instance holds it."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    flags = os.O_CREAT | os.O_RDWR
+    cloexec = getattr(os, "O_CLOEXEC", 0)
+    if cloexec:
+        flags |= cloexec
+    fd = os.open(str(path), flags, 0o644)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError as exc:
+        os.close(fd)
+        if _lock_is_busy(exc):
+            return None
+        raise
+    try:
+        os.lseek(fd, 0, os.SEEK_SET)
+        os.ftruncate(fd, 0)
+        os.write(fd, f"{os.getpid()}\n".encode("ascii"))
+    except OSError:
+        pass
+    return fd
+
+
+def release_instance_lock(fd: int | None) -> None:
+    if fd is None:
+        return
+    try:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+    except OSError:
+        pass
+    try:
+        os.close(fd)
+    except OSError:
+        pass
+
+
+def claim_running(state: dict[str, Any], job: Job, now: datetime, pid: int | None = None) -> None:
+    state["running"] = {
+        "key": job.key(),
+        "role": job.role,
+        "reason": job.reason,
+        "at": utc_stamp(now),
+        "pid": int(pid if pid is not None else os.getpid()),
+    }
+
+
+def clear_running(state: dict[str, Any]) -> dict[str, Any] | None:
+    item = state.pop("running", None)
+    return item if isinstance(item, dict) else None
 
 
 def started_fresh(state: dict[str, Any], key: str, now: datetime) -> bool:
@@ -1167,6 +1237,7 @@ def dispatch_once(
     github: Callable[[str, str, str, dict[str, Any] | None], Any] | None = None,
     now: datetime | None = None,
     repos: Sequence[RepoSpec] | None = None,
+    lock_path: Path | None = None,
 ) -> str:
     if not dispatch_enabled():
         log("disabled", detail="GNOM_AGENT_DISPATCH=0")
@@ -1175,35 +1246,92 @@ def dispatch_once(
         log("no-token", detail="set GITHUB_TOKEN or GNOM_GITHUB_TOKEN")
         return "no-token"
     watch = tuple(repos) if repos is not None else repos_from_env()
-    snap = snapshot or collect_snapshot(
-        repo=repo, token=token, base=base, now=now, github=github, repos=watch
-    )
     if dry_run:
+        snap = snapshot or collect_snapshot(
+            repo=repo, token=token, base=base, now=now, github=github, repos=watch
+        )
         for spec in watch:
             log("watch", target=spec.repo, detail="bases=" + "+".join(spec.bases))
         log_seen_pulls(snap)
+        state = load_state(state_path)
+        job = pick_job(snap, state)
+        if job is None:
+            log("idle")
+            return "idle"
+        log("pick", role=job.role, target=job.target(), detail=job.reason)
+        log("dry-run", role=job.role, target=job.target())
+        return "dry-run"
+    lock_file = lock_path if lock_path is not None else default_lock_path(state_path)
+    lock_fd = acquire_instance_lock(lock_file)
+    if lock_fd is None:
+        log("busy", detail="instance-lock")
+        return "busy"
+    try:
+        return _dispatch_locked(
+            repo=repo,
+            token=token,
+            state_path=state_path,
+            agents_dir=agents_dir,
+            base=base,
+            cwd=cwd,
+            snapshot=snapshot,
+            launch=launch,
+            github=github,
+            now=now,
+            watch=watch,
+        )
+    finally:
+        release_instance_lock(lock_fd)
+
+
+def _dispatch_locked(
+    *,
+    repo: str,
+    token: str,
+    state_path: Path,
+    agents_dir: Path,
+    base: str,
+    cwd: Path | None,
+    snapshot: Snapshot | None,
+    launch: RoleLaunch | None,
+    github: Callable[[str, str, str, dict[str, Any] | None], Any] | None,
+    now: datetime | None,
+    watch: Sequence[RepoSpec],
+) -> str:
+    snap = snapshot or collect_snapshot(
+        repo=repo, token=token, base=base, now=now, github=github, repos=watch
+    )
     state = load_state(state_path)
+    # The flock is the live claim. A running record with no lock is a crashed tick.
+    leftover = clear_running(state)
+    if leftover:
+        save_state(state_path, state)
+        log("stale-claim", detail=str(leftover.get("key") or "")[:120])
     job = pick_job(snap, state)
     if job is None:
         log("idle")
         return "idle"
     log("pick", role=job.role, target=job.target(), detail=job.reason)
-    if dry_run:
-        log("dry-run", role=job.role, target=job.target())
-        return "dry-run"
     prompt = build_prompt(job, agents_dir)
+    claim_running(state, job, snap.now)
+    save_state(state_path, state)
     run = launch or (
         lambda role, text, _env: launch_role(job, text, cwd=cwd, token=token, github=github)
     )
+    how = ""
+    action = "launch-failed"
     try:
         how = run(job.role, prompt, {})
+        mark_started(state, job, how, snap.now)
+        action = "started"
     except (OSError, subprocess.CalledProcessError, RuntimeError) as exc:
         log("launch-failed", role=job.role, target=job.target(), detail=str(exc)[:200])
-        return "launch-failed"
-    mark_started(state, job, how, snap.now)
-    save_state(state_path, state)
-    log("start", role=job.role, target=job.target(), detail=how)
-    return "started"
+    finally:
+        clear_running(state)
+        save_state(state_path, state)
+    if action == "started":
+        log("start", role=job.role, target=job.target(), detail=how)
+    return action
 
 
 def main(argv: list[str] | None = None) -> int:

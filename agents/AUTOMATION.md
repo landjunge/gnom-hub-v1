@@ -60,6 +60,8 @@ Stop: Prozess beenden, oder `GNOM_AGENT_DISPATCH=0`, oder `launchctl unload`.
 
 State: `data/agent_dispatch_state.json` (gitignored unter `data/`). Einträge gelten 2 Stunden.
 
+Instanz-Lock: `data/agent_dispatch.lock` neben der State-Datei (fcntl, non-blocking). Ein zweiter Tick bekommt `busy` und launched nicht. `--dry-run` nimmt den Lock nicht. RUNNING-Claim in der State-Datei vor Launch; Freigabe bei `launch-failed`, nach Tick-Ende und bei unerwartetem Fehler.
+
 ## Reihenfolge pro Tick
 
 1. Offener PR mit Review *changes requested*, oder *comment* plus Blocker (CI rot, Draft, Merge-Konflikt) → Builder (Fixes auf demselben Branch)
@@ -69,7 +71,7 @@ State: `data/agent_dispatch_state.json` (gitignored unter `data/`). Einträge ge
 5. #105 offen, keine Teilaufgaben → Planer
 6. sonst Stale/Warteschlange → Koordinator (Cooldown 1h)
 
-Genau eine Rolle, ein Prozess. Launch-Fehler speichert keinen Start.
+Genau eine Rolle, ein Prozess. Launch-Fehler speichert keinen Start und gibt den RUNNING-Claim frei.
 
 ## Alt: nur Builder-Poll / Webhook
 

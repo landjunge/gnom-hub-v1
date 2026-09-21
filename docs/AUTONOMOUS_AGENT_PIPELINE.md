@@ -75,7 +75,7 @@ Dann zurück zu Phase 2, bis #105 als erledigt markiert ist.
 
 **Problem:** Prompts allein starten niemanden. Poll/Webhook ohne `grok`-Launcher und ohne Reviewer/Test bleiben tot.
 
-**Lösung:** `scripts/agent_dispatch.py` — ein Tick, eine Rolle, Headless Grok (`scripts/run_agent.sh`). Reihenfolge: Review-Fixes → Reviewer → Test nach baseline-Move → Builder → Planer → Koordinator.
+**Lösung:** `scripts/agent_dispatch.py` — ein Tick, eine Rolle, Headless Grok (`scripts/run_agent.sh`). Reihenfolge: Review-Fixes → Reviewer → Test nach baseline-Move → Builder → Planer → Koordinator. Höchstens eine Instanz pro Tick (`data/agent_dispatch.lock` plus RUNNING-Claim in der State-Datei).
 
 Start und Kill-Switch: `agents/AUTOMATION.md`. Poll und Webhook sind optional und rufen denselben Launcher.
 
