@@ -47,3 +47,25 @@ def test_v4_approved_visual_rules():
     assert "height:36px" in css
     assert html.count("Arbeit starten") == 2  # button + explanatory empty-state text
     assert html.count('id="execute"') == 1
+
+
+def test_v4_tool_module_contract():
+    app = create_app()
+    with TestClient(app) as client:
+        html = client.get("/v4").text
+        tools_js = client.get("/static/v4-tools.js").text
+        manifest = client.get("/static/v4-tool-manifest.js").text
+        tools_css = client.get("/static/v4-tools.css").text
+    assert 'id="tools-toggle"' in html
+    assert 'id="tool-module"' in html
+    assert 'id="tool-frame"' in html
+    assert "same" not in html.lower()
+    assert "activeKey === tool.key" in tools_js
+    assert 'event.key === "Escape"' in tools_js
+    assert "typingTarget(event.target)" in tools_js
+    for key in ["1", "2", "3", "4", "5"]:
+        assert f'key: "{key}"' in manifest
+    for name in ["NetzwerkPunkt", "Gnom-Hub-V1", "ThreadDesk", "TollGate", "4AllPass"]:
+        assert name in manifest
+    assert ".tool-grid" in tools_css
+    assert ".tool-frame" in tools_css
