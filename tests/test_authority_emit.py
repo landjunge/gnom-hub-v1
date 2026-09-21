@@ -104,7 +104,7 @@ def test_execute_emits_started_invoked_finished(tmp_path: Path, monkeypatch) -> 
     assert types[-1] == "work.finished"
     assert "agent.invoked" in types
     finished = events[-1]
-    assert finished.get("result_ref") in {"GELIEFERT", "UNGEPRÜFT", "FEHLER"}
+    assert finished.get("result_ref") in {"GELIEFERT", "UNGEPRÜFT", "FEHLER", "NACHBESSERUNG"}
     assert finished.get("actor", {}).get("agent_id") == "coordinator"
     assert not list(tmp_path.glob("*.sqlite"))
     assert not list(tmp_path.glob("*.db"))

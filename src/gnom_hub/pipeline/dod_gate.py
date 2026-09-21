@@ -69,6 +69,11 @@ def wants_html_artifact(user_text: str, task: str = "") -> bool:
     return _wants_one_html_page(f"{user_text or ''} {task or ''}")
 
 
+def interaction_required(user_text: str, task: str = "") -> bool:
+    blob = f"{user_text} {task}".lower()
+    return any(k in blob for k in _INTERACT_TASK_HINTS)
+
+
 def html_complete(body: str) -> bool:
     """
     True when body looks like a finished single-file HTML document.
@@ -520,8 +525,7 @@ def check_worker_draft(
         hi = has_interaction(s)
         if hc and not hi:
             add("no_interaction", hard=False)
-            blob = f"{user_text} {task}".lower()
-            if any(k in blob for k in _INTERACT_TASK_HINTS):
+            if interaction_required(user_text, task):
                 add("missing_required_interaction")
         elif hc and hi:
             ok_item("no_interaction", "has handler")

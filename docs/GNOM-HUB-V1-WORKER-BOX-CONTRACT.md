@@ -32,7 +32,7 @@ Chat (`#chat-mod`) is **not** a box. Per-agent chat layers live under the three 
 - One hub, one `PipelineState`, one `_pipeline_lock`. HTTP **409** if a second pipeline job starts.
 - Job id = 12-hex uuid. UI polls only `currentJobId`.
 - Each worker output: `{worker, name, index, task, result, validation}`.
-- Snapshot `pipeline.deliverable_ok` is true only if at least one worker body is a real deliverable (not `FEHLER` / stub / &lt;400 chars).
+- Snapshot `pipeline.deliverable_ok` is true only if at least one worker body is a real deliverable (not `FEHLER` / stub / &lt;400 chars). For HTML, the body must be a complete document (`html_complete`, DoD, required interaction) — long fragments are not enough.
 - Snapshot `pipeline.validation` is the worst DoD gate (failed first).
 - DOM is **not** keyed by job id. Reload shows current hub state, not a frozen job.
 

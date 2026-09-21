@@ -36,7 +36,7 @@ Unbekannt → `text`. Markup/JS weg (`sanitize_box1_text`). UI nur `textContent`
 - Nacktes Ja bei mehreren offenen Fragen → `unbound_yes`. Falsche START-ID → `assignment_mismatch`.
 - Ja auf `start_work` → Hub `execute()`, nicht `FlexDesk.start_execute()` (wirft).
 - UI pollt den `start_work`-Job wie Execute (`pollJob`). Die Envelope `{job_id}` ohne `flex_box1` darf Box 1 nicht leeren.
-- Box 3 `result_status` ist GELIEFERT/FEHLER/UNGEPRÜFT — nie von allein ABGENOMMEN.
+- Box 3 `result_status` ist GELIEFERT/FEHLER/UNGEPRÜFT/NACHBESSERUNG — nie von allein ABGENOMMEN. HTML-Seitenaufgaben: nach max. Retries `FEHLER`/`NACHBESSERUNG`, nicht `UNGEPRÜFT`.
 
 Start-work-Text (mit Auftrag-ID):
 

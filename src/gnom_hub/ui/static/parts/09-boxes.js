@@ -3,6 +3,8 @@
   let box3FocusIdx = 0;
   let lastBox3StageKey = "";
   let box2ReplyAgent = "";
+  const WORKER_IFRAME_SANDBOX =
+    "allow-same-origin allow-scripts allow-forms allow-popups allow-modals";
 
   function box2AgentTabLabel(role) {
     const id = String(role || "").toLowerCase();
@@ -150,10 +152,7 @@
       stage.className = "dyn-stage";
       const frame = document.createElement("iframe");
       frame.className = "worker-preview-frame dyn-frame";
-      frame.setAttribute(
-        "sandbox",
-        "allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
-      );
+      frame.setAttribute("sandbox", WORKER_IFRAME_SANDBOX);
       frame.setAttribute("title", opts.title || "Vorschau");
       frame.srcdoc = wrapHtmlDocument(html);
       const pre = document.createElement("pre");
@@ -276,10 +275,7 @@
     const frame = document.createElement("iframe");
     frame.className = "worker-preview-frame box-page-frame box3-live-frame";
     frame.setAttribute("title", title || "Seite");
-    frame.setAttribute(
-      "sandbox",
-      "allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
-    );
+    frame.setAttribute("sandbox", WORKER_IFRAME_SANDBOX);
     const docHtml = wrapHtmlDocument(html);
     try {
       const blob = new Blob([docHtml], { type: "text/html;charset=utf-8" });
@@ -1029,10 +1025,7 @@
       const frame = document.createElement("iframe");
       frame.className = "worker-preview-frame box3-live-frame dyn-frame";
       frame.setAttribute("title", name + " Sicht");
-      frame.setAttribute(
-        "sandbox",
-        "allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
-      );
+      frame.setAttribute("sandbox", WORKER_IFRAME_SANDBOX);
       const docHtml = wrapHtmlDocument(html);
       try {
         const blob = new Blob([docHtml], {
@@ -1897,10 +1890,7 @@
     if (html) {
       const frame = document.createElement("iframe");
       frame.className = "worker-fs-frame";
-      frame.setAttribute(
-        "sandbox",
-        "allow-same-origin allow-forms allow-popups allow-modals"
-      );
+      frame.setAttribute("sandbox", WORKER_IFRAME_SANDBOX);
       frame.setAttribute("title", (out.name || "Worker") + " fullscreen");
       frame.srcdoc = wrapHtmlDocument(html);
       body.appendChild(frame);
