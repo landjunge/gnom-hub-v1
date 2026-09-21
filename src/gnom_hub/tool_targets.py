@@ -8,7 +8,6 @@ reported as connected tool UIs.
 from __future__ import annotations
 
 import os
-from typing import Any
 from urllib.parse import urlparse
 
 
@@ -61,10 +60,10 @@ def _http_url(value: str | None) -> str | None:
     return raw.rstrip("/")
 
 
-def tool_targets() -> dict[str, Any]:
+def tool_targets() -> dict[str, object]:
     """Return non-secret launcher targets for the V4 desk."""
 
-    rows: list[dict[str, Any]] = []
+    rows: list[dict[str, object]] = []
     for slot in _TOOL_SLOTS:
         internal = slot.get("internal_url")
         env_name = slot.get("env")
