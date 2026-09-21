@@ -36,13 +36,36 @@ def _issue(number: int, *, labels: list[str] | None = None, hours_ago: float = 0
     }
 
 
-def _pr(number: int, title: str = "", sha: str = "abc") -> dict:
-    return {
+def _pr(
+    number: int,
+    title: str = "",
+    sha: str = "abc",
+    *,
+    repo: str = "",
+    base: str = "",
+    ci: str = "",
+) -> dict:
+    pr: dict = {
         "number": number,
         "title": title or f"PR {number}",
         "body": "",
         "head": {"sha": sha},
     }
+    if repo:
+        pr["_repo"] = repo
+        pr["base"] = {
+            "ref": base or "main",
+            "repo": {"full_name": repo},
+        }
+        pr["html_url"] = f"https://github.com/{repo}/pull/{number}"
+    elif base:
+        pr["_base"] = base
+        pr["base"] = {"ref": base}
+    if ci:
+        pr["_ci"] = ci
+        if ci.lower() == "success":
+            pr["statusCheckRollup"] = [{"state": "SUCCESS"}]
+    return pr
 
 
 def _snap(**kwargs) -> ad.Snapshot:
@@ -321,3 +344,244 @@ def test_no_token_does_not_fetch(tmp_path: Path) -> None:
         agents_dir=ROOT / "agents",
     )
     assert action == "no-token"
+
+
+def test_default_repos_are_the_five_products() -> None:
+    names = [spec.repo for spec in ad.DEFAULT_REPOS]
+    assert names == [
+        "landjunge/gnom-hub-v1",
+        "landjunge/4AllPass",
+        "landjunge/tollgate",
+        "landjunge/threaddesk",
+        "landjunge/agent-authority-lab",
+    ]
+    by_repo = {spec.repo: spec.bases for spec in ad.DEFAULT_REPOS}
+    assert by_repo["landjunge/gnom-hub-v1"] == ("baseline", "main")
+    assert by_repo["landjunge/4AllPass"] == ("main",)
+    assert by_repo["landjunge/agent-authority-lab"] == ("master",)
+
+
+def test_repos_from_env_defaults_and_override(monkeypatch) -> None:
+    monkeypatch.delenv("GNOM_GITHUB_REPOS", raising=False)
+    assert ad.repos_from_env() == ad.DEFAULT_REPOS
+    monkeypatch.setenv(
+        "GNOM_GITHUB_REPOS",
+        "landjunge/4AllPass:main, acme/lab:master",
+    )
+    specs = ad.repos_from_env()
+    assert specs == (
+        ad.RepoSpec("landjunge/4AllPass", ("main",)),
+        ad.RepoSpec("acme/lab", ("master",)),
+    )
+    monkeypatch.setenv("GNOM_GITHUB_REPOS", "landjunge/gnom-hub-v1")
+    hub = ad.repos_from_env()
+    assert hub == (ad.RepoSpec("landjunge/gnom-hub-v1", ("baseline", "main")),)
+
+
+def test_fourallpass_green_ci_pr_is_seen_by_reviewer() -> None:
+    """A 4AllPass PR with green CI is a reviewer job, ahead of a home teilaufgabe."""
+    snap = _snap(
+        pulls=[
+            _pr(
+                215,
+                "feat g5",
+                sha="2fc8830",
+                repo="landjunge/4AllPass",
+                base="main",
+                ci="success",
+            )
+        ],
+        reviews={215: []},
+        teilaufgaben=[_issue(133)],
+        baseline_sha="base-sha",
+    )
+    job = ad.pick_job(snap, {"started": {}, "last_test_sha": "base-sha"})
+    assert job is not None
+    assert job.role == "reviewer"
+    assert job.reason == "needs-review"
+    assert job.pr == 215
+    assert job.repo == "landjunge/4AllPass"
+    assert job.base == "main"
+
+
+def test_home_changes_requested_beats_other_repo_review() -> None:
+    snap = _snap(
+        pulls=[
+            _pr(9, "fix (#133)", sha="home", repo="landjunge/gnom-hub-v1", base="baseline"),
+            _pr(
+                215,
+                "feat",
+                sha="pass",
+                repo="landjunge/4AllPass",
+                base="main",
+                ci="success",
+            ),
+        ],
+        reviews={
+            ("landjunge/gnom-hub-v1", 9): [
+                {"state": "CHANGES_REQUESTED", "submitted_at": "2026-09-20T13:00:00Z"}
+            ],
+            ("landjunge/4AllPass", 215): [],
+        },
+        teilaufgaben=[_issue(133)],
+        baseline_sha="base-sha",
+    )
+    job = ad.pick_job(snap, {"started": {}, "last_test_sha": "base-sha"})
+    assert job is not None
+    assert job.role == "builder"
+    assert job.reason == "changes-requested"
+    assert job.repo == "landjunge/gnom-hub-v1"
+    assert job.pr == 9
+
+
+def test_same_pr_number_in_two_repos_does_not_collide() -> None:
+    snap = _snap(
+        pulls=[
+            _pr(1, sha="a", repo="landjunge/4AllPass", base="main", ci="success"),
+            _pr(1, sha="b", repo="landjunge/tollgate", base="main"),
+        ],
+        reviews={
+            ("landjunge/4AllPass", 1): [
+                {"state": "CHANGES_REQUESTED", "submitted_at": "2026-09-20T13:00:00Z"}
+            ],
+            ("landjunge/tollgate", 1): [],
+        },
+        baseline_sha="base-sha",
+    )
+    job = ad.pick_job(snap, {"started": {}, "last_test_sha": "base-sha"})
+    assert job is not None
+    assert job.role == "builder"
+    assert job.reason == "changes-requested"
+    assert job.repo == "landjunge/4AllPass"
+    assert job.pr == 1
+    state = {"started": {}, "last_test_sha": "base-sha"}
+    ad.mark_started(state, job, "ok", NOW)
+    nxt = ad.pick_job(snap, state)
+    assert nxt is not None
+    assert nxt.role == "reviewer"
+    assert nxt.repo == "landjunge/tollgate"
+    assert nxt.pr == 1
+
+
+def test_dry_run_lists_prs_from_product_repos(tmp_path: Path, capsys) -> None:
+    snap = _snap(
+        pulls=[
+            _pr(11, repo="landjunge/4AllPass", base="main", ci="success"),
+            _pr(22, repo="landjunge/tollgate", base="main"),
+            _pr(33, repo="landjunge/threaddesk", base="main"),
+            _pr(44, repo="landjunge/agent-authority-lab", base="master"),
+        ],
+        reviews={11: [], 22: [], 33: [], 44: []},
+        baseline_sha="base-sha",
+    )
+    action = ad.dispatch_once(
+        repo="landjunge/gnom-hub-v1",
+        token="tok",
+        state_path=tmp_path / "state.json",
+        agents_dir=ROOT / "agents",
+        dry_run=True,
+        snapshot=snap,
+        repos=ad.DEFAULT_REPOS,
+        now=NOW,
+    )
+    assert action == "dry-run"
+    out = capsys.readouterr().out
+    assert "landjunge/4AllPass#11" in out
+    assert "ci=success" in out
+    assert "landjunge/tollgate#22" in out
+    assert "landjunge/threaddesk#33" in out
+    assert "landjunge/agent-authority-lab#44" in out
+    assert "seen-pr" in out
+    assert "watch" in out
+    assert "landjunge/4AllPass" in out
+    assert "landjunge/tollgate" in out
+    assert "landjunge/threaddesk" in out
+    assert "landjunge/agent-authority-lab" in out
+
+
+def test_collect_snapshot_watches_all_default_repos() -> None:
+    seen_urls: list[str] = []
+
+    def github(method: str, url: str, token: str, payload):
+        seen_urls.append(url)
+        if "/4AllPass/pulls?" in url:
+            return [
+                {
+                    "number": 215,
+                    "title": "g5",
+                    "body": "",
+                    "head": {"sha": "abc"},
+                    "base": {"ref": "main", "repo": {"full_name": "landjunge/4AllPass"}},
+                }
+            ]
+        if "/pulls/" in url and url.endswith("/reviews"):
+            return []
+        if "/issues?" in url:
+            return [{"number": 133, "title": "T133", "labels": [{"name": "teilaufgabe"}]}]
+        if f"/issues/{ad.HAUPT_ISSUE}" in url:
+            return {"number": ad.HAUPT_ISSUE, "state": "open"}
+        if "/git/ref/heads/" in url:
+            return {"object": {"sha": "base-sha"}}
+        if "/pulls?" in url:
+            return []
+        return []
+
+    snap = ad.collect_snapshot(
+        repo="landjunge/gnom-hub-v1",
+        token="tok",
+        github=github,
+        repos=ad.DEFAULT_REPOS,
+        now=NOW,
+    )
+    watched = {url for url in seen_urls if "/pulls?" in url}
+    assert any("repos/landjunge/gnom-hub-v1/pulls?" in u and "base=baseline" in u for u in watched)
+    assert any("repos/landjunge/gnom-hub-v1/pulls?" in u and "base=main" in u for u in watched)
+    assert any("repos/landjunge/4AllPass/pulls?" in u for u in watched)
+    assert any("repos/landjunge/tollgate/pulls?" in u for u in watched)
+    assert any("repos/landjunge/threaddesk/pulls?" in u for u in watched)
+    assert any("repos/landjunge/agent-authority-lab/pulls?" in u for u in watched)
+    assert len(snap.pulls) == 1
+    assert ad.pr_repo(snap.pulls[0]) == "landjunge/4AllPass"
+    job = ad.pick_job(snap, {"started": {}, "last_test_sha": "base-sha"})
+    assert job is not None
+    assert job.role == "reviewer"
+    assert job.repo == "landjunge/4AllPass"
+    assert job.pr == 215
+
+
+def test_watch_failed_skips_repo_and_keeps_others() -> None:
+    def github(method: str, url: str, token: str, payload):
+        if "/tollgate/pulls?" in url:
+            raise RuntimeError("GitHub GET tollgate -> 404: missing")
+        if "/4AllPass/pulls?" in url:
+            return [
+                {
+                    "number": 7,
+                    "title": "ok",
+                    "body": "",
+                    "head": {"sha": "fff"},
+                    "base": {"ref": "main", "repo": {"full_name": "landjunge/4AllPass"}},
+                }
+            ]
+        if "/pulls/" in url and url.endswith("/reviews"):
+            return []
+        if "/issues?" in url:
+            return []
+        if f"/issues/{ad.HAUPT_ISSUE}" in url:
+            return {"number": ad.HAUPT_ISSUE, "state": "open"}
+        if "/git/ref/heads/" in url:
+            return {"object": {"sha": "base-sha"}}
+        if "/pulls?" in url:
+            return []
+        return []
+
+    snap = ad.collect_snapshot(
+        repo="landjunge/gnom-hub-v1",
+        token="tok",
+        github=github,
+        repos=ad.DEFAULT_REPOS,
+        now=NOW,
+    )
+    assert [ad.pr_repo(pr) for pr in snap.pulls] == ["landjunge/4AllPass"]
+    job = ad.pick_job(snap, {"started": {}, "last_test_sha": "base-sha"})
+    assert job is not None and job.repo == "landjunge/4AllPass"
