@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Gnom-Hub V4</title>
+  <link rel="stylesheet" href="/static/tokens.css">
+  <link rel="stylesheet" href="/static/v4.css?v=1">
+</head>
+<body>
+  <div class="v4-shell">
+    <header class="v4-header">
+      <a class="brand" href="/v4" aria-label="Gnom-Hub V4 Start">
+        <span class="brand-mark">G</span>
+        <span><strong>Gnom-Hub</strong><small>V4 · neuer Desk</small></span>
+      </a>
+      <div class="system-strip" aria-label="Systemstatus">
+        <span id="ready-chip" class="chip" data-state="wait"><i></i><b>prüft…</b></span>
+        <span id="tollgate-chip" class="chip muted"><i></i><b>TollGate</b></span>
+        <span id="god-chip" class="chip god"><i></i><b>God aus</b></span>
+        <a class="legacy-link" href="/" title="Alte Oberfläche">alte UI</a>
+      </div>
+    </header>
+
+    <section class="agent-strip" aria-label="Agenten">
+      <button class="agent-pill agent-brainstorm" data-agent="brainstorm"><span>Brainstorm</span><small>wartet</small></button>
+      <button class="agent-pill agent-coordinator" data-agent="coordinator"><span>Coordinator</span><small>wartet</small></button>
+      <button class="agent-pill agent-worker1" data-agent="worker1"><span>W1</span><small>wartet</small></button>
+      <button class="agent-pill agent-worker2" data-agent="worker2"><span>W2</span><small>wartet</small></button>
+      <button class="agent-pill agent-worker3" data-agent="worker3"><span>W3</span><small>wartet</small></button>
+      <button class="agent-pill agent-worker4" data-agent="worker4"><span>W4</span><small>wartet</small></button>
+    </section>
+
+    <main class="desk-grid">
+      <section class="left-column">
+        <article class="panel conversation-panel">
+          <header class="panel-head">
+            <div><small>GESPRÄCH</small><h1>Brainstorm</h1></div>
+            <span class="target-label">An: Brainstorm</span>
+          </header>
+          <div id="conversation" class="conversation" aria-live="polite">
+            <div class="empty-state"><strong>Red mit mir.</strong><span>Idee rein. Brainstorm denkt mit. Noch keine Arbeit.</span></div>
+          </div>
+        </article>
+
+        <article class="panel decision-panel">
+          <header class="panel-head compact">
+            <div><small>BOX 1</small><h2>Entscheidungen</h2></div>
+            <span id="decision-count" class="quiet">Nichts zu entscheiden.</span>
+          </header>
+          <div id="decision-grid" class="decision-grid">
+            <div class="decision-empty">Hier erscheinen höchstens vier einfache Möglichkeiten.</div>
+          </div>
+        </article>
+      </section>
+
+      <section class="right-column panel result-panel">
+        <header class="panel-head">
+          <div><small>BOX 3</small><h2>Ergebnis</h2></div>
+          <div id="worker-tabs" class="worker-tabs" role="tablist"></div>
+        </header>
+        <div id="result-stage" class="result-stage">
+          <div class="empty-state result-empty">
+            <strong>Noch kein Ergebnis.</strong>
+            <span>Erst „Arbeit starten“ lässt Worker arbeiten.</span>
+          </div>
+        </div>
+        <footer class="result-actions">
+          <button id="result-drop" class="secondary" disabled>Weg</button>
+          <button id="result-new" class="secondary" disabled>Neu</button>
+          <button id="result-keep" class="primary-soft" disabled>Behalten</button>
+        </footer>
+      </section>
+    </main>
+
+    <footer class="composer">
+      <button id="mic" class="icon-btn" type="button" title="Mikrofon später">●</button>
+      <textarea id="chat-input" rows="1" placeholder="Nachricht an Brainstorm …" aria-label="Nachricht an Brainstorm"></textarea>
+      <button id="send" class="secondary strong" type="button">Senden</button>
+      <button id="execute" class="execute" type="button">Arbeit starten</button>
+    </footer>
+
+    <div id="notice" class="notice" role="status" aria-live="polite"></div>
+  </div>
+  <script src="/static/v4.js?v=1"></script>
+</body>
+</html>
