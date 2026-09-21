@@ -43,6 +43,7 @@ class SystemBody(BaseModel):
     default_model: str | None = None
     ui_lang: str | None = None
     auto_pack_after_execute: bool | None = None
+    auto_backup_before_execute: bool | None = None
     pack_max: int | None = None
 
 
