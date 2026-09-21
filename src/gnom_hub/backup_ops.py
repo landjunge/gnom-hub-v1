@@ -130,7 +130,7 @@ class BackupOpsMixin:
                 },
             )
             return out
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._append_trace("backup.auto_fail", {"reason": reason, "error": str(exc)})
             raise RuntimeError(f"Auto-Backup fehlgeschlagen: {exc}") from exc
 
