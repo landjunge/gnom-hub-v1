@@ -323,6 +323,155 @@ def test_dry_run_comment_plus_red_ci_picks_builder(tmp_path: Path, capsys) -> No
     assert "landjunge/agent-authority-lab#14" in out
 
 
+def test_comment_plus_draft_only_starts_builder() -> None:
+    snap = _snap(
+        pulls=[
+            _pr(
+                58,
+                "audit",
+                sha="draftonly",
+                repo="landjunge/gnom-hub-v1",
+                base="baseline",
+                draft=True,
+                mergeable=True,
+                ci="success",
+            )
+        ],
+        reviews={
+            ("landjunge/gnom-hub-v1", 58): [
+                {"state": "COMMENTED", "submitted_at": "2026-09-21T03:33:00Z"}
+            ]
+        },
+        baseline_sha="base-sha",
+    )
+    job = ad.pick_job(snap, {"started": {}, "last_test_sha": "base-sha"})
+    assert job is not None
+    assert job.role == "builder"
+    assert job.reason == "changes-requested"
+    assert job.pr == 58
+
+
+def test_comment_plus_ci_failure_only_starts_builder() -> None:
+    snap = _snap(
+        pulls=[
+            _pr(
+                99,
+                "ci-red",
+                sha="red",
+                repo="landjunge/gnom-hub-v1",
+                base="baseline",
+                draft=False,
+                mergeable=True,
+                ci="failure",
+            )
+        ],
+        reviews={
+            ("landjunge/gnom-hub-v1", 99): [
+                {"state": "COMMENT", "submitted_at": "2026-09-21T04:00:00Z"}
+            ]
+        },
+        baseline_sha="base-sha",
+    )
+    job = ad.pick_job(snap, {"started": {}, "last_test_sha": "base-sha"})
+    assert job is not None
+    assert job.role == "builder"
+    assert job.reason == "changes-requested"
+    assert job.pr == 99
+
+
+def test_comment_plus_pending_ci_stays_reviewer() -> None:
+    snap = _snap(
+        pulls=[
+            _pr(
+                100,
+                "pending",
+                sha="pend",
+                repo="landjunge/gnom-hub-v1",
+                base="baseline",
+                draft=False,
+                mergeable=True,
+                ci="pending",
+            )
+        ],
+        reviews={
+            ("landjunge/gnom-hub-v1", 100): [
+                {"state": "COMMENTED", "submitted_at": "2026-09-21T04:00:00Z"}
+            ]
+        },
+        baseline_sha="base-sha",
+    )
+    job = ad.pick_job(snap, {"started": {}, "last_test_sha": "base-sha"})
+    assert job is not None
+    assert job.role == "reviewer"
+    assert job.pr == 100
+
+
+def test_comment_plus_graphql_is_draft_starts_builder() -> None:
+    pr = _pr(
+        14,
+        "finding",
+        sha="lab",
+        repo="landjunge/agent-authority-lab",
+        base="master",
+        mergeable=True,
+        ci="success",
+    )
+    pr["isDraft"] = True
+    snap = _snap(
+        pulls=[pr],
+        reviews={
+            ("landjunge/agent-authority-lab", 14): [
+                {"state": "COMMENTED", "submitted_at": "2026-09-21T04:27:57Z"}
+            ]
+        },
+        baseline_sha="base-sha",
+    )
+    job = ad.pick_job(snap, {"started": {}, "last_test_sha": "base-sha"})
+    assert job is not None
+    assert job.role == "builder"
+    assert job.pr == 14
+
+
+def test_comment_plus_mergeable_conflicting_token_starts_builder() -> None:
+    pr = _pr(
+        26,
+        "harden",
+        sha="toll",
+        repo="landjunge/tollgate",
+        base="main",
+        draft=False,
+        ci="success",
+    )
+    pr["mergeable"] = "CONFLICTING"
+    snap = _snap(
+        pulls=[pr],
+        reviews={
+            ("landjunge/tollgate", 26): [
+                {"state": "COMMENTED", "submitted_at": "2026-09-21T03:52:24Z"}
+            ]
+        },
+        baseline_sha="base-sha",
+    )
+    job = ad.pick_job(snap, {"started": {}, "last_test_sha": "base-sha"})
+    assert job is not None
+    assert job.role == "builder"
+    assert job.pr == 26
+
+
+def test_pr_blocker_helpers_cover_graphql_and_rest_tokens() -> None:
+    assert ad.pr_is_draft({"isDraft": True}) is True
+    assert ad.pr_is_draft({"draft": False, "isDraft": True}) is False
+    assert ad.pr_merge_conflict({"mergeable": "DIRTY"}) is True
+    assert ad.pr_merge_conflict({"mergeable_state": "conflicting"}) is True
+    assert ad.pr_merge_conflict({"mergeable": True, "mergeable_state": "blocked"}) is False
+    comment = {"state": "COMMENTED"}
+    assert ad.needs_review_fixes({"draft": True}, comment) is True
+    assert ad.needs_review_fixes({"draft": False, "mergeable": True}, comment) is False
+    assert ad.needs_review_fixes({"draft": True}, {"state": "APPROVED"}) is False
+    assert ad.needs_review_fixes({}, {"state": "CHANGES_REQUESTED"}) is True
+    assert ad.needs_review_fixes({"_ci": "pending"}, comment) is False
+
+
 def test_open_pr_without_review_starts_reviewer() -> None:
     snap = _snap(pulls=[_pr(113, sha="cafe")], reviews={113: []})
     job = ad.pick_job(snap, {"started": {}})
@@ -926,6 +1075,56 @@ def test_collect_snapshot_loads_merge_conflict_for_comment() -> None:
     assert job.reason == "changes-requested"
     assert job.pr == 26
     assert job.repo == "landjunge/tollgate"
+
+
+def test_collect_snapshot_enrich_failure_keeps_list_draft(capsys) -> None:
+    def github(method: str, url: str, token: str, payload):
+        if "/pulls?" in url:
+            return [
+                {
+                    "number": 14,
+                    "title": "finding",
+                    "body": "",
+                    "draft": True,
+                    "mergeable": None,
+                    "head": {"sha": "0de8a99"},
+                    "base": {
+                        "ref": "master",
+                        "repo": {"full_name": "landjunge/agent-authority-lab"},
+                    },
+                }
+            ]
+        if url.endswith("/reviews"):
+            return [{"state": "COMMENTED", "submitted_at": "2026-09-21T04:27:57Z"}]
+        if url.endswith(("/pulls/14", "/check-runs")):
+            raise RuntimeError("GitHub GET boom")
+        if "/issues?" in url:
+            return []
+        if f"/issues/{ad.HAUPT_ISSUE}" in url:
+            return {"number": ad.HAUPT_ISSUE, "state": "open"}
+        if "/git/ref/heads/" in url:
+            return {"object": {"sha": "base-sha"}}
+        return []
+
+    snap = ad.collect_snapshot(
+        repo="landjunge/gnom-hub-v1",
+        token="tok",
+        github=github,
+        repos=(ad.RepoSpec("landjunge/agent-authority-lab", ("master",)),),
+        now=NOW,
+    )
+    assert len(snap.pulls) == 1
+    pr = snap.pulls[0]
+    assert pr["draft"] is True
+    assert pr.get("mergeable") is None
+    assert ad.pr_ci(pr) == ""
+    out = capsys.readouterr().out
+    assert "watch-failed" in out
+    job = ad.pick_job(snap, {"started": {}, "last_test_sha": "base-sha"})
+    assert job is not None
+    assert job.role == "builder"
+    assert job.pr == 14
+    assert job.repo == "landjunge/agent-authority-lab"
 
 
 def test_launch_role_sets_repo_and_base_env(monkeypatch, tmp_path: Path) -> None:
