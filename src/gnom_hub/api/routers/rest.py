@@ -22,6 +22,14 @@ from gnom_hub.hub import get_hub
 router = APIRouter()
 
 
+@router.get("/api/tool-targets")
+def tool_targets_get() -> dict[str, Any]:
+    """Runtime UI targets for the V4 tool launcher. No secrets."""
+    from gnom_hub.tool_targets import tool_targets
+
+    return tool_targets()
+
+
 @router.get("/api/threaddesk")
 def threaddesk_peek() -> dict[str, Any]:
     """Last ThreadDesk packet. Fills chat only — never Send/Execute."""
