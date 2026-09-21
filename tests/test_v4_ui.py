@@ -69,3 +69,14 @@ def test_v4_tool_module_contract():
         assert name in manifest
     assert ".tool-grid" in tools_css
     assert ".tool-frame" in tools_css
+
+
+def test_v4_keyboard_focus_contract():
+    app = create_app()
+    with TestClient(app) as client:
+        tools_js = client.get("/static/v4-tools.js").text
+    assert 'event.code === "Space"' in tools_js
+    assert 'document.querySelector("#chat-input")' in tools_js
+    assert "input.focus()" in tools_js
+    assert "event.target.blur()" in tools_js
+    assert 'event.key === "Escape"' in tools_js
