@@ -585,3 +585,85 @@ def test_watch_failed_skips_repo_and_keeps_others() -> None:
     assert [ad.pr_repo(pr) for pr in snap.pulls] == ["landjunge/4AllPass"]
     job = ad.pick_job(snap, {"started": {}, "last_test_sha": "base-sha"})
     assert job is not None and job.repo == "landjunge/4AllPass"
+
+
+def test_parse_repo_specs_plus_and_pipe_bases() -> None:
+    plus = ad.parse_repo_specs("landjunge/gnom-hub-v1:baseline+main, landjunge/4AllPass:main")
+    assert plus == (
+        ad.RepoSpec("landjunge/gnom-hub-v1", ("baseline", "main")),
+        ad.RepoSpec("landjunge/4AllPass", ("main",)),
+    )
+    pipe = ad.parse_repo_specs("acme/lab:master|dev")
+    assert pipe == (ad.RepoSpec("acme/lab", ("master", "dev")),)
+
+
+def test_collect_snapshot_dedupes_same_pr_on_two_bases() -> None:
+    pulls_calls: list[str] = []
+
+    def github(method: str, url: str, token: str, payload):
+        if "/pulls?" in url:
+            pulls_calls.append(url)
+            return [
+                {
+                    "number": 9,
+                    "title": "x",
+                    "body": "",
+                    "head": {"sha": "aaa"},
+                    "base": {
+                        "ref": "baseline",
+                        "repo": {"full_name": "landjunge/gnom-hub-v1"},
+                    },
+                }
+            ]
+        if url.endswith("/reviews"):
+            return []
+        if "/issues?" in url:
+            return []
+        if f"/issues/{ad.HAUPT_ISSUE}" in url:
+            return {"number": ad.HAUPT_ISSUE, "state": "open"}
+        if "/git/ref/heads/" in url:
+            return {"object": {"sha": "base-sha"}}
+        return []
+
+    snap = ad.collect_snapshot(
+        repo="landjunge/gnom-hub-v1",
+        token="tok",
+        github=github,
+        repos=(ad.RepoSpec("landjunge/gnom-hub-v1", ("baseline", "main")),),
+        now=NOW,
+    )
+    assert len(pulls_calls) == 2
+    assert any("base=baseline" in url for url in pulls_calls)
+    assert any("base=main" in url for url in pulls_calls)
+    assert len(snap.pulls) == 1
+    assert snap.pulls[0]["number"] == 9
+
+
+def test_launch_role_sets_repo_and_base_env(monkeypatch, tmp_path: Path) -> None:
+    captured: dict = {}
+
+    def fake_run(argv, **kwargs):
+        captured["argv"] = argv
+        captured["env"] = kwargs.get("env")
+        captured["cwd"] = kwargs.get("cwd")
+
+    monkeypatch.setattr(ad.subprocess, "run", fake_run)
+    job = ad.Job(
+        role="reviewer",
+        reason="needs-review",
+        pr=215,
+        sha="2fc8830dead",
+        repo="landjunge/4AllPass",
+        base="main",
+    )
+    how = ad.launch_role(job, "prompt-text", cmd="true", cwd=tmp_path)
+    assert how == "cmd:true"
+    env = captured["env"]
+    assert env["GNOM_AGENT_ROLE"] == "reviewer"
+    assert env["GNOM_GITHUB_REPO"] == "landjunge/4AllPass"
+    assert env["GNOM_JOB_BASE"] == "main"
+    assert env["PR_NUMBER"] == "215"
+    assert env["GNOM_JOB_SHA"] == "2fc8830dead"
+    assert env["GNOM_JOB_REASON"] == "needs-review"
+    assert captured["cwd"] == str(tmp_path)
+    assert captured["argv"] == ["true"]
