@@ -132,6 +132,9 @@ class Hub(
             "true",
             "yes",
         )
+        self.auto_backup_before_execute: bool = os.getenv(
+            "GNOM_AUTO_BACKUP", ""
+        ).strip().lower() in ("1", "true", "yes")
         self._packs_dir = self.root / "data" / "packs"
         # Ensure runtime dirs exist (USB / fresh clone)
         for _d in (
@@ -151,6 +154,7 @@ class Hub(
         except ValueError:
             _pm = 30
         self.pack_max: int = max(5, min(100, _pm))
+        self._load_system_settings()
         # Feature flags (plan phase 3+ chrome can be dimmed)
         self.feature_phase3: bool = os.getenv("GNOM_PHASE3", "1").strip() not in (
             "0",
