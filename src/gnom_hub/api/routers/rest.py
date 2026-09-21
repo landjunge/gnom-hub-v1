@@ -91,9 +91,7 @@ def tool_targets_get() -> dict[str, Any]:
                 "name": name,
                 "connected": bool(target),
                 "target": target,
-                "mode": (
-                    "internal" if internal_url else ("embed" if runtime else "unavailable")
-                ),
+                "mode": ("internal" if internal_url else ("embed" if runtime else "unavailable")),
                 "external_url": external_url,
             }
         )
