@@ -127,6 +127,35 @@ def test_github_effect_done_on_closed_issue() -> None:
     assert ad.github_effect_done(job, "tok", NOW, github=github) is True
 
 
+def test_github_effect_closed_haupt_is_not_done() -> None:
+    job = ad.Job(
+        role="test-agent",
+        reason="baseline-moved",
+        issue=105,
+        repo="landjunge/gnom-hub-v1",
+    )
+
+    def github(method: str, url: str, token: str, payload):
+        if url.endswith("/issues/105"):
+            return {"number": 105, "state": "closed"}
+        if "/comments" in url:
+            return [
+                {
+                    "body": "**Test-Agent** nach Merge #148. 980 passed.",
+                    "created_at": (NOW - timedelta(minutes=10)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                }
+            ]
+        return []
+
+    assert ad.github_effect_done(job, "tok", NOW, github=github) is False
+
+
+def test_comment_after_false_when_timestamp_missing() -> None:
+    started = NOW
+    assert ad._comment_after({"body": "x"}, started) is False
+    assert ad._comment_after({"created_at": "nope"}, started) is False
+
+
 def test_github_effect_done_on_new_changes_requested() -> None:
     job = _reviewer_job()
     later = (NOW + timedelta(minutes=2)).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -251,6 +280,34 @@ def test_run_agent_keeps_cpu_busy_tick_without_events() -> None:
     assert elapsed >= 0.45
 
 
+def test_run_agent_no_idle_before_first_stdout(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Until grok prints, only start_grace applies — not the short idle window."""
+    job = _reviewer_job()
+    monkeypatch.setattr(ad, "tick_idle_sec", lambda: 0.1)
+    monkeypatch.setattr(ad, "tick_start_grace_sec", lambda: 2.0)
+
+    def github(method: str, url: str, token: str, payload):
+        if url.endswith("/pulls/145"):
+            return {"number": 145, "state": "open", "merged": False}
+        return []
+
+    t0 = time.monotonic()
+    how = ad.run_agent(
+        job,
+        "prompt",
+        cmd=_hang_cmd(0.55),
+        token="tok",
+        github=github,
+        cpu_of=lambda _pid: 0.0,
+        poll_sec=0.05,
+        now=datetime(2026, 9, 21, 10, 0, tzinfo=timezone.utc),
+    )
+    elapsed = time.monotonic() - t0
+    assert how.startswith("cmd:")
+    assert elapsed >= 0.4
+    assert elapsed < 2.0
+
+
 def test_run_agent_returns_on_event_idle() -> None:
     job = _reviewer_job()
 
@@ -308,13 +365,22 @@ def test_is_done_comment_strict_role_ignores_generic() -> None:
 
 def test_tick_idle_sec_clamps(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("GNOM_TICK_IDLE_SEC", raising=False)
-    assert ad.tick_idle_sec() == 20.0
+    assert ad.tick_idle_sec() == 180.0
     monkeypatch.setenv("GNOM_TICK_IDLE_SEC", "1")
-    assert ad.tick_idle_sec() == 2.0
+    assert ad.tick_idle_sec() == 30.0
     monkeypatch.setenv("GNOM_TICK_IDLE_SEC", "999")
-    assert ad.tick_idle_sec() == 120.0
+    assert ad.tick_idle_sec() == 600.0
     monkeypatch.setenv("GNOM_TICK_IDLE_SEC", "nope")
-    assert ad.tick_idle_sec() == 20.0
+    assert ad.tick_idle_sec() == 180.0
+
+
+def test_tick_start_grace_sec_clamps(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("GNOM_TICK_START_GRACE_SEC", raising=False)
+    assert ad.tick_start_grace_sec() == 600.0
+    monkeypatch.setenv("GNOM_TICK_START_GRACE_SEC", "1")
+    assert ad.tick_start_grace_sec() == 60.0
+    monkeypatch.setenv("GNOM_TICK_START_GRACE_SEC", "99999")
+    assert ad.tick_start_grace_sec() == 1800.0
 
 
 def test_tick_poll_sec_clamps(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -469,7 +535,7 @@ def test_github_effect_generic_done_on_teilaufgabe() -> None:
     assert ad.github_effect_done(job, "tok", NOW, github=github) is True
 
 
-def test_github_effect_unparseable_comment_timestamp_counts() -> None:
+def test_github_effect_unparseable_comment_timestamp_ignored() -> None:
     job = ad.Job(
         role="test-agent",
         reason="baseline-moved",
@@ -484,7 +550,7 @@ def test_github_effect_unparseable_comment_timestamp_counts() -> None:
             return {"number": 105, "state": "open"}
         return []
 
-    assert ad.github_effect_done(job, "tok", NOW, github=github) is True
+    assert ad.github_effect_done(job, "tok", NOW, github=github) is False
 
 
 def test_github_effect_api_error_is_not_done() -> None:
@@ -518,10 +584,14 @@ def test_run_agent_nonzero_exit_raises() -> None:
         )
 
 
-def test_run_agent_keeps_event_busy_tick_without_cpu(tmp_path: Path) -> None:
+def test_run_agent_keeps_event_busy_tick_without_cpu(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Stdout events keep the tick alive even when descendant CPU is idle."""
     duration = 0.7
     cmd = _events_script(tmp_path / "busy.py", duration)
+    monkeypatch.setattr(ad, "tick_idle_sec", lambda: 0.15)
+    monkeypatch.setattr(ad, "tick_start_grace_sec", lambda: 2.0)
 
     def github(method: str, url: str, token: str, payload):
         if url.endswith("/pulls/145"):
@@ -537,7 +607,6 @@ def test_run_agent_keeps_event_busy_tick_without_cpu(tmp_path: Path) -> None:
         github=github,
         cpu_of=lambda _pid: 0.0,
         poll_sec=0.05,
-        idle_sec=0.15,
         now=datetime(2026, 9, 21, 10, 0, tzinfo=timezone.utc),
     )
     elapsed = time.monotonic() - t0
