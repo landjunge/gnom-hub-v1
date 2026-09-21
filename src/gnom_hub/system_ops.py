@@ -27,9 +27,7 @@ class SystemOpsMixin:
     def _save_system_settings(self) -> None:
         path = self.root / "data" / "hot" / "system.json"
         payload = {
-            "auto_backup_before_execute": bool(
-                getattr(self, "auto_backup_before_execute", False)
-            )
+            "auto_backup_before_execute": bool(getattr(self, "auto_backup_before_execute", False))
         }
         path.parent.mkdir(parents=True, exist_ok=True)
         atomic_write_text(path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
@@ -80,7 +78,10 @@ class SystemOpsMixin:
                 self.ui_lang = lang
         if "auto_pack_after_execute" in fields and fields["auto_pack_after_execute"] is not None:
             self.auto_pack_after_execute = bool(fields["auto_pack_after_execute"])
-        if "auto_backup_before_execute" in fields and fields["auto_backup_before_execute"] is not None:
+        if (
+            "auto_backup_before_execute" in fields
+            and fields["auto_backup_before_execute"] is not None
+        ):
             self.auto_backup_before_execute = bool(fields["auto_backup_before_execute"])
             self._save_system_settings()
         if "pack_max" in fields and fields["pack_max"] is not None:
