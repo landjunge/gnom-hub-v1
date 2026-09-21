@@ -8,7 +8,7 @@ reported as connected tool UIs.
 from __future__ import annotations
 
 import os
-from urllib.parse import urlparse
+import urllib.parse
 
 
 _TOOL_SLOTS: tuple[dict[str, str], ...] = (
@@ -54,7 +54,7 @@ def _http_url(value: str | None) -> str | None:
     raw = (value or "").strip()
     if not raw:
         return None
-    parsed = urlparse(raw)
+    parsed = urllib.parse.urlparse(raw)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         return None
     return raw.rstrip("/")
