@@ -30,6 +30,8 @@ Format: `owner/repo` oder `owner/repo:base` (mehrere Bases mit `+` oder `|`). Ko
 
 `scripts/run_agent.sh` ruft `grok --prompt-file … --yolo --max-turns 80` auf. Der Prompt liegt in `agents/<rolle>.md`. Zusätzlicher Text (Poll/Webhook) kommt über stdin in dieselbe Datei, nicht als `grok -p "$(cat)"`.
 
+Der Dispatcher wartet nicht auf die 80 Turns. `run_agent` beendet den Tick per **GitHub-Poll** (PR merged/closed, Issue geschlossen, Abschlusskommentar, Reviewer `CHANGES_REQUESTED`) **oder Event-Idle** (keine stdout-Events und ~0 % CPU inkl. Kindprozesse, Default 20s, `GNOM_TICK_IDLE_SEC`). SIGTERM an die Prozessgruppe, danach sofort der nächste `pick_job`. Ein Tick mit Events oder CPU bleibt stehen.
+
 Override pro Rolle (sonst `scripts/run_agent.sh <rolle>`):
 
 ```bash
