@@ -159,7 +159,6 @@ class SessionOpsMixin:
         archive: bool = True,
     ) -> dict[str, Any]:
         """Clear HOT session + pipeline. Optionally archive to COLD first. WARM kept unless clear_warm."""
-        self.maybe_auto_backup("reset")
         # Soft-cancel any in-flight jobs so they cannot overwrite a fresh pipeline
         cancelled_jobs = 0
         jobs = getattr(self, "_jobs", None)
@@ -182,6 +181,7 @@ class SessionOpsMixin:
         except Exception:  # noqa: BLE001
             pass
 
+        self.maybe_auto_backup("reset")
         archived = None
         with self._pipeline_lock_obj():
             if archive and (self.hot.session.get("messages") or self.hot.session.get("facts")):
@@ -213,7 +213,6 @@ class SessionOpsMixin:
         One-click clean state (plan §7): clear HOT + temp workspace + pipeline,
         keep WARM long-term memory and agent toggles.
         """
-        self.maybe_auto_backup("clean")
         jobs = getattr(self, "_jobs", None)
         if not isinstance(jobs, dict):
             jobs = {}
@@ -231,6 +230,7 @@ class SessionOpsMixin:
                 pipe.cancel_check = None
         except Exception:  # noqa: BLE001
             pass
+        self.maybe_auto_backup("clean")
         archived = None
         with self._pipeline_lock_obj():
             if self.hot.session.get("messages") or self.hot.session.get("facts"):
