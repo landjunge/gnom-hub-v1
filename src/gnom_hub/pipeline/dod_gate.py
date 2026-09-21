@@ -637,6 +637,11 @@ def format_retry_hint(result: dict[str, Any] | DoDResult, *, attempt: int = 1) -
             "Deliver ONE complete result. Prefer structure + functions over decoration. "
             "If Tool prefetch has a palette, reuse it."
         )
+        if "incomplete_html" in issues or "missing_html_close" in issues:
+            lines.append(
+                "ONE complete file: <!DOCTYPE html> … </html>; close style/script. "
+                "Do not stop mid-CSS."
+            )
         return "\n".join(lines)
     return (
         "RETRY 2 — SCOPE REDUCTION (DoD Gate):\n"

@@ -38,6 +38,25 @@ FREE_MODELS: frozenset[str] = frozenset(
 
 ClientFactory = Callable[[str], DeepSeekClient]
 
+# Worker HTML is a full page. TollGate's routed_chat default is 1024; `None or 1024`
+# used to cut pages mid-CSS. Budget matches TollGate worker max_tokens_call (16k).
+DEFAULT_WORKER_MAX_TOKENS = 16_384
+
+
+def tollgate_max_tokens(agent: str, max_tokens: int | None) -> int | None:
+    """Preserve explicit budgets. Workers never collapse None → 1024."""
+    if max_tokens is not None:
+        return max(1, int(max_tokens))
+    if str(agent or "").startswith("worker"):
+        raw = os.getenv("GNOM_WORKER_MAX_TOKENS", str(DEFAULT_WORKER_MAX_TOKENS))
+        try:
+            n = int(raw)
+        except ValueError:
+            n = DEFAULT_WORKER_MAX_TOKENS
+        return max(4096, min(128_000, n))
+    return None
+
+
 _PROTECT_NEEDLES = (
     "budget",
     "tool-loop",
@@ -288,7 +307,7 @@ class LLMManager:
                         provider=None if prov in ("deepseek", "tollgate", "") else prov,
                         agent=agent_key,
                         temperature=temperature,
-                        max_tokens=max_tokens or 1024,
+                        max_tokens=tollgate_max_tokens(agent_key, max_tokens),
                         prefer_free=True,
                     )
                     return self._account(result, agent_key)
@@ -331,7 +350,7 @@ class LLMManager:
                     provider=tg_provider,
                     agent=agent_key,
                     temperature=temperature,
-                    max_tokens=max_tokens or 1024,
+                    max_tokens=tollgate_max_tokens(agent_key, max_tokens),
                     prefer_free=prefer_free,
                 )
                 return self._account(result, agent_key)
@@ -367,7 +386,7 @@ class LLMManager:
                     provider=None,
                     agent=agent_key,
                     temperature=temperature,
-                    max_tokens=max_tokens or 1024,
+                    max_tokens=tollgate_max_tokens(agent_key, max_tokens),
                     prefer_free=True,
                 )
                 return self._account(result, agent_key)
@@ -465,7 +484,7 @@ class LLMManager:
         provider: str | None,
         agent: str,
         temperature: float,
-        max_tokens: int,
+        max_tokens: int | None,
         prefer_free: bool,
     ) -> LLMResult:
         payload = [{"role": m.role, "content": m.content} for m in messages]
@@ -473,6 +492,11 @@ class LLMManager:
         if (provider or "") == "worker":
             intent = "paid_llm"
         base = (os.getenv("TOLLGATE_URL") or "").strip().rstrip("/")
+        chat_kw: dict = {
+            "temperature": temperature,
+        }
+        if max_tokens is not None:
+            chat_kw["max_tokens"] = int(max_tokens)
         try:
             if base:
                 from tollgate.client import TollgateClient
@@ -486,9 +510,8 @@ class LLMManager:
                     intent=intent,
                     provider=provider or "",
                     model=model or ("tollgate/free" if prefer_free else "tollgate/auto"),
-                    max_tokens=max_tokens,
-                    temperature=temperature,
                     agent_id=f"gnom:{agent}",
+                    **chat_kw,
                 )
             else:
                 from tollgate import routed_chat
@@ -498,10 +521,9 @@ class LLMManager:
                     intent=intent,
                     model=model or "",
                     provider=provider or "",
-                    max_tokens=max_tokens,
-                    temperature=temperature,
                     agent_id=f"gnom:{agent}",
                     prefer_free=prefer_free,
+                    **chat_kw,
                 )
         except ModuleNotFoundError as e:
             raise LLMError("tollgate package not installed") from e
