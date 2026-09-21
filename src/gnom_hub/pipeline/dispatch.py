@@ -14,6 +14,18 @@ from gnom_hub.pipeline.helpers import (
 )
 from gnom_hub.pipeline.models import PipelineStage, PipelineState
 
+_DOD_STOP_ISSUES = frozenset({"incomplete_html", "missing_html_close"})
+
+
+def _dod_must_stop(gate: dict) -> bool:
+    if gate.get("ok") is True:
+        return False
+    issues = set(gate.get("issues") or [])
+    # Missing key / stub: honesty path at _finish, not a hard pipeline abort.
+    if "worker_error" in issues or "stub" in issues:
+        return False
+    return bool(issues & _DOD_STOP_ISSUES)
+
 
 class DispatchMixin:
     def _worker_ids_for_plan(self) -> list[str]:
@@ -468,6 +480,10 @@ class DispatchMixin:
                     "validation": gate,
                 },
             )
+            if _dod_must_stop(gate):
+                issues = ",".join(gate.get("issues") or [])
+                self._fail(f"DoD fail after {retries} retries ({issues or 'must'}) — not delivered")
+                return
         self._check_cancel()
         # M8: planned tasks but nothing ran (workers vanished mid-plan)
         if tasks and not outputs:
