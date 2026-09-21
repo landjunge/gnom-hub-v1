@@ -7,7 +7,9 @@ import argparse
 import json
 import os
 import shlex
+import signal
 import subprocess
+import sys
 import time
 import urllib.error
 import urllib.parse
@@ -29,6 +31,24 @@ STALE_AFTER = timedelta(hours=2)
 COORD_COOLDOWN = timedelta(hours=1)
 STARTED_TTL = timedelta(hours=2)
 MISSING_CMD = "missing-cmd"
+# Supervisor: end the tick on GitHub-effect or idle, not after --max-turns.
+DEFAULT_TICK_POLL_SEC = 2.0
+DEFAULT_TICK_IDLE_SEC = 20.0
+CPU_IDLE_PCT = 1.0
+STOP_GRACE_SEC = 2.0
+DONE_COMMENT_GENERIC = (
+    "squash-merge",
+    "fast-forward",
+    "gemerged",
+    "geschlossen",
+)
+ROLE_DONE_MARKERS: dict[str, tuple[str, ...]] = {
+    "reviewer": ("**reviewer**",),
+    "test-agent": ("**test-agent**",),
+    "planer": ("planer:",),
+    "koordinator": ("**koordinator",),
+    "builder": ("fixes #", "closes #"),
+}
 
 RoleLaunch = Callable[[str, str, dict[str, str]], str]
 ReviewKey = int | tuple[str, int]
@@ -735,12 +755,273 @@ def build_prompt(job: Job, agents_dir: Path) -> str:
     return "\n\n".join(parts) + "\n"
 
 
-def launch_role(
+def _env_float(name: str, default: float) -> float:
+    raw = (os.environ.get(name) or "").strip()
+    if not raw:
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        return default
+
+
+def tick_poll_sec() -> float:
+    return max(0.2, min(30.0, _env_float("GNOM_TICK_POLL_SEC", DEFAULT_TICK_POLL_SEC)))
+
+
+def tick_idle_sec() -> float:
+    return max(2.0, min(120.0, _env_float("GNOM_TICK_IDLE_SEC", DEFAULT_TICK_IDLE_SEC)))
+
+
+def is_done_comment(body: str, role: str = "", *, strict_role: bool = False) -> bool:
+    """True when a GitHub comment looks like this role finished the tick."""
+    text = (body or "").lower()
+    if any(marker in text for marker in ROLE_DONE_MARKERS.get(role, ())):
+        return True
+    if strict_role:
+        return False
+    return any(marker in text for marker in DONE_COMMENT_GENERIC)
+
+
+def _comment_after(item: dict[str, Any], started_at: datetime) -> bool:
+    at = parse_dt(str(item.get("created_at") or item.get("createdAt") or ""))
+    if at is None:
+        return True
+    return at >= started_at
+
+
+def _list_issue_comments(
+    call: Callable[[str, str, str, dict[str, Any] | None], Any],
+    repo: str,
+    number: int,
+    token: str,
+    started_at: datetime,
+) -> list[dict[str, Any]]:
+    url = (
+        f"https://api.github.com/repos/{repo}/issues/{number}/comments?"
+        f"{urllib.parse.urlencode({'since': utc_stamp(started_at), 'per_page': '30'})}"
+    )
+    try:
+        raw = call("GET", url, token, None) or []
+    except RuntimeError as exc:
+        log("watch-failed", target=f"{repo}#{number}", detail=str(exc)[:180])
+        return []
+    if not isinstance(raw, list):
+        return []
+    return [item for item in raw if isinstance(item, dict)]
+
+
+def github_effect_done(
+    job: Job,
+    token: str,
+    started_at: datetime,
+    *,
+    github: Callable[[str, str, str, dict[str, Any] | None], Any] | None = None,
+) -> bool:
+    """PR merged/closed, issue closed, or a completion comment after start."""
+    if not token:
+        return False
+    call = github or github_request
+    repo = job.repo or DEFAULT_REPO
+
+    if job.pr is not None:
+        url = f"https://api.github.com/repos/{repo}/pulls/{job.pr}"
+        try:
+            pr = call("GET", url, token, None) or {}
+        except RuntimeError as exc:
+            log("watch-failed", target=f"{repo}#{job.pr}", detail=str(exc)[:180])
+            pr = {}
+        if isinstance(pr, dict):
+            if bool(pr.get("merged")) or str(pr.get("state") or "").lower() == "closed":
+                return True
+        for item in _list_issue_comments(call, repo, job.pr, token, started_at):
+            if _comment_after(item, started_at) and is_done_comment(
+                str(item.get("body") or ""), job.role
+            ):
+                return True
+        if job.role == "reviewer":
+            rev_url = f"https://api.github.com/repos/{repo}/pulls/{job.pr}/reviews"
+            try:
+                reviews = call("GET", rev_url, token, None) or []
+            except RuntimeError as exc:
+                log("watch-failed", target=f"{repo}#{job.pr}", detail=str(exc)[:180])
+                reviews = []
+            if isinstance(reviews, list):
+                for rev in reviews:
+                    if not isinstance(rev, dict):
+                        continue
+                    if review_state(rev) != "CHANGES_REQUESTED":
+                        continue
+                    at = parse_dt(str(rev.get("submitted_at") or rev.get("submittedAt") or ""))
+                    if at is None or at >= started_at:
+                        return True
+
+    if job.issue is not None and job.issue != job.pr:
+        url = f"https://api.github.com/repos/{repo}/issues/{job.issue}"
+        try:
+            issue = call("GET", url, token, None) or {}
+        except RuntimeError as exc:
+            log("watch-failed", target=f"issue=#{job.issue}", detail=str(exc)[:180])
+            issue = {}
+        if isinstance(issue, dict) and str(issue.get("state") or "").lower() == "closed":
+            return True
+        strict = job.issue == HAUPT_ISSUE
+        for item in _list_issue_comments(call, repo, job.issue, token, started_at):
+            if _comment_after(item, started_at) and is_done_comment(
+                str(item.get("body") or ""), job.role, strict_role=strict
+            ):
+                return True
+    return False
+
+
+def process_cpu_percent(pid: int) -> float:
+    """Sum %CPU for pid and descendants. Unknown-but-unreadable → busy."""
+    if pid <= 0:
+        return 0.0
+    try:
+        out = subprocess.check_output(
+            ["ps", "-axo", "pid=,ppid=,%cpu="],
+            text=True,
+            timeout=2,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return 100.0
+    kids: dict[int, list[int]] = {}
+    cpu: dict[int, float] = {}
+    for line in out.splitlines():
+        parts = line.split()
+        if len(parts) < 3:
+            continue
+        try:
+            proc_id = int(parts[0])
+            parent = int(parts[1])
+            pct = float(parts[2])
+        except ValueError:
+            continue
+        cpu[proc_id] = pct
+        kids.setdefault(parent, []).append(proc_id)
+    if pid not in cpu:
+        return 0.0
+    total = 0.0
+    stack = [pid]
+    seen: set[int] = set()
+    while stack:
+        cur = stack.pop()
+        if cur in seen:
+            continue
+        seen.add(cur)
+        total += cpu.get(cur, 0.0)
+        stack.extend(kids.get(cur, []))
+    return total
+
+
+def stop_agent_process(proc: subprocess.Popen[Any], *, grace: float = STOP_GRACE_SEC) -> None:
+    """SIGTERM the process group, then SIGKILL if it ignores the first signal."""
+    if proc.poll() is not None:
+        return
+    pid = proc.pid
+    pgid: int | None = None
+    if isinstance(pid, int) and pid > 0:
+        try:
+            pgid = os.getpgid(pid)
+        except OSError:
+            pgid = None
+    if pgid is not None and pgid == pid:
+        try:
+            os.killpg(pgid, signal.SIGTERM)
+        except OSError:
+            try:
+                proc.terminate()
+            except OSError:
+                pass
+    else:
+        try:
+            proc.terminate()
+        except OSError:
+            pass
+    try:
+        proc.wait(timeout=grace)
+        return
+    except subprocess.TimeoutExpired:
+        pass
+    if pgid is not None and pgid == pid:
+        try:
+            os.killpg(pgid, signal.SIGKILL)
+        except OSError:
+            try:
+                proc.kill()
+            except OSError:
+                pass
+    else:
+        try:
+            proc.kill()
+        except OSError:
+            pass
+    try:
+        proc.wait(timeout=grace)
+    except (subprocess.TimeoutExpired, OSError):
+        pass
+
+
+def _drain_stdout(proc: subprocess.Popen[Any]) -> bool:
+    stream = proc.stdout
+    if stream is None:
+        return False
+    got = False
+    try:
+        fd = stream.fileno()
+    except (OSError, AttributeError):
+        return False
+    while True:
+        try:
+            chunk = os.read(fd, 65536)
+        except BlockingIOError:
+            break
+        except OSError:
+            break
+        if not chunk:
+            break
+        got = True
+        try:
+            sys.stdout.buffer.write(chunk)
+            sys.stdout.buffer.flush()
+        except OSError:
+            pass
+    return got
+
+
+def _write_prompt(proc: subprocess.Popen[Any], prompt: str) -> None:
+    if proc.stdin is None:
+        return
+    try:
+        proc.stdin.write(prompt.encode("utf-8"))
+        proc.stdin.close()
+    except (BrokenPipeError, OSError):
+        pass
+
+
+def run_agent(
     job: Job,
     prompt: str,
+    *,
     cmd: str | None = None,
     cwd: Path | None = None,
+    token: str | None = None,
+    github: Callable[[str, str, str, dict[str, Any] | None], Any] | None = None,
+    popen: Callable[..., subprocess.Popen[Any]] | None = None,
+    cpu_of: Callable[[int], float] | None = None,
+    stop: Callable[[subprocess.Popen[Any]], None] | None = None,
+    sleep: Callable[[float], None] | None = None,
+    monotonic: Callable[[], float] | None = None,
+    poll_sec: float | None = None,
+    idle_sec: float | None = None,
+    now: datetime | None = None,
 ) -> str:
+    """Launch one role and return as soon as GitHub is done or grok is idle.
+
+    Does not wait for ``grok --max-turns``. A tick with stdout events or
+    descendant CPU stays alive until it exits on its own.
+    """
     raw = (cmd if cmd is not None else default_agent_cmd(job.role)).strip()
     argv = shlex.split(raw)
     if not argv:
@@ -758,16 +1039,77 @@ def launch_role(
     if job.sha:
         env["GNOM_JOB_SHA"] = job.sha
     env["GNOM_JOB_REASON"] = job.reason
-    subprocess.run(
+    start = now or utc_now()
+    auth = (token if token is not None else token_from_env()).strip()
+    spawn = popen or subprocess.Popen
+    cpu = cpu_of or process_cpu_percent
+    halt = stop or stop_agent_process
+    pause = sleep or time.sleep
+    clock = monotonic or time.monotonic
+    interval = tick_poll_sec() if poll_sec is None else max(0.0, float(poll_sec))
+    idle_limit = tick_idle_sec() if idle_sec is None else max(0.0, float(idle_sec))
+    proc = spawn(
         argv,
-        check=True,
-        input=prompt,
-        text=True,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
         env=env,
         cwd=str(cwd) if cwd else None,
-        shell=False,
+        start_new_session=True,
+        bufsize=0,
     )
-    return f"cmd:{argv[0]}"
+    _write_prompt(proc, prompt)
+    if proc.stdout is not None:
+        try:
+            os.set_blocking(proc.stdout.fileno(), False)
+        except (OSError, AttributeError):
+            pass
+    last_event = clock()
+    supervised = False
+    reason = ""
+    try:
+        while True:
+            rc = proc.poll()
+            had_event = _drain_stdout(proc)
+            if had_event:
+                last_event = clock()
+            if rc is not None:
+                if rc != 0 and not supervised:
+                    raise subprocess.CalledProcessError(rc, argv)
+                return f"cmd:{argv[0]}"
+            if github_effect_done(job, auth, start, github=github):
+                supervised = True
+                reason = "github-effect"
+                log("tick-done", role=job.role, target=job.target(), detail=reason)
+                halt(proc)
+                _drain_stdout(proc)
+                return f"cmd:{argv[0]}"
+            busy_cpu = cpu(proc.pid) >= CPU_IDLE_PCT
+            if busy_cpu or had_event:
+                last_event = clock()
+            elif clock() - last_event >= idle_limit:
+                supervised = True
+                reason = "idle"
+                log("tick-done", role=job.role, target=job.target(), detail=reason)
+                halt(proc)
+                _drain_stdout(proc)
+                return f"cmd:{argv[0]}"
+            if interval:
+                pause(interval)
+    finally:
+        if proc.poll() is None:
+            halt(proc)
+
+
+def launch_role(
+    job: Job,
+    prompt: str,
+    cmd: str | None = None,
+    cwd: Path | None = None,
+    token: str | None = None,
+    github: Callable[[str, str, str, dict[str, Any] | None], Any] | None = None,
+) -> str:
+    return run_agent(job, prompt, cmd=cmd, cwd=cwd, token=token, github=github)
 
 
 def log_seen_pulls(snapshot: Snapshot) -> None:
@@ -829,7 +1171,9 @@ def dispatch_once(
         log("dry-run", role=job.role, target=job.target())
         return "dry-run"
     prompt = build_prompt(job, agents_dir)
-    run = launch or (lambda role, text, _env: launch_role(job, text, cwd=cwd))
+    run = launch or (
+        lambda role, text, _env: launch_role(job, text, cwd=cwd, token=token, github=github)
+    )
     try:
         how = run(job.role, prompt, {})
     except (OSError, subprocess.CalledProcessError, RuntimeError) as exc:

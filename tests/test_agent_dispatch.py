@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import importlib.util
+import json
+import shlex
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -1127,15 +1129,14 @@ def test_collect_snapshot_enrich_failure_keeps_list_draft(capsys) -> None:
     assert job.repo == "landjunge/agent-authority-lab"
 
 
-def test_launch_role_sets_repo_and_base_env(monkeypatch, tmp_path: Path) -> None:
-    captured: dict = {}
-
-    def fake_run(argv, **kwargs):
-        captured["argv"] = argv
-        captured["env"] = kwargs.get("env")
-        captured["cwd"] = kwargs.get("cwd")
-
-    monkeypatch.setattr(ad.subprocess, "run", fake_run)
+def test_launch_role_sets_repo_and_base_env(tmp_path: Path) -> None:
+    probe = tmp_path / "probe.py"
+    out = tmp_path / "env.json"
+    probe.write_text(
+        "import json, os, sys\n"
+        "json.dump(dict(os.environ), open(sys.argv[1], 'w', encoding='utf-8'))\n",
+        encoding="utf-8",
+    )
     job = ad.Job(
         role="reviewer",
         reason="needs-review",
@@ -1144,14 +1145,13 @@ def test_launch_role_sets_repo_and_base_env(monkeypatch, tmp_path: Path) -> None
         repo="landjunge/4AllPass",
         base="main",
     )
-    how = ad.launch_role(job, "prompt-text", cmd="true", cwd=tmp_path)
-    assert how == "cmd:true"
-    env = captured["env"]
+    cmd = f"{sys.executable} {shlex.quote(str(probe))} {shlex.quote(str(out))}"
+    how = ad.launch_role(job, "prompt-text", cmd=cmd, cwd=tmp_path)
+    assert how.startswith("cmd:")
+    env = json.loads(out.read_text(encoding="utf-8"))
     assert env["GNOM_AGENT_ROLE"] == "reviewer"
     assert env["GNOM_GITHUB_REPO"] == "landjunge/4AllPass"
     assert env["GNOM_JOB_BASE"] == "main"
     assert env["PR_NUMBER"] == "215"
     assert env["GNOM_JOB_SHA"] == "2fc8830dead"
     assert env["GNOM_JOB_REASON"] == "needs-review"
-    assert captured["cwd"] == str(tmp_path)
-    assert captured["argv"] == ["true"]
