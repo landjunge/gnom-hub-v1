@@ -60,7 +60,7 @@ State: `data/agent_dispatch_state.json` (gitignored unter `data/`). Einträge ge
 
 ## Reihenfolge pro Tick
 
-1. Offener PR mit Review *changes requested* → Builder (Fixes auf demselben Branch)
+1. Offener PR mit Review *changes requested*, oder *comment* plus Blocker (CI rot, Draft, Merge-Konflikt) → Builder (Fixes auf demselben Branch)
 2. Offener PR ohne Review oder Approve ohne Merge → Reviewer (jedes Watch-Repo)
 3. `baseline` HEAD neu seit letztem Test → Test-Agent
 4. Offene `teilaufgabe` ohne PR (stale `in-bearbeitung` nach 2h nochmal) → Builder

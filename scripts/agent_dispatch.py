@@ -346,6 +346,43 @@ def pr_ci(pr: dict[str, Any]) -> str:
     return ""
 
 
+def pr_is_draft(pr: dict[str, Any]) -> bool:
+    if "draft" in pr:
+        return bool(pr.get("draft"))
+    return bool(pr.get("isDraft"))
+
+
+def pr_merge_conflict(pr: dict[str, Any]) -> bool:
+    mergeable = pr.get("mergeable")
+    if mergeable is False:
+        return True
+    token = str(mergeable or "").strip().upper()
+    if token in ("CONFLICTING", "DIRTY"):
+        return True
+    state = str(pr.get("mergeable_state") or "").strip().lower()
+    return state in ("dirty", "conflicting")
+
+
+def pr_has_blocker(pr: dict[str, Any]) -> bool:
+    """CI red, draft, or merge conflict — the three review-fix blockers."""
+    if pr_is_draft(pr) or pr_merge_conflict(pr):
+        return True
+    return pr_ci(pr) in ("failure", "error")
+
+
+def review_is_comment(state: str) -> bool:
+    # GitHub REST/GraphQL: COMMENTED. Issue text and some payloads: COMMENT.
+    return state in ("COMMENTED", "COMMENT")
+
+
+def needs_review_fixes(pr: dict[str, Any], latest: dict[str, Any] | None) -> bool:
+    """CHANGES_REQUESTED, or COMMENT plus a blocker, means Builder on this PR."""
+    state = review_state(latest)
+    if state == "CHANGES_REQUESTED":
+        return True
+    return review_is_comment(state) and pr_has_blocker(pr)
+
+
 def reviews_for(snapshot: Snapshot, pr: dict[str, Any]) -> list[dict[str, Any]]:
     number = int(pr.get("number") or 0)
     repo = pr_repo(pr, default="")
@@ -451,6 +488,7 @@ def collect_snapshot(
                 seen.add(key)
                 pr["_repo"] = spec.repo
                 pr["_base"] = pr_base(pr, watch_base)
+                _enrich_pull(call, spec.repo, pr, token)
                 pulls.append(pr)
                 reviews[key] = _list_reviews(call, spec.repo, number, token)
     try:
@@ -484,9 +522,66 @@ def _pr_head_sha(pr: dict[str, Any]) -> str:
     return str((head or {}).get("sha") or "")
 
 
+def _enrich_pull(
+    call: Callable[[str, str, str, dict[str, Any] | None], Any],
+    repo: str,
+    pr: dict[str, Any],
+    token: str,
+) -> None:
+    """REST list omits mergeable and Actions checks. Fill both for pick_job."""
+    number = int(pr.get("number") or 0)
+    if number <= 0:
+        return
+    if pr.get("mergeable") is None:
+        url = f"https://api.github.com/repos/{repo}/pulls/{number}"
+        try:
+            detail = call("GET", url, token, None)
+        except RuntimeError as exc:
+            log("watch-failed", target=f"{repo}#{number}", detail=str(exc)[:180])
+            detail = None
+        if isinstance(detail, dict):
+            for key in ("draft", "mergeable", "mergeable_state"):
+                if key in detail:
+                    pr[key] = detail[key]
+    if pr_ci(pr):
+        return
+    sha = _pr_head_sha(pr)
+    if not sha:
+        return
+    url = f"https://api.github.com/repos/{repo}/commits/{sha}/check-runs"
+    try:
+        raw = call("GET", url, token, None)
+    except RuntimeError as exc:
+        log("watch-failed", target=f"{repo}#{number}", detail=str(exc)[:180])
+        return
+    runs: list[Any] = []
+    if isinstance(raw, dict):
+        maybe = raw.get("check_runs")
+        if isinstance(maybe, list):
+            runs = maybe
+    elif isinstance(raw, list):
+        runs = raw
+    rollup: list[dict[str, Any]] = []
+    for run in runs:
+        if not isinstance(run, dict):
+            continue
+        conclusion = str(run.get("conclusion") or "").upper()
+        status = str(run.get("status") or "").upper()
+        rollup.append(
+            {
+                "state": conclusion or status,
+                "conclusion": conclusion,
+                "status": status,
+                "name": run.get("name"),
+            }
+        )
+    if rollup:
+        pr["statusCheckRollup"] = rollup
+
+
 # Strict one-job-per-tick order. Do not reorder these steps.
 PRIORITY = (
-    "review-fixes",  # 1 builder on CHANGES_REQUESTED
+    "review-fixes",  # 1 builder on CHANGES_REQUESTED or COMMENT+blocker
     "reviewer",  # 2 needs-review or merge-approved
     "test-agent",  # 3 baseline moved
     "builder",  # 4 open teilaufgabe
@@ -508,7 +603,7 @@ def pick_job(snapshot: Snapshot, state: dict[str, Any]) -> Job | None:
     for pr in pulls:
         number = int(pr.get("number") or 0)
         latest = latest_review(reviews_for(snapshot, pr))
-        if review_state(latest) == "CHANGES_REQUESTED":
+        if needs_review_fixes(pr, latest):
             repo = pr_repo(pr, home)
             job = Job(
                 role="builder",
@@ -531,9 +626,9 @@ def pick_job(snapshot: Snapshot, state: dict[str, Any]) -> Job | None:
         number = int(pr.get("number") or 0)
         sha = _pr_head_sha(pr)
         latest = latest_review(reviews_for(snapshot, pr))
-        state_name = review_state(latest)
-        if state_name == "CHANGES_REQUESTED":
+        if needs_review_fixes(pr, latest):
             continue
+        state_name = review_state(latest)
         if state_name == "APPROVED":
             reason = "merge-approved"
         else:
