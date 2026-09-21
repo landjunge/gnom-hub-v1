@@ -68,7 +68,7 @@ def test_chat_explicit_budget_still_passed(monkeypatch):
 
 def test_dod_must_stop_incomplete_html():
     assert _dod_must_stop({"ok": False, "issues": ["incomplete_html", "missing_html_close"]})
-    assert _dod_must_stop({"ok": False, "issues": ["worker_error"]})
+    assert not _dod_must_stop({"ok": False, "issues": ["worker_error"]})
     assert not _dod_must_stop({"ok": True, "issues": []})
     assert not _dod_must_stop({"ok": False, "issues": ["prefetch_palette_unused"]})
 

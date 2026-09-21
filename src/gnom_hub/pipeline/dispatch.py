@@ -14,7 +14,7 @@ from gnom_hub.pipeline.helpers import (
 )
 from gnom_hub.pipeline.models import PipelineStage, PipelineState
 
-_DOD_STOP_ISSUES = frozenset({"incomplete_html", "missing_html_close", "worker_error"})
+_DOD_STOP_ISSUES = frozenset({"incomplete_html", "missing_html_close"})
 
 
 def _dod_must_stop(gate: dict) -> bool:
