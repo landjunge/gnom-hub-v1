@@ -74,23 +74,100 @@ def _body_is_error(body: str) -> bool:
     return False
 
 
+_HTML_BLOCKING = frozenset(
+    {
+        "incomplete_html",
+        "missing_html_close",
+        "missing_required_interaction",
+        "worker_error",
+        "stub",
+        "too_short",
+    }
+)
+
+
+def _wants_html(st: Any) -> bool:
+    user_text = str(getattr(st, "user_text", "") or "")
+    extra: list[str] = []
+    for o in getattr(st, "worker_outputs", None) or []:
+        if isinstance(o, dict):
+            extra.append(str(o.get("task") or ""))
+    blob = (user_text + " " + " ".join(extra)).strip()
+    if not blob:
+        return False
+    try:
+        from gnom_hub.pipeline.dod_gate import wants_html_artifact
+
+        return wants_html_artifact(blob)
+    except Exception:  # noqa: BLE001
+        low = blob.lower()
+        return "html" in low or "landing" in low
+
+
+def _looks_like_html(body: str) -> bool:
+    low = (body or "").lower()
+    return "<!doctype" in low or "<html" in low
+
+
+def _validation_blocks_html(val: Any) -> bool:
+    if not isinstance(val, dict) or not val:
+        return False
+    if val.get("html_complete") is False:
+        return True
+    issues = {str(x) for x in (val.get("issues") or [])}
+    if issues & _HTML_BLOCKING:
+        return True
+    return val.get("ok") is False
+
+
+def _browser_blocks(out: dict) -> bool:
+    bc = out.get("browser_check")
+    if not isinstance(bc, dict):
+        return False
+    if bc.get("skipped"):
+        return False
+    return bc.get("ok") is not True
+
+
+def _iter_worker_rows(st: Any) -> list[tuple[str, dict | None]]:
+    rows: list[tuple[str, dict | None]] = []
+    outs = getattr(st, "worker_outputs", None) or []
+    if outs:
+        for o in outs:
+            if not isinstance(o, dict):
+                continue
+            rows.append((str(o.get("result") or o.get("body") or ""), o))
+        return rows
+    for x in getattr(st, "worker_results", None) or []:
+        rows.append((str(x), None))
+    return rows
+
+
 def _deliverable_ok(st: Any) -> bool:
     """True when at least one worker body is a real deliverable, not FEHLER/stub.
 
-    Stage ``done`` is not enough. Soft DoD issues (palette, wishes) still leave
-    a page in Box 3 — only missing/error bodies are treated as not-ok.
+    HTML tasks need a complete document (``html_complete``, DoD, required
+    interaction). Long fragments are not enough. A failed (not skipped)
+    Playwright check also blocks. Stage ``done`` is not enough.
     """
-    bodies: list[str] = []
-    for o in getattr(st, "worker_outputs", None) or []:
-        if isinstance(o, dict):
-            bodies.append(str(o.get("result") or o.get("body") or ""))
-    if not bodies:
-        bodies = [str(x) for x in (getattr(st, "worker_results", None) or [])]
-    for body in bodies:
+    wants = _wants_html(st)
+    for body, out in _iter_worker_rows(st):
         b = (body or "").strip()
-        if len(b) < 400:
+        if not b or _body_is_error(b):
             continue
-        if _body_is_error(b):
+        treat_html = wants or _looks_like_html(b)
+        if treat_html:
+            from gnom_hub.pipeline.dod_gate import html_complete
+
+            if not html_complete(b):
+                continue
+            val = (out or {}).get("validation") if out else None
+            if _validation_blocks_html(val):
+                continue
+            if out is not None and _browser_blocks(out):
+                continue
+            return True
+        if len(b) < 400:
             continue
         return True
     return False

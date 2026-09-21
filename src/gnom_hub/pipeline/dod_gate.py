@@ -36,6 +36,12 @@ _INTERACT_TASK_HINTS = (
     "button",
     "form",
 )
+# Whole-word hints only ("form" must not match "information"). German compounds
+# like Kontaktformular still count via this stem.
+_INTERACT_COMPOUND_HINTS = ("formular",)
+_INTERACT_WORD_RE = re.compile(
+    r"\b(?:" + "|".join(re.escape(k) for k in _INTERACT_TASK_HINTS) + r")\b"
+)
 
 _STOP = frozenset(
     [
@@ -67,6 +73,13 @@ def wants_html_artifact(user_text: str, task: str = "") -> bool:
     from gnom_hub.agents.plan_fast_path import _wants_one_html_page
 
     return _wants_one_html_page(f"{user_text or ''} {task or ''}")
+
+
+def interaction_required(user_text: str, task: str = "") -> bool:
+    blob = f"{user_text} {task}".lower()
+    if _INTERACT_WORD_RE.search(blob):
+        return True
+    return any(k in blob for k in _INTERACT_COMPOUND_HINTS)
 
 
 def html_complete(body: str) -> bool:
@@ -520,8 +533,7 @@ def check_worker_draft(
         hi = has_interaction(s)
         if hc and not hi:
             add("no_interaction", hard=False)
-            blob = f"{user_text} {task}".lower()
-            if any(k in blob for k in _INTERACT_TASK_HINTS):
+            if interaction_required(user_text, task):
                 add("missing_required_interaction")
         elif hc and hi:
             ok_item("no_interaction", "has handler")

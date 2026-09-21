@@ -34,13 +34,25 @@ class FlexOpsMixin:
             }
 
         if not ok_deliv:
-            return {
-                "active": True,
-                "title": "Flex · kein Deliverable",
-                "question": (
+            from gnom_hub.pipeline.html_browser_check import PAGE_INCOMPLETE_MSG
+
+            notes = st.quality_notes or ""
+            html_fail = st.result_status == "NACHBESSERUNG" or PAGE_INCOMPLETE_MSG in notes
+            if html_fail:
+                question = PAGE_INCOMPLETE_MSG
+                title = "Flex · Seite unvollständig"
+                hint = "Kein vollständiges HTML — nicht GELIEFERT"
+            else:
+                question = (
                     "Kein gültiges Ergebnis. Worker hat FEHLER gemeldet — "
                     "nicht bewerten. Key, Tollgate oder Budget prüfen, dann neu bauen."
-                ),
+                )
+                title = "Flex · kein Deliverable"
+                hint = "Erst Ursache (Key/Tollgate/Budget), dann Box 1 Ja"
+            return {
+                "active": True,
+                "title": title,
+                "question": question,
                 "buttons": [
                     {
                         "id": "rebrainstorm",
@@ -57,7 +69,7 @@ class FlexOpsMixin:
                         "action": "start_work",
                     },
                 ],
-                "hint": "Erst Ursache (Key/Tollgate/Budget), dann Box 1 Ja",
+                "hint": hint,
                 "stats": {"workers": len(outs), "chars": chars},
                 "deliverable_ok": False,
             }

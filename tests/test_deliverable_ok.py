@@ -139,9 +139,20 @@ def test_finish_marks_fehler_not_success_on_tollgate_body():
     assert not any("Passt das" in t for t in texts)
 
 
-def test_finish_keeps_success_status_on_real_html():
+def test_finish_keeps_success_status_on_real_html(monkeypatch):
     from gnom_hub.hub import Hub
 
+    monkeypatch.setattr(
+        "gnom_hub.pipeline.html_browser_check.verify_worker_html",
+        lambda *a, **k: {
+            "ok": True,
+            "skipped": False,
+            "issues": [],
+            "pageerrors": [],
+            "screenshot": True,
+            "structure": True,
+        },
+    )
     html = (
         "<!DOCTYPE html><html><head><title>Bean</title></head>"
         "<body>"

@@ -84,6 +84,16 @@ def test_box3_tabs_equal_flex_white():
     assert "color: #fff" in tab
 
 
+def test_box3_preview_fullscreen_same_sandbox():
+    assert "const WORKER_IFRAME_SANDBOX" in BOXES_JS
+    assert BOXES_JS.count("WORKER_IFRAME_SANDBOX") >= 5
+    assert "allow-scripts" in BOXES_JS
+    body = _function_body(BOXES_JS, "openWorkerFullscreen")
+    assert "WORKER_IFRAME_SANDBOX" in body
+    preview = _function_body(BOXES_JS, "showBox3ResultStage")
+    assert "WORKER_IFRAME_SANDBOX" in preview
+
+
 def test_box3_html_preview_is_sicht_code():
     body = _function_body(BOXES_JS, "showBox3ResultStage")
     assert 'textContent = "Sicht"' in body

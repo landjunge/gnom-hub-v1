@@ -248,23 +248,23 @@
       "title": "DoD Gate (automated)",
       "topic": "Quality & tests",
       "keywords": [
-        "gate",
         "dod",
+        "gate",
         "pipeline",
+        "worker",
+        "html",
         "retry",
         "validation",
-        "worker",
-        "dod_gate",
         "no_interaction",
-        "bus",
+        "stub",
         "checklist",
+        "dod_gate",
         "dod_lint",
         "fail",
-        "format_retry_hint",
-        "hints"
+        "geliefert"
       ],
-      "chars": 2725,
-      "lines": 86
+      "chars": 3620,
+      "lines": 107
     },
     {
       "file": "DOD_GATE_PLAN.md",
@@ -527,7 +527,7 @@
         "tool",
         "agents"
       ],
-      "chars": 5066,
+      "chars": 5191,
       "lines": 75
     },
     {
@@ -1163,8 +1163,8 @@
         "box",
         "execute",
         "flex",
-        "worker",
         "nicht",
+        "worker",
         "kein",
         "coordinator",
         "hub",
@@ -1175,7 +1175,7 @@
         "pipeline",
         "start"
       ],
-      "chars": 4315,
+      "chars": 4413,
       "lines": 69
     },
     {

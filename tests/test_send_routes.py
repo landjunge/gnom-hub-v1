@@ -130,6 +130,7 @@ def test_execute_status_is_delivered_not_accepted(tmp_path, monkeypatch):
             "GELIEFERT",
             "FEHLER",
             "UNGEPRÜFT",
+            "NACHBESSERUNG",
             "TEILERGEBNIS",
         )
     finally:

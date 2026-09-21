@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from gnom_hub.memory.secrets import filter_secrets, looks_like_secret
 from gnom_hub.pipeline.models import PipelineStage
-from gnom_hub.snapshot_ops import _deliverable_ok
+from gnom_hub.snapshot_ops import _body_is_error, _deliverable_ok, _wants_html
 from gnom_hub.threaddesk_ops import write_handoff
 
 
@@ -147,6 +147,65 @@ class PersistMixin:
         except Exception:  # noqa: BLE001
             pass
 
+    def _html_bodies(self) -> list[str]:
+        bodies: list[str] = []
+        for o in self._state.worker_outputs or []:
+            if isinstance(o, dict):
+                bodies.append(str(o.get("result") or o.get("body") or ""))
+        if not bodies:
+            bodies = [str(x) for x in (self._state.worker_results or [])]
+        return bodies
+
+    def _apply_delivery_status(self) -> None:
+        """GELIEFERT only for a complete, browser-checked page when HTML is required."""
+        from gnom_hub.pipeline.html_browser_check import (
+            all_browser_skipped,
+            any_browser_ok,
+            attach_browser_checks,
+            note_incomplete_page,
+        )
+
+        outputs = list(self._state.worker_outputs or [])
+        any_ok = any(
+            isinstance(o, dict) and (o.get("validation") or {}).get("ok") is True for o in outputs
+        )
+        wants = _wants_html(self._state)
+        if wants:
+            attach_browser_checks(self._state)
+        ok_deliv = bool(_deliverable_ok(self._state))
+        bodies = self._html_bodies()
+        provider_fail = bool(bodies) and all(
+            _body_is_error(b) or not (b or "").strip() for b in bodies
+        )
+        self._state.error = None
+        if wants and not ok_deliv:
+            if provider_fail or not any((b or "").strip() for b in bodies):
+                self._state.result_status = "FEHLER"
+            else:
+                self._state.result_status = "NACHBESSERUNG"
+                note_incomplete_page(self._state)
+            return
+        if wants and ok_deliv and any_ok and any_browser_ok(self._state):
+            self._state.result_status = "GELIEFERT"
+            return
+        if (
+            wants
+            and ok_deliv
+            and not any_browser_ok(self._state)
+            and not all_browser_skipped(self._state)
+        ):
+            # Playwright ran and rejected the page.
+            self._state.result_status = "NACHBESSERUNG"
+            note_incomplete_page(self._state)
+            return
+        if ok_deliv and any_ok and not wants:
+            self._state.result_status = "GELIEFERT"
+            return
+        if ok_deliv:
+            self._state.result_status = "UNGEPRÜFT"
+            return
+        self._state.result_status = "FEHLER"
+
     def _finish(self) -> None:
         # Last chance: never store memory / mark done after soft-cancel (H7)
         self._check_cancel()
@@ -160,21 +219,7 @@ class PersistMixin:
         )
         self._offer_memory_keep(list(facts or []))
         # Stage stays done (pipeline finished). Honesty lives in result_status.
-        outputs = list(self._state.worker_outputs or [])
-        any_ok = any(
-            isinstance(o, dict) and (o.get("validation") or {}).get("ok") is True for o in outputs
-        )
-        ok_deliv = bool(_deliverable_ok(self._state))
-        if ok_deliv and any_ok:
-            self._state.result_status = "GELIEFERT"
-            self._state.error = None
-        elif ok_deliv:
-            self._state.result_status = "UNGEPRÜFT"
-            self._state.error = None
-        else:
-            self._state.result_status = "FEHLER"
-            # Pipeline finished. Missing deliverable is result_status, not a crash.
-            self._state.error = None
+        self._apply_delivery_status()
         # Key-missing still asked. "Passt das?" only after a real deliverable.
         self._offer_judgment()
         try:

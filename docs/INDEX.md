@@ -35,7 +35,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 | [LAYERS_FOR_AI.md](LAYERS_FOR_AI.md) | hub, layers, user, hot, ai, gnom, selected, warm, worker1, brainstorm |
 | [MCP_ARCHITECTURE.md](MCP_ARCHITECTURE.md) | mcp, api, tools, core, hub, call, stroke, architecture, reg, plugins |
 | [ORCHESTRATION.md](ORCHESTRATION.md) | skills, orchestration, flex, coordinator, user, worker, agent, api, brainstorm, plan |
-| [UI-STATE-CONTRACT.md](UI-STATE-CONTRACT.md) | box, execute, flex, worker, nicht, kein, coordinator, hub, api, clarify |
+| [UI-STATE-CONTRACT.md](UI-STATE-CONTRACT.md) | box, execute, flex, nicht, worker, kein, coordinator, hub, api, clarify |
 | [WORKFLOWS_AND_PRESETS.md](WORKFLOWS_AND_PRESETS.md) | presets, plan_mode, workflow, workflows, api, skills, team, plan, worker, agent |
 
 ### Skills & plugins
@@ -58,7 +58,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 | Doc | Keywords |
 |-----|----------|
 | [BASIC_USER_TEST.md](BASIC_USER_TEST.md) | tools, scripts, user, test, basic, api, html, computer, landing, playwright |
-| [DOD_GATE.md](DOD_GATE.md) | gate, dod, pipeline, retry, validation, worker, dod_gate, no_interaction, bus, checklist |
+| [DOD_GATE.md](DOD_GATE.md) | dod, gate, pipeline, worker, html, retry, validation, no_interaction, stub, checklist |
 | [DOD_GATE_PLAN.md](DOD_GATE_PLAN.md) | gate, dod, plan, retry, codes, flex, prefetch, design, html, issues |
 | [DOD_LINT.md](DOD_LINT.md) | must, should, dod, html, lint, codes, structure, catalog, honesty, info |
 | [ERROR_HANDLING.md](ERROR_HANDLING.md) | error, handling, auth, code, retry, toolfailed, gnom_hub, tool, detail, envelope |

@@ -68,6 +68,27 @@ Worker-level detail remains on `worker_outputs[].validation`.
 
 Hints come from the lint catalog (`hints_for_issues`).
 
+## HTML delivery (`GELIEFERT`)
+
+An HTML/page task is **GELIEFERT** only when the page works, not when the worker
+emitted enough text.
+
+| Check | Effect |
+|-------|--------|
+| `html_complete` + DoD + required interaction, no stub/FEHLER | `deliverable_ok` |
+| Long HTML fragment without a full document | not `deliverable_ok` |
+| Playwright: load, no critical `pageerror`, DOM/structure, one click if required, screenshot | required for `GELIEFERT` |
+| Playwright missing / skipped | `UNGEPRÜFT` (static page may still be `deliverable_ok`) |
+| Playwright fail or incomplete after max retries (≤2) | `NACHBESSERUNG` or `FEHLER`, never `UNGEPRÜFT` |
+
+User-facing text when the page is incomplete:
+
+> Worker konnte keine vollständige Seite liefern.
+
+Box 3 preview and fullscreen iframes share the same sandbox
+(`allow-scripts` when JS is needed). Merge-gate:
+`tests/test_landing_delivery_gate.py`.
+
 ## API usage
 
 ```python
