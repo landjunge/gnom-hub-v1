@@ -44,6 +44,8 @@ def _pr(
     repo: str = "",
     base: str = "",
     ci: str = "",
+    draft: bool | None = None,
+    mergeable: bool | None = None,
 ) -> dict:
     pr: dict = {
         "number": number,
@@ -61,10 +63,16 @@ def _pr(
     elif base:
         pr["_base"] = base
         pr["base"] = {"ref": base}
+    if draft is not None:
+        pr["draft"] = draft
+    if mergeable is not None:
+        pr["mergeable"] = mergeable
     if ci:
         pr["_ci"] = ci
         if ci.lower() == "success":
             pr["statusCheckRollup"] = [{"state": "SUCCESS"}]
+        elif ci.lower() in ("failure", "error"):
+            pr["statusCheckRollup"] = [{"state": "FAILURE"}]
     return pr
 
 
@@ -154,6 +162,165 @@ def test_changes_requested_starts_builder_not_reviewer() -> None:
     assert job.role == "builder"
     assert job.pr == 109
     assert job.reason == "changes-requested"
+
+
+def test_comment_plus_unmergeable_starts_builder_not_reviewer() -> None:
+    snap = _snap(
+        pulls=[
+            _pr(
+                26,
+                "harden",
+                sha="toll",
+                repo="landjunge/tollgate",
+                base="main",
+                mergeable=False,
+            )
+        ],
+        reviews={
+            ("landjunge/tollgate", 26): [
+                {"state": "COMMENTED", "submitted_at": "2026-09-21T03:52:24Z"}
+            ]
+        },
+        teilaufgaben=[_issue(139)],
+        baseline_sha="base-sha",
+    )
+    state: dict = {"started": {}, "last_test_sha": "base-sha"}
+    job = ad.pick_job(snap, state)
+    assert job is not None
+    assert job.role == "builder"
+    assert job.reason == "changes-requested"
+    assert job.pr == 26
+    assert job.repo == "landjunge/tollgate"
+    ad.mark_started(state, job, "ok", NOW)
+    nxt = ad.pick_job(snap, state)
+    assert nxt is not None
+    assert nxt.role == "builder"
+    assert nxt.reason == "open-teilaufgabe"
+    assert nxt.issue == 139
+
+
+def test_comment_plus_draft_failed_check_starts_builder() -> None:
+    snap = _snap(
+        pulls=[
+            _pr(
+                14,
+                "finding",
+                sha="lab",
+                repo="landjunge/agent-authority-lab",
+                base="master",
+                ci="failure",
+                draft=True,
+            )
+        ],
+        reviews={
+            ("landjunge/agent-authority-lab", 14): [
+                {"state": "COMMENT", "submitted_at": "2026-09-21T04:27:57Z"}
+            ]
+        },
+        teilaufgaben=[_issue(139)],
+        baseline_sha="base-sha",
+    )
+    job = ad.pick_job(snap, {"started": {}, "last_test_sha": "base-sha"})
+    assert job is not None
+    assert job.role == "builder"
+    assert job.reason == "changes-requested"
+    assert job.pr == 14
+    assert job.repo == "landjunge/agent-authority-lab"
+
+
+def test_comment_without_blocker_stays_reviewer() -> None:
+    snap = _snap(
+        pulls=[
+            _pr(
+                57,
+                "p10",
+                sha="ok",
+                repo="landjunge/threaddesk",
+                base="main",
+                ci="success",
+                mergeable=True,
+                draft=False,
+            )
+        ],
+        reviews={
+            ("landjunge/threaddesk", 57): [
+                {"state": "COMMENTED", "submitted_at": "2026-09-21T04:11:29Z"}
+            ]
+        },
+        teilaufgaben=[_issue(139)],
+        baseline_sha="base-sha",
+    )
+    job = ad.pick_job(snap, {"started": {}, "last_test_sha": "base-sha"})
+    assert job is not None
+    assert job.role == "reviewer"
+    assert job.pr == 57
+
+
+def test_comment_blocker_beats_unreviewed_pr() -> None:
+    snap = _snap(
+        pulls=[
+            _pr(215, "feat", sha="pass", repo="landjunge/4AllPass", base="main", ci="success"),
+            _pr(
+                14,
+                "finding",
+                sha="lab",
+                repo="landjunge/agent-authority-lab",
+                base="master",
+                ci="failure",
+                draft=True,
+            ),
+        ],
+        reviews={
+            ("landjunge/4AllPass", 215): [],
+            ("landjunge/agent-authority-lab", 14): [
+                {"state": "COMMENTED", "submitted_at": "2026-09-21T04:27:57Z"}
+            ],
+        },
+        teilaufgaben=[_issue(139)],
+        baseline_sha="base-sha",
+    )
+    job = ad.pick_job(snap, {"started": {}, "last_test_sha": "base-sha"})
+    assert job is not None
+    assert job.role == "builder"
+    assert job.reason == "changes-requested"
+    assert job.pr == 14
+
+
+def test_dry_run_comment_plus_red_ci_picks_builder(tmp_path: Path, capsys) -> None:
+    snap = _snap(
+        pulls=[
+            _pr(
+                14,
+                "finding",
+                sha="lab",
+                repo="landjunge/agent-authority-lab",
+                base="master",
+                ci="failure",
+                draft=True,
+            )
+        ],
+        reviews={
+            ("landjunge/agent-authority-lab", 14): [
+                {"state": "COMMENTED", "submitted_at": "2026-09-21T04:27:57Z"}
+            ]
+        },
+        teilaufgaben=[_issue(139)],
+        baseline_sha="base-sha",
+    )
+    action = ad.dispatch_once(
+        repo="landjunge/gnom-hub-v1",
+        token="tok",
+        state_path=tmp_path / "state.json",
+        agents_dir=ROOT / "agents",
+        dry_run=True,
+        snapshot=snap,
+        now=NOW,
+    )
+    assert action == "dry-run"
+    out = capsys.readouterr().out
+    assert "role=builder" in out
+    assert "changes-requested" in out
+    assert "landjunge/agent-authority-lab#14" in out
 
 
 def test_open_pr_without_review_starts_reviewer() -> None:
@@ -637,6 +804,128 @@ def test_collect_snapshot_dedupes_same_pr_on_two_bases() -> None:
     assert any("base=main" in url for url in pulls_calls)
     assert len(snap.pulls) == 1
     assert snap.pulls[0]["number"] == 9
+
+
+def test_collect_snapshot_enriches_mergeable_and_failed_checks() -> None:
+    seen: list[str] = []
+
+    def github(method: str, url: str, token: str, payload):
+        seen.append(url)
+        if "/pulls?" in url:
+            return [
+                {
+                    "number": 14,
+                    "title": "finding",
+                    "body": "",
+                    "draft": True,
+                    "mergeable": None,
+                    "head": {"sha": "0de8a99"},
+                    "base": {
+                        "ref": "master",
+                        "repo": {"full_name": "landjunge/agent-authority-lab"},
+                    },
+                }
+            ]
+        if url.endswith("/reviews"):
+            return [{"state": "COMMENTED", "submitted_at": "2026-09-21T04:27:57Z"}]
+        if url.endswith("/pulls/14"):
+            return {
+                "number": 14,
+                "draft": True,
+                "mergeable": True,
+                "mergeable_state": "unstable",
+            }
+        if url.endswith("/check-runs"):
+            return {
+                "check_runs": [
+                    {"name": "test", "status": "completed", "conclusion": "failure"},
+                    {
+                        "name": "Analyze (python)",
+                        "status": "completed",
+                        "conclusion": "success",
+                    },
+                ]
+            }
+        if "/issues?" in url:
+            return []
+        if f"/issues/{ad.HAUPT_ISSUE}" in url:
+            return {"number": ad.HAUPT_ISSUE, "state": "open"}
+        if "/git/ref/heads/" in url:
+            return {"object": {"sha": "base-sha"}}
+        return []
+
+    snap = ad.collect_snapshot(
+        repo="landjunge/gnom-hub-v1",
+        token="tok",
+        github=github,
+        repos=(ad.RepoSpec("landjunge/agent-authority-lab", ("master",)),),
+        now=NOW,
+    )
+    assert len(snap.pulls) == 1
+    pr = snap.pulls[0]
+    assert pr["mergeable"] is True
+    assert pr["draft"] is True
+    assert ad.pr_ci(pr) == "failure"
+    assert any(url.endswith("/pulls/14") for url in seen)
+    assert any(url.endswith("/check-runs") for url in seen)
+    job = ad.pick_job(snap, {"started": {}, "last_test_sha": "base-sha"})
+    assert job is not None
+    assert job.role == "builder"
+    assert job.reason == "changes-requested"
+    assert job.pr == 14
+    assert job.repo == "landjunge/agent-authority-lab"
+
+
+def test_collect_snapshot_loads_merge_conflict_for_comment() -> None:
+    def github(method: str, url: str, token: str, payload):
+        if "/pulls?" in url:
+            return [
+                {
+                    "number": 26,
+                    "title": "harden",
+                    "body": "",
+                    "draft": False,
+                    "mergeable": None,
+                    "head": {"sha": "abc"},
+                    "base": {
+                        "ref": "main",
+                        "repo": {"full_name": "landjunge/tollgate"},
+                    },
+                }
+            ]
+        if url.endswith("/reviews"):
+            return [{"state": "COMMENTED", "submitted_at": "2026-09-21T03:52:24Z"}]
+        if url.endswith("/pulls/26"):
+            return {
+                "number": 26,
+                "draft": False,
+                "mergeable": False,
+                "mergeable_state": "dirty",
+            }
+        if url.endswith("/check-runs"):
+            return {"check_runs": []}
+        if "/issues?" in url:
+            return []
+        if f"/issues/{ad.HAUPT_ISSUE}" in url:
+            return {"number": ad.HAUPT_ISSUE, "state": "open"}
+        if "/git/ref/heads/" in url:
+            return {"object": {"sha": "base-sha"}}
+        return []
+
+    snap = ad.collect_snapshot(
+        repo="landjunge/gnom-hub-v1",
+        token="tok",
+        github=github,
+        repos=(ad.RepoSpec("landjunge/tollgate", ("main",)),),
+        now=NOW,
+    )
+    assert snap.pulls[0]["mergeable"] is False
+    job = ad.pick_job(snap, {"started": {}, "last_test_sha": "base-sha"})
+    assert job is not None
+    assert job.role == "builder"
+    assert job.reason == "changes-requested"
+    assert job.pr == 26
+    assert job.repo == "landjunge/tollgate"
 
 
 def test_launch_role_sets_repo_and_base_env(monkeypatch, tmp_path: Path) -> None:
