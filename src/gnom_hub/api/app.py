@@ -42,6 +42,11 @@ def create_app() -> FastAPI:
     def index() -> FileResponse:
         return FileResponse(STATIC_DIR / "index.html")
 
+    @app.get("/v4")
+    def v4_index() -> FileResponse:
+        """Clean V4 desk shell. Legacy desk remains available at /."""
+        return FileResponse(STATIC_DIR / "v4.html")
+
     if STATIC_DIR.is_dir():
         app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
