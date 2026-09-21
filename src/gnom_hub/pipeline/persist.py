@@ -177,6 +177,19 @@ class PersistMixin:
             self._state.error = None
         # Key-missing still asked. "Passt das?" only after a real deliverable.
         self._offer_judgment()
+        try:
+            from gnom_hub.authority_emit import emit as _auth_emit
+
+            _auth_emit(
+                "work.finished",
+                actor="coordinator",
+                action="execute",
+                resource="pipeline:execute",
+                result_ref=str(self._state.result_status or ""),
+                decision="ALLOW" if self._state.result_status == "GELIEFERT" else None,
+            )
+        except Exception:  # noqa: BLE001
+            pass
         self._set_stage(PipelineStage.done)
         total_ms = round(sum(self._state.stage_timings.values()), 1)
         self.bus.emit(
