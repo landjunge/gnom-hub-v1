@@ -29,11 +29,46 @@ def tool_targets_get() -> dict[str, Any]:
     import urllib.parse
 
     slots = (
-        ("1", "netzwerkpunkt", "NetzwerkPunkt", "GNOM_NETWORKPUNKT_URL", None, "https://netzwerkpunkt.de/"),
-        ("2", "gnom-hub", "Gnom-Hub-V1", None, "/v4", "https://gnom-hub-v1.netzwerkpunkt.de/"),
-        ("3", "threaddesk", "ThreadDesk", "THREADDESK_URL", None, "https://threaddesk.netzwerkpunkt.de/"),
-        ("4", "tollgate", "TollGate", "TOLLGATE_URL", None, "https://tollgate.netzwerkpunkt.de/"),
-        ("5", "4allpass", "4AllPass", "GNOM_ALLPASS_URL", None, "https://4allpass.netzwerkpunkt.de/"),
+        (
+            "1",
+            "netzwerkpunkt",
+            "NetzwerkPunkt",
+            "GNOM_NETWORKPUNKT_URL",
+            None,
+            "https://netzwerkpunkt.de/",
+        ),
+        (
+            "2",
+            "gnom-hub",
+            "Gnom-Hub-V1",
+            None,
+            "/v4",
+            "https://gnom-hub-v1.netzwerkpunkt.de/",
+        ),
+        (
+            "3",
+            "threaddesk",
+            "ThreadDesk",
+            "THREADDESK_URL",
+            None,
+            "https://threaddesk.netzwerkpunkt.de/",
+        ),
+        (
+            "4",
+            "tollgate",
+            "TollGate",
+            "TOLLGATE_URL",
+            None,
+            "https://tollgate.netzwerkpunkt.de/",
+        ),
+        (
+            "5",
+            "4allpass",
+            "4AllPass",
+            "GNOM_ALLPASS_URL",
+            None,
+            "https://4allpass.netzwerkpunkt.de/",
+        ),
     )
 
     def http_url(value: str | None) -> str | None:
@@ -56,7 +91,9 @@ def tool_targets_get() -> dict[str, Any]:
                 "name": name,
                 "connected": bool(target),
                 "target": target,
-                "mode": "internal" if internal_url else ("embed" if runtime else "unavailable"),
+                "mode": (
+                    "internal" if internal_url else ("embed" if runtime else "unavailable")
+                ),
                 "external_url": external_url,
             }
         )
