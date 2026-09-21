@@ -80,3 +80,29 @@ def test_v4_keyboard_focus_contract():
     assert "input.focus()" in tools_js
     assert "event.target.blur()" in tools_js
     assert 'event.key === "Escape"' in tools_js
+
+
+def test_v4_tool_targets_resolve_runtime_urls(monkeypatch):
+    monkeypatch.setenv("TOLLGATE_URL", "http://127.0.0.1:8787")
+    monkeypatch.setenv("THREADDESK_URL", "http://127.0.0.1:18181")
+    monkeypatch.delenv("GNOM_ALLPASS_URL", raising=False)
+    app = create_app()
+    with TestClient(app) as client:
+        payload = client.get("/api/tool-targets").json()
+    rows = {row["id"]: row for row in payload["tools"]}
+    assert rows["gnom-hub"]["connected"] is True
+    assert rows["gnom-hub"]["target"] == "/v4"
+    assert rows["tollgate"]["target"] == "http://127.0.0.1:8787"
+    assert rows["threaddesk"]["target"] == "http://127.0.0.1:18181"
+    assert rows["4allpass"]["connected"] is False
+    assert rows["4allpass"]["external_url"] == "https://4allpass.netzwerkpunkt.de/"
+
+
+def test_v4_tool_targets_reject_non_http_runtime_url(monkeypatch):
+    monkeypatch.setenv("GNOM_ALLPASS_URL", "file:///tmp/not-a-tool")
+    app = create_app()
+    with TestClient(app) as client:
+        payload = client.get("/api/tool-targets").json()
+    rows = {row["id"]: row for row in payload["tools"]}
+    assert rows["4allpass"]["connected"] is False
+    assert rows["4allpass"]["target"] is None
