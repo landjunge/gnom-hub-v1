@@ -6,9 +6,27 @@ Ein Dispatcher liest GitHub und startet genau eine Rolle pro Tick über Headless
 
 ```bash
 export GITHUB_TOKEN="$(gh auth token)"   # oder GNOM_GITHUB_TOKEN
-export GNOM_GITHUB_REPO=landjunge/gnom-hub-v1
+export GNOM_GITHUB_REPO=landjunge/gnom-hub-v1   # Home: Issues, #105, baseline-SHA
 # Kill-Switch: GNOM_AGENT_DISPATCH=0
 ```
+
+`pick_job` läuft über alle Produkt-Repos, nicht pro Repo. Höchste Priorität gewinnt global (eine Rolle, ein Tick). Offene PRs kommen aus:
+
+| Repo | Base |
+|---|---|
+| `landjunge/gnom-hub-v1` | `baseline` und `main` (`main` = baseline) |
+| `landjunge/4AllPass` | `main` |
+| `landjunge/tollgate` | `main` |
+| `landjunge/threaddesk` | `main` |
+| `landjunge/agent-authority-lab` | `master` |
+
+Override der Watch-Liste:
+
+```bash
+export GNOM_GITHUB_REPOS="landjunge/gnom-hub-v1:baseline+main,landjunge/4AllPass:main"
+```
+
+Format: `owner/repo` oder `owner/repo:base` (mehrere Bases mit `+` oder `|`). Komma oder Whitespace. Ohne Env: die fünf Defaults. Dry-Run listet gefundene PRs als `seen-pr`.
 
 `scripts/run_agent.sh` ruft `grok --prompt-file … --yolo --max-turns 80` auf. Der Prompt liegt in `agents/<rolle>.md`. Zusätzlicher Text (Poll/Webhook) kommt über stdin in dieselbe Datei, nicht als `grok -p "$(cat)"`.
 
@@ -43,7 +61,7 @@ State: `data/agent_dispatch_state.json` (gitignored unter `data/`). Einträge ge
 ## Reihenfolge pro Tick
 
 1. Offener PR mit Review *changes requested* → Builder (Fixes auf demselben Branch)
-2. Offener PR ohne Review oder Approve ohne Merge → Reviewer
+2. Offener PR ohne Review oder Approve ohne Merge → Reviewer (jedes Watch-Repo)
 3. `baseline` HEAD neu seit letztem Test → Test-Agent
 4. Offene `teilaufgabe` ohne PR (stale `in-bearbeitung` nach 2h nochmal) → Builder
 5. #105 offen, keine Teilaufgaben → Planer

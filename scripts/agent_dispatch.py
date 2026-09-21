@@ -12,7 +12,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -31,6 +31,23 @@ STARTED_TTL = timedelta(hours=2)
 MISSING_CMD = "missing-cmd"
 
 RoleLaunch = Callable[[str, str, dict[str, str]], str]
+ReviewKey = int | tuple[str, int]
+
+
+@dataclass(frozen=True)
+class RepoSpec:
+    repo: str
+    bases: tuple[str, ...]
+
+
+# Home repo watches baseline and main (they are the same line). Other products: default branch.
+DEFAULT_REPOS: tuple[RepoSpec, ...] = (
+    RepoSpec("landjunge/gnom-hub-v1", ("baseline", "main")),
+    RepoSpec("landjunge/4AllPass", ("main",)),
+    RepoSpec("landjunge/tollgate", ("main",)),
+    RepoSpec("landjunge/threaddesk", ("main",)),
+    RepoSpec("landjunge/agent-authority-lab", ("master",)),
+)
 
 
 def utc_now() -> datetime:
@@ -73,6 +90,48 @@ def repo_from_env() -> str:
     ).strip()
 
 
+def _bases_for(repo: str, explicit: str | None = None) -> tuple[str, ...]:
+    if explicit:
+        parts = tuple(
+            part.strip() for part in explicit.replace("|", "+").split("+") if part.strip()
+        )
+        if parts:
+            return parts
+    repo_l = repo.strip().lower()
+    for spec in DEFAULT_REPOS:
+        if spec.repo.lower() == repo_l:
+            return spec.bases
+    if repo_l == DEFAULT_REPO.lower():
+        return (DEFAULT_BASE, "main")
+    return ("main",)
+
+
+def parse_repo_specs(raw: str | None) -> tuple[RepoSpec, ...]:
+    text = (raw or "").strip()
+    if not text:
+        return DEFAULT_REPOS
+    specs: list[RepoSpec] = []
+    for chunk in text.replace(";", ",").replace("\n", ",").split(","):
+        for token in chunk.split():
+            token = token.strip()
+            if not token:
+                continue
+            if ":" in token:
+                repo, base_raw = token.split(":", 1)
+                repo = repo.strip()
+                bases = _bases_for(repo, base_raw.strip())
+            else:
+                repo = token
+                bases = _bases_for(repo, None)
+            if repo:
+                specs.append(RepoSpec(repo, bases))
+    return tuple(specs) or DEFAULT_REPOS
+
+
+def repos_from_env() -> tuple[RepoSpec, ...]:
+    return parse_repo_specs(os.environ.get("GNOM_GITHUB_REPOS"))
+
+
 def token_from_env() -> str:
     return (os.environ.get("GNOM_GITHUB_TOKEN") or os.environ.get("GITHUB_TOKEN") or "").strip()
 
@@ -105,10 +164,12 @@ class Job:
     pr: int | None = None
     sha: str | None = None
     extra: str = ""
+    repo: str = DEFAULT_REPO
+    base: str = DEFAULT_BASE
 
     def target(self) -> str:
         if self.pr is not None:
-            return f"pr=#{self.pr}"
+            return f"{self.repo}#{self.pr}" if self.repo else f"pr=#{self.pr}"
         if self.issue is not None:
             return f"issue=#{self.issue}"
         if self.sha:
@@ -117,6 +178,8 @@ class Job:
 
     def key(self) -> str:
         parts = [self.role]
+        if self.repo:
+            parts.append(f"repo:{self.repo}")
         if self.pr is not None:
             parts.append(f"pr:{self.pr}")
         if self.issue is not None:
@@ -131,10 +194,11 @@ class Job:
 class Snapshot:
     teilaufgaben: list[dict[str, Any]]
     pulls: list[dict[str, Any]]
-    reviews: dict[int, list[dict[str, Any]]]
+    reviews: dict[ReviewKey, list[dict[str, Any]]]
     haupt: dict[str, Any] | None
     baseline_sha: str
     now: datetime
+    home_repo: str = DEFAULT_REPO
 
 
 def load_state(path: Path) -> dict[str, Any]:
@@ -229,6 +293,71 @@ def linked_issue(pr: dict[str, Any]) -> int | None:
     return None
 
 
+def pr_repo(pr: dict[str, Any], default: str = "") -> str:
+    tagged = str(pr.get("_repo") or "").strip()
+    if tagged:
+        return tagged
+    base = pr.get("base") if isinstance(pr.get("base"), dict) else {}
+    repo_obj = base.get("repo") if isinstance((base or {}).get("repo"), dict) else {}
+    name = str((repo_obj or {}).get("full_name") or "").strip()
+    if name:
+        return name
+    html = str(pr.get("html_url") or pr.get("url") or "")
+    marker = "/repos/"
+    if marker in html:
+        rest = html.split(marker, 1)[1]
+        parts = rest.split("/")
+        if len(parts) >= 2:
+            return f"{parts[0]}/{parts[1]}"
+    if "github.com/" in html:
+        rest = html.split("github.com/", 1)[1]
+        parts = rest.split("/")
+        if len(parts) >= 2:
+            return f"{parts[0]}/{parts[1]}"
+    return default
+
+
+def pr_base(pr: dict[str, Any], default: str = DEFAULT_BASE) -> str:
+    tagged = str(pr.get("_base") or "").strip()
+    if tagged:
+        return tagged
+    base = pr.get("base") if isinstance(pr.get("base"), dict) else {}
+    ref = str((base or {}).get("ref") or "").strip()
+    return ref or default
+
+
+def pr_ci(pr: dict[str, Any]) -> str:
+    tagged = str(pr.get("_ci") or "").strip()
+    if tagged:
+        return tagged.lower()
+    rollup = pr.get("statusCheckRollup")
+    if isinstance(rollup, list) and rollup:
+        states = [
+            str(item.get("state") or item.get("conclusion") or "").upper()
+            for item in rollup
+            if isinstance(item, dict)
+        ]
+        if states and all(s in ("SUCCESS", "SKIPPED", "NEUTRAL") for s in states):
+            return "success"
+        if any(s in ("FAILURE", "ERROR", "CANCELLED", "TIMED_OUT") for s in states):
+            return "failure"
+        if any(s in ("PENDING", "QUEUED", "IN_PROGRESS") for s in states):
+            return "pending"
+    return ""
+
+
+def reviews_for(snapshot: Snapshot, pr: dict[str, Any]) -> list[dict[str, Any]]:
+    number = int(pr.get("number") or 0)
+    repo = pr_repo(pr, default="")
+    table = snapshot.reviews
+    if repo:
+        found = table.get((repo, number))
+        if found is not None:
+            return found
+    found = table.get(number)
+    return found if isinstance(found, list) else []
+
+
 def github_request(method: str, url: str, token: str, payload: dict[str, Any] | None = None) -> Any:
     body = None if payload is None else json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(url, data=body, method=method)
@@ -247,6 +376,43 @@ def github_request(method: str, url: str, token: str, payload: dict[str, Any] | 
     return json.loads(raw) if raw.strip() else None
 
 
+def _list_pulls(
+    call: Callable[[str, str, str, dict[str, Any] | None], Any],
+    repo: str,
+    base: str,
+    token: str,
+) -> list[dict[str, Any]]:
+    url = (
+        f"https://api.github.com/repos/{repo}/pulls?"
+        f"{urllib.parse.urlencode({'state': 'open', 'base': base, 'per_page': '100'})}"
+    )
+    try:
+        raw = call("GET", url, token, None) or []
+    except RuntimeError as exc:
+        log("watch-failed", target=repo, detail=f"base={base} {str(exc)[:180]}")
+        return []
+    if not isinstance(raw, list):
+        return []
+    return [pr for pr in raw if isinstance(pr, dict)]
+
+
+def _list_reviews(
+    call: Callable[[str, str, str, dict[str, Any] | None], Any],
+    repo: str,
+    number: int,
+    token: str,
+) -> list[dict[str, Any]]:
+    url = f"https://api.github.com/repos/{repo}/pulls/{number}/reviews"
+    try:
+        raw = call("GET", url, token, None) or []
+    except RuntimeError as exc:
+        log("watch-failed", target=f"{repo}#{number}", detail=str(exc)[:180])
+        return []
+    if not isinstance(raw, list):
+        return []
+    return [it for it in raw if isinstance(it, dict)]
+
+
 def collect_snapshot(
     *,
     repo: str,
@@ -254,8 +420,10 @@ def collect_snapshot(
     base: str = DEFAULT_BASE,
     now: datetime | None = None,
     github: Callable[[str, str, str, dict[str, Any] | None], Any] | None = None,
+    repos: Sequence[RepoSpec] | None = None,
 ) -> Snapshot:
     call = github or github_request
+    watch = list(repos) if repos is not None else [RepoSpec(repo, (base,))]
     issues = (
         call(
             "GET",
@@ -268,30 +436,23 @@ def collect_snapshot(
     if not isinstance(issues, list):
         issues = []
     teilaufgaben = [it for it in issues if isinstance(it, dict) and not it.get("pull_request")]
-    pulls = (
-        call(
-            "GET",
-            f"https://api.github.com/repos/{repo}/pulls?{urllib.parse.urlencode({'state': 'open', 'base': base, 'per_page': '100'})}",
-            token,
-            None,
-        )
-        or []
-    )
-    if not isinstance(pulls, list):
-        pulls = []
-    pulls = [pr for pr in pulls if isinstance(pr, dict)]
-    reviews: dict[int, list[dict[str, Any]]] = {}
-    for pr in pulls:
-        number = int(pr.get("number") or 0)
-        if number <= 0:
-            continue
-        items = (
-            call("GET", f"https://api.github.com/repos/{repo}/pulls/{number}/reviews", token, None)
-            or []
-        )
-        reviews[number] = (
-            [it for it in items if isinstance(it, dict)] if isinstance(items, list) else []
-        )
+    pulls: list[dict[str, Any]] = []
+    reviews: dict[ReviewKey, list[dict[str, Any]]] = {}
+    seen: set[tuple[str, int]] = set()
+    for spec in watch:
+        for watch_base in spec.bases:
+            for pr in _list_pulls(call, spec.repo, watch_base, token):
+                number = int(pr.get("number") or 0)
+                if number <= 0:
+                    continue
+                key = (spec.repo, number)
+                if key in seen:
+                    continue
+                seen.add(key)
+                pr["_repo"] = spec.repo
+                pr["_base"] = pr_base(pr, watch_base)
+                pulls.append(pr)
+                reviews[key] = _list_reviews(call, spec.repo, number, token)
     try:
         haupt = call(
             "GET", f"https://api.github.com/repos/{repo}/issues/{HAUPT_ISSUE}", token, None
@@ -314,6 +475,7 @@ def collect_snapshot(
         haupt=haupt,
         baseline_sha=sha,
         now=now or utc_now(),
+        home_repo=repo,
     )
 
 
@@ -336,6 +498,7 @@ PRIORITY = (
 def pick_job(snapshot: Snapshot, state: dict[str, Any]) -> Job | None:
     now = snapshot.now
     pulls = list(snapshot.pulls)
+    home = snapshot.home_repo or DEFAULT_REPO
 
     def accept(job: Job) -> Job | None:
         if started_fresh(state, job.key(), now):
@@ -344,15 +507,21 @@ def pick_job(snapshot: Snapshot, state: dict[str, Any]) -> Job | None:
 
     for pr in pulls:
         number = int(pr.get("number") or 0)
-        latest = latest_review(snapshot.reviews.get(number) or [])
+        latest = latest_review(reviews_for(snapshot, pr))
         if review_state(latest) == "CHANGES_REQUESTED":
+            repo = pr_repo(pr, home)
             job = Job(
                 role="builder",
                 reason="changes-requested",
                 pr=number,
                 issue=linked_issue(pr),
                 sha=_pr_head_sha(pr) or None,
-                extra=f"arbeite die Review-Kommentare zu PR #{number} ab. Branch nicht neu anlegen.",
+                extra=(
+                    f"arbeite die Review-Kommentare zu PR #{number} in {repo} ab. "
+                    "Branch nicht neu anlegen."
+                ),
+                repo=repo,
+                base=pr_base(pr),
             )
             taken = accept(job)
             if taken:
@@ -361,7 +530,7 @@ def pick_job(snapshot: Snapshot, state: dict[str, Any]) -> Job | None:
     for pr in pulls:
         number = int(pr.get("number") or 0)
         sha = _pr_head_sha(pr)
-        latest = latest_review(snapshot.reviews.get(number) or [])
+        latest = latest_review(reviews_for(snapshot, pr))
         state_name = review_state(latest)
         if state_name == "CHANGES_REQUESTED":
             continue
@@ -369,13 +538,17 @@ def pick_job(snapshot: Snapshot, state: dict[str, Any]) -> Job | None:
             reason = "merge-approved"
         else:
             reason = "needs-review"
+        repo = pr_repo(pr, home)
+        base = pr_base(pr)
         job = Job(
             role="reviewer",
             reason=reason,
             pr=number,
             issue=linked_issue(pr),
             sha=sha or None,
-            extra=f"Prüfe PR #{number} gegen baseline. Merge nur ohne Blocker.",
+            extra=f"Prüfe PR #{number} in {repo} gegen {base}. Merge nur ohne Blocker.",
+            repo=repo,
+            base=base,
         )
         taken = accept(job)
         if taken:
@@ -388,12 +561,14 @@ def pick_job(snapshot: Snapshot, state: dict[str, Any]) -> Job | None:
             issue=HAUPT_ISSUE,
             sha=snapshot.baseline_sha,
             extra=f"baseline HEAD {snapshot.baseline_sha[:12]}. Tests ausführen, Fakten in #{HAUPT_ISSUE}.",
+            repo=home,
         )
         taken = accept(job)
         if taken:
             return taken
 
-    pr_issues = {linked_issue(pr) for pr in pulls}
+    home_pulls = [pr for pr in pulls if pr_repo(pr, home) == home]
+    pr_issues = {linked_issue(pr) for pr in home_pulls}
     for issue in snapshot.teilaufgaben:
         number = int(issue.get("number") or 0)
         if number <= 0:
@@ -410,6 +585,7 @@ def pick_job(snapshot: Snapshot, state: dict[str, Any]) -> Job | None:
             reason="stale-retry" if stale else "open-teilaufgabe",
             issue=number,
             extra=f"Offene Teilaufgabe: Issue #{number}. Branch von baseline, PR gegen baseline.",
+            repo=home,
         )
         taken = accept(job)
         if taken:
@@ -422,6 +598,7 @@ def pick_job(snapshot: Snapshot, state: dict[str, Any]) -> Job | None:
             reason="no-teilaufgaben",
             issue=HAUPT_ISSUE,
             extra=f"Lies Issue #{HAUPT_ISSUE}. Zerlege in 2–4 Teilaufgaben. Keine Umsetzung.",
+            repo=home,
         )
         taken = accept(job)
         if taken:
@@ -439,14 +616,14 @@ def pick_job(snapshot: Snapshot, state: dict[str, Any]) -> Job | None:
     waiting_prs = bool(pulls)
     if stale_issues or waiting_prs:
         extra = "Blockaden: " + ", ".join(
-            [f"stale #{n}" for n in stale_issues if n]
-            + (["offene PRs gegen baseline"] if waiting_prs else [])
+            [f"stale #{n}" for n in stale_issues if n] + (["offene PRs"] if waiting_prs else [])
         )
         job = Job(
             role="koordinator",
             reason="stale-or-waiting",
             issue=HAUPT_ISSUE,
             extra=extra,
+            repo=home,
         )
         return accept(job)
     return None
@@ -475,6 +652,10 @@ def launch_role(
         raise RuntimeError(MISSING_CMD)
     env = os.environ.copy()
     env["GNOM_AGENT_ROLE"] = job.role
+    if job.repo:
+        env["GNOM_GITHUB_REPO"] = job.repo
+    if job.base:
+        env["GNOM_JOB_BASE"] = job.base
     if job.issue is not None:
         env["ISSUE_NUMBER"] = str(job.issue)
     if job.pr is not None:
@@ -494,6 +675,26 @@ def launch_role(
     return f"cmd:{argv[0]}"
 
 
+def log_seen_pulls(snapshot: Snapshot) -> None:
+    home = snapshot.home_repo or DEFAULT_REPO
+    for pr in snapshot.pulls:
+        number = int(pr.get("number") or 0)
+        if number <= 0:
+            continue
+        repo = pr_repo(pr, home)
+        base = pr_base(pr)
+        ci = pr_ci(pr)
+        detail = " ".join(
+            part
+            for part in (
+                f"base={base}" if base else "",
+                f"ci={ci}" if ci else "",
+            )
+            if part
+        )
+        log("seen-pr", target=f"{repo}#{number}", detail=detail)
+
+
 def dispatch_once(
     *,
     repo: str,
@@ -507,6 +708,7 @@ def dispatch_once(
     launch: RoleLaunch | None = None,
     github: Callable[[str, str, str, dict[str, Any] | None], Any] | None = None,
     now: datetime | None = None,
+    repos: Sequence[RepoSpec] | None = None,
 ) -> str:
     if not dispatch_enabled():
         log("disabled", detail="GNOM_AGENT_DISPATCH=0")
@@ -514,7 +716,14 @@ def dispatch_once(
     if not token:
         log("no-token", detail="set GITHUB_TOKEN or GNOM_GITHUB_TOKEN")
         return "no-token"
-    snap = snapshot or collect_snapshot(repo=repo, token=token, base=base, now=now, github=github)
+    watch = tuple(repos) if repos is not None else repos_from_env()
+    snap = snapshot or collect_snapshot(
+        repo=repo, token=token, base=base, now=now, github=github, repos=watch
+    )
+    if dry_run:
+        for spec in watch:
+            log("watch", target=spec.repo, detail="bases=" + "+".join(spec.bases))
+        log_seen_pulls(snap)
     state = load_state(state_path)
     job = pick_job(snap, state)
     if job is None:

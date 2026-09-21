@@ -41,7 +41,7 @@ trap 'rm -f "$tmp"' EXIT
   echo
   echo "---"
   echo "Repo: ${GNOM_GITHUB_REPO:-landjunge/gnom-hub-v1}"
-  echo "Baseline-Branch: baseline"
+  echo "Baseline-Branch: ${GNOM_JOB_BASE:-baseline}"
   echo "Arbeitsverzeichnis: $WORKDIR"
   echo "Rolle: $ROLE"
   [[ -n "${ISSUE_NUMBER:-}" ]] && echo "ISSUE_NUMBER=$ISSUE_NUMBER"
