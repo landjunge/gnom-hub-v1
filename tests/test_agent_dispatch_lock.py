@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import fcntl
+import json
+import os
 import subprocess
 import sys
 import time
@@ -365,3 +368,273 @@ def test_two_parallel_dispatch_only_one_launches(tmp_path: Path) -> None:
     saved = ad.load_state(state_path)
     assert "running" not in saved
     assert saved["started"]
+
+
+def _live_claim() -> dict:
+    return {
+        "key": "builder:repo:landjunge/gnom-hub-v1:issue:99:open-teilaufgabe",
+        "role": "builder",
+        "reason": "open-teilaufgabe",
+        "at": "2026-09-20T14:00:00Z",
+        "pid": 9,
+    }
+
+
+def test_load_state_drops_empty_or_nondict_running(tmp_path: Path) -> None:
+    path = tmp_path / "state.json"
+    for running in ({}, "builder", [], None):
+        path.write_text(
+            json.dumps({"started": {}, "last_test_sha": "base-sha", "running": running}) + "\n",
+            encoding="utf-8",
+        )
+        loaded = ad.load_state(path)
+        assert "running" not in loaded
+        assert loaded["last_test_sha"] == "base-sha"
+
+
+def test_lock_fd_closes_on_exec(tmp_path: Path) -> None:
+    lock = tmp_path / "agent_dispatch.lock"
+    fd = ad.acquire_instance_lock(lock)
+    assert fd is not None
+    try:
+        flags = fcntl.fcntl(fd, fcntl.F_GETFD)
+        assert flags & fcntl.FD_CLOEXEC
+        assert lock.read_text(encoding="ascii").strip() == str(os.getpid())
+    finally:
+        ad.release_instance_lock(fd)
+    _assert_lock_free(lock)
+
+
+def test_dry_run_does_not_create_lock_or_running(tmp_path: Path) -> None:
+    state_path = tmp_path / "state.json"
+    lock = tmp_path / "agent_dispatch.lock"
+    _seed_tested(state_path)
+    launched: list[str] = []
+    action = ad.dispatch_once(
+        repo="landjunge/gnom-hub-v1",
+        token="tok",
+        state_path=state_path,
+        agents_dir=ROOT / "agents",
+        dry_run=True,
+        snapshot=_builder_snap(),
+        launch=lambda *_a, **_k: launched.append("x") or "ok",
+        lock_path=lock,
+        now=NOW,
+    )
+    assert action == "dry-run"
+    assert launched == []
+    assert not lock.exists()
+    saved = ad.load_state(state_path)
+    assert "running" not in saved
+    assert saved["started"] == {}
+
+
+def test_dry_run_proceeds_while_instance_lock_held(tmp_path: Path) -> None:
+    state_path = tmp_path / "state.json"
+    lock = tmp_path / "agent_dispatch.lock"
+    ready = tmp_path / "held"
+    live = _live_claim()
+    ad.save_state(
+        state_path,
+        {"started": {}, "last_test_sha": "base-sha", "running": live},
+    )
+    launched: list[str] = []
+    holder = _hold_lock(lock, ready, hold_sec=3.0)
+    try:
+        _wait_ready(ready, holder)
+        action = ad.dispatch_once(
+            repo="landjunge/gnom-hub-v1",
+            token="tok",
+            state_path=state_path,
+            agents_dir=ROOT / "agents",
+            dry_run=True,
+            snapshot=_builder_snap(),
+            launch=lambda *_a, **_k: launched.append("x") or "ok",
+            lock_path=lock,
+            now=NOW,
+        )
+        assert action == "dry-run"
+        assert launched == []
+        assert ad.acquire_instance_lock(lock) is None
+        saved = ad.load_state(state_path)
+        assert saved["running"] == live
+        assert saved["started"] == {}
+    finally:
+        holder.wait(timeout=10)
+    assert holder.returncode == 0, holder.stderr.read() if holder.stderr else ""
+
+
+def test_busy_keeps_live_claim_and_skips_github(tmp_path: Path) -> None:
+    state_path = tmp_path / "state.json"
+    lock = tmp_path / "agent_dispatch.lock"
+    ready = tmp_path / "held"
+    live = _live_claim()
+    ad.save_state(
+        state_path,
+        {"started": {}, "last_test_sha": "base-sha", "running": live},
+    )
+    calls: list[str] = []
+    launched: list[str] = []
+
+    def github(method: str, url: str, token: str, body: dict | None = None) -> list:
+        calls.append(url)
+        return []
+
+    holder = _hold_lock(lock, ready, hold_sec=3.0)
+    try:
+        _wait_ready(ready, holder)
+        action = ad.dispatch_once(
+            repo="landjunge/gnom-hub-v1",
+            token="tok",
+            state_path=state_path,
+            agents_dir=ROOT / "agents",
+            snapshot=None,
+            launch=lambda *_a, **_k: launched.append("x") or "ok",
+            github=github,
+            lock_path=lock,
+            now=NOW,
+        )
+        assert action == "busy"
+        assert calls == []
+        assert launched == []
+        saved = ad.load_state(state_path)
+        assert saved["running"] == live
+        assert saved["started"] == {}
+    finally:
+        holder.wait(timeout=10)
+    assert holder.returncode == 0, holder.stderr.read() if holder.stderr else ""
+
+
+def test_idle_tick_drops_stale_running_claim(tmp_path: Path, capsys) -> None:
+    state_path = tmp_path / "state.json"
+    live = _live_claim()
+    ad.save_state(
+        state_path,
+        {"started": {}, "last_test_sha": "base-sha", "running": live},
+    )
+    launched: list[str] = []
+    snap = _snap(
+        teilaufgaben=[],
+        pulls=[],
+        baseline_sha="base-sha",
+        haupt={"number": 105, "state": "closed"},
+    )
+    action = ad.dispatch_once(
+        repo="landjunge/gnom-hub-v1",
+        token="tok",
+        state_path=state_path,
+        agents_dir=ROOT / "agents",
+        snapshot=snap,
+        launch=lambda *_a, **_k: launched.append("x") or "ok",
+        now=NOW,
+    )
+    assert action == "idle"
+    assert launched == []
+    out = capsys.readouterr().out
+    assert "stale-claim" in out
+    assert live["key"] in out
+    saved = ad.load_state(state_path)
+    assert "running" not in saved
+    assert saved["started"] == {}
+    _assert_lock_free(ad.default_lock_path(state_path))
+
+
+def test_running_claim_records_reason_at_and_pid(tmp_path: Path) -> None:
+    state_path = tmp_path / "state.json"
+    _seed_tested(state_path)
+    during: dict = {}
+
+    def ok(role: str, prompt: str, env: dict) -> str:
+        during["running"] = ad.load_state(state_path).get("running")
+        return "ok"
+
+    action = _dispatch(state_path, ok)
+    assert action == "started"
+    claim = during["running"]
+    assert isinstance(claim, dict)
+    assert claim["role"] == "builder"
+    assert claim["reason"] == "open-teilaufgabe"
+    assert claim["at"] == ad.utc_stamp(NOW)
+    assert claim["pid"] == os.getpid()
+    assert "issue:107" in claim["key"]
+    assert str(claim["key"]).endswith(":open-teilaufgabe")
+    saved = ad.load_state(state_path)
+    assert "running" not in saved
+    assert saved["started"]
+
+
+def test_unexpected_error_stored_claim_before_raise(tmp_path: Path) -> None:
+    state_path = tmp_path / "state.json"
+    _seed_tested(state_path)
+    during: dict = {}
+
+    def boom(role: str, prompt: str, env: dict) -> str:
+        during["running"] = ad.load_state(state_path).get("running")
+        raise ValueError("boom")
+
+    try:
+        _dispatch(state_path, boom)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("expected ValueError")
+    claim = during["running"]
+    assert isinstance(claim, dict)
+    assert claim["role"] == "builder"
+    assert claim["reason"] == "open-teilaufgabe"
+    assert "issue:107" in str(claim.get("key") or "")
+    saved = ad.load_state(state_path)
+    assert "running" not in saved
+    assert saved["started"] == {}
+    _assert_lock_free(ad.default_lock_path(state_path))
+
+
+def test_disabled_does_not_take_instance_lock(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("GNOM_AGENT_DISPATCH", "0")
+    state_path = tmp_path / "state.json"
+    lock = tmp_path / "agent_dispatch.lock"
+    ready = tmp_path / "held"
+    holder = _hold_lock(lock, ready, hold_sec=3.0)
+    try:
+        _wait_ready(ready, holder)
+        action = ad.dispatch_once(
+            repo="landjunge/gnom-hub-v1",
+            token="tok",
+            state_path=state_path,
+            agents_dir=ROOT / "agents",
+            snapshot=_builder_snap(),
+            launch=lambda *_a, **_k: "ok",
+            lock_path=lock,
+            now=NOW,
+        )
+        assert action == "disabled"
+        assert not state_path.is_file()
+        assert ad.acquire_instance_lock(lock) is None
+    finally:
+        holder.wait(timeout=10)
+    assert holder.returncode == 0, holder.stderr.read() if holder.stderr else ""
+
+
+def test_no_token_does_not_take_instance_lock(tmp_path: Path) -> None:
+    state_path = tmp_path / "state.json"
+    lock = tmp_path / "agent_dispatch.lock"
+    ready = tmp_path / "held"
+    holder = _hold_lock(lock, ready, hold_sec=3.0)
+    try:
+        _wait_ready(ready, holder)
+        action = ad.dispatch_once(
+            repo="landjunge/gnom-hub-v1",
+            token="",
+            state_path=state_path,
+            agents_dir=ROOT / "agents",
+            snapshot=_builder_snap(),
+            launch=lambda *_a, **_k: "ok",
+            lock_path=lock,
+            now=NOW,
+        )
+        assert action == "no-token"
+        assert not state_path.is_file()
+        assert ad.acquire_instance_lock(lock) is None
+    finally:
+        holder.wait(timeout=10)
+    assert holder.returncode == 0, holder.stderr.read() if holder.stderr else ""
