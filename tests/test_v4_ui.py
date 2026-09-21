@@ -108,7 +108,6 @@ def test_v4_tool_targets_reject_non_http_runtime_url(monkeypatch):
     assert rows["4allpass"]["target"] is None
 
 
-
 def test_v4_auto_backup_toggle_contract():
     app = create_app()
     with TestClient(app) as client:
