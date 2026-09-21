@@ -58,7 +58,7 @@ macOS-Dienst: `deploy/gnom-agent-dispatch.plist` nach `~/Library/LaunchAgents/` 
 
 Stop: Prozess beenden, oder `GNOM_AGENT_DISPATCH=0`, oder `launchctl unload`.
 
-State: `data/agent_dispatch_state.json` (gitignored unter `data/`). Einträge gelten 2 Stunden.
+State: `data/agent_dispatch_state.json` (gitignored unter `data/`). Koordinator-Einträge gelten 2 Stunden. Reviewer, Builder und Test-Agent dürfen nach 20 Minuten denselben Job erneut nehmen, damit ein GitHub-Timeout die Queue nicht blockiert. `github_request` wiederholt 429/5xx und Verbindungsabbrüche bis zu 4 Mal.
 
 Instanz-Lock: `data/agent_dispatch.lock` neben der State-Datei (fcntl, non-blocking). Ein zweiter Tick bekommt `busy` und launched nicht. `--dry-run` nimmt den Lock nicht. RUNNING-Claim in der State-Datei vor Launch; Freigabe bei `launch-failed`, nach Tick-Ende und bei unerwartetem Fehler.
 

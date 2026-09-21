@@ -33,6 +33,11 @@ IN_PROGRESS = "in-bearbeitung"
 STALE_AFTER = timedelta(hours=2)
 COORD_COOLDOWN = timedelta(hours=1)
 STARTED_TTL = timedelta(hours=2)
+# Reviewer/builder/test-agent may retry after a short window so a GitHub
+# timeout or a tick that died mid-run does not idle the queue for two hours.
+RETRY_TTL = timedelta(minutes=20)
+GITHUB_ATTEMPTS = 4
+_TRANSIENT_HTTP = frozenset({408, 429, 500, 502, 503, 504})
 MISSING_CMD = "missing-cmd"
 # Supervisor: end the tick on GitHub-effect or idle, not after --max-turns.
 DEFAULT_TICK_POLL_SEC = 2.0
@@ -316,14 +321,24 @@ def clear_running(state: dict[str, Any]) -> dict[str, Any] | None:
     return item if isinstance(item, dict) else None
 
 
+def _started_ttl(item: dict[str, Any]) -> timedelta:
+    role = str(item.get("role") or "")
+    if role in {"reviewer", "builder", "test-agent"}:
+        return RETRY_TTL
+    return STARTED_TTL
+
+
 def started_fresh(state: dict[str, Any], key: str, now: datetime) -> bool:
     item = (state.get("started") or {}).get(key)
     if not isinstance(item, dict):
         return False
+    how = str(item.get("how") or "")
+    if how.startswith("launch-failed"):
+        return False
     at = parse_dt(str(item.get("at") or ""))
     if at is None:
         return True
-    return now - at < STARTED_TTL
+    return now - at < _started_ttl(item)
 
 
 def mark_started(state: dict[str, Any], job: Job, how: str, now: datetime) -> None:
@@ -486,22 +501,38 @@ def reviews_for(snapshot: Snapshot, pr: dict[str, Any]) -> list[dict[str, Any]]:
     return found if isinstance(found, list) else []
 
 
+def _github_transient(exc: BaseException) -> bool:
+    if isinstance(exc, urllib.error.HTTPError):
+        return exc.code in _TRANSIENT_HTTP
+    return isinstance(exc, (urllib.error.URLError, TimeoutError, ConnectionError, OSError))
+
+
 def github_request(method: str, url: str, token: str, payload: dict[str, Any] | None = None) -> Any:
     body = None if payload is None else json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(url, data=body, method=method)
-    req.add_header("Accept", "application/vnd.github+json")
-    req.add_header("User-Agent", "gnom-hub-agent-dispatch")
-    if token:
-        req.add_header("Authorization", f"Bearer {token}")
-    if body is not None:
-        req.add_header("Content-Type", "application/json")
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            raw = resp.read().decode("utf-8")
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")[:300]
-        raise RuntimeError(f"GitHub {method} {url} -> {exc.code}: {detail}") from exc
-    return json.loads(raw) if raw.strip() else None
+    last: BaseException | None = None
+    for attempt in range(GITHUB_ATTEMPTS):
+        req = urllib.request.Request(url, data=body, method=method)
+        req.add_header("Accept", "application/vnd.github+json")
+        req.add_header("User-Agent", "gnom-hub-agent-dispatch")
+        if token:
+            req.add_header("Authorization", f"Bearer {token}")
+        if body is not None:
+            req.add_header("Content-Type", "application/json")
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                raw = resp.read().decode("utf-8")
+            return json.loads(raw) if raw.strip() else None
+        except urllib.error.HTTPError as exc:
+            last = exc
+            if not _github_transient(exc) or attempt + 1 >= GITHUB_ATTEMPTS:
+                detail = exc.read().decode("utf-8", errors="replace")[:300]
+                raise RuntimeError(f"GitHub {method} {url} -> {exc.code}: {detail}") from exc
+        except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as exc:
+            last = exc
+            if attempt + 1 >= GITHUB_ATTEMPTS:
+                raise RuntimeError(f"GitHub {method} {url} -> {exc}") from exc
+        time.sleep(0.4 * (2**attempt))
+    raise RuntimeError(f"GitHub {method} {url} -> {last}")
 
 
 def _list_pulls(

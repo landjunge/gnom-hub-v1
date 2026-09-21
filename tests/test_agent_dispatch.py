@@ -615,6 +615,68 @@ def test_launch_failed_does_not_record_started(tmp_path: Path) -> None:
     assert ad.load_state(state_path)["started"] == {}
 
 
+def test_reviewer_retries_after_retry_ttl(tmp_path: Path) -> None:
+    launched: list[str] = []
+    snap = _snap(teilaufgaben=[_issue(107)], pulls=[], baseline_sha="base-sha")
+    state_path = tmp_path / "state.json"
+    _seed_tested(state_path)
+    ad.dispatch_once(
+        repo="landjunge/gnom-hub-v1",
+        token="tok",
+        state_path=state_path,
+        agents_dir=ROOT / "agents",
+        snapshot=snap,
+        launch=lambda *_a, **_k: launched.append("1") or "ok",
+        now=NOW,
+    )
+    later = NOW + ad.RETRY_TTL + timedelta(minutes=1)
+    snap_later = _snap(
+        teilaufgaben=[_issue(107)],
+        pulls=[],
+        baseline_sha="base-sha",
+        now=later,
+    )
+    action = ad.dispatch_once(
+        repo="landjunge/gnom-hub-v1",
+        token="tok",
+        state_path=state_path,
+        agents_dir=ROOT / "agents",
+        snapshot=snap_later,
+        launch=lambda *_a, **_k: launched.append("2") or "ok",
+        now=later,
+    )
+    assert action == "started"
+    assert launched == ["1", "2"]
+
+
+def test_github_request_retries_urlerror(monkeypatch) -> None:
+    import urllib.error
+
+    calls = {"n": 0}
+
+    class _Ok:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_a):
+            return False
+
+        def read(self):
+            return b'{"ok": true}'
+
+    def fake_open(req, timeout=30):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise urllib.error.URLError("Remote end closed connection")
+        return _Ok()
+
+    monkeypatch.setattr(ad.urllib.request, "urlopen", fake_open)
+    monkeypatch.setattr(ad.time, "sleep", lambda _s: None)
+    out = ad.github_request("GET", "https://api.github.com/x", "tok")
+    assert out == {"ok": True}
+    assert calls["n"] == 3
+
+
 def test_started_ttl_prevents_double_start(tmp_path: Path) -> None:
     launched: list[str] = []
     snap = _snap(teilaufgaben=[_issue(107)], pulls=[], baseline_sha="base-sha")
