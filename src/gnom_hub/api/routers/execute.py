@@ -48,8 +48,19 @@ def execute(sync: bool = Query(False)) -> dict[str, Any]:
                     "hint": "Cancel the running job then retry.",
                 },
             )
-        return get_hub().execute_sync()
+        try:
+            return get_hub().execute_sync()
+        except RuntimeError as exc:
+            raise HTTPException(
+                status_code=503,
+                detail={"message": str(exc), "auto_backup_failed": True},
+            ) from exc
     out = get_hub().execute_async()
+    if out.get("auto_backup_failed"):
+        raise HTTPException(
+            status_code=503,
+            detail={"message": out.get("error"), "auto_backup_failed": True},
+        )
     if out.get("busy") or out.get("status") == "busy":
         raise HTTPException(
             status_code=409,
@@ -72,5 +83,17 @@ def worker_rerun(worker_id: str, sync: bool = Query(False)) -> dict[str, Any]:
     if wid not in ("worker1", "worker2", "worker3", "worker4"):
         raise HTTPException(status_code=400, detail="worker_id must be worker1–worker4")
     if sync:
-        return get_hub().rerun_worker_sync(wid)
-    return get_hub().rerun_worker_async(wid)
+        try:
+            return get_hub().rerun_worker_sync(wid)
+        except RuntimeError as exc:
+            raise HTTPException(
+                status_code=503,
+                detail={"message": str(exc), "auto_backup_failed": True},
+            ) from exc
+    out = get_hub().rerun_worker_async(wid)
+    if out.get("auto_backup_failed"):
+        raise HTTPException(
+            status_code=503,
+            detail={"message": out.get("error"), "auto_backup_failed": True},
+        )
+    return out
