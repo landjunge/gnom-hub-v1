@@ -1129,7 +1129,6 @@ def test_hot_facts_manager(client: TestClient):
     assert "telegram" in tg2.json()["reply"].lower()
 
 
-
 def test_auto_backup_runs_before_execute_even_with_god_mode(client: TestClient):
     enabled = client.post("/api/system", json={"auto_backup_before_execute": True})
     assert enabled.status_code == 200
