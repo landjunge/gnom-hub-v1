@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 import shlex
 import sys
@@ -675,6 +676,304 @@ def test_github_request_retries_urlerror(monkeypatch) -> None:
     out = ad.github_request("GET", "https://api.github.com/x", "tok")
     assert out == {"ok": True}
     assert calls["n"] == 3
+
+
+class _JsonBody:
+    def __init__(self, raw: bytes) -> None:
+        self._raw = raw
+
+    def __enter__(self) -> _JsonBody:
+        return self
+
+    def __exit__(self, *_a: object) -> bool:
+        return False
+
+    def read(self) -> bytes:
+        return self._raw
+
+
+def _expect_runtime(call) -> str:
+    try:
+        call()
+    except RuntimeError as exc:
+        return str(exc)
+    raise AssertionError("expected RuntimeError")
+
+
+def test_started_fresh_window_follows_role() -> None:
+    at = ad.utc_stamp(NOW)
+    inside = NOW + timedelta(minutes=19)
+    at_retry = NOW + ad.RETRY_TTL
+    past_long = NOW + ad.STARTED_TTL
+    for role in ("reviewer", "builder", "test-agent"):
+        state = {"started": {"k": {"role": role, "how": "ok", "at": at}}}
+        assert ad.started_fresh(state, "k", inside)
+        assert not ad.started_fresh(state, "k", at_retry)
+    for role in ("planer", "koordinator", ""):
+        state = {"started": {"k": {"role": role, "how": "ok", "at": at}}}
+        assert ad.started_fresh(state, "k", at_retry)
+        assert not ad.started_fresh(state, "k", past_long)
+    failed = {"started": {"k": {"role": "builder", "how": "launch-failed: x", "at": at}}}
+    assert not ad.started_fresh(failed, "k", NOW)
+
+
+def test_reviewer_restarts_after_retry_ttl_not_before(tmp_path: Path) -> None:
+    launched: list[str] = []
+    state_path = tmp_path / "state.json"
+    ad.save_state(
+        state_path,
+        {
+            "started": {},
+            "last_test_sha": "base-sha",
+            "last_koordinator_at": ad.utc_stamp(NOW),
+        },
+    )
+    pr = _pr(200, "docs only", sha="abc123def456")
+    closed = {"number": 105, "state": "closed"}
+
+    def launch(role: str, _prompt: str, _env: dict) -> str:
+        launched.append(role)
+        return "ok"
+
+    first = ad.dispatch_once(
+        repo="landjunge/gnom-hub-v1",
+        token="tok",
+        state_path=state_path,
+        agents_dir=ROOT / "agents",
+        snapshot=_snap(pulls=[pr], baseline_sha="base-sha", haupt=closed),
+        launch=launch,
+        now=NOW,
+    )
+    mid = NOW + timedelta(minutes=19)
+    blocked = ad.dispatch_once(
+        repo="landjunge/gnom-hub-v1",
+        token="tok",
+        state_path=state_path,
+        agents_dir=ROOT / "agents",
+        snapshot=_snap(pulls=[pr], baseline_sha="base-sha", now=mid, haupt=closed),
+        launch=launch,
+        now=mid,
+    )
+    later = NOW + ad.RETRY_TTL + timedelta(minutes=1)
+    again = ad.dispatch_once(
+        repo="landjunge/gnom-hub-v1",
+        token="tok",
+        state_path=state_path,
+        agents_dir=ROOT / "agents",
+        snapshot=_snap(pulls=[pr], baseline_sha="base-sha", now=later, haupt=closed),
+        launch=launch,
+        now=later,
+    )
+    assert first == "started"
+    assert blocked == "idle"
+    assert again == "started"
+    assert launched == ["reviewer", "reviewer"]
+
+
+def test_planer_restarts_only_after_started_ttl(tmp_path: Path) -> None:
+    launched: list[str] = []
+    state_path = tmp_path / "state.json"
+    _seed_tested(state_path)
+
+    def launch(role: str, _prompt: str, _env: dict) -> str:
+        launched.append(role)
+        return "ok"
+
+    snap = _snap(teilaufgaben=[], pulls=[], baseline_sha="base-sha")
+    first = ad.dispatch_once(
+        repo="landjunge/gnom-hub-v1",
+        token="tok",
+        state_path=state_path,
+        agents_dir=ROOT / "agents",
+        snapshot=snap,
+        launch=launch,
+        now=NOW,
+    )
+    mid = NOW + ad.RETRY_TTL + timedelta(minutes=1)
+    blocked = ad.dispatch_once(
+        repo="landjunge/gnom-hub-v1",
+        token="tok",
+        state_path=state_path,
+        agents_dir=ROOT / "agents",
+        snapshot=_snap(teilaufgaben=[], pulls=[], baseline_sha="base-sha", now=mid),
+        launch=launch,
+        now=mid,
+    )
+    later = NOW + ad.STARTED_TTL + timedelta(minutes=1)
+    again = ad.dispatch_once(
+        repo="landjunge/gnom-hub-v1",
+        token="tok",
+        state_path=state_path,
+        agents_dir=ROOT / "agents",
+        snapshot=_snap(teilaufgaben=[], pulls=[], baseline_sha="base-sha", now=later),
+        launch=launch,
+        now=later,
+    )
+    assert first == "started"
+    assert blocked == "idle"
+    assert again == "started"
+    assert launched == ["planer", "planer"]
+
+
+def test_recorded_launch_failed_how_is_picked_again(tmp_path: Path) -> None:
+    launched: list[str] = []
+    snap = _snap(teilaufgaben=[_issue(107)], pulls=[], baseline_sha="base-sha")
+    job = ad.pick_job(snap, {"started": {}, "last_test_sha": "base-sha"})
+    assert job is not None and job.role == "builder"
+    state_path = tmp_path / "state.json"
+
+    def launch(role: str, _prompt: str, _env: dict) -> str:
+        launched.append(role)
+        return "ok"
+
+    def seed(how: str) -> None:
+        ad.save_state(
+            state_path,
+            {
+                "started": {
+                    job.key(): {
+                        "at": ad.utc_stamp(NOW),
+                        "how": how,
+                        "role": job.role,
+                        "reason": job.reason,
+                    }
+                },
+                "last_test_sha": "base-sha",
+            },
+        )
+
+    seed("ok")
+    held = ad.dispatch_once(
+        repo="landjunge/gnom-hub-v1",
+        token="tok",
+        state_path=state_path,
+        agents_dir=ROOT / "agents",
+        snapshot=snap,
+        launch=launch,
+        now=NOW,
+    )
+    seed("launch-failed: no-grok")
+    action = ad.dispatch_once(
+        repo="landjunge/gnom-hub-v1",
+        token="tok",
+        state_path=state_path,
+        agents_dir=ROOT / "agents",
+        snapshot=snap,
+        launch=launch,
+        now=NOW,
+    )
+    assert held == "idle"
+    assert action == "started"
+    assert launched == ["builder"]
+
+
+def test_github_request_retries_transient_http_statuses(monkeypatch) -> None:
+    import urllib.error
+
+    sleeps: list[float] = []
+    monkeypatch.setattr(ad.time, "sleep", lambda delay: sleeps.append(delay))
+    for code in (408, 429, 500, 502, 503, 504):
+        calls = {"n": 0}
+
+        def fake_open(req, timeout=30, status=code, bucket=calls):
+            bucket["n"] += 1
+            if bucket["n"] == 1:
+                raise urllib.error.HTTPError(
+                    "https://api.github.com/x",
+                    status,
+                    "err",
+                    None,
+                    io.BytesIO(b"later"),
+                )
+            return _JsonBody(b'{"ok": true}')
+
+        monkeypatch.setattr(ad.urllib.request, "urlopen", fake_open)
+        sleeps.clear()
+        out = ad.github_request("GET", "https://api.github.com/x", "tok")
+        assert out == {"ok": True}
+        assert calls["n"] == 2
+        assert sleeps == [0.4]
+
+
+def test_github_request_does_not_retry_404(monkeypatch) -> None:
+    import urllib.error
+
+    calls = {"n": 0}
+    sleeps: list[float] = []
+
+    def fake_open(req, timeout=30):
+        calls["n"] += 1
+        raise urllib.error.HTTPError(
+            "https://api.github.com/x",
+            404,
+            "missing",
+            None,
+            io.BytesIO(b"gone"),
+        )
+
+    monkeypatch.setattr(ad.urllib.request, "urlopen", fake_open)
+    monkeypatch.setattr(ad.time, "sleep", lambda delay: sleeps.append(delay))
+    text = _expect_runtime(lambda: ad.github_request("GET", "https://api.github.com/x", ""))
+    assert text == "GitHub GET https://api.github.com/x -> 404: gone"
+    assert calls["n"] == 1
+    assert sleeps == []
+
+
+def test_github_request_stops_after_four_attempts(monkeypatch) -> None:
+    import urllib.error
+
+    sleeps: list[float] = []
+    url_calls = {"n": 0}
+    monkeypatch.setattr(ad.time, "sleep", lambda delay: sleeps.append(delay))
+
+    def fail_url(req, timeout=30):
+        url_calls["n"] += 1
+        raise urllib.error.URLError("reset")
+
+    monkeypatch.setattr(ad.urllib.request, "urlopen", fail_url)
+    text = _expect_runtime(lambda: ad.github_request("GET", "https://api.github.com/x", "tok"))
+    assert text == "GitHub GET https://api.github.com/x -> <urlopen error reset>"
+    assert url_calls["n"] == ad.GITHUB_ATTEMPTS
+    assert sleeps == [0.4, 0.8, 1.6]
+
+    http_calls = {"n": 0}
+
+    def fail_http(req, timeout=30):
+        http_calls["n"] += 1
+        raise urllib.error.HTTPError(
+            "https://api.github.com/y",
+            429,
+            "rate",
+            None,
+            io.BytesIO(b"slow down"),
+        )
+
+    sleeps.clear()
+    monkeypatch.setattr(ad.urllib.request, "urlopen", fail_http)
+    text = _expect_runtime(
+        lambda: ad.github_request("POST", "https://api.github.com/y", "tok", {"a": 1})
+    )
+    assert text == "GitHub POST https://api.github.com/y -> 429: slow down"
+    assert http_calls["n"] == ad.GITHUB_ATTEMPTS
+    assert sleeps == [0.4, 0.8, 1.6]
+
+
+def test_github_request_retries_timeout(monkeypatch) -> None:
+    calls = {"n": 0}
+    sleeps: list[float] = []
+
+    def fake_open(req, timeout=30):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise TimeoutError("timed out")
+        return _JsonBody(b'{"ok": true}')
+
+    monkeypatch.setattr(ad.urllib.request, "urlopen", fake_open)
+    monkeypatch.setattr(ad.time, "sleep", lambda delay: sleeps.append(delay))
+    out = ad.github_request("GET", "https://api.github.com/x", "tok")
+    assert out == {"ok": True}
+    assert calls["n"] == 2
+    assert sleeps == [0.4]
 
 
 def test_started_ttl_prevents_double_start(tmp_path: Path) -> None:
