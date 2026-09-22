@@ -134,7 +134,7 @@ Source of truth for versions remains **`pyproject.toml`**. When you bump `ruff`/
 Use only if `setup-python` cache is insufficient (custom paths, multi-ecosystem):
 
 ```yaml
-- uses: actions/cache@v4
+- uses: actions/cache@v5
   with:
     path: ${{ env.PIP_CACHE_DIR }}
     key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', 'requirements/ci-dev.txt') }}
@@ -173,7 +173,7 @@ Implemented in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
 
 | Piece | Strategy |
 |-------|----------|
-| Ruff | [`astral-sh/ruff-action@v3`](https://github.com/astral-sh/ruff-action) pin **0.16.1** (binary download, action-cached) |
+| Ruff | [`astral-sh/ruff-action@v4`](https://github.com/astral-sh/ruff-action) pin **0.16.1** (binary download, action-cached) |
 | Mermaid | CPython 3.12 + stdlib script — **no** package install |
 | Pip cache | **Disabled** on purpose (nothing to install) |
 
