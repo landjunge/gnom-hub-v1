@@ -26,7 +26,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 | Doc | Keywords |
 |-----|----------|
 | [AGENTS_DEFINITION.md](AGENTS_DEFINITION.md) | flex, agents, kein, worker, nicht, brainstorm, user, definition, coordinator, code |
-| [AGENTS_PROMPTS.md](AGENTS_PROMPTS.md) | kein, box, agents, hub, tools, execute, prompts, arbeit, brainstorm, flex |
+| [AGENTS_PROMPTS.md](AGENTS_PROMPTS.md) | kein, agents, box, hub, tools, execute, nicht, prompts, arbeit, flex |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | stroke, architecture, orch, rest, tools, agents, core, classdef, color, fill |
 | [CODE_ANALYSIS_FOR_AI.md](CODE_ANALYSIS_FOR_AI.md) | hub, analysis, code, agents, ai, product, worker, app, execute, gnom |
 | [DESK_UI_MAP.md](DESK_UI_MAP.md) | box, desk, boxes, volle, app, box2, breite, map, box1, chat |

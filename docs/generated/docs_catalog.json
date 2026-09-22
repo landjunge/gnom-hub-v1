@@ -33,22 +33,22 @@
       "topic": "Architecture & agents",
       "keywords": [
         "kein",
-        "box",
         "agents",
+        "box",
         "hub",
         "tools",
         "execute",
+        "nicht",
         "prompts",
         "arbeit",
-        "brainstorm",
         "flex",
         "gnom",
         "html",
-        "nicht",
-        "user"
+        "user",
+        "brainstorm"
       ],
-      "chars": 10449,
-      "lines": 271
+      "chars": 10583,
+      "lines": 274
     },
     {
       "file": "ARCHITECTURE.md",
