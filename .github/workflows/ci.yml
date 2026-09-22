@@ -34,22 +34,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.12 (mermaid only)
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           # No pip cache — lint does not pip-install the app.
 
       - name: Ruff (binary action, no pip)
-        uses: astral-sh/ruff-action@v3
+        uses: astral-sh/ruff-action@v4
         with:
           version: "0.16.1"
           args: "check ."
 
       - name: Ruff format --check
-        uses: astral-sh/ruff-action@v3
+        uses: astral-sh/ruff-action@v4
         with:
           version: "0.16.1"
           args: "format --check --diff ."
@@ -61,17 +63,21 @@ jobs:
           chmod +x scripts/mermaid_check.py
           python scripts/mermaid_check.py --list
           python scripts/mermaid_check.py --write-inventory docs/generated/mermaid_inventory.md
+          fail=0
           if ! git diff --exit-code -- docs/generated/mermaid_inventory.md; then
             echo "::error::mermaid_inventory.md out of date — run locally:"
             echo "  python scripts/mermaid_check.py --write-inventory docs/generated/mermaid_inventory.md"
             echo "  git add docs/generated/mermaid_inventory.md && git commit"
-            exit 1
+            fail=1
           fi
           echo "▸ docs index check"
-          python scripts/build_docs_index.py --check
+          if ! python scripts/build_docs_index.py --check; then
+            fail=1
+          fi
+          exit "$fail"
 
       - name: Set up Node 22 (ESLint UI)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: npm
@@ -88,7 +94,7 @@ jobs:
           {
             echo "## Lint summary"
             echo ""
-            echo "- Ruff: \`astral-sh/ruff-action@v3\` pin **0.16.1** (no pip install)"
+            echo "- Ruff: \`astral-sh/ruff-action@v4\` pin **0.16.1** (no pip install)"
             echo "- Mermaid: stdlib script · inventory drift gate"
             echo "- ESLint: \`npm run lint:js\` (max-warnings 0) + specificity self-test"
             echo "- Pip cache: **none** (by design — keeps lint cold-start ~seconds)"
@@ -106,9 +112,9 @@ jobs:
   test:
     name: Test · Py${{ matrix.python-version }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 12
     strategy:
-      fail-fast: false
+      fail-fast: ${{ github.event_name != 'schedule' }}
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
         include:
@@ -117,18 +123,20 @@ jobs:
             run_live: true
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Set up Python ${{ matrix.python-version }}
         id: setup-py
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           # Explicit actions/cache below (venv + pip download) — avoid double pip cache.
 
       - name: Cache virtualenv
         id: cache-venv
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .venv
           # Exact key only — never partial restore (ABI / dep skew risk).
@@ -139,7 +147,7 @@ jobs:
         id: verify-venv
         run: |
           set -euo pipefail
-          if [ ! -x .venv/bin/python ]; then
+          if [ ! -x .venv/bin/python ] || ! .venv/bin/python -c "import sys" 2>/dev/null; then
             echo "broken=true" >> "$GITHUB_OUTPUT"
             echo "::warning::venv cache hit but .venv/bin/python missing — reinstalling"
             rm -rf .venv
@@ -153,7 +161,7 @@ jobs:
       - name: Cache pip downloads
         id: cache-pip
         if: steps.cache-venv.outputs.cache-hit != 'true' || steps.verify-venv.outputs.broken == 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ env.PIP_CACHE_DIR }}
           key: ${{ runner.os }}-${{ env.CACHE_SEED }}-pipdl-py${{ matrix.python-version }}-${{ hashFiles('pyproject.toml', 'requirements/ci-dev.txt') }}
@@ -199,7 +207,7 @@ jobs:
 
       - name: Upload junit (on failure only)
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: junit-py${{ matrix.python-version }}
           path: ${{ runner.temp }}/pytest-${{ matrix.python-version }}/junit.xml
@@ -226,6 +234,7 @@ jobs:
     needs: [lint, test]
     runs-on: ubuntu-latest
     if: always()
+    timeout-minutes: 2
     steps:
       - name: Require lint + test green
         run: |
@@ -263,17 +272,18 @@ jobs:
       cancel-in-progress: false
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
       - name: Cache pip (build tools)
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ env.PIP_CACHE_DIR }}
           key: ${{ runner.os }}-${{ env.CACHE_SEED }}-pipdl-release-py3.11-${{ hashFiles('pyproject.toml') }}
