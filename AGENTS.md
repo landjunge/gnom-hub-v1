@@ -1,5 +1,13 @@
 # Agent notes (Gnom-Hub v1)
 
+## Sprachfalle — „Kindseite“ / „Kind von“ (immer lesen)
+
+In der **Notion-Oberfläche** heißt eine verschachtelte Seite korrekt **Unterseite** (engl. „child page“). Die API-Feldnamen sind aber `child_page` und `parent`. Jede KI, die über die Notion-API liest oder schreibt, sieht diese englischen Bezeichner und übersetzt sie oft wörtlich zurück: „Kindseite“, „Kind von“, „Elternseite“.
+
+Das ist **kein** Begriff der deutschen Notion-Oberfläche, sondern ein API-Artefakt. Immer **Unterseite** schreiben, nie „Kind“. Gilt für alle Notion-Seiten, nicht nur für dieses Repo.
+
+---
+
 ## User UI / live E2E (mandatory)
 
 1. **Live tests are watched by the user** — always headed (`GNOM_E2E_HEADED=1`). Never default to headless for real-user runs.
