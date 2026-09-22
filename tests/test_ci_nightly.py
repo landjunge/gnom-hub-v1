@@ -33,7 +33,8 @@ def test_actions_are_node24_majors():
     assert "actions/checkout@v5" in CI
     assert "actions/setup-python@v6" in CI
     assert "actions/cache@v5" in CI
-    assert "astral-sh/ruff-action@v4" in CI
+    assert "astral-sh/ruff-action@v4.1.0" in CI
+    assert "astral-sh/ruff-action@v4\n" not in CI
     assert "actions/setup-node@v5" in CI
     assert "persist-credentials: false" in CI
 

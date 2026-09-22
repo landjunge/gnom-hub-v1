@@ -45,13 +45,13 @@ jobs:
           # No pip cache — lint does not pip-install the app.
 
       - name: Ruff (binary action, no pip)
-        uses: astral-sh/ruff-action@v4
+        uses: astral-sh/ruff-action@v4.1.0
         with:
           version: "0.16.1"
           args: "check ."
 
       - name: Ruff format --check
-        uses: astral-sh/ruff-action@v4
+        uses: astral-sh/ruff-action@v4.1.0
         with:
           version: "0.16.1"
           args: "format --check --diff ."
@@ -94,7 +94,7 @@ jobs:
           {
             echo "## Lint summary"
             echo ""
-            echo "- Ruff: \`astral-sh/ruff-action@v4\` pin **0.16.1** (no pip install)"
+            echo "- Ruff: \`astral-sh/ruff-action@v4.1.0\` pin **0.16.1** (no pip install)"
             echo "- Mermaid: stdlib script · inventory drift gate"
             echo "- ESLint: \`npm run lint:js\` (max-warnings 0) + specificity self-test"
             echo "- Pip cache: **none** (by design — keeps lint cold-start ~seconds)"
