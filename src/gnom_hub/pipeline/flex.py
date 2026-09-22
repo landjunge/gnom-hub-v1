@@ -295,6 +295,16 @@ class FlexMixin:
                     )
                     o["flex_nudge"] = msg
                     break
+            gate = next(
+                (o.get("validation") for o in outputs if str(o.get("worker") or "") == aid),
+                {},
+            )
+            if isinstance(gate, dict) and gate.get("ok"):
+                self._state.agent_nudges = [
+                    n
+                    for n in list(self._state.agent_nudges or [])
+                    if str(n.get("agent") or "") != aid
+                ]
             self.bus.emit(
                 "pipeline.worker",
                 {

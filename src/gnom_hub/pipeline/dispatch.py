@@ -125,7 +125,12 @@ class DispatchMixin:
 
             self._check_cancel()
             self._set_stage(PipelineStage.distill)
-            reqs, question = self.coordinator.distill(text, self._state.brainstorm_notes, mem)
+            reqs, question = self.coordinator.distill(
+                text,
+                self._state.brainstorm_notes,
+                mem,
+                confirmed=bool(getattr(self._state, "confirmed_choices", None)),
+            )
             self._state.distilled_requirements = reqs
             self.bus.emit("pipeline.distill", {"requirements": list(reqs)})
 
@@ -197,7 +202,12 @@ class DispatchMixin:
 
             self._check_cancel()
             self._set_stage(PipelineStage.distill)
-            reqs, question = self.coordinator.distill(text, notes, mem)
+            reqs, question = self.coordinator.distill(
+                text,
+                notes,
+                mem,
+                confirmed=bool(getattr(self._state, "confirmed_choices", None)),
+            )
             self._state.distilled_requirements = reqs
             self.bus.emit("pipeline.distill", {"requirements": list(reqs)})
 
@@ -216,43 +226,34 @@ class DispatchMixin:
     def _run_flex_coord_workers(self) -> None:
         text = self._state.user_text
         mem = self._state.memory_context
-        reqs = list(self._state.distilled_requirements)
 
         self._check_cancel()
         if self.flex.enabled:
             self._set_stage(PipelineStage.flex)
             from gnom_hub.memory.dedupe import already_covered
+            from gnom_hub.pipeline.choices import is_binding_standing_rule
 
             for wish in self.flex.binding_wishes(mem or ""):
+                if not is_binding_standing_rule(wish):
+                    continue
                 tag = f"Flex-wish: {wish}"
                 if already_covered(tag, self._state.distilled_requirements, strategy="requirement"):
                     continue
                 self._state.distilled_requirements.append(tag)
-            reqs = list(self._state.distilled_requirements)
-            notes = self.flex.run(text, reqs, mem)
-            self._state.flex_notes = notes
+            self._state.flex_notes = ""
             self.bus.emit(
                 "pipeline.flex",
                 {
-                    "notes": notes,
+                    "notes": "",
                     "preset": "personal",
-                    "wishes": self.flex.binding_wishes(mem or ""),
+                    "skipped_llm": True,
+                    "wishes": [
+                        w
+                        for w in self.flex.binding_wishes(mem or "")
+                        if is_binding_standing_rule(w)
+                    ],
                 },
             )
-            if notes:
-                lines = [ln.strip() for ln in notes.strip().splitlines() if ln.strip()]
-                first = ""
-                for s in lines:
-                    s2 = s.lstrip("-•* ")
-                    if len(s2) >= 12 and not s2.endswith(":"):
-                        first = s2[:160]
-                        break
-                if not first and lines:
-                    first = lines[0][:160]
-                if first:
-                    line = f"Flex/personal: {first}"
-                    if line not in self._state.distilled_requirements:
-                        self._state.distilled_requirements.append(line)
 
         self._check_cancel()
         if not self.coordinator.enabled:

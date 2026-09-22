@@ -22,10 +22,11 @@ def test_brainstorm_prompt_is_dialogue_not_execute():
     p = brainstorm_system_prompt("general")
     _banned(p)
     assert "mitdenken" in p.lower() or "denkpartner" in p.lower()
-    assert "box 1" in p.lower() or "flex" in p.lower()
+    assert "arbeit starten" in p.lower()
+    assert "flex in box 1" not in p.lower()
     html = brainstorm_system_prompt("html_page")
     _banned(html)
-    assert "anbieten die arbeit zu starten" in p.lower() or "box 1" in p.lower()
+    assert "anbieten die arbeit zu starten" in p.lower() or "arbeit starten" in p.lower()
 
 
 def test_brainstorm_stub_does_not_claim_pipeline_starts():

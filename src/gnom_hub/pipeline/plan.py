@@ -18,7 +18,12 @@ class PlanMixin:
         user = self._record_user(text, "coordinator")
         mem = self.memory.recall(text)
         self._state.memory_context = mem
-        reqs, question = self.coordinator.distill(text, text, mem)
+        reqs, question = self.coordinator.distill(
+            text,
+            text,
+            mem,
+            confirmed=bool(getattr(self._state, "confirmed_choices", None)),
+        )
         self._state.distilled_requirements = reqs
         self.bus.emit("pipeline.distill", {"requirements": list(reqs)})
         if question is not None:

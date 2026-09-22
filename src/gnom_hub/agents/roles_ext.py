@@ -16,7 +16,7 @@ from gnom_hub.pipeline.models import DistillQuestion
 
 class CoordinatorAgent(BaseAgent):
     def distill(
-        self, user_text: str, brainstorm: str, memory_ctx: str = ""
+        self, user_text: str, brainstorm: str, memory_ctx: str = "", *, confirmed: bool = False
     ) -> tuple[list[str], DistillQuestion | None]:
         self.emit_active(True)
         try:
@@ -72,19 +72,36 @@ class CoordinatorAgent(BaseAgent):
                 else:
                     reqs = [f"Ziel: {user_text}"]
             question = None
-            if not coordinator_should_skip_clarify(kind) and _needs_clarify(user_text, brainstorm):
-                # Plain German — Box 1 must be understandable without jargon
+            if (
+                not confirmed
+                and not coordinator_should_skip_clarify(kind)
+                and _needs_clarify(user_text, brainstorm, confirmed=confirmed)
+            ):
+                # Concrete user decision — never generic "Wie soll ich vorgehen?"
                 question = DistillQuestion(
                     id="q1",
-                    text="Wie soll ich vorgehen?",
+                    text="Welche Richtung soll gelten?",
                     options=[
                         "Schnell und einfach",
                         "Gründlich und robust",
-                        "Egal — du entscheidest",
+                        "Du entscheidest im Rahmen des Auftrags",
                         "Später entscheiden",
                     ],
                 )
-            return reqs[:8], question
+            reqs = [r for r in reqs if r][:7]
+            if len(reqs) < 4:
+                extra = [
+                    f"Ziel: {user_text}",
+                    "Nur den bestätigten Umfang umsetzen",
+                    "Kein internes Reasoning in der Lieferung",
+                    "Ergebnis prüfbar und vollständig",
+                ]
+                for line in extra:
+                    if line not in reqs:
+                        reqs.append(line)
+                    if len(reqs) >= 4:
+                        break
+            return reqs[:7], question
         finally:
             self.emit_active(False)
 
@@ -275,7 +292,7 @@ def _team_html_landing_plan(
     if not worker_ids:
         return []
     dod = "\n".join(f"- {r}" for r in (clean or [])[:8])
-    wids = list(worker_ids[:3])
+    wids = list(worker_ids)
     tasks: list[tuple[str, str]] = []
     # Worker A: research + team brief (structure + effects checklist)
     tasks.append(
@@ -323,6 +340,17 @@ def _team_html_landing_plan(
                     f"POLISH / QA pass notes for the landing about: {topic}\n"
                     "List visual upgrades and a11y checks; if you produce HTML, "
                     "it must be a complete improved single file ending with </html>."
+                ),
+            )
+        )
+    if len(wids) > 3:
+        tasks.append(
+            (
+                wids[3],
+                (
+                    f"INTERACTION / CONTENT pass for: {topic}\n"
+                    "Add or verify one real user interaction and complete copy. "
+                    "If you produce HTML it must be a full document ending with </html>."
                 ),
             )
         )

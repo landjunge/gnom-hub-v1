@@ -6,7 +6,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
-from gnom_hub.api.models import ChatBody, ClarifyBody
+from gnom_hub.api.models import ChatBody, ChoiceBody, ClarifyBody
 from gnom_hub.hub import get_hub
 
 router = APIRouter()
@@ -63,6 +63,23 @@ def chat(
             },
         )
     return out
+
+
+@router.post("/api/choice")
+def confirm_choice(body: ChoiceBody, sync: bool = Query(True)) -> dict[str, Any]:
+    """Confirm a Brainstorm card. Never starts Execute."""
+    del sync
+    try:
+        return get_hub().confirm_choice_sync(
+            {
+                "id": body.id,
+                "title": body.title,
+                "effect": body.effect,
+                "value": body.value or body.title,
+            }
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.post("/api/clarify")

@@ -16,6 +16,13 @@ class ClarifyBody(BaseModel):
     option: str = Field(min_length=1)
 
 
+class ChoiceBody(BaseModel):
+    id: str = ""
+    title: str = ""
+    effect: str = ""
+    value: str = ""
+
+
 class FlexBody(BaseModel):
     preset: str = Field(min_length=1)
 

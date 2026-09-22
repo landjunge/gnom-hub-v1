@@ -80,3 +80,7 @@ class PipelineState:
     td_handoff_facts: list[str] = field(default_factory=list)
     # Canonical conversation log (Send contract). localStorage is cache only.
     messages: list[dict] = field(default_factory=list)
+    # Structured Brainstorm cards shown in Box 1 (max 4).
+    offered_choices: list[dict] = field(default_factory=list)
+    # Confirmed V4 selections — Coordinator must not re-ask these.
+    confirmed_choices: list[dict] = field(default_factory=list)

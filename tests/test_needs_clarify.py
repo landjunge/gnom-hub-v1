@@ -41,8 +41,8 @@ def test_mehr_oder_weniger_not_choice():
     assert not _needs_clarify("mehr oder weniger fertig mit dem HTML")
 
 
-def test_brainstorm_tradeoff_triggers():
-    assert _needs_clarify(
+def test_brainstorm_choice_list_does_not_force_coordinator_clarify():
+    assert not _needs_clarify(
         "Checklist app",
         "Ideen: Variante A schnell, Variante B gründlich. Offene Frage: MVP oder robust?",
     )
@@ -54,8 +54,8 @@ def test_brainstorm_cta_alone_does_not_trigger():
     assert not _needs_clarify("Build a todo app with dark mode HTML", notes)
 
 
-def test_brainstorm_hedge_with_vague_user():
-    assert _needs_clarify(
+def test_brainstorm_hedge_does_not_force_coordinator():
+    assert not _needs_clarify(
         "eine App",
         "Vielleicht offline-first. Noch unklar ob PWA oder native.",
     )
@@ -69,8 +69,12 @@ def test_user_clear_build_beats_generic_brainstorm_question():
     )
 
 
-def test_brainstorm_react_or_vue_triggers():
-    assert _needs_clarify(
+def test_brainstorm_react_or_vue_stays_on_cards():
+    assert not _needs_clarify(
         "UI neu",
         "Brainstorm: React oder Vue für die Komponenten?",
     )
+
+
+def test_confirmed_choice_skips_user_hedge():
+    assert not _needs_clarify("maybe dark mode?", confirmed=True)

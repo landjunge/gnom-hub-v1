@@ -6,6 +6,11 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from gnom_hub.pipeline.choices import (
+    conversation_history,
+    last_offered_choice,
+    parse_offered_choices,
+)
 from gnom_hub.pipeline.constants import ALLOWED_SEND_TARGETS, PipelineCancelled
 from gnom_hub.pipeline.helpers import (
     _format_turns,
@@ -133,7 +138,7 @@ class BrainstormMixin:
             continuing = (
                 self._state.mode == "brainstorm"
                 and self._state.stage == PipelineStage.brainstorm
-                and bool(self._state.brainstorm_turns)
+                and bool(self._state.brainstorm_turns or self._state.messages)
                 and not _is_topic_switch(self._state.brainstorm_turns, text)
             )
             # "mach das" / "jetzt ausführen" / "was ich gesagt habe" = go-only, keep prior task
@@ -145,10 +150,18 @@ class BrainstormMixin:
                 prev_flex_job = self._state.flex_job_id
                 prev_target = getattr(self._state, "send_target", "") or "brainstorm"
                 prev_messages = list(getattr(self._state, "messages", None) or [])
+                prev_workers = list(self._state.worker_results or [])
+                prev_outputs = list(self._state.worker_outputs or [])
+                prev_offered = list(getattr(self._state, "offered_choices", None) or [])
+                prev_confirmed = list(getattr(self._state, "confirmed_choices", None) or [])
                 self._state = PipelineState(user_text=text, mode="brainstorm")
                 self._state.flex_job_id = prev_flex_job
                 self._state.send_target = prev_target
                 self._state.messages = prev_messages
+                self._state.worker_results = prev_workers
+                self._state.worker_outputs = prev_outputs
+                self._state.offered_choices = prev_offered
+                self._state.confirmed_choices = prev_confirmed
                 self._sync_flex_state()
                 if _exec_only and prev_turns:
                     # Resolve last real task (browser/HTML/long), not the go-phrase
@@ -160,17 +173,18 @@ class BrainstormMixin:
             else:
                 self._state.mode = "brainstorm"
                 self._state.error = None
-                self._state.worker_results = []
-                self._state.worker_outputs = []
-                self._state.distilled_requirements = []
-                self._state.flex_notes = ""
                 self._state.pending_question = None
                 if not _exec_only:
                     self._state.user_text = text
 
             self._clarified_once = False
 
-            # Go-only with a real prior task → Flex asks in Box 1, does not Execute
+            if _exec_only:
+                choice = last_offered_choice(self._state)
+                if choice:
+                    return self.confirm_choice(str(choice.get("id") or ""), choice)
+
+            # Go-only with a real prior task → remind to press Arbeit starten
             if _exec_only and (self._state.brainstorm_notes or "").strip():
                 task = _pick_execute_task(
                     list(self._state.brainstorm_turns or []),
@@ -211,7 +225,7 @@ class BrainstormMixin:
             if mem:
                 self.bus.emit("pipeline.memory_context", {"context": mem})
 
-            history = list(self._state.brainstorm_turns)
+            history = conversation_history(self._state)
             self._state.brainstorm_turns.append({"role": "user", "text": text})
             # Send must not call tools. Prefetch belongs to Execute, not chat_turn.
 
@@ -224,6 +238,7 @@ class BrainstormMixin:
 
             self._state.brainstorm_turns.append({"role": "brainstorm", "text": notes})
             self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
+            self._state.offered_choices = parse_offered_choices(str(notes or ""))
             user = self._record_user(text, "brainstorm")
             self._record_reply(
                 agent="brainstorm",
@@ -231,15 +246,6 @@ class BrainstormMixin:
                 in_reply_to=user["message_id"],
                 source=self._reply_source(str(notes or "")),
             )
-
-            if self.flex.enabled:
-                try:
-                    self.flex.absorb(text, mem)
-                except Exception as exc:  # noqa: BLE001
-                    self.bus.emit(
-                        "pipeline.warning",
-                        {"stage": "flex_absorb", "error": str(exc)},
-                    )
             if not _exec_only:
                 self._state.user_text = text
 
@@ -275,4 +281,62 @@ class BrainstormMixin:
                     self._fail(str(exc))
             except Exception:  # noqa: BLE001
                 self._fail(str(exc))
+        return self._state
+
+    def confirm_choice(self, choice_id: str = "", choice: dict | None = None) -> PipelineState:
+        """Store a V4 card click as a real selection. Never starts Execute."""
+        offered = list(getattr(self._state, "offered_choices", None) or [])
+        picked: dict | None = None
+        cid = str(choice_id or "").strip()
+        if isinstance(choice, dict) and (choice.get("title") or choice.get("value")):
+            picked = {
+                "id": str(choice.get("id") or cid or f"choice-{len(offered) + 1}"),
+                "title": str(choice.get("title") or choice.get("value") or "").strip(),
+                "effect": str(choice.get("effect") or choice.get("value") or "").strip(),
+                "value": str(choice.get("value") or choice.get("title") or "").strip(),
+            }
+        if picked is None:
+            for row in offered:
+                if isinstance(row, dict) and str(row.get("id") or "") == cid:
+                    picked = dict(row)
+                    break
+        if picked is None and offered:
+            picked = dict(offered[0])
+        if picked is None or not str(picked.get("value") or picked.get("title") or "").strip():
+            self._fail("Keine Auswahl zum Übernehmen")
+            return self._state
+        confirmed = list(getattr(self._state, "confirmed_choices", None) or [])
+        if not any(str(c.get("id") or "") == str(picked.get("id") or "") for c in confirmed):
+            confirmed.append(picked)
+        self._state.confirmed_choices = confirmed
+        self._state.pending_question = None
+        title = str(picked.get("title") or picked.get("value") or "Auswahl")
+        effect = str(picked.get("effect") or picked.get("value") or title)
+        user_line = f"Ich wähle: {title}."
+        reply = (
+            f"Verstanden. Richtung: {title}. {effect} "
+            "Nicht nochmal dieselbe Frage. Arbeit starten, wenn du bereit bist."
+        )
+        if effect and effect not in (self._state.user_text or ""):
+            base = (self._state.user_text or "").strip()
+            self._state.user_text = (base + " — " + effect).strip(" —") if base else effect
+        self._state.brainstorm_turns.append({"role": "user", "text": user_line})
+        self._state.brainstorm_turns.append({"role": "brainstorm", "text": reply})
+        self._state.brainstorm_notes = _format_turns(self._state.brainstorm_turns)
+        rec = self._record_user(user_line, "brainstorm")
+        self._record_reply(
+            agent="brainstorm",
+            text=reply,
+            in_reply_to=rec["message_id"],
+            source="live",
+        )
+        self._set_stage(PipelineStage.brainstorm)
+        self.bus.emit(
+            "pipeline.choice_confirmed",
+            {"id": picked.get("id"), "title": title, "value": picked.get("value")},
+        )
+        self.bus.emit(
+            "pipeline.brainstorm_ready",
+            {"can_execute": True, "turns": len(self._state.brainstorm_turns)},
+        )
         return self._state

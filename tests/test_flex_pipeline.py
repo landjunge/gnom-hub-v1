@@ -178,7 +178,7 @@ def test_execute_injects_flex_wish_requirements(tmp_path: Path):
     reqs = "\n".join(st.distilled_requirements)
     assert "Flex-wish:" in reqs
     assert "dark theme" in reqs.lower()
-    assert st.flex_notes
+    assert "Flex/personal:" not in reqs
 
 
 def test_execute_dedupes_flex_wish_inject(tmp_path: Path):

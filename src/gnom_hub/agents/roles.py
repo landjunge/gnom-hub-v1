@@ -34,7 +34,10 @@ def brainstorm_system_prompt(kind: str = "general") -> str:
         "dann eine offene Frage: wohin zieht's den User.\n"
         "Spinn den vorigen Turn weiter. Erst verdichten, wenn eine Richtung gewählt ist.\n"
         "Kein HTML, kein CSS, kein JS, kein Anbieten die Arbeit zu starten. "
-        "Arbeit starten ist Flex in Box 1, nicht du.\n"
+        "Arbeit starten ist der Button. Du startest nichts. Flex nicht erwähnen.\n"
+        "Höchstens 4 einfache Optionen als klare Zeilen (A–D oder Spiegelstriche). "
+        "Maximal eine offene Frage. Bereits gewählte Richtung nicht erneut fragen. "
+        "Keine Pipeline-Sprache, keine Ticket-IDs.\n"
         "Tool prefetch (auto): echte Funde als Funken zitieren — keine erfundenen Awards.\n"
         "Sprache wie der User. Direkt, ohne Floskeln.\n"
     )
@@ -395,6 +398,7 @@ class FlexAgent(BaseAgent):
     def binding_wishes(self, memory_ctx: str = "", *, limit: int = 12) -> list[str]:
         """Standing User:/Wish: lines from memory — for requirement injection."""
         from gnom_hub.memory.dedupe import core_key, prefer_canonical_wish
+        from gnom_hub.pipeline.choices import is_binding_standing_rule
 
         out: list[str] = []
         seen: set[str] = set()
@@ -404,6 +408,8 @@ class FlexAgent(BaseAgent):
                 continue
             low = s.lower()
             if not low.startswith(("user:", "wish:", "flex-wish:")):
+                continue
+            if not is_binding_standing_rule(s):
                 continue
             canon = prefer_canonical_wish(s)
             if not canon:
