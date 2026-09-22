@@ -262,6 +262,8 @@ class SnapshotOpsMixin:
             "send_target": getattr(st, "send_target", "") or "brainstorm",
             "result_status": getattr(st, "result_status", "") or "",
             "messages": list(getattr(st, "messages", None) or []),
+            "offered_choices": list(getattr(st, "offered_choices", None) or []),
+            "confirmed_choices": list(getattr(st, "confirmed_choices", None) or []),
         }
 
     def memory_dict(self) -> dict[str, Any]:

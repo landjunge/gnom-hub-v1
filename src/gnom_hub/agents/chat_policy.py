@@ -146,13 +146,13 @@ def brainstorm_system_extra(kind: str) -> str:
         return (
             "# Intent: GO-ONLY (mach das / was ich gesagt habe)\n"
             "- No new task invention. Prior concrete user task will be re-used.\n"
-            "- One line: der letzte klare Auftrag liegt vor. Start bleibt Box 1.\n"
+            "- One line: der letzte klare Auftrag liegt vor. Start bleibt der Button.\n"
         )
     if kind == "html_page":
         return (
             "# Intent: HTML / LANDING\n"
             "- Mitdenken: Stimmung, Referenzen, Richtung — kein Code, kein Execute.\n"
-            "- Prefetch-Funde als Funken. Start der Arbeit = Flex in Box 1.\n"
+            "- Prefetch-Funde als Funken. Start bleibt der Button Arbeit starten.\n"
         )
     if kind == "diagnose":
         return (

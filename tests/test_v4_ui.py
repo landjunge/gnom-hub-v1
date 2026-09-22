@@ -32,6 +32,7 @@ def test_v4_static_assets_exist_and_are_separate():
     assert "choices.slice(0, 4)" in js.text
     assert 'target: "brainstorm"' in js.text
     assert '"/api/execute"' in js.text
+    assert "/api/choice" in js.text
     assert '"/api/workspace/keep"' in js.text
 
 

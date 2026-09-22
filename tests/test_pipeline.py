@@ -82,7 +82,6 @@ def test_clarify_path_then_continue():
     assert state2.pending_question is None
     assert any("clarified" in r.lower() for r in state2.distilled_requirements)
     assert state2.worker_results
-    assert state2.flex_notes
     assert any(n == "pipeline.done" for n, _ in events)
     assert any(n == "pipeline.memory_hint" for n, _ in events)
     assert any(n == "pipeline.flex" for n, _ in events)
@@ -117,7 +116,6 @@ def test_flex_cannot_be_disabled():
     state = pipe.start("Ship feature Y")
 
     assert state.stage == PipelineStage.done
-    assert state.flex_notes  # still ran
     assert any(n == "pipeline.flex" for n, _ in events)
     assert any(n == "pipeline.done" for n, _ in events)
 
@@ -182,9 +180,8 @@ def test_flex_personal_remembers_user():
     pipe = Pipeline(bus, agent_manager=agents)
     state = pipe.start("browse zu grok.com und chatte mit Eve")
     assert state.stage == PipelineStage.done
-    # Stub/heuristic path: flex notes about the user or facts absorbed
-    low = (state.flex_notes or "").lower()
-    assert "weiß" in low or "user" in low or "eve" in low or "grok" in low
+    reqs = "\n".join(state.distilled_requirements)
+    assert "Flex/personal:" not in reqs
 
 
 def test_flex_absorb_emits_facts():
@@ -633,7 +630,7 @@ def test_flex_pipeline_injects_wishes_into_requirements():
         st2 = pipe.execute()
     reqs = "\n".join(st2.distilled_requirements)
     assert "Flex-wish:" in reqs or "dark theme" in reqs.lower()
-    assert st2.flex_notes
+    assert "Flex/personal:" not in reqs
     assert st2.stage in (PipelineStage.done, PipelineStage.clarify)
 
 

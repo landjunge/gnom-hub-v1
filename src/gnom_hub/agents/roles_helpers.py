@@ -226,12 +226,9 @@ def _is_garbage_fact(text: str) -> bool:
 
 
 def _lines(raw: str) -> list[str]:
-    out: list[str] = []
-    for ln in (raw or "").splitlines():
-        s = ln.strip().lstrip("-•*0123456789. \t")
-        if len(s) > 3:
-            out.append(s)
-    return out
+    from gnom_hub.pipeline.choices import clean_requirement_lines
+
+    return clean_requirement_lines(raw)
 
 
 def _is_clear_build(text: str) -> bool:
@@ -342,34 +339,21 @@ def _has_decision_seeking(low: str) -> bool:
     return any(m in low for m in decision_markers)
 
 
-def _needs_clarify(text: str, brainstorm: str = "") -> bool:
+def _needs_clarify(text: str, brainstorm: str = "", *, confirmed: bool = False) -> bool:
     """
-    True only for real ambiguity — not every polite '?'.
+    True only for real USER ambiguity. Brainstorm cards are not a second gate.
 
-    Combines USER task text + Brainstorm notes (dialogue).
-    Clear build orders skip; standard 'soll ich umsetzen?' CTAs are ignored.
+    Confirmed V4 selections skip Coordinator clarify entirely.
     """
+    if confirmed:
+        return False
     t = (text or "").strip()
-    b_raw = (brainstorm or "").strip()
-    b = _strip_brainstorm_cta(b_raw).strip()
+    if not t:
+        return False
     low = t.lower()
-    blow = b.lower()
-
-    # --- User text ---
-    if t:
-        if _has_hedge(low) or _has_tradeoff(low) or _has_decision_seeking(low):
-            return True
-        # Polite '?' on a clear build order → no clarify; vague '?' → yes
-        if "?" in t and not _is_clear_build(t):
-            return True
-
-    # --- Brainstorm notes (only residual ambiguity after stripping CTAs) ---
-    if b:
-        if _has_hedge(blow) or _has_tradeoff(blow):
-            # Clear user build + brainstorm only mild hedge → still ask once
-            return True
-        if _has_decision_seeking(blow):
-            return True
-        # Note: bare '?' in brainstorm notes is ignored (workshop bullets are normal).
-
+    if _has_hedge(low) or _has_tradeoff(low) or _has_decision_seeking(low):
+        return True
+    if "?" in t and not _is_clear_build(t):
+        return True
+    _ = brainstorm
     return False

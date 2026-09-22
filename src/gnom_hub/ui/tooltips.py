@@ -20,12 +20,12 @@ TOOLTIPS: dict[str, dict[str, TooltipText]] = {
         "en": {
             "title": "Brainstorm",
             "how_to": "Free idea partner. Send chats to brainstorm; click card to tune; double-click toggles.",
-            "example": "Say you want a wild site → Brainstorm riffs in Box 2. Flex asks in Box 1 when you are ready to start.",
+            "example": "Say you want a wild site → Brainstorm riffs in Box 2. Click a card to choose. Arbeit starten runs workers.",
         },
         "de": {
             "title": "Brainstorm",
             "how_to": "Freier Ideenpartner. Chat = Brainstorm; Klick = Tuning; Doppelklick = an/aus.",
-            "example": "„Geile Webseite“ → Brainstorm denkt in Box 2 mit. Start der Arbeit fragt Flex in Box 1.",
+            "example": "„Geile Webseite“ → Brainstorm denkt in Box 2 mit. Karte wählen, dann Arbeit starten.",
         },
     },
     "memory": {

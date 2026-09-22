@@ -130,10 +130,32 @@
       const body = cleanChoice(m[2] || "");
       if (body.length < 8 || body.length > 260) continue;
       if (/^(was|welche|welcher|wie|oder)\b/i.test(body)) continue;
-      if (!out.includes(body)) out.push(body);
+      if (out.some((c) => c.value === body)) continue;
+      const letter = (m[1] || String.fromCharCode(65 + out.length)).toUpperCase();
+      out.push({
+        id: "choice-" + letter.toLowerCase(),
+        title: body.length > 58 ? body.slice(0, 55) + "…" : body,
+        effect: body,
+        value: body,
+      });
       if (out.length >= 4) break;
     }
     return out;
+  }
+
+  function offeredChoices() {
+    const p = pipeline();
+    const raw = Array.isArray(p.offered_choices) ? p.offered_choices : [];
+    const structured = raw
+      .map((c, i) => ({
+        id: String(c.id || "choice-" + (i + 1)),
+        title: String(c.title || c.value || "").trim(),
+        effect: String(c.effect || c.value || c.title || "").trim(),
+        value: String(c.value || c.title || "").trim(),
+      }))
+      .filter((c) => c.value);
+    if (structured.length) return structured.slice(0, 4);
+    return parseBrainstormChoices(lastBrainstormText()).slice(0, 4);
   }
 
   function activeDecision() {
@@ -189,13 +211,15 @@
     if (busy) return;
     setBusy(true);
     try {
-      const text =
-        "Ich wähle diese Richtung verbindlich: " +
-        choice +
-        " Bitte diese Auswahl übernehmen und nicht erneut nach derselben Entscheidung fragen.";
-      const snap = await api("/api/chat?sync=true", {
+      const card = typeof choice === "string" ? { value: choice, title: choice, effect: choice } : choice;
+      const snap = await api("/api/choice?sync=true", {
         method: "POST",
-        body: JSON.stringify({ text, target: "brainstorm" }),
+        body: JSON.stringify({
+          id: card.id || "",
+          title: card.title || card.value || "",
+          effect: card.effect || card.value || "",
+          value: card.value || card.title || "",
+        }),
       });
       snapshot = snap;
       hiddenSuggestions.clear();
@@ -265,9 +289,7 @@
       return;
     }
 
-    const choices = parseBrainstormChoices(lastBrainstormText()).filter(
-      (c) => !hiddenSuggestions.has(c)
-    );
+    const choices = offeredChoices().filter((c) => !hiddenSuggestions.has(c.value || c.title));
     if (!choices.length) {
       els.decisionCount.textContent = "Nichts zu entscheiden.";
       els.decisions.innerHTML =
@@ -276,14 +298,14 @@
     }
     els.decisionCount.textContent = choices.length + (choices.length === 1 ? " Möglichkeit" : " Möglichkeiten");
     choices.slice(0, 4).forEach((choice, index) => {
-      const short = choice.length > 58 ? choice.slice(0, 55) + "…" : choice;
+      const short = (choice.title || choice.value || "").slice(0, 58);
       const card = decisionCard(
         String.fromCharCode(65 + index) + " · " + short,
-        choice,
+        choice.effect || choice.value,
         "Machen",
         () => chooseSuggestion(choice),
         () => {
-          hiddenSuggestions.add(choice);
+          hiddenSuggestions.add(choice.value || choice.title);
           renderDecisions();
         }
       );

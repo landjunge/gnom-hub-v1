@@ -254,10 +254,11 @@ class Pipeline:
         ]
         question: DistillQuestion | None = None
         notes = getattr(self._state, "brainstorm_notes", "") or ""
-        if self._needs_clarify(text, notes) and not self._clarified_once:
+        confirmed = bool(getattr(self._state, "confirmed_choices", None))
+        if not confirmed and self._needs_clarify(text, notes) and not self._clarified_once:
             question = DistillQuestion(
                 id="q1",
-                text="Wie soll ich vorgehen?",
+                text="Welche Richtung soll gelten?",
                 options=[
                     "Schnell und einfach",
                     "Gründlich und robust",
@@ -348,7 +349,7 @@ class Pipeline:
                     content=(
                         "Du bist Brainstorm-Partner in Gnom-Hub — mitdenken, kein Ticket. "
                         "Sprache wie der User (DE/EN). Spiel mit unklaren Wünschen; "
-                        "kein Code; kein Soll-ich-umsetzen; Start ist Flex in Box 1."
+                        "kein Code; kein Soll-ich-umsetzen; Start bleibt der Button."
                     ),
                 ),
                 LLMMessage(role="user", content=text + self._memory_block()),
@@ -391,10 +392,11 @@ class Pipeline:
         requirements = [ln for ln in lines if len(ln) > 3][:8] or [f"Ziel: {text}"]
         question: DistillQuestion | None = None
         notes = getattr(self._state, "brainstorm_notes", "") or ""
-        if self._needs_clarify(text, notes) and not self._clarified_once:
+        confirmed = bool(getattr(self._state, "confirmed_choices", None))
+        if not confirmed and self._needs_clarify(text, notes) and not self._clarified_once:
             question = DistillQuestion(
                 id="q1",
-                text="Wie soll ich vorgehen?",
+                text="Welche Richtung soll gelten?",
                 options=[
                     "Schnell und einfach",
                     "Gründlich und robust",

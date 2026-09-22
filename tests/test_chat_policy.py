@@ -43,7 +43,7 @@ def test_brainstorm_html_is_dialogue_not_worker_plan():
     low = extra.lower()
     assert "mitdenken" in low
     assert "kein code" in low or "kein execute" in low
-    assert "box 1" in low
+    assert "arbeit starten" in low
     assert "one worker" not in low
     assert "multi-worker" not in low
 

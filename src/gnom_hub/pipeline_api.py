@@ -43,6 +43,19 @@ class PipelineApiMixin:
                     self.maybe_auto_pack()
             return self.snapshot()
 
+    def confirm_choice_sync(self, body: dict[str, Any] | None = None) -> dict[str, Any]:
+        """V4 card click: store the selection, do not start workers."""
+        payload = dict(body or {})
+        self.last_error = None
+        with self._pipeline_lock_obj():
+            fn = getattr(self.pipeline, "confirm_choice", None)
+            if not callable(fn):
+                raise TypeError("choice confirm not supported")
+            fn(str(payload.get("id") or ""), payload)
+            if self.pipeline.state.error:
+                self.last_error = self.pipeline.state.error
+            return self.snapshot()
+
     def execute_sync(self) -> dict[str, Any]:
         """Run distill → flex → workers from accumulated brainstorm."""
         self.maybe_auto_backup("execute")
@@ -181,7 +194,7 @@ class PipelineApiMixin:
 
                 self.pipeline.state.pending_question = DistillQuestion(
                     id=str(out.get("question_id") or "q1"),
-                    text="Wie soll ich vorgehen?",
+                    text="Welche Richtung soll gelten?",
                     options=["Schnell und einfach", "Gründlich und robust", val],
                 )
                 self.pipeline.state.stage = PipelineStage.clarify
