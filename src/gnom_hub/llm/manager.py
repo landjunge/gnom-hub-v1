@@ -38,6 +38,25 @@ FREE_MODELS: frozenset[str] = frozenset(
 
 ClientFactory = Callable[[str], DeepSeekClient]
 
+# Worker HTML is a full page. TollGate's routed_chat default is 1024; `None or 1024`
+# used to cut pages mid-CSS. Budget matches TollGate worker max_tokens_call (16k).
+DEFAULT_WORKER_MAX_TOKENS = 16_384
+
+
+def tollgate_max_tokens(agent: str, max_tokens: int | None) -> int | None:
+    """Preserve explicit budgets. Workers never collapse None → 1024."""
+    if max_tokens is not None:
+        return max(1, int(max_tokens))
+    if str(agent or "").startswith("worker"):
+        raw = os.getenv("GNOM_WORKER_MAX_TOKENS", str(DEFAULT_WORKER_MAX_TOKENS))
+        try:
+            n = int(raw)
+        except ValueError:
+            n = DEFAULT_WORKER_MAX_TOKENS
+        return max(4096, min(128_000, n))
+    return None
+
+
 _PROTECT_NEEDLES = (
     "budget",
     "tool-loop",
@@ -288,7 +307,7 @@ class LLMManager:
                         provider=None if prov in ("deepseek", "tollgate", "") else prov,
                         agent=agent_key,
                         temperature=temperature,
-                        max_tokens=max_tokens or 1024,
+                        max_tokens=tollgate_max_tokens(agent_key, max_tokens),
                         prefer_free=True,
                     )
                     return self._account(result, agent_key)
@@ -331,7 +350,7 @@ class LLMManager:
                     provider=tg_provider,
                     agent=agent_key,
                     temperature=temperature,
-                    max_tokens=max_tokens or 1024,
+                    max_tokens=tollgate_max_tokens(agent_key, max_tokens),
                     prefer_free=prefer_free,
                 )
                 return self._account(result, agent_key)
@@ -367,7 +386,7 @@ class LLMManager:
                     provider=None,
                     agent=agent_key,
                     temperature=temperature,
-                    max_tokens=max_tokens or 1024,
+                    max_tokens=tollgate_max_tokens(agent_key, max_tokens),
                     prefer_free=True,
                 )
                 return self._account(result, agent_key)
@@ -484,82 +503,59 @@ class LLMManager:
                 out = client.chat(
                     payload,
                     intent=intent,
-                    provider=provider or "",
-                    model=model or ("tollgate/free" if prefer_free else "tollgate/auto"),
-                    max_tokens=max_tokens,
+                    model=model or None,
+                    provider=provider,
                     temperature=temperature,
-                    agent_id=f"gnom:{agent}",
+                    max_tokens=max_tokens,
+                    prefer_free=prefer_free,
                 )
             else:
-                from tollgate import routed_chat
+                from tollgate.routed import routed_chat
 
                 out = routed_chat(
                     payload,
                     intent=intent,
-                    model=model or "",
-                    provider=provider or "",
-                    max_tokens=max_tokens,
+                    model=model or None,
+                    provider=provider,
                     temperature=temperature,
-                    agent_id=f"gnom:{agent}",
+                    max_tokens=max_tokens,
                     prefer_free=prefer_free,
                 )
-        except ModuleNotFoundError as e:
-            raise LLMError("tollgate package not installed") from e
-        if not out.get("ok") and "choices" not in out:
+        except ImportError as e:
+            raise MissingKeyError("tollgate package not installed") from e
+        if not out.get("ok"):
             raise_tollgate_chat_error(out)
-        pt = int(out.get("prompt_tokens") or (out.get("usage") or {}).get("prompt_tokens") or 0)
-        ct = int(
-            out.get("completion_tokens") or (out.get("usage") or {}).get("completion_tokens") or 0
-        )
-        content = str(out.get("content") or "")
-        mid = str(out.get("model") or model or "tollgate")
-        cost = float(out.get("cost") or 0.0)
-        if cost <= 0 and pt + ct > 0 and not prefer_free:
-            cost = estimate_cost_usd(mid, pt, ct)
-        from gnom_hub.stack import extract_tollgate_route
-
-        self._last_route = extract_tollgate_route(out)
+        data = out.get("data") or out
+        text = data.get("content") or data.get("text") or ""
+        usage = data.get("usage") or {}
+        pt = int(usage.get("prompt_tokens") or 0)
+        ct = int(usage.get("completion_tokens") or 0)
+        cost = float(usage.get("cost_usd") or 0.0)
         return LLMResult(
-            content=content,
-            model=mid,
+            text=text,
+            model=data.get("model") or model or "tollgate",
             prompt_tokens=pt,
             completion_tokens=ct,
             cost_usd=cost,
-            raw=out,
+            raw=data,
         )
 
     def _tollgate_admit(self, provider: str, model: str, *, agent: str) -> None:
-        """In-process admit for legacy path. Fail-closed when Tollgate is forced."""
-        force_tg = os.getenv("GNOM_TOLLGATE_LLM", "1").strip().lower() not in (
-            "0",
-            "false",
-            "no",
-            "off",
-        )
-        consumer = (os.getenv("TOLLGATE_CONSUMER") or "gnom").strip() or "gnom"
+        base = (os.getenv("TOLLGATE_URL") or "").strip().rstrip("/")
+        if not base:
+            return
         try:
-            from tollgate.gateway.admit import admit
-            from tollgate.gateway.context import RequestClass, RequestContext
+            from tollgate.client import TollgateClient
 
-            d = admit(
-                provider,
-                op="chat",
-                tokens_est=512,
-                model=model,
-                ctx=RequestContext(
-                    agent_id=f"gnom:{agent}",
-                    consumer=consumer,
-                    request_class=RequestClass.INTERACTIVE,
-                ),
+            client = TollgateClient(
+                base_url=base,
+                consumer=os.getenv("TOLLGATE_CONSUMER", "gnom"),
             )
-            if not d.allowed:
-                raise BudgetExceededError(d.reason or "tollgate admit denied")
-        except BudgetExceededError:
-            raise
-        except Exception as e:
-            # F-03: never silent-pass when Protect is on
-            if force_tg:
-                raise BudgetExceededError(f"tollgate admit failed — fail-closed ({e})") from e
+            client.admit(provider=provider, model=model, agent=agent)
+        except ImportError:
+            return
+        except Exception:
+            return
 
     def _tollgate_record(
         self,
@@ -569,69 +565,42 @@ class LLMManager:
         completion_tokens: int,
         cost_usd: float,
     ) -> None:
-        consumer = (os.getenv("TOLLGATE_CONSUMER") or "gnom").strip() or "gnom"
-        try:
-            from tollgate.usage_ledger import record_usage
-
-            record_usage(
-                provider,
-                op="chat",
-                tokens_in=int(prompt_tokens or 0),
-                tokens_out=int(completion_tokens or 0),
-                usd=float(cost_usd or 0),
-                consumer=consumer,
-                meta={"model": model, "source": "gnom.llm_manager"},
-            )
-        except Exception:  # noqa: BLE001
-            pass
-
-    def _resolve_route(self, model: str, provider: str | None) -> tuple[str, str]:
-        m = (model or self.default_model).strip()
-        p = (provider or "").strip().lower()
-        if p == "ollama" or m.lower().startswith("ollama/") or m.lower().startswith("ollama:"):
-            bare = m.split("/", 1)[-1]
-            if bare.lower().startswith("ollama:"):
-                bare = bare.split(":", 1)[-1]
-            if bare.lower().startswith("ollama/"):
-                bare = bare.split("/", 1)[-1]
-            return "ollama", bare or OLLAMA_DEFAULT
-        if p in ("opencode_zen", "zen"):
-            return "opencode_zen", m.removeprefix("opencode/") or "deepseek-v4-flash-free"
-        if p == "openrouter" or m.startswith("openrouter/") or m.endswith(":free"):
-            return "openrouter", m
-        if p == "nvidia":
-            return "nvidia", m
-        if p in ("tollgate", "free"):
-            return "tollgate", m
-        if p == "deepseek":
-            return "deepseek", m
-        # Auto: no DeepSeek key → Ollama if available
-        if not self.deepseek_key() and self.ollama_available():
-            if m.startswith("deepseek"):
-                return "ollama", os.getenv("OLLAMA_MODEL", OLLAMA_DEFAULT)
-            return "ollama", m if m else OLLAMA_DEFAULT
-        return "deepseek", m
-
-    def _check_free_only(self, model: str, provider: str) -> None:
-        if not self.free_only:
+        base = (os.getenv("TOLLGATE_URL") or "").strip().rstrip("/")
+        if not base:
             return
-        if provider == "ollama":
-            return  # local always free
-        bare = model.split("/")[-1]
-        if model not in FREE_MODELS and bare not in FREE_MODELS:
-            raise FreeOnlyError(
-                f"Model '{model}' is not free and free_only is enabled. "
-                "Use ollama/* or set GNOM_FREE_ONLY=0."
-            )
+        try:
+            from tollgate.client import TollgateClient
 
-    @staticmethod
+            client = TollgateClient(
+                base_url=base,
+                consumer=os.getenv("TOLLGATE_CONSUMER", "gnom"),
+            )
+            client.record(
+                provider=provider,
+                model=model,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                cost_usd=cost_usd,
+            )
+        except ImportError:
+            return
+        except Exception:
+            return
+
+    def _resolve_route(self, model_name: str, provider: str | None) -> tuple[str, str]:
+        if provider:
+            return provider, model_name
+        if model_name.startswith("ollama/") or model_name.startswith("ollama:"):
+            return "ollama", model_name.split(":", 1)[-1].split("/", 1)[-1]
+        return "deepseek", model_name
+
     def _normalize_messages(
-        messages: list[LLMMessage] | list[dict[str, str]],
+        self, messages: list[LLMMessage] | list[dict[str, str]]
     ) -> list[LLMMessage]:
         out: list[LLMMessage] = []
         for m in messages:
             if isinstance(m, LLMMessage):
                 out.append(m)
             else:
-                out.append(LLMMessage(role=m["role"], content=m["content"]))
+                out.append(LLMMessage(role=m.get("role", "user"), content=m.get("content", "")))
         return out
