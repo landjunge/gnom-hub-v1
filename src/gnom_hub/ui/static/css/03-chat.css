@@ -69,7 +69,7 @@
 }
 .flex-ask #flex-ask-title,
 .flex-ask .tip-title {
-  font-size: 12px;
+  font-size: var(--np-meta);
   margin: 0;
   display: flex;
   align-items: center;
@@ -96,9 +96,9 @@
   border-radius: 0;
   background: var(--bg-card, #1e1f24);
 }
-.flex-ask-text { margin: 0; color: var(--text, #d8dbe0); font-size: 12px; line-height: 1.3; }
-.flex-ask-meta { margin: 0; font-size: 10px; opacity: 0.75; }
-.flex-ask-hint { margin: 0; font-size: 10px; }
+.flex-ask-text { margin: 0; color: var(--text, #d8dbe0); font-size: var(--np-meta); line-height: 1.3; }
+.flex-ask-meta { margin: 0; font-size: var(--np-meta); opacity: 0.75; }
+.flex-ask-hint { margin: 0; font-size: var(--np-meta); }
 .flex-ask-btns { display: flex; flex-wrap: wrap; gap: 4px; }
 .flex-ask-btn {
   border: 1px solid var(--border-strong, #5c616a);
@@ -108,7 +108,7 @@
   height: 28px;
   padding: 0 10px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--np-meta);
 }
 .flex-ask-btn.is-on {
   outline: 2px solid var(--text, #d8dbe0);
@@ -125,7 +125,7 @@
   border: 1px solid var(--border-strong, #5c616a);
   border-radius: 0;
   padding: 4px 8px;
-  font-size: 12px;
+  font-size: var(--np-meta);
 }
 
 /* Flex feedback panel — in Box 1 under placeholder */
@@ -168,7 +168,7 @@
 
 .flex-review-title {
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--np-body);
   color: var(--c-flex);
   display: flex;
   align-items: center;
@@ -176,7 +176,7 @@
 }
 
 .flex-review-badge {
-  font-size: 10px;
+  font-size: var(--np-meta);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   padding: 2px 6px;
@@ -187,7 +187,7 @@
 
 .flex-review-q {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--np-meta);
   line-height: 1.35;
   color: var(--text);
   white-space: pre-wrap;
@@ -204,7 +204,7 @@
   border-radius: 0;
   background: var(--bg-card);
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--np-meta);
   height: 28px;
   padding: 0 10px;
   cursor: pointer;
@@ -226,6 +226,6 @@
 
 .flex-review-hint {
   margin: 0;
-  font-size: 10px;
+  font-size: var(--np-meta);
 }
 

@@ -334,3 +334,11 @@ Kein Tag, kein GitHub-Release und keine Veröffentlichung ohne Daniels ausdrück
 ## Lizenz
 
 Private Nutzung.
+
+## Gemeinsame Desktop-Gestaltung · 03.10.2026
+
+Legacy-Desk und `/v4` verwenden die lokale, bytegleiche [NetzwerkPunkt-Bedienbasis](https://github.com/landjunge/threaddesk/blob/b0b6815d1996b7d28f374841c616dcb458304848/src/threaddesk/ui/static/networkpunkt.css). Quelle ist `src/gnom_hub/ui/static/networkpunkt.css`; die Produktadapter bleiben in `tokens.css`, `css/09-suite.css` und `v4.css`. Verbindliche Entscheidungen stehen in [GOLDENRULES §19](https://github.com/landjunge/threaddesk/blob/b0b6815d1996b7d28f374841c616dcb458304848/docs/usability/GOLDENRULES.MD#19-gemeinsame-bedienbasis-für-die-fünf-produkte); ältere Größenangaben werden durch die dortige Desktop-Entscheidung ersetzt. Keine neue Abhängigkeit, keine automatische Fremdaktualisierung.
+
+Feste Desktop-Bereiche ab 1180×760 CSS-Pixeln, Systemschrift, 12/14/16/24, 40-Pixel-Bedienelemente; kleine Fenster scrollen. Agentenfarben kennzeichnen weiterhin Empfänger. Senden und Arbeit starten behalten ihre getrennte Bedeutung. Die Standardroute bleibt unverändert.
+
+`quality_check.sh` bestanden: Ruff, generierte CSS-/JS-Dateien, ESLint, Mermaid, Dokumentationsindex, 1038 Tests und Smoke-E2E. Drei Unit-Tests sowie der optionale Live-Modelltest sind übersprungen. Ein frischer `GNOM_WS` ist für wiederholte Prüfläufe erforderlich. Zusätzliche lokale Browserprüfung: Hilfe/System öffnen und schließen, Agentendetails, V4-Werkzeugbereich und erreichbare Aktionen bei kleinem Fenster. [Genaue Grenzen](docs/usability/design-2026-10-03/checks.json), [Legacy-Bild](docs/usability/design-2026-10-03/gnom.png), [V4-Bild](docs/usability/design-2026-10-03/gnom-v4.png). Keine Aussage über Modell-/Pipelinequalität, keine Nutzerabnahme, keine native Ausgabe.

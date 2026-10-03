@@ -41,7 +41,7 @@
 }
 
 .agent-card .card-target {
-  font-size: 10px;
+  font-size: var(--np-meta);
   color: var(--card-color, var(--text-muted));
   letter-spacing: 0.04em;
 }
@@ -60,17 +60,17 @@
 
 .agent-card .card-name {
   font-weight: 600;
-  font-size: 12px;
+  font-size: var(--np-meta);
   color: var(--card-color, var(--text));
 }
 
 .agent-card .card-meta {
-  font-size: 11px;
+  font-size: var(--np-meta);
   color: var(--text-muted);
 }
 
 .agent-card .card-status {
-  font-size: 11px;
+  font-size: var(--np-meta);
   letter-spacing: 0.02em;
 }
 

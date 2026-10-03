@@ -90,10 +90,10 @@ def _visible_text(inner: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def test_btn_h_tab_h_are_20px():
-    assert "--btn-h: 20px" in CSS
-    assert "--tab-h: 20px" in CSS
-    assert "--border-strong: #5c616a" in CSS
+def test_controls_alias_shared_desktop_height():
+    assert "--btn-h: var(--np-control)" in CSS
+    assert "--tab-h: var(--np-control)" in CSS
+    assert "--border-strong: var(--np-control-border)" in CSS
 
 
 def test_box3_worker_tab_square_20px():

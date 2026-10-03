@@ -575,7 +575,8 @@
     const bar = document.getElementById("mobile-box-tabs");
     if (!bar) return;
     function apply() {
-      const narrow = window.matchMedia("(max-width: 640px)").matches;
+      // Fixed desktop composition; smaller viewports scroll.
+      const narrow = false;
       bar.hidden = !narrow;
       document.body.classList.toggle("mobile-box-mode", narrow);
       if (narrow && !document.body.className.match(/show-box-/)) {

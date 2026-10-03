@@ -1,30 +1,26 @@
-/**
- * Canonical desk tokens for the tool family.
- * Gnom-Hub-V1 is the source. Copy into 4AllPass (`frontend/src/tokens.css`)
- * and Tollgate (`dashboard_html.py` / `site/styles.css` mappings).
- * Do not invent a second palette per product.
- */
+@import url("networkpunkt.css");
+/* Product adapter. Shared foundation pinned in README; rules in GOLDENRULES §19. */
 :root {
-  --bg: #121316;
-  --bg-panel: #1a1b1f;
-  --bg-card: #1e1f24;
-  --bg-elev: #24262d;
-  --bg-strip: #15171b;
-  --text: #e2e4e9;
-  --text-muted: #8b909a;
-  --border: #2e3138;
-  --border-strong: #5c616a;
-  --border-hover: #6b7280;
-  --accent: #6b7280;
-  --accent-hi: #a1a8b3;
-  --ok: #3d9b6a;
-  --warn: #c9a227;
-  --err: #c45c5c;
-  --gap: clamp(4px, 0.35vw, 8px);
-  --pad-x: clamp(8px, 1vw, 16px);
-  --pad-y: clamp(6px, 0.8vh, 12px);
+  --bg: var(--np-canvas);
+  --bg-panel: var(--np-surface);
+  --bg-card: var(--np-surface);
+  --bg-elev: var(--np-hover);
+  --bg-strip: var(--np-canvas);
+  --text: var(--np-text);
+  --text-muted: var(--np-muted);
+  --border: var(--np-divider);
+  --border-strong: var(--np-control-border);
+  --border-hover: var(--np-focus);
+  --accent: var(--np-action);
+  --accent-hi: var(--np-focus);
+  --ok: var(--np-success);
+  --warn: var(--np-warning);
+  --err: var(--np-danger);
+  --gap: var(--np-space-3);
+  --pad-x: var(--np-space-5);
+  --pad-y: var(--np-space-4);
   --layout-w: 100%;
-  --card-h: clamp(44px, 5.5vh, 56px);
+  --card-h: 72px;
   --chat-h: clamp(160px, 22vh, 280px);
   --radius-sm: 0;
   --radius-md: 0;
@@ -42,6 +38,6 @@
   --c-worker4: #ff8a3d;
   --flex: var(--c-flex);
   --owner-color: var(--c-flex);
-  --btn-h: 20px;
-  --tab-h: 20px;
+  --btn-h: var(--np-control);
+  --tab-h: var(--np-control);
 }

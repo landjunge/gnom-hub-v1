@@ -1,0 +1,47 @@
+{
+  "date": "2026-10-03",
+  "shared_css_source": "https://github.com/landjunge/threaddesk/blob/b0b6815d1996b7d28f374841c616dcb458304848/src/threaddesk/ui/static/networkpunkt.css",
+  "shared_css_sha256": "98371bd9edc96fb940a0e0de34933740fed1062b510aa516498fcb53e112591e",
+  "rules": "https://github.com/landjunge/threaddesk/blob/b0b6815d1996b7d28f374841c616dcb458304848/docs/usability/GOLDENRULES.MD#19-gemeinsame-bedienbasis-für-die-fünf-produkte",
+  "browser": "Chromium 145 / Linux, synthetic test workspaces",
+  "viewports": [
+    [
+      1440,
+      900
+    ],
+    [
+      1024,
+      700
+    ]
+  ],
+  "minimum_desktop": [
+    1180,
+    760
+  ],
+  "native_builds": false,
+  "user_acceptance": false,
+  "media_pipeline_owner": "Grok; not produced by these checks",
+  "css_adapter": "src/gnom_hub/ui/static/networkpunkt.css",
+  "passed": [
+    "legacy-help-open-close",
+    "v4-tools-open-close",
+    "v4-two-columns",
+    "v4-desktop-scroll",
+    "v4-execute-disabled-before-send",
+    "legacy-system-open-close",
+    "legacy-agent-detail-tabs",
+    "legacy-desktop-scroll-help"
+  ],
+  "real_model_calls": 0,
+  "pipeline_acceptance": false,
+  "base": "69136b9af6b38618c808616f94e780712063c617",
+  "quality_check": "passed",
+  "unit_tests_passed": 1038,
+  "unit_tests_skipped": 3,
+  "seconds": 51.61,
+  "smoke_e2e": "passed",
+  "live_model_smoke": "skipped: no key",
+  "live_user_scenarios": "not run; no server on 8080; local layout fixture used port 8774",
+  "command": "GNOM_WS=$(mktemp -d) bash scripts/quality_check.sh",
+  "known_test_condition": "Each quality run needs a fresh GNOM_WS; reused test data caused the memory-proposal test to fail on the second run."
+}

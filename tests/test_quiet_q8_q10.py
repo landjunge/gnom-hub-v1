@@ -48,6 +48,6 @@ def test_q9_german_card_and_target_labels():
 
 
 def test_q10_compact_cards_and_no_operator_hint():
-    assert "--card-h: clamp(44px" in TOKENS or "--card-h: clamp(40px" in TOKENS
+    assert "--card-h: 72px" in TOKENS  # Desktop cards fit the shared 40px controls.
     assert "kbd-hint" not in HTML.split('id="chat-mod"', 1)[1].split('id="box3"', 1)[0]
     assert "gap: 8px" in CSS_AGENTS.split(".agent-cards {", 1)[1].split("}", 1)[0]

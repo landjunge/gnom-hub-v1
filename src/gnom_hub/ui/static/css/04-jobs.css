@@ -93,7 +93,7 @@
   background: rgba(40, 80, 140, 0.35);
   color: #cfe4ff;
   white-space: nowrap;
-  font-size: 10px;
+  font-size: var(--np-meta);
 }
 .box3-tool-chip.is-dry {
   border-color: rgba(255, 200, 80, 0.45);
@@ -136,7 +136,7 @@
   width: 100%;
   background: var(--bg-strip, #15171b);
   border-bottom: 1px solid var(--border-strong);
-  font-size: 12px;
+  font-size: var(--np-meta);
   color: var(--text-muted);
 }
 
@@ -225,7 +225,7 @@
   min-height: var(--tab-h);
   text-align: left;
   padding: 0 10px;
-  font-size: 10px;
+  font-size: var(--np-meta);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -258,7 +258,7 @@
   word-break: break-word;
   color: #e8eaed;
   background: #0b0c0e;
-  font-size: 11px;
+  font-size: var(--np-meta);
   line-height: 1.35;
 }
 
@@ -294,7 +294,7 @@
   padding: 8px 10px;
   overflow-y: auto;
   min-height: 0;
-  font-size: 12px;
+  font-size: var(--np-meta);
   color: var(--text-muted);
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -307,7 +307,7 @@
 
 .chat-log .chat-ts {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--np-meta);
   font-variant-numeric: tabular-nums;
   margin-right: 4px;
   opacity: 0.75;
@@ -339,7 +339,7 @@
   height: 20px;
   padding: 0;
   line-height: 18px;
-  font-size: 12px;
+  font-size: var(--np-meta);
   cursor: pointer;
 }
 
@@ -375,7 +375,7 @@
   background: var(--bg);
   color: var(--text);
   padding: 4px 8px;
-  font-size: 12px;
+  font-size: var(--np-meta);
   line-height: 1.25;
   resize: none;
   overflow-y: auto;
@@ -401,7 +401,7 @@
   border-radius: 0;
   background: var(--bg-card);
   color: #fff;
-  font-size: 12px;
+  font-size: var(--np-meta);
   cursor: pointer;
 }
 
@@ -413,7 +413,7 @@
   border-radius: 0;
   background: var(--bg-card);
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--np-meta);
   cursor: pointer;
 }
 
@@ -432,7 +432,7 @@
   border-radius: 0;
   background: var(--bg-card);
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--np-meta);
   cursor: pointer;
 }
 
@@ -444,7 +444,7 @@
   border-radius: 0;
   background: color-mix(in srgb, var(--ok) 18%, var(--bg-elev));
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--np-meta);
   font-weight: 600;
   cursor: pointer;
 }
@@ -452,7 +452,7 @@
 .execute-hint {
   flex: 1 0 100%;
   margin: 0;
-  font-size: 11px;
+  font-size: var(--np-meta);
   color: var(--err);
 }
 

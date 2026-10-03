@@ -11,15 +11,15 @@ APP = (ROOT / "src/gnom_hub/ui/static/app.css").read_text(encoding="utf-8")
 
 def test_app_css_imports_tokens_and_has_no_second_root_palette():
     assert '@import url("tokens.css")' in APP or "@import url('tokens.css')" in APP
-    assert "--btn-h: 20px" in TOKENS
-    assert "--tab-h: 20px" in TOKENS
+    assert "--btn-h: var(--np-control)" in TOKENS
+    assert "--tab-h: var(--np-control)" in TOKENS
     assert "--c-flex: #f0c000" in TOKENS
-    assert "--border-strong: #5c616a" in TOKENS
-    assert "--btn-h: 20px" not in APP
+    assert "--border-strong: var(--np-control-border)" in TOKENS
+    assert "--btn-h: var(--np-control)" not in APP
     assert "--c-flex: #f0c000" not in APP
 
 
-def test_tokens_keep_r4_sizes_and_agent_yellow():
-    assert "--btn-h: 20px" in TOKENS
+def test_tokens_share_desktop_sizes_and_keep_agent_yellow():
+    assert "--btn-h: var(--np-control)" in TOKENS
     assert "#a78bfa" not in TOKENS
     assert "--c-brainstorm: #ef5350" in TOKENS

@@ -45,7 +45,7 @@ def test_v4_approved_visual_rules():
     assert ".agent-worker1{--agent:#4169E1}" in css
     assert "@keyframes agent-glow" in css
     assert "50%{opacity:.15" in css
-    assert "height:36px" in css
+    assert "height:var(--np-control)" in css
     assert html.count("Arbeit starten") == 2  # button + explanatory empty-state text
     assert html.count('id="execute"') == 1
 

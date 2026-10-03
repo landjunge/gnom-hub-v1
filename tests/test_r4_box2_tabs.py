@@ -20,7 +20,7 @@ _RADIUS_ZERO = re.compile(r"border-radius\s*:\s*0(px)?\b")
 _RADIUS_FOUR = re.compile(r"border-radius\s*:\s*4px\b")
 _FONT_SIZE = re.compile(r"font-size\s*:\s*([^;]+)")
 _ALLOWED_PX = frozenset({"10px", "12px", "14px", "16px"})
-_FONT_VAR = re.compile(r"^var\(--(?:t-[a-z0-9-]+|tab-h)\)$")
+_FONT_VAR = re.compile(r"^var\(--(?:t-[a-z0-9-]+|np-meta|np-body|np-heading|tab-h)\)$")
 _TC_PREVIEW = re.compile(r"""\.textContent\s*=\s*["']Preview["']""")
 _TC_SOURCE = re.compile(r"""\.textContent\s*=\s*["']Source["']""")
 _TURN_LIT = re.compile(r"""["']turn["']""")
@@ -130,7 +130,7 @@ def test_box2_reply_tab_height_matches_buttons():
         ".box2-reply-tab must set height: 20px or var(--tab-h); got " + joined.strip()
     )
     css = CSS
-    assert "--btn-h: 20px" in css and "--tab-h: 20px" in css
+    assert "--btn-h: var(--np-control)" in css and "--tab-h: var(--np-control)" in css
 
 
 def test_box2_reply_tab_active_uses_agent_color_not_brainstorm_outline():

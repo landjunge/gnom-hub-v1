@@ -1,0 +1,22 @@
+/* Current family adapter: stable desktop regions and shared control sizes. */
+html, body { overflow: auto; font-family: var(--np-font); font-size: var(--np-body); }
+body { min-width: 1180px; min-height: 760px; }
+#app { min-width: 1180px; min-height: 760px; height: max(100dvh, 760px); max-width: none; }
+button, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select { min-height: var(--np-control); font-size: var(--np-body); }
+button { border-radius: 0; }
+textarea { font-size: var(--np-body); }
+.app-title { font-size: var(--np-heading); }
+.top-bar { flex-direction: row; align-items: center; gap: 24px; min-height: 48px; }
+.top-bar-head { flex: 1; }
+.top-toolbar { width: auto; border: 0; background: transparent; padding: 0; gap: 8px; }
+.top-toolbar .btn-system, .btn-system { background: transparent; border-color: var(--border-strong); color: var(--text); }
+.top-toolbar .btn-system:hover, .btn-system:hover { background: var(--bg-elev); border-color: var(--np-focus); }
+.agent-card .card-name, .agent-card .card-target { color: var(--text); }
+.agent-card .card-meta { color: var(--text-muted); }
+.agent-card.is-target { box-shadow: none; background: var(--bg-elev); }
+.boxes { margin-top: 8px; border-color: var(--border); transition: none; }
+.chat-flag { width: var(--np-control); }
+.chat-flag:hover { transform: none; }
+#btn-send { background: var(--np-action); color: var(--np-action-text); border-color: var(--np-action); }
+:focus-visible { outline: 2px solid var(--np-focus); outline-offset: 3px; }
+input::placeholder, textarea::placeholder { color: var(--text-muted); opacity: 1; }

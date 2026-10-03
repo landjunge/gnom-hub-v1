@@ -228,10 +228,10 @@ def test_ergebnis_uses_preview_card_not_blob_dump():
 
 
 def test_css_agent_page_tokens():
-    assert "--bg: #121316" in CSS
-    assert "--bg-strip: #15171b" in CSS
-    assert "--border-strong: #5c616a" in CSS
-    assert "--border-hover: #6b7280" in CSS
-    assert "--ok: #3d9b6a" in CSS
-    assert "--btn-h: 20px" in CSS
-    assert "--tab-h: 20px" in CSS
+    assert "--bg: var(--np-canvas)" in CSS
+    assert "--bg-strip: var(--np-canvas)" in CSS
+    assert "--border-strong: var(--np-control-border)" in CSS
+    assert "--border-hover: var(--np-focus)" in CSS
+    assert "--ok: var(--np-success)" in CSS
+    assert "--btn-h: var(--np-control)" in CSS
+    assert "--tab-h: var(--np-control)" in CSS

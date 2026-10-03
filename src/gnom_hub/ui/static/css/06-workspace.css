@@ -35,7 +35,7 @@
 
 .workspace-col-head h3 {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--np-meta);
   font-weight: 600;
 }
 
@@ -46,7 +46,7 @@
   border-radius: 0;
   background: #343a40;
   color: #fff;
-  font-size: 12px;
+  font-size: var(--np-meta);
   cursor: pointer;
 }
 
@@ -71,7 +71,7 @@
   margin-bottom: 2px;
   border: 1px solid transparent;
   border-radius: 3px;
-  font-size: 11px;
+  font-size: var(--np-meta);
   cursor: pointer;
 }
 
@@ -91,7 +91,7 @@
 
 .ws-list .ws-bytes {
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--np-meta);
 }
 
 .ws-list .ws-action {
@@ -101,7 +101,7 @@
   border-radius: 3px;
   background: #343a40;
   color: var(--text);
-  font-size: 10px;
+  font-size: var(--np-meta);
   cursor: pointer;
 }
 
@@ -121,7 +121,7 @@
   margin: 0;
   padding: 8px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px;
+  font-size: var(--np-meta);
   white-space: pre-wrap;
   word-break: break-word;
   overflow: auto;
@@ -155,7 +155,7 @@
 }
 
 .agent-card .card-online {
-  font-size: 10px;
+  font-size: var(--np-meta);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -169,7 +169,7 @@
 }
 
 .agent-card .card-tts {
-  font-size: 10px;
+  font-size: var(--np-meta);
   color: var(--text-muted);
   display: flex;
   align-items: center;

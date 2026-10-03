@@ -57,7 +57,7 @@ _CARD_MARK = re.compile(
     r'["\'][^"\']*\bcard\b[^"\']*["\']',
 )
 _CSS_RULE = re.compile(r"(?<![\w-])\.agent-page(?![\w-])\s*\{")
-_TOKEN_STRONG = re.compile(r"--border-strong\s*:\s*#5c616a\b", re.IGNORECASE)
+_TOKEN_STRONG = re.compile(r"--border-strong\s*:\s*var\(--np-control-border\)", re.IGNORECASE)
 _RADIUS_ZERO = re.compile(r"border-radius\s*:\s*0(px)?\b")
 _GERMAN_ZONES = ("Gelesen", "Erzeugt", "Geändert", "Temporär", "Dauerhaft", "Auswahl")
 _ENGLISH_ZONES = ("Selected", "Temp", "Perm")
@@ -144,12 +144,12 @@ def _status_covered(src: str, name: str) -> bool:
 
 
 def test_agent_page_css_border_strong_or_radius_zero():
-    """R3 chrome: --border-strong #5c616a or square .agent-page."""
+    """R3 chrome: shared strong border token or square .agent-page."""
     token_ok = _TOKEN_STRONG.search(CSS) is not None
     page_block = _css_block(CSS)
     radius_ok = _RADIUS_ZERO.search(page_block) is not None
     assert token_ok or radius_ok, (
-        ".agent-page must use --border-strong: #5c616a or border-radius: 0"
+        ".agent-page must use --border-strong: var(--np-control-border) or border-radius: 0"
     )
 
 
@@ -229,4 +229,4 @@ def test_agent_detail_r2_prototype_exists():
     assert PROTO.is_file(), "experiments/agent-detail-r2.html must not be deleted"
     text = PROTO.read_text(encoding="utf-8")
     assert "Jetzt" in text and "Auftrag" in text
-    assert "--border-strong: #5c616a" in text
+    assert "--border-strong: #5c616a" in text  # Historical prototype stays unchanged.

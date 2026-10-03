@@ -17,7 +17,7 @@ _OPEN_ID = re.compile(
     re.DOTALL,
 )
 _RADIUS_ZERO = re.compile(r"border-radius\s*:\s*0(px)?\b")
-_TOKEN_STRONG = re.compile(r"--border-strong\s*:\s*#5c616a\b", re.IGNORECASE)
+_TOKEN_STRONG = re.compile(r"--border-strong\s*:\s*var\(--np-control-border\)", re.IGNORECASE)
 _SEND_WORD = re.compile(r"\bSend\b")
 _SQUARE_SELS = ("#chat-input", ".chat-input", ".chat-input-row", ".btn-send")
 
@@ -210,4 +210,6 @@ def test_send_chat_does_not_start_workers():
 
 def test_border_strong_token_still_in_app_css():
     """R3 prototype token kept for R4 desk chrome."""
-    assert _TOKEN_STRONG.search(CSS), "--border-strong: #5c616a missing in tokens.css"
+    assert _TOKEN_STRONG.search(CSS), (
+        "--border-strong: var(--np-control-border) missing in tokens.css"
+    )
