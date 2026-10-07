@@ -1,0 +1,33 @@
+Copyright (c) 2026 Daniel Filipek / landjunge
+All rights reserved.
+
+SOURCE-AVAILABLE NOTICE
+
+This repository is publicly visible for review, research discussion, and
+security evaluation. Public visibility does not grant permission to use,
+copy, modify, merge, publish, distribute, sublicense, sell, deploy, or create
+derivative works from material first published under this notice.
+
+Any permission beyond viewing and referencing the repository requires prior
+written permission from the copyright holder.
+
+Research publications may cite this repository and describe its documented
+methods and results. This does not grant permission to copy or redistribute
+the software or substantial portions of its documentation.
+
+No trademark rights are granted for the names, logos, or branding associated
+with Gnom-Hub V1 or landjunge.
+
+HISTORICAL LICENSE BOUNDARY
+
+Repository revisions published before the commit that introduced this notice
+remain subject to the permissions, if any, that applied when those revisions
+were published. Rights already granted for historical revisions are not
+revoked. Material first published in the license-change commit or later is
+governed by this notice unless a later revision explicitly states otherwise.
+
+THE MATERIAL IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING
+FROM, OUT OF, OR IN CONNECTION WITH THE MATERIAL OR ITS USE.
