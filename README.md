@@ -333,7 +333,9 @@ Kein Tag, kein GitHub-Release und keine Veröffentlichung ohne Daniels ausdrück
 
 ## Lizenz
 
-Private Nutzung.
+**All Rights Reserved.** Der Quellcode ist öffentlich einsehbar, aber neue Inhalte dürfen ohne vorherige schriftliche Erlaubnis nicht kopiert, verändert, weitergegeben, bereitgestellt oder verkauft werden. Frühere Revisionen behalten die Lizenzrechte, unter denen sie damals veröffentlicht wurden. Siehe [LICENSE](LICENSE).
+
+**License. All Rights Reserved.** The source is publicly viewable, but new material may not be copied, modified, distributed, deployed, or sold without prior written permission. Historical revisions retain the license rights under which they were originally published. See [LICENSE](LICENSE).
 
 ## Gemeinsame Desktop-Gestaltung · 03.10.2026
 
