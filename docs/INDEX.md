@@ -99,6 +99,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 | [GSC_CHECKLIST.md](GSC_CHECKLIST.md) | github, https, landjunge, tollgate, html, gnom, hub, checklist, gsc, sitemap |
 | [MEMORY_FRESHNESS.md](MEMORY_FRESHNESS.md) | freshness, memory, sync, vector, warm, hot, write, fact, hit, index |
 | [PIPELINE_RELIABILITY.md](PIPELINE_RELIABILITY.md) | pipeline, reliability, clarify, timeout, cancel, later, busy, prefetch, tests, tool |
+| [SEVEN-TOOLS-GNOM-20261018.md](SEVEN-TOOLS-GNOM-20261018.md) | existing, job, local, run, actual, gnom, host, lookup, never, observed |
 | [THREADDESK.md](THREADDESK.md) | threaddesk, gnom, chat, json, tollgate, api, drückst, execute, keine, liest |
 | [TOLLGATE.md](TOLLGATE.md) | tollgate, gnom, export, hub, bash, default, desk, gnom_tollgate_llm, client, n8n |
 
@@ -154,6 +155,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 - [PYTHON_CACHE.md](PYTHON_CACHE.md) — Python cache strategies (Gnom-Hub)
 - [REAL_USER_QUALITY.md](REAL_USER_QUALITY.md) — Real-user quality suite (fixed development gate)
 - [ROADMAP.md](ROADMAP.md) — Roadmap
+- [SEVEN-TOOLS-GNOM-20261018.md](SEVEN-TOOLS-GNOM-20261018.md) — Gnom-Hub-V1: GH-C01/02/03 foundation and GH-R01
 - [SKILLS.md](SKILLS.md) — Playbook Skills (V4)
 - [STABILITY.md](STABILITY.md) — Stability checklist (track A)
 - [TESTING.md](TESTING.md) — Testing

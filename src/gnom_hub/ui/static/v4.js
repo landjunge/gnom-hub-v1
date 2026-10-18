@@ -471,7 +471,7 @@
         snapshot = job.snapshot;
         renderAll();
       }
-      if (["done", "error", "cancelled"].includes(String(job.status || ""))) {
+      if (["done", "error", "clarify", "cancelled"].includes(String(job.status || ""))) {
         if (job.status === "error") throw new Error(job.error || "Arbeitslauf fehlgeschlagen");
         return job.snapshot || null;
       }

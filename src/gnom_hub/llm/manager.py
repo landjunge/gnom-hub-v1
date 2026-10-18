@@ -105,7 +105,12 @@ class LLMManager:
         default_model: str = DEFAULT_MODEL,
         client_factory: ClientFactory | None = None,
         ollama_base: str | None = None,
+        execution_profile: str | None = None,
     ) -> None:
+        profile = execution_profile or os.getenv("GNOM_EXECUTION_PROFILE", "standalone")
+        if profile not in {"standalone", "controlled"}:
+            raise ValueError("GNOM_EXECUTION_PROFILE must be standalone or controlled")
+        self.execution_profile = profile
         self._keys = dict(keys or {})
         if free_only is None:
             free_only = os.getenv("GNOM_FREE_ONLY", "0").strip() in ("1", "true", "yes")
@@ -179,6 +184,8 @@ class LLMManager:
         wrk = self._usable_or_empty(self._keys.get("WORKER_API_KEY", ""))
         if wrk:
             return wrk
+        if self.execution_profile == "controlled":
+            return ""  # Never migrate a worker to the system credential/budget lane.
         return self.deepseek_key()
 
     def note_auth_failure(self, key: str | None = None) -> None:
@@ -230,6 +237,9 @@ class LLMManager:
             except Exception:  # noqa: BLE001
                 models = []
         return {
+            "execution_profile": self.execution_profile,
+            "controlled_execution_ready": False,
+            "controlled_execution_reason": "workflow_provider_and_protected_access_not_connected",
             "deepseek": self.has_provider("deepseek"),
             "ollama": self.ollama_available(),
             "ollama_host": self._ollama.base_url,
@@ -260,6 +270,14 @@ class LLMManager:
         provider: str | None = None,
         thinking: bool | None = None,
     ) -> LLMResult:
+        if self.execution_profile == "controlled":
+            # A toggle cannot manufacture G-01 origin, an enforced provider cost
+            # bound or the protected FP secret boundary. Fail before any route,
+            # key lookup, Ollama/cloud dispatch or fallback can run.
+            raise LLMError(
+                "controlled_execution_unavailable: trusted workflow binding, bounded "
+                "provider adapter and protected access are not connected"
+            )
         model_name = model or self.default_model
         prov, bare_model = self._resolve_route(model_name, provider)
         msgs = self._normalize_messages(messages)
@@ -338,13 +356,13 @@ class LLMManager:
             except BudgetExceededError:
                 # F-03: Protect / budget / freeze is never bypassed by legacy DeepSeek
                 raise
-            except (MissingKeyError, AuthError, RateLimitError, FreeOnlyError, LLMError) as exc:
-                # force_tg: no silent paid spillover, except missing tollgate package + key.
-                missing_pkg = "tollgate package not installed" in str(exc).lower()
+            except (MissingKeyError, AuthError, RateLimitError, FreeOnlyError, LLMError):
+                # Forced routing never turns a missing/broken gate into a direct
+                # paid provider call. Standalone opt-out is an explicit operator choice.
                 have_key = bool(self.deepseek_key(api_key)) or (
                     agent_key.startswith("worker") and bool(self.worker_key(api_key))
                 )
-                if force_tg and not (missing_pkg and have_key):
+                if force_tg:
                     raise
                 if not have_key:
                     raise
