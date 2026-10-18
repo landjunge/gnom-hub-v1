@@ -73,7 +73,9 @@ button.chip:disabled{opacity:.5;cursor:not-allowed}
 .empty-state strong{color:var(--text);font-size: var(--np-body)}
 .empty-state span{font-size: var(--np-meta)}
 .decision-panel{display:flex;flex-direction:column}
-.decision-grid{padding:10px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;overflow:auto}
+.decision-panel .panel-head{flex-shrink:0}
+.decision-grid{padding:10px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;overflow:auto;min-height:0}
+.decision-grid.is-question{grid-template-columns:minmax(0,1fr)}
 .decision-empty{grid-column:1/-1;min-height:104px;display:grid;place-items:center;color:var(--text-muted);font-size: var(--np-meta);border:1px dashed var(--v4-line)}
 .decision-card{min-height:112px;border:1px solid var(--v4-line);background:var(--v4-card);padding:11px;display:flex;flex-direction:column;gap:8px}
 .decision-card h3{font-size: var(--np-meta);margin:0;line-height:1.35}
@@ -91,6 +93,7 @@ button.chip:disabled{opacity:.5;cursor:not-allowed}
 .result-stage pre{margin:0;padding:16px;white-space:pre-wrap;word-break:break-word;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--text);background:#111318;min-height:100%}
 .result-actions{border-top:1px solid var(--v4-line);display:grid;grid-template-columns:repeat(3,112px);align-items:center;justify-content:end;gap:7px;padding:0 12px;background:var(--bg-strip)}
 .decision-actions button,.result-actions button,.composer button{height:var(--np-control);border:1px solid var(--v4-line-strong);background:transparent;padding:0 12px;cursor:pointer;font-size: var(--np-meta);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.decision-grid.is-question .decision-actions button{height:auto;min-height:var(--np-control);white-space:normal;overflow:visible;overflow-wrap:anywhere;padding-block:8px}
 .result-actions button:disabled,.composer button:disabled{opacity:.35;cursor:not-allowed}
 .primary-soft{background:#23272d!important}
 .composer{min-height:62px;border:1px solid var(--v4-line);background:var(--bg-strip);display:grid;grid-template-columns:40px minmax(120px,1fr) 112px 142px;gap:8px;align-items:center;padding:10px}

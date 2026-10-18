@@ -199,6 +199,8 @@
 
   function agentIsActive(agent) {
     if (!agent || !agent.enabled) return false;
+    const providers = (typeof lastSnapshot !== "undefined" && lastSnapshot && lastSnapshot.llm && lastSnapshot.llm.providers) || {};
+    if (providers.execution_profile === "controlled" && providers.controlled_execution_ready !== true) return false;
     const s = activeStage || "";
     // Exact id match (worker1…, brainstorm, …) — only the agent that is running
     if (s === agent.id) return true;
@@ -233,6 +235,8 @@
     const id = String(agentId || "");
     const agent = findAgent(id) || {};
     const snap = typeof lastSnapshot !== "undefined" ? lastSnapshot : null;
+    const providers = (snap && snap.llm && snap.llm.providers) || {};
+    if (providers.execution_profile === "controlled" && providers.controlled_execution_ready !== true) return "blockiert";
     const pipe = (snap && snap.pipeline) || {};
     const stage = String(pipe.stage || activeStage || "idle");
     const send = String(pipe.send_target || "");
@@ -2018,7 +2022,8 @@
       const live =
         typeof agentLiveStatus === "function" ? agentLiveStatus(agent.id) : "";
       if (live) card.dataset.live = live;
-      const status = live || statusLabel(agent);
+      const status = live === "blockiert" && lastSnapshot && lastSnapshot.ui_lang === "en"
+        ? "blocked" : live || statusLabel(agent);
       // eslint-disable-next-line no-unsanitized/property
       card.innerHTML =
         '<div class="card-name">' +

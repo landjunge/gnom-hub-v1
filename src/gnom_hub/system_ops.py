@@ -128,12 +128,25 @@ class SystemOpsMixin:
                 import tollgate  # noqa: F401
             except ImportError:
                 tg_ok = False
-                tg_note = "TollGate fehlt — DeepSeek-Key wird direkt genutzt."
+                tg_note = (
+                    "TollGate missing — forced cloud route is blocked."
+                    if self.ui_lang == "en"
+                    else "TollGate fehlt — erzwungener Cloudweg ist gesperrt."
+                )
         return {
             "key_ok": bool(st.key_has_deepseek),
             "personal_ws": st.personal_ws,
             "tollgate_ok": tg_ok,
             "tollgate_note": tg_note,
+            "controlled_execution_note": (
+                (
+                    "Controlled execution blocked: workflow, provider and protected access are not connected."
+                    if self.ui_lang == "en"
+                    else "Kontrollierte Ausführung gesperrt: Auftrags-, Provider- und Zugangsanbindung fehlen."
+                )
+                if getattr(self.llm, "execution_profile", "standalone") == "controlled"
+                else ""
+            ),
         }
 
     def help_text(self) -> dict[str, Any]:

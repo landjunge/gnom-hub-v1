@@ -407,14 +407,17 @@
       const auth = snap.llm.auth || {};
       const sys = String(auth.system || "");
       const wrk = String(auth.worker_effective || auth.worker || "");
-      const blocked = !!auth.session_auth_blocked;
+      const providerState = snap.llm.providers || {};
+      const controlled = providerState.execution_profile === "controlled" && providerState.controlled_execution_ready !== true;
+      const blocked = !!auth.session_auth_blocked || controlled;
+      const statusEnglish = snap.ui_lang === "en";
       const placeholder = !!auth.placeholder_detected || sys === "placeholder" || wrk === "placeholder";
       const ok = (ds || ol) && !blocked;
       const viaTg = !!snap.llm.via_tollgate;
       const tg = snap.tollgate || {};
       const tgOk = tg.ok !== false;
       let label = "LLM: fehlt";
-      if (blocked) label = "LLM: gesperrt";
+      if (blocked) label = statusEnglish ? "LLM: blocked" : "LLM: gesperrt";
       else if (ok) label = "LLM: bereit";
       els.llmBadge.textContent = label;
       els.llmBadge.classList.toggle("has-key", ok);
@@ -451,6 +454,9 @@
         " completion=" +
         (snap.llm.completion_tokens || 0) +
         " — keys: User/Key.txt · desk: tollgate doctor";
+      if (controlled) els.llmBadge.title = statusEnglish
+        ? "Controlled execution blocked: workflow, provider and protected access are not connected."
+        : "Kontrollierte Ausführung gesperrt: Auftrags-, Provider- und Zugangsanbindung fehlen.";
     }
     updateCostBadge(snap.llm, snap.tollgate);
     if (els.memBadge && snap.memory_summary) {

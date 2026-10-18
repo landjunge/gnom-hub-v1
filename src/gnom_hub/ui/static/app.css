@@ -3060,6 +3060,9 @@ a:focus-visible {
 .agent-card[data-enabled="true"] .card-status {
   color: var(--ok);
 }
+.agent-card[data-live="blockiert"] .card-status {
+  color: var(--warn);
+}
 
 /* Deferred clarify park list */
 .deferred-clarify {

@@ -98,7 +98,7 @@ broad suites. Ruff format/check and Mermaid/docs-index gates apply before commit
 | GH-C03 | Forced gate failure fixed; controlled mode fail closed, no worker→system-key fallback | Enforced per-action provider quote/whole-workflow money reservation + protected FP secret boundary at actual dispatch |
 | GH-C04 | Existing pipeline/worker/artifact machinery preserved | Two-worker isolated source/review acceptance through the actual bound route |
 | GH-C05 | No protected account use enabled | FP-C03 isolated login/cookie/debug boundary; current global session does not qualify |
-| GH-D01 | Exact shared np CSS retained; /v4 clarification polling no longer waits until timeout | Full DE/EN state/behavior acceptance across separate legacy and /v4 UIs, not inferred from tooltips |
+| GH-D01 | Exact shared np CSS retained; /v4 clarification/answer and controlled denial visibly checked DE/EN with isolated synthetic API | Full DE/EN conversation/team/Inbox acceptance across separate legacy and /v4 UIs, not inferred from synthetic tooltips/status tests |
 | GH-R01 | DE/EN profile/start/update/return/stop claims reconciled | Runtime/provider/package acceptance remains separately scoped |
 
 Technical releases exist (e.g. v3.10.1); current updates.check reads metadata and
@@ -119,10 +119,57 @@ into a newly approved installer/release. Existing license/marks remain unchanged
   JavaScript function execution plus existing /v4 route/assets: 9 passed.
 - Ruff check/format, existing generated JS/CSS checks, docs index and Mermaid
   gates passed. Portable np CSS blob remains unchanged.
-- Configured real-user Chrome CDP default9222 was not reachable. No existing
+- At the initial source pin, configured real-user Chrome CDP default9222 was not reachable. No existing
   foreign Chrome tab/runtime was redirected, and no paid live-model quality run
   was started. The bounded JS probe is not a full visible /v4 conversation/team
   or complete DE/EN acceptance. The existing German /v4 copy remains explicit.
+
+### Isolated visible follow-up / sichtbare Folgeprüfung
+
+Parent source `8b8fb4313fbef0fbc5388c980ebb20544f684ee0`; follow-up source is
+the commit containing this section and the versioned browser proof. Actual
+served asset SHA256 values are recorded in
+[`evidence/seven-tools-20261018/browser-proof.json`](evidence/seven-tools-20261018/browser-proof.json).
+The harness is [`../scripts/seven_tools_ui_probe.py`](../scripts/seven_tools_ui_probe.py).
+
+The existing real-user suite's headed **real Google Chrome** fallback was reused
+with a fresh temporary profile because CDP was unavailable. Only an ephemeral
+loopback synthetic API served this worktree's actual HTML/JS/CSS. Outbound
+requests outside that fixture origin were blocked. No existing browser tab,
+Gnom runtime, credentials, user workspace, provider or model was used. The
+fixture's legacy bootstrap enable-all response only returns dummy agent records;
+it does not change any real agent setting.
+
+- Both DE and EN: click Start → actual V4 polling receives finished `clarify` →
+  question becomes answerable → focus/Tab/Shift+Tab → answer → explicitly
+  **synthetic, unverified** delivery. Exactly one synthetic start, two job polls
+  and one answer per language; no hidden retry or real execution.
+- Visual inspection exposed a half-width question card with truncated answer
+  options. An active question now occupies the available grid width; answer
+  labels wrap and remain keyboard reachable. Ordinary offered-choice grids keep
+  their existing layout. Screenshots include the long question and focus ring.
+- Controlled profile: V4 Start/Send stay disabled and the header explains the
+  missing integration, including the accessible title/label. Both V4 and legacy
+  cards now show blocked rather than a misleading working animation. Legacy LLM
+  badge and System explanation agree, even with a configured-key claim.
+- Small viewport 1024×700 and 125% zoom were inspected with the existing desktop
+  scroll policy. No new responsive composition or complete translation is claimed.
+  Navigation and other existing copy still contain German.
+- Setup notes no longer claim that a forced missing TollGate uses the direct
+  key. Targeted DE/EN unit cases verify missing-gate and controlled-profile
+  explanations without reading a real workspace or secret.
+- Follow-up setup, actual JavaScript polling, agent-status/detail and existing
+  quiet-card tests: **43 passed**. No unchanged full local suite was repeated.
+
+Six PNG screenshots and the timestamped structured report are stored beside the
+proof JSON. This establishes the tested **UI/API-fixture behavior** only. It is
+not a model-quality score, trusted issuer/Bridge/provider/OS acceptance, real
+controlled execution or deployment. The open prerequisites above remain open.
+
+The first PR CI passed all three complete Python matrices (3.10/3.11/3.12).
+Its lint failure was the generated Mermaid inventory's shifted README line,
+not a runtime failure; that inventory is corrected in this follow-up. No broad
+unchanged local suite was repeated merely to increase the test total.
 
 Local full quality_check.sh was not used against another running :8080 service:
 its existing live branches would exercise that service. In-process unit/static
