@@ -255,10 +255,7 @@ class ExternalWork:
                 "reason": "volatile_job_not_observed",
                 "project_completion_verified": False,
             }
-        if self.verify_job_receipt is None or not self.verify_job_receipt(
-            binding, record["job_id"]
-        ):
-            raise BindingError("job_receipt_unverified")
+        self._verify_job(binding, record["job_id"])
         return {
             "status": job["status"],
             "stage": job.get("stage"),

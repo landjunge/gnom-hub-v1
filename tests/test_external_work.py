@@ -179,3 +179,32 @@ def test_matching_ids_do_not_replace_observed_job_receipt(setup):
     with pytest.raises(BindingError, match="job_receipt_unverified"):
         adapter.attach_job(binding, "aaaaaaaaaaaa")
     assert not cancelled
+
+
+@pytest.mark.parametrize("reported", [None, False, 1, "verified", {"verified": True}])
+def test_observation_requires_exact_host_receipt_true(setup, reported):
+    adapter, binding, packet, issued, _, cancelled = setup
+    adapter.accept(packet, binding)
+    trust_run(issued, binding)
+    adapter.attach_job(binding, "aaaaaaaaaaaa")
+    adapter.verify_job_receipt = lambda *_: reported
+    with pytest.raises(BindingError, match=r"^job_receipt_unverified$"):
+        adapter.observe(binding)
+    assert not cancelled
+
+
+def test_observation_sanitizes_host_failure_without_side_effects(setup):
+    adapter, binding, packet, issued, _, cancelled = setup
+    adapter.accept(packet, binding)
+    trust_run(issued, binding)
+    adapter.attach_job(binding, "aaaaaaaaaaaa")
+
+    def unavailable(*_):
+        raise OSError("synthetic-private-host-detail-must-not-escape")
+
+    adapter.verify_job_receipt = unavailable
+    with pytest.raises(BindingError, match=r"^job_receipt_unavailable$") as error:
+        adapter.observe(binding)
+    assert error.value.__cause__ is None
+    assert error.value.__suppress_context__ is True
+    assert not cancelled

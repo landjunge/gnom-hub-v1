@@ -7,6 +7,19 @@ Worker: Codex `/root/fourallpass_protected`, exclusive worktree
 Foreign dirty root/worktrees, live services, credentials and user databases were
 not changed. No native build, release, deployment, provider call or new account.
 
+## Integration review: strict observation receipt
+
+The observation path now uses the same exact-True host-receipt check and sanitized
+failure handling as attach/stop. Previously a truthy nonboolean could pass this
+one observation check, and host exception text could escape. Six new negative
+cases plus the existing volatile-job-loss case passed (seven checks). No provider,
+live job or user data was used. This is a source defect found during review, not
+evidence of a previous production incident.
+
+Der Leseweg prüft jetzt dieselbe echte boolesche Hostquittung wie Zuordnung und
+Stopp. Fremde Fehlertexte werden durch job_receipt_unavailable ersetzt; andere
+wahrheitsähnliche Werte bleiben abgewiesen. Keine Statusabfrage startet Arbeit.
+
 ## Current start/control map
 
 | Path | Actual boundary | Result of this slice |
