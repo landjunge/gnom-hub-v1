@@ -994,21 +994,21 @@
       "keywords": [
         "existing",
         "job",
+        "host",
+        "gnom",
         "local",
+        "provider",
         "run",
         "actual",
-        "gnom",
-        "host",
-        "lookup",
         "never",
+        "new",
         "observed",
-        "provider",
+        "receipt",
         "return",
-        "seven-tools-gnom-20261018",
-        "threaddesk"
+        "seven"
       ],
-      "chars": 12733,
-      "lines": 187
+      "chars": 13474,
+      "lines": 200
     },
     {
       "file": "SKILLS.md",

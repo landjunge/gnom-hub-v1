@@ -99,7 +99,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 | [GSC_CHECKLIST.md](GSC_CHECKLIST.md) | github, https, landjunge, tollgate, html, gnom, hub, checklist, gsc, sitemap |
 | [MEMORY_FRESHNESS.md](MEMORY_FRESHNESS.md) | freshness, memory, sync, vector, warm, hot, write, fact, hit, index |
 | [PIPELINE_RELIABILITY.md](PIPELINE_RELIABILITY.md) | pipeline, reliability, clarify, timeout, cancel, later, busy, prefetch, tests, tool |
-| [SEVEN-TOOLS-GNOM-20261018.md](SEVEN-TOOLS-GNOM-20261018.md) | existing, job, local, run, actual, gnom, host, lookup, never, observed |
+| [SEVEN-TOOLS-GNOM-20261018.md](SEVEN-TOOLS-GNOM-20261018.md) | existing, job, host, gnom, local, provider, run, actual, never, new |
 | [THREADDESK.md](THREADDESK.md) | threaddesk, gnom, chat, json, tollgate, api, drückst, execute, keine, liest |
 | [TOLLGATE.md](TOLLGATE.md) | tollgate, gnom, export, hub, bash, default, desk, gnom_tollgate_llm, client, n8n |
 
