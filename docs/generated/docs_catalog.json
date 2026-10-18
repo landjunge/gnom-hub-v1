@@ -1,6 +1,6 @@
 {
   "version": "3.10.1",
-  "count": 58,
+  "count": 60,
   "docs": [
     {
       "file": "AGENTS_DEFINITION.md",
@@ -457,6 +457,30 @@
       ],
       "chars": 6284,
       "lines": 235
+    },
+    {
+      "file": "GH-C04-20261018.md",
+      "path": "docs/GH-C04-20261018.md",
+      "title": "GH-C04 \u00b7 Arbeitsst\u00e4nde und genaue Pr\u00fcferzuordnung",
+      "topic": "Other",
+      "keywords": [
+        "git",
+        "kein",
+        "keine",
+        "auf",
+        "gh-c04-20261018",
+        "bestanden",
+        "nach",
+        "neue",
+        "nicht",
+        "bleiben",
+        "check",
+        "dummy",
+        "echte",
+        "getrennte"
+      ],
+      "chars": 8106,
+      "lines": 126
     },
     {
       "file": "GITHUB_HOLDER_3.10.md",
@@ -1007,7 +1031,7 @@
         "return",
         "seven"
       ],
-      "chars": 13474,
+      "chars": 13673,
       "lines": 200
     },
     {
@@ -1369,6 +1393,30 @@
       ],
       "chars": 4257,
       "lines": 105
+    },
+    {
+      "file": "WORKER_STANDS.md",
+      "path": "docs/WORKER_STANDS.md",
+      "title": "Worker stands / getrennte Arbeitsst\u00e4nde (GH-C04)",
+      "topic": "Skills & plugins",
+      "keywords": [
+        "worker",
+        "git",
+        "keine",
+        "stands",
+        "nicht",
+        "nur",
+        "binding",
+        "kein",
+        "oder",
+        "run",
+        "wird",
+        "endpoint",
+        "f\u00fcr",
+        "genau"
+      ],
+      "chars": 8539,
+      "lines": 137
     },
     {
       "file": "WORKFLOWS_AND_PRESETS.md",

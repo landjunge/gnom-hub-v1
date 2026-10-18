@@ -109,7 +109,7 @@ broad suites. Ruff format/check and Mermaid/docs-index gates apply before commit
 | GH-C01 | Import/run/job/return foundation + synthetic actual TD contracts | Trusted installed issuer/Bridge start receipt assembly; full question/answer/team/Inbox roundtrip and user decision |
 | GH-C02 | Real TG stop + bound cooperative Gnom cancel adapter | Actual provider/browser abort connection and KB-C04 operator profile; no arbitrary process kill guarantee |
 | GH-C03 | Forced gate failure fixed; controlled mode fail closed, no worker→system-key fallback | Enforced per-action provider quote/whole-workflow money reservation + protected FP secret boundary at actual dispatch |
-| GH-C04 | Existing pipeline/worker/artifact machinery preserved | Two-worker isolated source/review acceptance through the actual bound route |
+| GH-C04 | Additive trusted ExternalWork host adapter: two isolated dummy workers, exact Git/reviewer commits, immutable outputs and dependency/unknown/merge checks ([contract](WORKER_STANDS.md), [evidence](GH-C04-20261018.md)) | Installed host/real worker and controlled provider connection; full team/Inbox/user acceptance remains separate |
 | GH-C05 | No protected account use enabled | FP-C03 isolated login/cookie/debug boundary; current global session does not qualify |
 | GH-D01 | Exact shared np CSS retained; /v4 clarification/answer and controlled denial visibly checked DE/EN with isolated synthetic API | Full DE/EN conversation/team/Inbox acceptance across separate legacy and /v4 UIs, not inferred from synthetic tooltips/status tests |
 | GH-R01 | DE/EN profile/start/update/return/stop claims reconciled | Runtime/provider/package acceptance remains separately scoped |

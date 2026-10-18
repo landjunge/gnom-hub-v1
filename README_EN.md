@@ -74,3 +74,9 @@ English UI coverage is not claimed. See the exact tests, pins and remaining
 prerequisites in [the source integration record](docs/SEVEN-TOOLS-GNOM-20261018.md).
 The existing repository LICENSE remains authoritative; no license or release was
 changed by this work.
+
+The source-only [worker-stands contract](docs/WORKER_STANDS.md) adds explicitly
+configured host endpoints, isolated worker artifacts, observed base/result/review
+commits and dependencies. Unknown runs never restart automatically; deliveries
+remain unverified. It performs no merge and does not claim an installed team or
+controlled provider integration.
