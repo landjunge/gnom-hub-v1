@@ -29,21 +29,37 @@ def test_git_stdout_overflow_stops_at_combined_byte_allowance(tmp_path, monkeypa
 
 
 def test_git_stderr_overflow_is_bounded_and_sanitized(tmp_path, monkeypatch):
+    worker_stands.git(tmp_path, "init", "--quiet")
     original_read = os.read
+    original_popen = subprocess.Popen
+    pipes = {}
     sizes = []
+    stdout_sizes = []
+
+    def capture_pipes(*args, **kwargs):
+        process = original_popen(*args, **kwargs)
+        pipes["stdout"] = process.stdout.fileno()
+        return process
 
     def measured(fd, maximum):
         raw = original_read(fd, maximum)
         sizes.append(len(raw))
+        if fd == pipes.get("stdout"):
+            stdout_sizes.append(len(raw))
         return raw
 
     monkeypatch.setattr(worker_stands.os, "read", measured)
-    # Real Git prints this failed filename on stderr, never on stdout.
-    private = "SYNTHETIC_PRIVATE_MARKER" + "x" * 6000
+    monkeypatch.setattr(worker_stands.subprocess, "Popen", capture_pipes)
+    # Many short independent errors exceed the aggregate stderr budget. Git
+    # versions truncate one long fatal message differently (sometimes to4096),
+    # so no individual argument/error must itself be larger than the allowance.
+    private = "SYNTHETIC_PRIVATE_MARKER"
+    missing = [f"{private}_{index:03d}" for index in range(100)]
     with pytest.raises(BindingError, match=r"^worker_git_output_limit$") as caught:
-        worker_stands.git(tmp_path, "hash-object", private)
+        worker_stands.git(tmp_path, "ls-files", "--error-unmatch", "--", *missing)
     assert private not in str(caught.value)
     assert sum(sizes) == worker_stands.GIT_OUTPUT_BYTES + 1
+    assert sum(stdout_sizes) == 0  # overflow genuinely comes from Git stderr
 
 
 @pytest.mark.parametrize("deny_group", [False, True])
