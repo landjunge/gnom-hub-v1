@@ -48,6 +48,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 | [TOOLS_PORTFOLIO.md](TOOLS_PORTFOLIO.md) | tools, portfolio, computer, playwright, skip, use, install, mouse, ocr, browser |
 | [WORKER_PREFETCH.md](WORKER_PREFETCH.md) | prefetch, worker, budget, category, contrast_check, css_tokens, design, else, execute, ran |
 | [WORKER_PROMPTS.md](WORKER_PROMPTS.md) | worker, html, prompts, tools, user, flex, prefetch, design, fehler, memory |
+| [WORKER_STANDS.md](WORKER_STANDS.md) | worker, keine, git, stands, binding, kein, muss, nicht, nur, oder |
 
 ### Memory & vectors
 | Doc | Keywords |
@@ -94,6 +95,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 |-----|----------|
 | [AUTONOMOUS_AGENT_PIPELINE.md](AUTONOMOUS_AGENT_PIPELINE.md) | agent, baseline, nicht, pipeline, teilaufgabe, agents, reviewer, test, autonomous, issue |
 | [BUG_HUNT_TEAM.md](BUG_HUNT_TEAM.md) | orchestrator, cancel, team, bug, hunt, can, god, jobs, mode, telegram |
+| [GH-C04-20261018.md](GH-C04-20261018.md) | kein, git, auf, gh-c04-20261018, bestanden, host, keine, merge, bleiben, check |
 | [GNOM-HUB-V1-HUMAN-UI-AUDIT.md](GNOM-HUB-V1-HUMAN-UI-AUDIT.md) | audit, execute, human, pass, send, box, assets, png, tollgate, brainstorm |
 | [GNOM-HUB-V1-WORKER-BOX-CONTRACT.md](GNOM-HUB-V1-WORKER-BOX-CONTRACT.md) | box, flex, worker, api, execute, workers, after, chat, job, brainstorm |
 | [GSC_CHECKLIST.md](GSC_CHECKLIST.md) | github, https, landjunge, tollgate, html, gnom, hub, checklist, gsc, sitemap |
@@ -133,6 +135,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 - [ESLINT_FLATCOMPAT.md](ESLINT_FLATCOMPAT.md) — FlatCompat — Deep Dive
 - [ESLINT_OVERRIDE_STRATEGIES.md](ESLINT_OVERRIDE_STRATEGIES.md) — Flat Config — Override Strategies
 - [ESLINT_PLUGIN_INTEGRATION.md](ESLINT_PLUGIN_INTEGRATION.md) — Flat Config — Plugin Integration
+- [GH-C04-20261018.md](GH-C04-20261018.md) — GH-C04 · Arbeitsstände und genaue Prüferzuordnung
 - [GITHUB_HOLDER_3.10.md](GITHUB_HOLDER_3.10.md) — GitHub holder summary — Gnom-Hub 3.10.x
 - [GNOM-HUB-V1-HUMAN-UI-AUDIT.md](GNOM-HUB-V1-HUMAN-UI-AUDIT.md) — Gnom-Hub-V1 — Human UI audit
 - [GNOM-HUB-V1-WORKER-BOX-CONTRACT.md](GNOM-HUB-V1-WORKER-BOX-CONTRACT.md) — Gnom-Hub-V1 — Worker / Box contract
@@ -171,4 +174,5 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 - [VECTORS_AND_RUST.md](VECTORS_AND_RUST.md) — Vector models · vector DBs · Rust app? (honest notes)
 - [WORKER_PREFETCH.md](WORKER_PREFETCH.md) — Worker Prefetch Strategy (deep)
 - [WORKER_PROMPTS.md](WORKER_PROMPTS.md) — Worker-Prompt-Strategien
+- [WORKER_STANDS.md](WORKER_STANDS.md) — Worker stands / getrennte Arbeitsstände (GH-C04)
 - [WORKFLOWS_AND_PRESETS.md](WORKFLOWS_AND_PRESETS.md) — Presets & plan_mode (frozen design)

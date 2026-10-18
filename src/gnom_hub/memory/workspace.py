@@ -52,6 +52,63 @@ class WorkspaceStore:
         atomic_write_text(path, content)
         return path
 
+    def write_worker_result(self, name: str, content: str) -> Path:
+        """One bounded immutable worker artifact in existing temp storage.
+
+        Caller supplies a generated opaque receipt name, never an arbitrary path.
+        Existing selected/keep and overwrite decisions remain unchanged.
+        """
+        import os
+        import re
+
+        if not re.fullmatch(r"worker-[a-f0-9]{64}\.txt", name):
+            raise ValueError("worker_artifact_name")
+        raw = content.encode("utf-8")
+        if not raw or len(raw) > 65536:
+            raise ValueError("worker_artifact_limit")
+        path = self.temp / name
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(raw)
+            stream.flush()
+            os.fsync(stream.fileno())
+        directory = os.open(self.temp, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+        return path
+
+    def read_worker_result(self, name: str, sha256: str) -> str:
+        """Read one hash-bound receipt without following links; no arbitrary paths."""
+        import hashlib
+        import os
+        import re
+        import stat
+
+        if not re.fullmatch(r"worker-[a-f0-9]{64}\.txt", name):
+            raise ValueError("worker_artifact_changed")
+        try:
+            fd = os.open(self.temp / name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+            with os.fdopen(fd, "rb") as stream:
+                info = os.fstat(stream.fileno())
+                if not stat.S_ISREG(info.st_mode) or info.st_size > 65536:
+                    raise ValueError("worker_artifact_changed")
+                raw = stream.read(65537)
+        except OSError:
+            raise ValueError("worker_artifact_changed") from None
+        if len(raw) > 65536 or hashlib.sha256(raw).hexdigest() != sha256:
+            raise ValueError("worker_artifact_changed")
+        return raw.decode("utf-8")
+
+    def check_worker_result(self, name: str, sha256: str) -> bool:
+        """Check existence/content without exposing receipt text."""
+        try:
+            self.read_worker_result(name, sha256)
+        except ValueError:
+            return False
+        return True
+
     def promote(self, name: str) -> Path:
         """Copy temp → perm (still on hub)."""
         safe = Path(name).name
