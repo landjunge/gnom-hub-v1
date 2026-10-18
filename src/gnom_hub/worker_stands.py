@@ -7,9 +7,13 @@ Separate worktrees prevent accidental writes, not hostile same-user processes.
 from __future__ import annotations
 
 import hashlib
+import os
 import re
+import selectors
+import signal
 import subprocess
 import threading
+import time
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -20,6 +24,8 @@ from gnom_hub.memory.workspace import WorkspaceStore
 
 ID = re.compile(r"[A-Za-z0-9_-]{1,64}\Z")
 COMMIT = re.compile(r"(?:[a-f0-9]{40}|[a-f0-9]{64})\Z")
+GIT_TIMEOUT_S = 5.0
+GIT_OUTPUT_BYTES = 4096  # combined stdout/stderr, not a post-capture truncation
 
 
 @dataclass(frozen=True)
@@ -57,18 +63,74 @@ class WorkerEndpoint:
 
 
 def git(path: Path, *args: str) -> str:
+    process = None
+    reaped = False
     try:
-        result = subprocess.run(
+        deadline = time.monotonic() + GIT_TIMEOUT_S
+        process = subprocess.Popen(
             ["git", "-C", str(path), *args],
-            capture_output=True,
-            timeout=5,
-            check=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            start_new_session=True,
         )
-        if len(result.stdout) > 4096:
-            raise BindingError("worker_git_output_limit")
-        return result.stdout.decode("utf-8").strip()
+        output = bytearray()
+        consumed = 0
+        with selectors.DefaultSelector() as selector:
+            for stream in (process.stdout, process.stderr):
+                os.set_blocking(stream.fileno(), False)
+                selector.register(stream, selectors.EVENT_READ)
+            while selector.get_map():
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise BindingError("worker_git_timeout")
+                for event, _ in selector.select(remaining):
+                    # Read at most the remaining allowance plus one overflow byte.
+                    chunk = os.read(event.fd, GIT_OUTPUT_BYTES - consumed + 1)
+                    if not chunk:
+                        selector.unregister(event.fileobj)
+                        continue
+                    consumed += len(chunk)
+                    if consumed > GIT_OUTPUT_BYTES:
+                        raise BindingError("worker_git_output_limit")
+                    if event.fileobj is process.stdout:
+                        output.extend(chunk)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise BindingError("worker_git_timeout")
+        code = process.wait(timeout=remaining)
+        reaped = True
+        if code:
+            raise BindingError("worker_git_unavailable")
+        return output.decode("utf-8").strip()
+    except subprocess.TimeoutExpired:
+        raise BindingError("worker_git_timeout") from None
     except (OSError, subprocess.SubprocessError, UnicodeError):
         raise BindingError("worker_git_unavailable") from None
+    finally:
+        if process is not None:
+            cleanup_unconfirmed = False
+            # Only this invocation's new process group, before reaping its PID.
+            # Never signal a previously reaped/reusable PID or an existing session.
+            if not reaped:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except OSError:
+                    # macOS may reject a signal to an already exited group.
+                    # Popen.kill checks/reaps its own child first, avoiding PID reuse.
+                    try:
+                        process.kill()
+                    except OSError:
+                        pass
+                try:
+                    process.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    cleanup_unconfirmed = True
+            for stream in (process.stdin, process.stdout, process.stderr):
+                if stream is not None:
+                    stream.close()
+            if cleanup_unconfirmed:
+                raise BindingError("worker_git_cleanup_unconfirmed") from None
 
 
 def observed_commit(path: Path) -> str:

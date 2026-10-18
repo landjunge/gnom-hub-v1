@@ -48,7 +48,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 | [TOOLS_PORTFOLIO.md](TOOLS_PORTFOLIO.md) | tools, portfolio, computer, playwright, skip, use, install, mouse, ocr, browser |
 | [WORKER_PREFETCH.md](WORKER_PREFETCH.md) | prefetch, worker, budget, category, contrast_check, css_tokens, design, else, execute, ran |
 | [WORKER_PROMPTS.md](WORKER_PROMPTS.md) | worker, html, prompts, tools, user, flex, prefetch, design, fehler, memory |
-| [WORKER_STANDS.md](WORKER_STANDS.md) | worker, keine, git, stands, binding, kein, muss, nicht, nur, oder |
+| [WORKER_STANDS.md](WORKER_STANDS.md) | worker, git, keine, stands, nicht, nur, binding, kein, oder, run |
 
 ### Memory & vectors
 | Doc | Keywords |
@@ -95,7 +95,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 |-----|----------|
 | [AUTONOMOUS_AGENT_PIPELINE.md](AUTONOMOUS_AGENT_PIPELINE.md) | agent, baseline, nicht, pipeline, teilaufgabe, agents, reviewer, test, autonomous, issue |
 | [BUG_HUNT_TEAM.md](BUG_HUNT_TEAM.md) | orchestrator, cancel, team, bug, hunt, can, god, jobs, mode, telegram |
-| [GH-C04-20261018.md](GH-C04-20261018.md) | kein, git, auf, gh-c04-20261018, bestanden, host, keine, merge, bleiben, check |
+| [GH-C04-20261018.md](GH-C04-20261018.md) | git, kein, keine, auf, gh-c04-20261018, bestanden, nach, neue, nicht, bleiben |
 | [GNOM-HUB-V1-HUMAN-UI-AUDIT.md](GNOM-HUB-V1-HUMAN-UI-AUDIT.md) | audit, execute, human, pass, send, box, assets, png, tollgate, brainstorm |
 | [GNOM-HUB-V1-WORKER-BOX-CONTRACT.md](GNOM-HUB-V1-WORKER-BOX-CONTRACT.md) | box, flex, worker, api, execute, workers, after, chat, job, brainstorm |
 | [GSC_CHECKLIST.md](GSC_CHECKLIST.md) | github, https, landjunge, tollgate, html, gnom, hub, checklist, gsc, sitemap |

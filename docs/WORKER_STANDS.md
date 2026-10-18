@@ -51,7 +51,12 @@ Worktree-Wurzel, tatsächlich beobachteten Startcommit, gegebenenfalls exakten
 `reviewed_commit` und den gebundenen Tasktext. Ein Reviewer muss beim Start und
 Abschluss exakt auf dem tatsächlich gelieferten Entwicklercommit stehen; ein
 behaupteter Commit im Modelltext reicht nicht. Git-Prüfungen sind begrenzt
-(5s/4096 Ausgabebytes) und melden nur stabile Fehlercodes.
+(5s Deadline für Lesen/Warten,4096Byte **zusammen für stdout/stderr**) und melden
+nur stabile Fehlercodes. Der Pipe-Reader liest höchstens das Restbudget plus ein
+Überlaufbyte; stderr wird nicht gesammelt. Bei Überlauf oder Timeout wird nur die
+eigens gestartete neue Prozessgruppe beendet und ihr Git-Kind abgeholt. Cleanup
+wartet höchstens eine weitere Sekunde; bleibt dessen Abschluss unbeobachtet, folgt
+`worker_git_cleanup_unconfirmed` statt einer erfundenen Beendigungsbestätigung.
 
 Lieferung: höchstens64KiB UTF-8; sauberer beobachteter Ergebniscommit muss vom
 Startcommit abstammen. Jedes Artefakt erhält einen opaken Namen aus Elternbindung,

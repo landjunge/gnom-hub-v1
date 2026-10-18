@@ -464,23 +464,23 @@
       "title": "GH-C04 \u00b7 Arbeitsst\u00e4nde und genaue Pr\u00fcferzuordnung",
       "topic": "Other",
       "keywords": [
-        "kein",
         "git",
+        "kein",
+        "keine",
         "auf",
         "gh-c04-20261018",
         "bestanden",
-        "host",
-        "keine",
-        "merge",
+        "nach",
+        "neue",
+        "nicht",
         "bleiben",
         "check",
         "dummy",
         "echte",
-        "getrennte",
-        "nach"
+        "getrennte"
       ],
-      "chars": 4418,
-      "lines": 72
+      "chars": 6267,
+      "lines": 99
     },
     {
       "file": "GITHUB_HOLDER_3.10.md",
@@ -1401,22 +1401,22 @@
       "topic": "Skills & plugins",
       "keywords": [
         "worker",
-        "keine",
         "git",
+        "keine",
         "stands",
-        "binding",
-        "kein",
-        "muss",
         "nicht",
         "nur",
+        "binding",
+        "kein",
         "oder",
         "run",
-        "unterauftrag",
+        "wird",
         "endpoint",
-        "externalwork"
+        "f\u00fcr",
+        "genau"
       ],
-      "chars": 8110,
-      "lines": 132
+      "chars": 8539,
+      "lines": 137
     },
     {
       "file": "WORKFLOWS_AND_PRESETS.md",
