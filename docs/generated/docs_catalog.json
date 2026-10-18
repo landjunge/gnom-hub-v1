@@ -1,6 +1,6 @@
 {
   "version": "3.10.1",
-  "count": 57,
+  "count": 58,
   "docs": [
     {
       "file": "AGENTS_DEFINITION.md",
@@ -985,6 +985,30 @@
       ],
       "chars": 12200,
       "lines": 399
+    },
+    {
+      "file": "SEVEN-TOOLS-GNOM-20261018.md",
+      "path": "docs/SEVEN-TOOLS-GNOM-20261018.md",
+      "title": "Gnom-Hub-V1: GH-C01/02/03 foundation and GH-R01",
+      "topic": "Other",
+      "keywords": [
+        "existing",
+        "job",
+        "host",
+        "gnom",
+        "local",
+        "provider",
+        "run",
+        "actual",
+        "never",
+        "new",
+        "observed",
+        "receipt",
+        "return",
+        "seven"
+      ],
+      "chars": 13474,
+      "lines": 200
     },
     {
       "file": "SKILLS.md",

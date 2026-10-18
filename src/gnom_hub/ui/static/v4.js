@@ -30,6 +30,22 @@
   let hiddenSuggestions = new Set();
   let noticeTimer = null;
 
+  function stateText(de, en) {
+    return systemState.ui_lang === "en" ? en : de;
+  }
+
+  function controlledBlocked() {
+    const providers = systemState.providers || {};
+    return providers.execution_profile === "controlled" && providers.controlled_execution_ready !== true;
+  }
+
+  function controlledReason() {
+    return stateText(
+      "Kontrollierte Ausführung gesperrt: Auftrags-, Provider- und Zugangsanbindung fehlen.",
+      "Controlled execution blocked: workflow, provider and protected access are not connected."
+    );
+  }
+
   function toast(text, kind = "") {
     if (!els.notice) return;
     els.notice.textContent = text;
@@ -265,13 +281,14 @@
   function renderDecisions() {
     els.decisions.textContent = "";
     const decision = activeDecision();
+    els.decisions.classList.toggle("is-question", !!decision);
     if (decision) {
-      els.decisionCount.textContent = "1 Entscheidung";
+      els.decisionCount.textContent = stateText("1 Entscheidung", "1 decision");
       const opts = decision.options.length ? decision.options : ["Machen", "Weg"];
       const card = document.createElement("article");
       card.className = "decision-card";
       const h = document.createElement("h3");
-      h.textContent = "Was möchtest du?";
+      h.textContent = stateText("Was möchtest du?", "What would you like?");
       const p = document.createElement("p");
       p.textContent = decision.text;
       const actions = document.createElement("div");
@@ -395,6 +412,7 @@
     const stage = String(p.stage || "").toLowerCase();
     const agent = agents.find((a) => String(a.id || "").toLowerCase() === id);
     if (agent && agent.enabled === false) return "aus";
+    if (controlledBlocked()) return "blockiert";
     if (p.error && (stage === "error" || stage === id)) return "blockiert";
     if (stage === id || (id === "coordinator" && ["distill", "plan"].includes(stage))) return "arbeitet";
     const out = normalizeOutputs().find((o) => o.worker === id);
@@ -409,7 +427,10 @@
       const st = agentStatus(id);
       el.dataset.state = st;
       const small = el.querySelector("small");
-      if (small) small.textContent = st;
+      if (small) {
+        const english = { aus: "off", blockiert: "blocked", arbeitet: "working", fertig: "done", wartet: "waiting" };
+        small.textContent = stateText(st, english[st] || st);
+      }
     });
   }
 
@@ -417,9 +438,16 @@
     const p = pipeline();
     const stage = String(p.stage || "");
     const running = busy || ["memory", "distill", "plan", "work", "worker1", "worker2", "worker3", "worker4"].includes(stage);
-    const hasError = !!p.error || stage === "error";
+    const blocked = controlledBlocked();
+    const hasError = !!p.error || stage === "error" || blocked;
     els.ready.dataset.state = hasError ? "bad" : running ? "work" : "ok";
-    els.ready.querySelector("b").textContent = hasError ? "blockiert" : running ? "arbeitet" : "READY";
+    els.ready.querySelector("b").textContent = blocked
+      ? stateText("gesperrt — Anbindung fehlt", "blocked — integration missing")
+      : hasError ? stateText("blockiert", "blocked") : running ? stateText("arbeitet", "working") : "READY";
+    els.ready.setAttribute("role", "status");
+    els.ready.title = blocked ? controlledReason() : "";
+    els.ready.setAttribute("aria-label", blocked ? controlledReason() : els.ready.querySelector("b").textContent);
+    [els.send, els.execute].forEach((button) => { button.title = blocked ? controlledReason() : ""; });
 
     const tg = snapshot.tollgate || {};
     const tgBad = tg.error || tg.blocked || tg.ready === false;
@@ -443,10 +471,10 @@
     renderDecisions();
     renderResults();
     const p = pipeline();
-    const canTalk = !busy;
+    const canTalk = !busy && !controlledBlocked();
     els.send.disabled = !canTalk;
     els.execute.disabled =
-      busy ||
+      busy || controlledBlocked() ||
       !(
         normalizedMessages().some((m) => m.role === "user") ||
         String(p.user_text || "").trim() ||
@@ -456,10 +484,10 @@
 
   function setBusy(on) {
     busy = !!on;
-    els.send.disabled = busy;
-    els.execute.disabled = busy;
+    els.send.disabled = busy || controlledBlocked();
+    els.execute.disabled = busy || controlledBlocked();
     els.execute.classList.toggle("running", busy);
-    els.execute.textContent = busy ? "arbeitet …" : "Arbeit starten";
+    els.execute.textContent = busy ? stateText("arbeitet …", "working …") : stateText("Arbeit starten", "Start work");
     renderHeader();
   }
 
@@ -471,7 +499,7 @@
         snapshot = job.snapshot;
         renderAll();
       }
-      if (["done", "error", "cancelled"].includes(String(job.status || ""))) {
+      if (["done", "error", "clarify", "cancelled"].includes(String(job.status || ""))) {
         if (job.status === "error") throw new Error(job.error || "Arbeitslauf fehlgeschlagen");
         return job.snapshot || null;
       }
@@ -540,7 +568,7 @@
       await refresh();
       const out = selectedOutput();
       if (out) toast("Ergebnis ist da");
-      else if (activeDecision()) toast("Eine echte Entscheidung ist noch nötig");
+      else if (activeDecision()) toast(stateText("Eine echte Entscheidung ist noch nötig", "A decision is still required"));
       else toast("Lauf beendet – noch kein Ergebnis", "error");
     } catch (err) {
       toast(err.message || "Arbeit konnte nicht starten", "error");

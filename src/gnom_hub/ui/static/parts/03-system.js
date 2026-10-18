@@ -265,8 +265,10 @@
       if (setupEl) {
         const su = s.setup || {};
         const bits = [];
-        bits.push(su.key_ok ? "Key da" : "Key fehlt — in Key.txt oder hier eintragen");
-        bits.push(su.tollgate_ok === false ? (su.tollgate_note || "TollGate fehlt") : "TollGate ok");
+        const en = s.ui_lang === "en";
+        bits.push(su.key_ok ? (en ? "Key configured" : "Key da") : (en ? "Key missing — configure it in Key.txt or here" : "Key fehlt — in Key.txt oder hier eintragen"));
+        bits.push(su.tollgate_ok === false ? (su.tollgate_note || (en ? "TollGate missing" : "TollGate fehlt")) : "TollGate ok");
+        if (su.controlled_execution_note) bits.push(su.controlled_execution_note);
         if (su.personal_ws) bits.push("WS: " + su.personal_ws);
         setupEl.textContent = bits.join(" · ");
       }

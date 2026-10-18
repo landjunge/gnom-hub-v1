@@ -5,6 +5,8 @@
 
 Senden heißt reden. Arbeit starten heißt Arbeiter. God nur über den roten Badge.
 
+[English guide](README_EN.md) · [Deutsch](README_DE.md)
+
 ---
 
 ## 1 · Was ist Gnom-Hub-V1?
@@ -72,7 +74,17 @@ DEEPSEEK_MODEL=deepseek-v4-flash
 
 Platzhalter `sk-your-…` gelten nicht als bereit. Ohne echten Key (und ohne Ollama) sagen die Arbeiter **FEHLER**, sie täuschen keine Lieferung vor.
 
-System zeigt, wenn der Key fehlt oder TollGate fehlt. TollGate braucht das Paket, sonst Cloud-Modelle nicht.
+**Betriebsprofile:** Standard ist der eigenständige `standalone`-Desk mit
+`GNOM_TOLLGATE_LLM=1`: Cloud läuft über TollGate; fehlt das Paket oder verweigert
+es, gibt es keinen direkten Ersatzaufruf. Ein Betreiber kann für den bestehenden
+Legacy-Weg ausdrücklich `GNOM_TOLLGATE_LLM=0` setzen; das ist keine durchgesetzte
+Gesamtauftrags-Geld-/Stoppzusage. Explizites `ollama/*` bleibt lokal.
+
+Das neue operatorseitige `GNOM_EXECUTION_PROFILE=controlled` verweigert derzeit
+alle Modellstarts, solange verifizierte Auftragsbindung, technisch begrenzter
+Provideradapter und geschützter Zugang fehlen. Ein Request-Flag oder importierter
+Text kann das nicht freischalten. Es wurde keine bestehende Installation umgestellt.
+[Quellstand, API-Vertrag und Grenzen](docs/SEVEN-TOOLS-GNOM-20261018.md).
 
 Nie `Key.txt`, `User/` oder `.env` committen. Details: [docs/KEYS_AND_MODELS.md](docs/KEYS_AND_MODELS.md).
 
@@ -147,7 +159,10 @@ Im Desk: **System**.
 | Aktualisieren | Nur nach Klick. Blockiert bei laufender Arbeit. Nie still von `main`. |
 | Wiederherstellen | Vorhandenes Backup laden. Kein stilles Zurückspielen. |
 
-Solange Daniel kein Nutzer-Release veröffentlicht hat, gibt es nichts zum Installieren. Backup vor jedem echten Wechsel.
+Technische GitHub-Releases/Tags existieren (unter anderem `v3.10.1`). Sie belegen
+keine neue Maintainer-/Installationsabnahme dieser Integration. Der aktuelle
+`updates.apply()`-Weg meldet weiterhin `not_published` und installiert nichts;
+`check()` liest nur Release-Metadaten. Backup vor jedem echten Versionswechsel.
 
 Notfall: Backup in der System-Liste mit **Laden**.
 
@@ -158,7 +173,7 @@ Notfall: Backup in der System-Liste mit **Laden**.
 | Symptom | Was tun |
 |---------|---------|
 | Key fehlt | `WS-gnom-hub-v1/User/Key.txt` oder System. Platzhalter zählen nicht. |
-| TollGate fehlt | DeepSeek-Key reicht für Cloud. Optional Sibling `../tollgate` via `./scripts/install.sh`. |
+| TollGate fehlt | Im standardmäßig erzwungenen Cloud-Weg gesperrt. Paket/konkreten TollGate-Anschluss prüfen; ein Key allein behebt das nicht. Eigenständiger Legacy-Opt-out ist eine separate Betreiberwahl. |
 | Arbeiter sagt FEHLER | Kein Key / kein Modell. Keine Attrappe. |
 | Senden tut „nichts“ | Antwort steht in Box 2 beim Flag, nicht als Arbeiter-Seite. |
 | Arbeit startet nicht | Nur **Arbeit starten** oder Ctrl/⌘+Enter. Offene Frage in Box 1 zuerst beantworten. |
@@ -322,7 +337,7 @@ Bekannt und ehrlich:
 
 - Installation ist Terminal, kein Ein-Klick.
 - Fremd-Mac-Test ohne Repo-Wissen fehlt noch.
-- Es gibt noch kein von Daniel freigegebenes GitHub-Release. System-Update installiert deshalb nichts von `main`.
+- Technische GitHub-Releases existieren; `updates.apply()` ist weiterhin nicht aktiviert. Kein stilles Installieren von `main` und keine neue Integrations-/Nutzerabnahme durch diesen Quellcommit.
 - Linux und macOS Intel teilen den Terminal-Weg; eigene Installer-Pakete fehlen.
 - Live-Provider braucht einen echten Key. Ohne Key keine vorgetäuschte Lieferung.
 - God-Mode ist bewusst eng: nur der rote Badge, sonst Trockenlauf.
@@ -344,3 +359,21 @@ Legacy-Desk und `/v4` verwenden die lokale, bytegleiche [NetzwerkPunkt-Bedienbas
 Feste Desktop-Bereiche ab 1180×760 CSS-Pixeln, Systemschrift, 12/14/16/24, 40-Pixel-Bedienelemente; kleine Fenster scrollen. Agentenfarben kennzeichnen weiterhin Empfänger. Senden und Arbeit starten behalten ihre getrennte Bedeutung. Die Standardroute bleibt unverändert.
 
 `quality_check.sh` bestanden: Ruff, generierte CSS-/JS-Dateien, ESLint, Mermaid, Dokumentationsindex, 1038 Tests und Smoke-E2E. Drei Unit-Tests sowie der optionale Live-Modelltest sind übersprungen. Ein frischer `GNOM_WS` ist für wiederholte Prüfläufe erforderlich. Zusätzliche lokale Browserprüfung: Hilfe/System öffnen und schließen, Agentendetails, V4-Werkzeugbereich und erreichbare Aktionen bei kleinem Fenster. [Genaue Grenzen](docs/usability/design-2026-10-03/checks.json), [Legacy-Bild](docs/usability/design-2026-10-03/gnom.png), [V4-Bild](docs/usability/design-2026-10-03/gnom-v4.png). Keine Aussage über Modell-/Pipelinequalität, keine Nutzerabnahme, keine native Ausgabe.
+
+
+### Sieben-Werkzeuge-Integration: aktueller Quellstand
+
+Auftrags-/Jobzuordnung verwendet vorhandenes SQLite-kv, keine zweite Queue.
+Import startet nichts. Originale ThreadDesk-task_id (auch mit Doppelpunkt),
+Bridge-Task, Lauf, Versuch, Actor/Consumer und Hash bleiben getrennt. Ohne
+serverseitigen Issuer-/Runlookup und tatsächlich beobachtete eigene Jobquittung
+keine aktive Zuordnung, Rückgabe oder fremde Jobsteuerung. Ein verlorener
+RAM-Job bleibt `unknown`; kein automatischer Neustart. Vorbereitetes
+`threaddesk.return.v1` bleibt ungeprüft und wird nicht automatisch gesendet.
+Behalten/Peek ist weiterhin nur der ältere Memory-Austausch.
+
+Stopp unterscheidet dauerhafte TollGate-Barriere (`EFFECTIVE`/`PENDING`),
+kooperative Gnom-Abbruchanforderung, beobachtete Finalisierung und unbekannte
+externe Restwirkung. Es gibt keine pauschale Prozess-/Browser-Stoppgarantie.
+Geschützte Browserkonten bleiben wegen globaler `_SESSION` und fehlender FP-C03-
+Grenze gesperrt; kein vorhandener Browser wird hierfür übernommen.

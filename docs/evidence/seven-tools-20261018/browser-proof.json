@@ -1,0 +1,51 @@
+{
+  "checked_at": "2026-10-18T18:14:13.838521+00:00",
+  "source_base": "8b8fb43",
+  "source_sha256": {
+    "v4.html": "f1a1cd9f8fbee74cb60c780567293d4ba05f419039ac0f3d605dff1cba73fd1e",
+    "v4.js": "8508648785a387559e278be96d268b61b9661964897d5776c4463c6b6fe22c0d",
+    "v4.css": "917d1db8ada5eac42d1aa2e6f39beb507db6b7fd967bb1662b01b135e36bcc80",
+    "index.html": "e267e9b6bb65165759929bb56d44ce7514948e15dfed9e10691e81fb07d7bffc",
+    "app.js": "df3213b02fab19fe03ba8058e01e8f9f3d811ff215a02835ed121fec3f9d6dc5",
+    "app.css": "746370ba43a287cb89e3c789e06cfb517be80b73edeccc8fd65a5b17d9fbecc8"
+  },
+  "kind": "headed_real_chrome_actual_source_isolated_loopback_api_fixture",
+  "production_execution": false,
+  "model_calls": 0,
+  "user_runtime_touched": false,
+  "cases": [
+    {
+      "lang": "de",
+      "case": "standalone_synthetic_question_answer",
+      "execute_calls": 1,
+      "job_polls": 2,
+      "answer_calls": 1
+    },
+    {
+      "lang": "de",
+      "case": "controlled_default_deny_visible_both_surfaces",
+      "send_disabled_v4": true,
+      "execute_disabled_v4": true
+    },
+    {
+      "lang": "en",
+      "case": "standalone_synthetic_question_answer",
+      "execute_calls": 1,
+      "job_polls": 2,
+      "answer_calls": 1
+    },
+    {
+      "lang": "en",
+      "case": "controlled_default_deny_visible_both_surfaces",
+      "send_disabled_v4": true,
+      "execute_disabled_v4": true
+    }
+  ],
+  "page_errors": [],
+  "unexpected_posts": [],
+  "limits": [
+    "synthetic API/job data; no real Gnom execution",
+    "partial DE/EN states only; navigation still contains German",
+    "controlled source remains denied; no issuer/provider/OS acceptance"
+  ]
+}

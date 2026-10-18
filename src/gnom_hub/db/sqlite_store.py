@@ -572,6 +572,37 @@ class GnomDatabase:
                 (key, value),
             )
 
+    def kv_compare_exchange(
+        self, key: str, expected: str | None, value: str, *, prefix: str, limit: int = 1000
+    ) -> bool:
+        """Bounded atomic binding update; existing KV table, never an execution queue."""
+        if not key.startswith(prefix) or len(key) > 256 or len(value.encode()) > 65536:
+            raise ValueError("binding_storage_limit")
+        with _lock:
+            self._conn.execute("BEGIN IMMEDIATE")
+            try:
+                row = self._conn.execute("SELECT value FROM kv WHERE key = ?", (key,)).fetchone()
+                current = str(row["value"]) if row else None
+                if current != expected:
+                    self._conn.execute("ROLLBACK")
+                    return False
+                if current is None:
+                    count = self._conn.execute(
+                        "SELECT COUNT(*) FROM kv WHERE substr(key, 1, ?) = ?", (len(prefix), prefix)
+                    ).fetchone()[0]
+                    if count >= limit:
+                        raise ValueError("binding_capacity_reached")
+                self._conn.execute(
+                    "INSERT INTO kv(key,value) VALUES(?,?) "
+                    "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                    (key, value),
+                )
+                self._conn.execute("COMMIT")
+                return True
+            except Exception:
+                self._conn.execute("ROLLBACK")
+                raise
+
     def kv_get_json(self, key: str, default: Any = None) -> Any:
         raw = self.kv_get(key)
         if raw is None:

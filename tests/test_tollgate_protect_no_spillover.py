@@ -59,7 +59,7 @@ def test_generic_llm_error_also_hard_fails_when_force_tg(monkeypatch):
     legacy.chat.assert_not_called()
 
 
-def test_missing_tollgate_package_falls_through_to_deepseek(monkeypatch):
+def test_missing_tollgate_package_never_falls_through_when_forced(monkeypatch):
     monkeypatch.setenv("GNOM_TOLLGATE_LLM", "1")
     monkeypatch.delenv("TOLLGATE_URL", raising=False)
     keys = {"DEEPSEEK_API_KEY": "sk-abcdefghijklmnop-realish"}
@@ -87,12 +87,12 @@ def test_missing_tollgate_package_falls_through_to_deepseek(monkeypatch):
         "_chat_via_tollgate",
         lambda *a, **k: (_ for _ in ()).throw(LLMError("tollgate package not installed")),
     )
-    r = m.chat(
-        [LLMMessage(role="user", content="hi")],
-        model="deepseek-v4-flash",
-        agent="brainstorm",
-    )
-    assert r.content == "legacy-after-missing-pkg"
+    with pytest.raises(LLMError, match="tollgate package not installed"):
+        m.chat(
+            [LLMMessage(role="user", content="hi")],
+            model="deepseek-v4-flash",
+            agent="brainstorm",
+        )
 
 
 def test_optional_tollgate_may_fall_through_when_force_off(monkeypatch):

@@ -199,6 +199,8 @@
 
   function agentIsActive(agent) {
     if (!agent || !agent.enabled) return false;
+    const providers = (typeof lastSnapshot !== "undefined" && lastSnapshot && lastSnapshot.llm && lastSnapshot.llm.providers) || {};
+    if (providers.execution_profile === "controlled" && providers.controlled_execution_ready !== true) return false;
     const s = activeStage || "";
     // Exact id match (worker1…, brainstorm, …) — only the agent that is running
     if (s === agent.id) return true;
@@ -233,6 +235,8 @@
     const id = String(agentId || "");
     const agent = findAgent(id) || {};
     const snap = typeof lastSnapshot !== "undefined" ? lastSnapshot : null;
+    const providers = (snap && snap.llm && snap.llm.providers) || {};
+    if (providers.execution_profile === "controlled" && providers.controlled_execution_ready !== true) return "blockiert";
     const pipe = (snap && snap.pipeline) || {};
     const stage = String(pipe.stage || activeStage || "idle");
     const send = String(pipe.send_target || "");
@@ -2018,7 +2022,8 @@
       const live =
         typeof agentLiveStatus === "function" ? agentLiveStatus(agent.id) : "";
       if (live) card.dataset.live = live;
-      const status = live || statusLabel(agent);
+      const status = live === "blockiert" && lastSnapshot && lastSnapshot.ui_lang === "en"
+        ? "blocked" : live || statusLabel(agent);
       // eslint-disable-next-line no-unsanitized/property
       card.innerHTML =
         '<div class="card-name">' +
@@ -2558,14 +2563,17 @@
       const auth = snap.llm.auth || {};
       const sys = String(auth.system || "");
       const wrk = String(auth.worker_effective || auth.worker || "");
-      const blocked = !!auth.session_auth_blocked;
+      const providerState = snap.llm.providers || {};
+      const controlled = providerState.execution_profile === "controlled" && providerState.controlled_execution_ready !== true;
+      const blocked = !!auth.session_auth_blocked || controlled;
+      const statusEnglish = snap.ui_lang === "en";
       const placeholder = !!auth.placeholder_detected || sys === "placeholder" || wrk === "placeholder";
       const ok = (ds || ol) && !blocked;
       const viaTg = !!snap.llm.via_tollgate;
       const tg = snap.tollgate || {};
       const tgOk = tg.ok !== false;
       let label = "LLM: fehlt";
-      if (blocked) label = "LLM: gesperrt";
+      if (blocked) label = statusEnglish ? "LLM: blocked" : "LLM: gesperrt";
       else if (ok) label = "LLM: bereit";
       els.llmBadge.textContent = label;
       els.llmBadge.classList.toggle("has-key", ok);
@@ -2602,6 +2610,9 @@
         " completion=" +
         (snap.llm.completion_tokens || 0) +
         " — keys: User/Key.txt · desk: tollgate doctor";
+      if (controlled) els.llmBadge.title = statusEnglish
+        ? "Controlled execution blocked: workflow, provider and protected access are not connected."
+        : "Kontrollierte Ausführung gesperrt: Auftrags-, Provider- und Zugangsanbindung fehlen.";
     }
     updateCostBadge(snap.llm, snap.tollgate);
     if (els.memBadge && snap.memory_summary) {
@@ -3941,8 +3952,10 @@
       if (setupEl) {
         const su = s.setup || {};
         const bits = [];
-        bits.push(su.key_ok ? "Key da" : "Key fehlt — in Key.txt oder hier eintragen");
-        bits.push(su.tollgate_ok === false ? (su.tollgate_note || "TollGate fehlt") : "TollGate ok");
+        const en = s.ui_lang === "en";
+        bits.push(su.key_ok ? (en ? "Key configured" : "Key da") : (en ? "Key missing — configure it in Key.txt or here" : "Key fehlt — in Key.txt oder hier eintragen"));
+        bits.push(su.tollgate_ok === false ? (su.tollgate_note || (en ? "TollGate missing" : "TollGate fehlt")) : "TollGate ok");
+        if (su.controlled_execution_note) bits.push(su.controlled_execution_note);
         if (su.personal_ws) bits.push("WS: " + su.personal_ws);
         setupEl.textContent = bits.join(" · ");
       }
