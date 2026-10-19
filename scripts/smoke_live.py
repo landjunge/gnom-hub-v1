@@ -4,7 +4,10 @@ Optional live DeepSeek smoke. Skips cleanly when DEEPSEEK_API_KEY is missing.
 
 Usage:
   PYTHONPATH=src python scripts/smoke_live.py
-  GNOM_LIVE_SMOKE=1  — fail if key missing (CI optional job)
+  GNOM_LIVE_SMOKE=1  — fail if key missing (local script option)
+
+CI invokes this script only on explicit workflow_dispatch run_live_smoke=true,
+on Python3.12. The local script still uses a configured key when present.
 """
 
 from __future__ import annotations

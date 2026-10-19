@@ -147,10 +147,10 @@ If no DeepSeek key but Ollama is up, manager may auto-route to Ollama.
 ## 6. Smoke checks (no re-research needed)
 
 ```bash
-# 1) Key.txt parses
-python -c "from pathlib import Path; from gnom_hub.config.keys import parse_key_file; print(parse_key_file(Path('Key.txt').read_text()))"
+# 1) Key.txt parses: show names and presence flags only, never values
+python -c "from pathlib import Path; from gnom_hub.config.keys import parse_key_file; print({name: bool(value) for name, value in parse_key_file(Path('Key.txt').read_text()).items()})"
 
-# 2) Live chat with flash (uses system key from Key.txt)
+# 2) Explicitly authorized live chat (can incur API costs; uses configured key)
 python scripts/smoke_live.py   # or minimal chat/completions POST
 
 # 3) Hub state after start
@@ -158,6 +158,11 @@ curl -s http://127.0.0.1:8080/api/state | python -c "import sys,json; d=json.loa
 ```
 
 Expected: `default_model == deepseek-v4-flash` and all agents same model.
+
+CI runs this live script only after **Actions → CI/CD → Run workflow →
+run_live_smoke** is explicitly enabled (`false` by default), and only on Python3.12.
+Normal PR/push/nightly CI never enters the step that receives the provider secret.
+See [the exact CI gate and local-script distinction](STABILITY.md#ci-live-smoke-explicit-manual-opt-in).
 
 ---
 

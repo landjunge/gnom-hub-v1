@@ -14,7 +14,28 @@ source .venv/bin/activate
 ./scripts/quality_check.sh
 ```
 
-Expect: ruff OK · pytest green · smoke e2e OK · live smoke **non-empty** content when key present.
+Expect: ruff OK · pytest green · smoke e2e OK. The local `quality_check.sh` also
+attempts live smoke when a configured key is available; use that local path only
+when real provider work is authorized.
+
+### CI live smoke: explicit manual opt-in
+
+Normal pull-request, push (including tags) and nightly CI never enter the live
+DeepSeek step or expose its provider secret to that step. Manually starting CI
+with default inputs also leaves live smoke disabled. Unit matrices and the
+Python3.12 in-process smoke remain unchanged.
+
+To deliberately permit real provider work, open **Actions → CI/CD → Run workflow**,
+choose the reviewed ref, and enable **run_live_smoke**. The declared boolean defaults
+to `false`; the live step additionally requires `workflow_dispatch`, an exact
+`inputs.run_live_smoke == true` and Python3.12. Only that selected step receives
+the configured `DEEPSEEK_API_KEY` secret. This can incur provider charges. Without
+the secret the step reports SKIP; a provider failure remains nonblocking as before.
+The summary reports whether live smoke was requested, not proof of a successful call.
+
+The `inputs` context preserves boolean values; `github.event.inputs` uses strings.
+See the [official workflow input syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onworkflow_dispatchinputs).
+No real provider call was made when checking this CI condition.
 
 ### Three basic tests (B1–B3)
 
