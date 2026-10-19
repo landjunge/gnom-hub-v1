@@ -48,7 +48,7 @@ Use this page as a **keyword map**. Ctrl/Cmd-F in the browser or IDE.
 | [TOOLS_PORTFOLIO.md](TOOLS_PORTFOLIO.md) | tools, portfolio, computer, playwright, skip, use, install, mouse, ocr, browser |
 | [WORKER_PREFETCH.md](WORKER_PREFETCH.md) | prefetch, worker, budget, category, contrast_check, css_tokens, design, else, execute, ran |
 | [WORKER_PROMPTS.md](WORKER_PROMPTS.md) | worker, html, prompts, tools, user, flex, prefetch, design, fehler, memory |
-| [WORKER_STANDS.md](WORKER_STANDS.md) | worker, git, keine, stands, nicht, nur, binding, kein, oder, run |
+| [WORKER_STANDS.md](WORKER_STANDS.md) | worker, keine, git, stands, nur, nicht, oder, kein, run, wird |
 
 ### Memory & vectors
 | Doc | Keywords |

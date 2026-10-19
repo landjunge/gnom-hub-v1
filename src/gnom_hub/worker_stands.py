@@ -265,22 +265,33 @@ class WorkerStands:
         self.external._authorize(binding, "worker_status")
         _, record = self.external._read(binding)
         workers = record.get("workers", {})
-        result = {}
-        for key, item in workers.items():
+        observed = {}
+
+        def observed_state(key):
+            if key in observed:
+                return observed[key]
+            item = workers[key]
             state = item["state"]
-            if state == "pending":
-                deps = [workers[x]["state"] for x in item["assignment"]["depends_on"]]
+            if state == "running" and item.get("attempt_id") not in self._active:
+                state = "unknown"
+            elif state == "pending":
+                # Lost claims stay durable `running`; dependents must use the
+                # observed unknown/blocked state, including indirect dependencies.
+                deps = [observed_state(x) for x in item["assignment"]["depends_on"]]
                 state = (
                     "blocked"
-                    if any(x in {"failed", "unknown"} for x in deps)
+                    if any(x in {"failed", "unknown", "blocked"} for x in deps)
                     else "ready"
                     if all(x == "delivered" for x in deps)
                     else "waiting"
                 )
-            if state == "running" and item.get("attempt_id") not in self._active:
-                state = "unknown"
-            result[key] = {**item, "observed_state": state, "restart_allowed": False}
-        return result
+            observed[key] = state
+            return state
+
+        return {
+            key: {**item, "observed_state": observed_state(key), "restart_allowed": False}
+            for key, item in workers.items()
+        }
 
     def run(self, binding: RunBinding, subtask_id: str, *, task: str):
         """Claim before calling one configured adapter; no implicit start/retry."""
