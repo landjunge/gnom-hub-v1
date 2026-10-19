@@ -147,8 +147,8 @@ If no DeepSeek key but Ollama is up, manager may auto-route to Ollama.
 ## 6. Smoke checks (no re-research needed)
 
 ```bash
-# 1) Key.txt parses
-python -c "from pathlib import Path; from gnom_hub.config.keys import parse_key_file; print(parse_key_file(Path('Key.txt').read_text()))"
+# 1) Key.txt parses: show names and presence flags only, never values
+python -c "from pathlib import Path; from gnom_hub.config.keys import parse_key_file; print({name: bool(value) for name, value in parse_key_file(Path('Key.txt').read_text()).items()})"
 
 # 2) Explicitly authorized live chat (can incur API costs; uses configured key)
 python scripts/smoke_live.py   # or minimal chat/completions POST
