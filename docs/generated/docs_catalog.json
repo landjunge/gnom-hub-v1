@@ -479,8 +479,8 @@
         "echte",
         "getrennte"
       ],
-      "chars": 8106,
-      "lines": 126
+      "chars": 11067,
+      "lines": 171
     },
     {
       "file": "GITHUB_HOLDER_3.10.md",
@@ -1401,22 +1401,22 @@
       "topic": "Skills & plugins",
       "keywords": [
         "worker",
-        "git",
         "keine",
+        "git",
         "stands",
-        "nicht",
         "nur",
-        "binding",
-        "kein",
+        "nicht",
         "oder",
+        "kein",
         "run",
         "wird",
+        "abh\u00e4ngigkeiten",
+        "binding",
         "endpoint",
-        "f\u00fcr",
-        "genau"
+        "f\u00fcr"
       ],
-      "chars": 8539,
-      "lines": 137
+      "chars": 8784,
+      "lines": 140
     },
     {
       "file": "WORKFLOWS_AND_PRESETS.md",

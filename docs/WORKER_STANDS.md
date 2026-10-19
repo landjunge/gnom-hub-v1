@@ -72,6 +72,9 @@ Worker-Fehlertexte werden nicht in die Quittung übernommen.
 beobachtete `ready/waiting/blocked/unknown`. Ein laufender Claim ohne lokale aktive
 Aufrufbeobachtung bleibt **unknown**, mit `restart_allowed=false`. Auch eine erneute
 Hostinstanz startet nichts nach; unklarer Ausgang verlangt manuellen Belegabgleich.
+Direkte und indirekte Abhängigkeiten eines unbekannten oder fehlgeschlagenen Claims
+zeigen `blocked`; nur ein tatsächlich noch beobachteter laufender Vorgänger ergibt
+`waiting`. Diese Beobachtung schreibt keine persistenten Auftragszustände um.
 Ein abgebrochener Aufruf kann bereits Wirkungen erzeugt haben. `failed` garantiert
 keine Wirkungslosigkeit. Es gibt hier weder automatische Wiederholung noch Recovery-
 Fortsetzung. Ein fehlgeschlagener Worker sperrt nur seine abhängigen Unteraufträge;

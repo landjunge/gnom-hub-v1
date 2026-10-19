@@ -130,6 +130,7 @@ def test_failed_worker_blocks_only_dependents_and_never_repeats(stands):
     plan = [
         assignment(s, "a", "worker1"),
         assignment(s, "b", "worker2", depends=("a",)),
+        assignment(s, "c", "worker3", depends=("b",)),
         assignment(s, "independent", "worker4"),
     ]
     s.service.register(s.binding, plan)
@@ -138,6 +139,7 @@ def test_failed_worker_blocks_only_dependents_and_never_repeats(stands):
         s.service.run(s.binding, "b", task="b")
     assert s.service.run(s.binding, "a", task="a")["state"] == "failed"
     assert s.service.status(s.binding)["b"]["observed_state"] == "blocked"
+    assert s.service.status(s.binding)["c"]["observed_state"] == "blocked"
     assert s.service.run(s.binding, "independent", task="independent")["state"] == "delivered"
     with pytest.raises(BindingError, match="worker_already_claimed"):
         s.service.run(s.binding, "a", task="a")
@@ -156,15 +158,30 @@ def test_restart_reads_uncertain_claim_without_duplicate_worker(stands):
         raise SimulatedCrash()
 
     s.service.endpoints["worker1"] = WorkerEndpoint(s.trees["worker1"], crash)
-    plan = [assignment(s, "a", "worker1")]
+    plan = [
+        assignment(s, "c", "worker3", depends=("b",)),
+        assignment(s, "b", "worker2", depends=("a",)),
+        assignment(s, "a", "worker1"),
+        assignment(s, "independent", "worker4"),
+    ]
     s.service.register(s.binding, plan)
     with pytest.raises(SimulatedCrash):
         s.service.run(s.binding, "a", task="a")
     recovered = WorkerStands(s.adapter, s.workspace, s.endpoints, integration_worktree=s.repo)
     recovered.register(s.binding, plan)
-    status = recovered.status(s.binding)["a"]
+    before_observation = s.adapter._read(s.binding)[0]
+    observed = recovered.status(s.binding)
+    assert s.adapter._read(s.binding)[0] == before_observation
+    status = observed["a"]
     assert status["state"] == "running" and status["observed_state"] == "unknown"
     assert status["restart_allowed"] is False
+    for key in ("b", "c"):
+        assert observed[key]["state"] == "pending"
+        assert observed[key]["observed_state"] == "blocked"
+        assert observed[key]["restart_allowed"] is False
+        with pytest.raises(BindingError, match="worker_dependencies_not_delivered"):
+            recovered.run(s.binding, key, task=key)
+    assert observed["independent"]["observed_state"] == "ready"
     with pytest.raises(BindingError, match="worker_already_claimed"):
         recovered.run(s.binding, "a", task="a")
     assert s.calls == ["before-crash"]
@@ -182,14 +199,21 @@ def test_duplicate_concurrent_claim_has_one_actual_start(stands):
         return "result"
 
     s.service.endpoints["worker1"] = WorkerEndpoint(s.trees["worker1"], waiting)
-    s.service.register(s.binding, [assignment(s, "a", "worker1")])
+    s.service.register(
+        s.binding,
+        [assignment(s, "b", "worker2", depends=("a",)), assignment(s, "a", "worker1")],
+    )
     with ThreadPoolExecutor(2) as pool:
         future = pool.submit(s.service.run, s.binding, "a", task="a")
         assert entered.wait(2)
+        observed = s.service.status(s.binding)
+        assert observed["a"]["observed_state"] == "running"
+        assert observed["b"]["observed_state"] == "waiting"
         with pytest.raises(BindingError, match="worker_already_claimed"):
             s.service.run(s.binding, "a", task="a")
         release.set()
         assert future.result(3)["state"] == "delivered"
+    assert s.service.status(s.binding)["b"]["observed_state"] == "ready"
     assert s.calls == ["one"]
 
 
