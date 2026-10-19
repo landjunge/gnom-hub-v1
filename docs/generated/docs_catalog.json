@@ -647,8 +647,8 @@
         "user",
         "agents"
       ],
-      "chars": 7504,
-      "lines": 209
+      "chars": 7872,
+      "lines": 214
     },
     {
       "file": "LAYERS_FOR_AI.md",
@@ -1065,22 +1065,22 @@
       "topic": "Install & run",
       "keywords": [
         "stability",
+        "live",
+        "provider",
+        "smoke",
         "scripts",
-        "deepseek",
-        "empty",
+        "step",
         "execute",
+        "inputs",
         "json",
-        "key",
+        "real",
         "required",
-        "worker",
+        "actions",
         "bash",
-        "basic",
-        "data",
-        "e2e",
-        "flash"
+        "basic"
       ],
-      "chars": 6146,
-      "lines": 134
+      "chars": 7454,
+      "lines": 155
     },
     {
       "file": "TESTING.md",

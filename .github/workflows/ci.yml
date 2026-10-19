@@ -11,6 +11,12 @@ on:
     # Nightly tests on default branch. No release, no publish.
     - cron: "12 3 * * *"
   workflow_dispatch:
+    inputs:
+      run_live_smoke:
+        description: "Explicitly run a real DeepSeek smoke (may incur API costs)"
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -120,7 +126,6 @@ jobs:
         include:
           - python-version: "3.12"
             run_smoke: true
-            run_live: true
 
     steps:
       - uses: actions/checkout@v5
@@ -193,8 +198,8 @@ jobs:
           PYTHONPATH: src
         run: .venv/bin/python scripts/smoke_e2e.py
 
-      - name: Live DeepSeek smoke (optional, Py3.12 only)
-        if: ${{ matrix.run_live }}
+      - name: Live DeepSeek smoke (explicit manual opt-in, Py3.12 only)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_live_smoke == true && matrix.python-version == '3.12' }}
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           PYTHONPATH: src
@@ -225,7 +230,8 @@ jobs:
             echo "| venv (\`.venv\`) | \`${{ steps.cache-venv.outputs.cache-hit }}\` |"
             echo "| pip downloads | \`${{ steps.cache-pip.outputs.cache-hit || 'skipped' }}\` |"
             echo ""
-            echo "- key seed: \`$CACHE_SEED\` · smoke: ${{ matrix.run_smoke }} · live: ${{ matrix.run_live }}"
+            echo "- key seed: \`$CACHE_SEED\` · smoke: ${{ matrix.run_smoke }}"
+            echo "- live requested for this matrix: ${{ github.event_name == 'workflow_dispatch' && inputs.run_live_smoke == true && matrix.python-version == '3.12' }}"
             echo "- see docs/PYTHON_CACHE.md"
           } >> "$GITHUB_STEP_SUMMARY"
 
