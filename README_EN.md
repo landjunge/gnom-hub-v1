@@ -1,9 +1,15 @@
 # Gnom-Hub-V1 — English
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/design/icons/dark/Gnom-Hub-V1-dark-128.png">
+  <img src="assets/design/icons/light/Gnom-Hub-V1-light-128.png" alt="Gnom-Hub-V1" width="96" height="96">
+</picture>
+
+
 Gnom-Hub-V1 is an independent local multi-agent desk. **Send** is conversation;
 **Start work** explicitly starts the existing coordinator/worker pipeline.
 Direct KiraBridge→Codex work does not require Gnom. This is not an unattended
-computer-control service. See [German guide](README.md).
+computer-control service. See the [German guide](README_DE.md) and [main overview](README.md).
 
 ## Install and start
 
