@@ -1,4 +1,7 @@
-<p align="center"><img src="brand/mark.svg" width="180" alt="Gnom-Hub-V1 Bildmarke"></p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/design/icons/dark/Gnom-Hub-V1-dark-128.png">
+  <img src="assets/design/icons/light/Gnom-Hub-V1-light-128.png" alt="Gnom-Hub-V1" width="96" height="96">
+</picture>
 <p align="center"><img src="brand/wordmark.svg" width="600" alt="Gnom-Hub-V1"></p>
 
 <p align="center"><strong>Ein lokaler Arbeitsplatz für die Zusammenarbeit mit KI-Agenten.</strong></p>
@@ -8,6 +11,15 @@ Senden heißt reden. Arbeit starten heißt Arbeiter. God nur über den roten Bad
 [English guide](README_EN.md) · [Deutsch](README_DE.md)
 
 ---
+
+## Aktueller Funktionsstand / Current capabilities
+
+**Deutsch:** Gnom-Hub-V1 3.10.1 ist ein eigenständiger lokaler Multi-Agenten-Arbeitsplatz. Im normalen Ablauf besprichst du den Auftrag zuerst und startest die Arbeit ausdrücklich. Cloud-Aufrufe verwenden standardmäßig TollGate; ausdrücklich ausgewählte Ollama-Modelle laufen lokal. Das Betreiberprofil `controlled` sperrt Modellstarts, solange seine nachgewiesenen Integrationsvoraussetzungen fehlen. Importierte Übergaben und vorbereitete Rückgaben belegen keine Ausführung oder Abnahme.
+
+**English:** Gnom-Hub-V1 3.10.1 is an independent local multi-agent workspace. The ordinary flow discusses a task first and starts work explicitly. Cloud calls use TollGate by default; explicitly selected Ollama models run locally. The operator-selected `controlled` profile blocks model starts while its verified integration prerequisites are missing. Imported handoffs and prepared returns do not prove execution or acceptance.
+
+Git und Python 3.10+ sind für den Terminalweg erforderlich. / Git and Python 3.10+ are required for terminal installation. [Deutsch](README_DE.md) · [English](README_EN.md) · [Integrationsstand / Integration status](docs/SEVEN-TOOLS-GNOM-20261018.md).
+
 
 ## 1 · Was ist Gnom-Hub-V1?
 
