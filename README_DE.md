@@ -1,5 +1,7 @@
 # Gnom-Hub-V1 — Deutsch
 
+Senden = reden. Arbeit starten = Arbeiter. God nur über den roten Badge.
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/design/icons/dark/Gnom-Hub-V1-dark-128.png">
   <img src="assets/design/icons/light/Gnom-Hub-V1-light-128.png" alt="Gnom-Hub-V1" width="96" height="96">
